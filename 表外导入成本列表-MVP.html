@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>月度调整表（表外成本 · MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --green-bg: #ecfdf3;
+      --green-text: #027a48;
+      --red-bg: #fef2f2;
+      --red-text: #b91c1c;
+      --blue-bg: #eff6ff;
+      --blue-text: #1d4ed8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .page {
+      max-width: 1480px;
+      height: 100vh;
+      margin: 0 auto;
+      padding: 24px 16px 32px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .header p { margin: 8px 0 0; font-size: 13px; color: var(--sub); line-height: 1.5; max-width: 720px; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text);
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn + .btn { margin-left: 8px; }
+    a.btn { text-decoration: none; display: inline-block; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      margin-bottom: 12px;
+    }
+    .filter { padding: 16px; }
+    .filter-title { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 1000px) { .filter-grid { grid-template-columns: repeat(2, 1fr); } }
+    .field label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--sub); }
+    .field input, .field select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+    }
+    .filter-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .toolbar-left { font-size: 13px; color: var(--sub); flex: 1; min-width: 200px; }
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .expand-cell { white-space: nowrap; vertical-align: middle; }
+    .expand-cell label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--sub);
+      user-select: none;
+    }
+    .expand-cell input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      min-width: 1040px;
+      border-collapse: collapse;
+    }
+    thead th {
+      background: #fafbff;
+      font-size: 12px;
+      font-weight: 600;
+      color: #4b5563;
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    thead th.col-person { background: #f0fdf4; color: #166534; }
+    thead th.col-money { background: #fffbeb; color: #92400e; }
+    tbody td {
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    tbody tr:hover { background: #fafcff; }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .tag-gp { background: var(--blue-bg); color: var(--blue-text); }
+    .tag-comm { background: #f3e8ff; color: #6b21a8; }
+    .tag-plus { background: var(--green-bg); color: var(--green-text); }
+    .tag-minus { background: var(--red-bg); color: var(--red-text); }
+    .amt-plus { color: var(--green-text); font-weight: 600; }
+    .amt-minus { color: var(--red-text); font-weight: 600; }
+    .op a { color: var(--primary); text-decoration: none; font-size: 13px; margin-right: 10px; }
+    .sum-row { background: #f8fbff; }
+    .detail-box {
+      background: #fbfcff;
+      border: 1px solid #e9edf7;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 2px 0;
+    }
+    .detail-title {
+      font-size: 12px;
+      color: var(--sub);
+      margin: 0 0 8px;
+    }
+    .detail-table {
+      min-width: 980px;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .detail-table th,
+    .detail-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #e9edf7;
+      font-size: 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .detail-table th { color: #4b5563; background: #f3f6ff; }
+    .foot-note {
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.65;
+      border-top: 1px solid var(--line);
+      background: #fafafa;
+      border-radius: 0 0 12px 12px;
+    }
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .pages { display: flex; gap: 6px; }
+    .page-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .page-btn.active { border-color: var(--primary); color: var(--primary); font-weight: 600; }
+  </style>
+<style id="commission-nav-skin">
+/* 提成管理 · 左侧主导航（与各页 :root 独立） */
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+    .app-main { flex: 1; min-width: 0; background: #f5f7fb; height: 100vh; overflow: hidden; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">规则</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包与子规则</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">基数维护</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">规则包编辑</a>
+        <div class="sidenav-section-label">人员与映射</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">成本与调整</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">试算</div>
+        <a href="统一试算结果-正向与异常.html" class="sidenav-link">统一试算结果</a>
+        <a href="提成试算结果.html" class="sidenav-link">提成试算结果</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1>月度调整表</h1>
+      </div>
+    </div>
+
+    <div class="card filter">
+      <div class="filter-title">查询条件</div>
+      <div class="filter-grid">
+        <div class="field">
+          <label>系统账户名称</label>
+          <input type="text" placeholder="模糊搜索" />
+        </div>
+        <div class="field">
+          <label>员工姓名</label>
+          <input type="text" placeholder="模糊搜索" />
+        </div>
+        <div class="field">
+          <label>月度</label>
+          <input type="month" value="2026-06" />
+        </div>
+        <div class="field">
+          <label>分公司</label>
+          <input type="text" placeholder="模糊搜索" />
+        </div>
+        <div class="field">
+          <label>绩效系数（百分比转系数区间）</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="number" step="0.01" placeholder="最小" style="flex:1;min-width:0;" />
+            <span style="font-size:12px;color:var(--sub);">～</span>
+            <input type="number" step="0.01" placeholder="最大" style="flex:1;min-width:0;" />
+          </div>
+        </div>
+        <div class="field">
+          <label>费用性质</label>
+          <select>
+            <option value="">全部</option>
+            <option>扣毛利</option>
+            <option>扣提成</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>运单号</label>
+          <input type="text" placeholder="用于明细过滤" />
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button type="button" class="btn">重置</button>
+        <button type="button" class="btn btn-primary">查询</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="toolbar-left">共 64 条月度记录，当前第 1 页 · 勾选首列「运单明细」展开运单级成本</div>
+        <div class="toolbar-actions">
+          <button type="button" class="btn">下载导入模板</button>
+          <button type="button" class="btn">导出当前结果</button>
+          <a href="导入绩效系数弹窗页-MVP.html" class="btn">批量导入绩效系数</a>
+          <a href="导入表外成本弹窗页-MVP.html" class="btn btn-primary">+ 新建导入</a>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-person" style="width:1%">运单明细</th>
+              <th class="col-person">系统账户名称</th>
+              <th class="col-person">员工姓名</th>
+              <th>月度</th>
+              <th>分公司</th>
+              <th class="col-money">其中：扣毛利</th>
+              <th class="col-money">其中：扣提成</th>
+              <th>绩效系数</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="sum-row">
+              <td class="expand-cell">
+                <label>
+                  <input type="checkbox" class="expand-toggle" data-target="detail-1" aria-label="展开运单明细" />
+                  <span>展开</span>
+                </label>
+              </td>
+              <td>zhangsan_ops</td>
+              <td>张三</td>
+              <td>2026-06</td>
+              <td>总部</td>
+              <td class="amt-minus">-1,760.00</td>
+              <td class="amt-minus">-420.50</td>
+              <td>1.08</td>
+            </tr>
+            <tr id="detail-1" style="display: none;">
+              <td colspan="8">
+                <div class="detail-box">
+                  <p class="detail-title">运单明细（张三 · 2026-06）</p>
+                  <table class="detail-table">
+                    <thead>
+                      <tr>
+                        <th>运单号</th>
+                        <th>费用性质</th>
+                        <th>费用类型</th>
+                        <th>成本金额</th>
+                        <th>调整类型</th>
+                        <th>备注</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>WB20260600128</td><td>扣毛利</td><td>理赔扣款</td><td class="amt-minus">-1,200.00</td><td>减项</td><td>客户投诉扣款</td></tr>
+                      <tr><td>WB20260600901</td><td>扣毛利</td><td>财务调整费</td><td class="amt-plus">+800.00</td><td>加项</td><td>核销差异回补</td></tr>
+                      <tr><td>WB20260601233</td><td>扣提成</td><td>绩效调整</td><td class="amt-minus">-420.50</td><td>减项</td><td>绩效联动冲减</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+            <tr class="sum-row">
+              <td class="expand-cell">
+                <label>
+                  <input type="checkbox" class="expand-toggle" data-target="detail-2" aria-label="展开运单明细" />
+                  <span>展开</span>
+                </label>
+              </td>
+              <td>finance_li</td>
+              <td>李四</td>
+              <td>2026-06</td>
+              <td>华东分公司</td>
+              <td class="amt-minus">-980.00</td>
+              <td>0.00</td>
+              <td>—</td>
+            </tr>
+            <tr id="detail-2" style="display: none;">
+              <td colspan="8">
+                <div class="detail-box">
+                  <p class="detail-title">运单明细（李四 · 2026-06）</p>
+                  <table class="detail-table">
+                    <thead>
+                      <tr>
+                        <th>运单号</th>
+                        <th>费用性质</th>
+                        <th>费用类型</th>
+                        <th>成本金额</th>
+                        <th>调整类型</th>
+                        <th>备注</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>WB20260600880</td><td>扣毛利</td><td>仓储损耗</td><td class="amt-minus">-520.00</td><td>减项</td><td>仓储损耗</td></tr>
+                      <tr><td>WB20260601717</td><td>扣毛利</td><td>理赔扣款</td><td class="amt-minus">-460.00</td><td>减项</td><td>跨月冲减</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+            <tr class="sum-row">
+              <td class="expand-cell">
+                <label>
+                  <input type="checkbox" class="expand-toggle" data-target="detail-3" aria-label="展开运单明细" />
+                  <span>展开</span>
+                </label>
+              </td>
+              <td>black_cat_cs</td>
+              <td>黄丽青</td>
+              <td>2026-06</td>
+              <td>华南分公司</td>
+              <td class="amt-minus">-520.50</td>
+              <td class="amt-plus">+800.00</td>
+              <td>1.12</td>
+            </tr>
+            <tr id="detail-3" style="display: none;">
+              <td colspan="8">
+                <div class="detail-box">
+                  <p class="detail-title">运单明细（黄丽青 · 2026-06）</p>
+                  <table class="detail-table">
+                    <thead>
+                      <tr>
+                        <th>运单号</th>
+                        <th>费用性质</th>
+                        <th>费用类型</th>
+                        <th>成本金额</th>
+                        <th>调整类型</th>
+                        <th>备注</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>WB20260601102</td><td>扣毛利</td><td>仓储损耗</td><td class="amt-minus">-520.50</td><td>减项</td><td>—</td></tr>
+                      <tr><td>WB20260600901</td><td>扣提成</td><td>财务调整费</td><td class="amt-plus">+800.00</td><td>加项</td><td>核销差异回补</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <span>每页 20 条</span>
+        <div class="pages">
+          <button type="button" class="page-btn">上一页</button>
+          <button type="button" class="page-btn active">1</button>
+          <button type="button" class="page-btn">2</button>
+          <button type="button" class="page-btn">下一页</button>
+        </div>
+      </div>
+
+      <div class="foot-note">
+        <strong>MVP 说明：</strong><br />
+        1）主列表以「员工 + 月度」聚合展示，不再单独展示「月度表外成本汇总」列，以「扣毛利 / 扣提成」两列为主；合计口径可在导出或「查看月汇总」中核对。运单级明细通过首列勾选展开子表查看，不要求每票单独存绩效。<br />
+        2）绩效系数以“百分比转换为数字系数”存储与筛选（示例：108%→1.08，列表与导入一致）；并按员工+月度在计算阶段关联。<br />
+        3）「扣毛利」作用在基数前链路，「扣提成」作用在提成后链路；金额明细可统一来自表外成本台账并按类型区分。<br />
+        4）本页为「月度调整表」列表；新建导入弹窗：<code>导入表外成本弹窗页-MVP.html</code>；聚焦扣毛利/扣提成拆分、绩效维护与运单明细对账联动。<br />
+        5）若后续拆分独立绩效台账，本页仍可保留绩效入口，仅改为跳转至绩效维护页。
+      </div>
+    </div>
+  </div>
+  <script>
+    document.querySelectorAll(".expand-toggle").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        var targetId = cb.getAttribute("data-target");
+        var row = document.getElementById(targetId);
+        if (!row) return;
+        row.style.display = cb.checked ? "table-row" : "none";
+        var label = cb.closest("label");
+        if (label) {
+          var hint = label.querySelector("span");
+          if (hint) hint.textContent = cb.checked ? "收起" : "展开";
+        }
+      });
+    });
+  </script>
+    </main>
+  </div>
+<script id="v1-topmenu-links">
+  (function () {
+    var nav = document.querySelector(".sidenav-nav");
+    if (!nav) return;
+    nav.innerHTML = "" +
+      "<div class='sidenav-section-label'>V1首版（开发）</div>" +
+      "<a href='月度提成归档与运单明细-MVP.html' class='sidenav-link'>月底归档与运单底表</a>" +
+      "<a href='表外导入成本列表-MVP.html' class='sidenav-link'>月度调整表</a>" +
+      "<a href='导入表外成本弹窗页-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 导入表外成本</a>" +
+      "<a href='导入绩效系数弹窗页-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 导入绩效系数</a>" +
+      "<a href='人员映射表-MVP.html' class='sidenav-link'>人员映射表</a>" +
+      "<a href='新增人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 新增人员映射</a>" +
+      "<a href='编辑人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 编辑人员映射</a>" +
+      "<a href='批量导入人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 批量导入人员映射</a>";
+  })();
+</script>
+<script id="commission-nav-active">
+(function () {
+  var cur = "";
+  var m = /[/\\]([^/?#]+\.html)/i.exec(location.href || "");
+  if (m) cur = (m[1] || "").toLowerCase();
+  document.querySelectorAll(".sidenav-link").forEach(function (a) {
+    var h = (a.getAttribute("href") || "").split("?")[0];
+    if (h && h.toLowerCase() === cur) a.classList.add("active");
+  });
+})();
+  </script>
+<style id="prd-side-panel">
+  body { padding-right: 370px; height: 100vh; overflow: hidden; }
+  .prd-side { position: fixed; top: 0; right: 0; width: 360px; height: 100vh; overflow: auto; overscroll-behavior: contain; background: #f8fafc; border-left: 1px solid #dbe3ee; padding: 14px 14px 22px; z-index: 1200; }
+  .prd-side h3 { margin: 0 0 8px; font-size: 15px; }
+  .prd-side h4 { margin: 12px 0 6px; font-size: 13px; color: #0f172a; }
+  .prd-side p, .prd-side li { font-size: 12px; color: #334155; line-height: 1.6; }
+  .prd-side ul { margin: 0; padding-left: 16px; }
+  .prd-chip { display: inline-block; font-size: 11px; color: #1d4ed8; background: #dbeafe; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; }
+  @media (max-width: 1500px) { body { padding-right: 0; } .prd-side { display: none; } }
+</style>
+<aside class="prd-side" aria-label="PRD 文档">
+  <span class="prd-chip">PRD · 月度调整表模块</span>
+  <h3>月度调整表 PRD</h3>
+  <h4>背景与目标</h4>
+  <p>承接“表外成本+绩效系数”导入数据，按员工+月度汇总后参与提成计算，解决运单外调整与绩效因子管理。</p>
+  <h4>用户与场景</h4>
+  <ul><li>财务：按月导入调整明细与绩效系数。</li></ul>
+  <h4>字段定义与口径</h4>
+  <ul>
+    <li>主列表粒度：每人每月一条（聚合后展示）。</li>
+    <li>导入明细可到运单粒度；运单号非必填，缺失时在明细中显示为空。</li>
+    <li>绩效系数字段必须为百分比转换后的数字系数（如 108% 对应 1.08）。</li>
+  </ul>
+  <h4>交互说明</h4>
+  <ul><li>主列表支持展开子表查看运单级明细。</li><li>导入入口分：导入表外成本、导入绩效系数。</li></ul>
+  <h4>与其他模块联动逻辑</h4>
+  <ul><li>与人员映射按员工工号+月度关联。</li><li>与月底归档联动：归档批次计算读取当月调整结果。</li></ul>
+  <h4>非功能性要求</h4>
+  <ul><li>汇总口径可复算，明细可追溯到导入批次。</li><li>导入失败需可下载失败行并复导。</li></ul>
+  <h4>本次范围与后续规划</h4>
+  <ul><li>本次：月度聚合+明细展开+双导入入口。</li><li>后续：自动分摊策略与差异告警。</li></ul>
+</aside>
+</body>
+</html>

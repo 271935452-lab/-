@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>规则包与包内规则（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --ok-bg: #ecfdf3;
+      --ok-text: #027a48;
+      --warn-bg: #fffaeb;
+      --warn-text: #b54708;
+      --gray-bg: #f3f4f6;
+      --gray-text: #4b5563;
+      --red-text: #b91c1c;
+    }
+    .req-star {
+      color: var(--red-text);
+      font-weight: 700;
+      font-size: 0.95em;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .proto-layout {
+      max-width: 1840px;
+      margin: 24px auto;
+      padding: 0 16px 24px;
+      display: grid;
+      grid-template-columns: minmax(980px, 1fr) 320px;
+      gap: 16px;
+      align-items: start;
+    }
+    .page {
+      min-width: 0;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .header h1 { margin: 0; font-size: 22px; }
+    .header p { margin: 8px 0 0; color: var(--sub); font-size: 13px; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-block;
+      cursor: pointer;
+    }
+    .btn + .btn { margin-left: 8px; }
+    .btn-primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      margin-bottom: 12px;
+    }
+    .filter {
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+    .field label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--sub); }
+    .field input, .field select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-head h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+    .section-head .meta {
+      color: var(--sub);
+      font-size: 12px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 880px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th {
+      background: #fafbff;
+      color: #4b5563;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tr.pkg-row:hover td { background: #fafcff; }
+    tr.sum-row { background: #f8fbff; }
+    tr.pkg-detail-row td {
+      background: #fcfdff;
+      padding: 0;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    .expand-cell { white-space: nowrap; vertical-align: middle; }
+    .expand-cell label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--sub);
+      user-select: none;
+    }
+    .expand-cell input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+    thead th.col-person { background: #f0fdf4; color: #166534; }
+    .detail-box {
+      background: #fbfcff;
+      border: 1px solid #e9edf7;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 8px 12px 12px;
+    }
+    .detail-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .detail-head strong { font-size: 13px; }
+    .detail-head span { color: var(--sub); font-size: 12px; }
+    .detail-table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+    }
+    .detail-table th,
+    .detail-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #e9edf7;
+      font-size: 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .detail-table th { color: #4b5563; background: #f3f6ff; }
+    .name { font-weight: 600; }
+    .sub { color: var(--sub); font-size: 12px; margin-top: 4px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .tag-ok { background: var(--ok-bg); color: var(--ok-text); }
+    .tag-warn { background: var(--warn-bg); color: var(--warn-text); }
+    .tag-gray { background: var(--gray-bg); color: var(--gray-text); }
+    .op a {
+      color: var(--primary);
+      text-decoration: none;
+      margin-right: 10px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .foot-note {
+      padding: 12px 16px;
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 1.65;
+      border-top: 1px solid var(--line);
+      background: #fafafa;
+      border-radius: 0 0 12px 12px;
+    }
+    .list-toolbar-card {
+      padding: 0;
+    }
+    .list-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 16px;
+      background: #fafbff;
+    }
+    .list-toolbar .toolbar-left {
+      font-size: 13px;
+      color: var(--sub);
+      line-height: 1.5;
+      max-width: 640px;
+    }
+    .list-toolbar .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .prd-panel {
+      position: sticky;
+      top: 16px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      padding: 14px;
+      font-size: 12px;
+      color: #4b5563;
+      line-height: 1.6;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    .prd-panel h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #111827;
+    }
+    .prd-panel h4 {
+      margin: 10px 0 4px;
+      font-size: 12px;
+      color: #111827;
+    }
+    .prd-panel p {
+      margin: 0;
+    }
+    .prd-panel ul {
+      margin: 4px 0 0;
+      padding-left: 16px;
+    }
+    .prd-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+    .prd-panel::-webkit-scrollbar-track {
+      background: #f3f4f6;
+      border-radius: 999px;
+    }
+    .prd-panel::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+    .prd-panel::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    @media (max-width: 1100px) {
+      .filter { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 1400px) {
+      .proto-layout {
+        grid-template-columns: 1fr;
+      }
+      .prd-panel {
+        position: static;
+      }
+    }
+    @media (max-width: 600px) {
+      .filter { grid-template-columns: 1fr; }
+    }
+  </style>
+<style id="commission-nav-skin">
+/* 提成管理 · 左侧主导航（与各页 :root 独立） */
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+.app-main { flex: 1; min-width: 0; background: #f5f7fb; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">规则</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包与子规则</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">基数维护</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">规则包编辑</a>
+        <div class="sidenav-section-label">人员与映射</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">成本与调整</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">试算</div>
+        <a href="统一试算结果-正向与异常.html" class="sidenav-link">统一试算结果</a>
+        <a href="提成试算结果.html" class="sidenav-link">提成试算结果</a>
+        <div class="sidenav-section-label">V1首版（开发）</div>
+        <a href="月度提成归档与运单明细-MVP.html" class="sidenav-link">月底归档与运单底表</a>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+
+  <div class="proto-layout">
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1>规则包与包内规则</h1>
+        <p>展示规则包及包内规则清单；包级组织维度为<strong>分公司</strong>（必填）、<strong>部门</strong>、<strong>小组</strong>（后两者选填），与人员映射对齐便于规则命中。销售产品、基数方案、提成扣等在规则编辑页维护。首列勾选展开规则明细。</p>
+      </div>
+      <div>
+        <a class="btn" href="规则引擎中心列表.html">规则引擎中心</a>
+        <a class="btn" href="编辑规则-MVP.html">规则编辑页</a>
+        <a class="btn btn-primary" href="规则包编辑-弹窗页-MVP.html">新增规则包</a>
+        <a class="btn" href="编辑规则-MVP.html">新增规则</a>
+        <button class="btn btn-primary" type="button">导出</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="filter">
+        <div class="field">
+          <label>规则包名称/编码</label>
+          <input type="text" placeholder="关键字搜索" />
+        </div>
+        <div class="field">
+          <label>业务板块</label>
+          <select>
+            <option value="">全部</option>
+            <option>直客</option>
+            <option>同行</option>
+            <option>渠道</option>
+            <option>客服</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>状态</label>
+          <select>
+            <option value="">全部</option>
+            <option>生效中</option>
+            <option>草稿</option>
+            <option>停用</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>生效月份</label>
+          <input type="month" />
+        </div>
+        <div class="field">
+          <label>分公司</label>
+          <input type="text" placeholder="模糊搜索" />
+        </div>
+        <div class="field">
+          <label>部门</label>
+          <input type="text" placeholder="模糊搜索" />
+        </div>
+        <div class="field">
+          <label>小组</label>
+          <input type="text" placeholder="模糊搜索" />
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" style="width:100%;" type="button">查询</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card list-toolbar-card">
+      <div class="list-toolbar">
+        <div class="toolbar-left">本列表相关操作统一放在查询条件下方。基数方案、公式与组件占位在「基数维护」中配置，供规则编辑页引用。</div>
+        <div class="toolbar-actions">
+          <a class="btn btn-primary" href="基数维护-公式构建器.html">基数维护</a>
+          <a class="btn" href="基数维护-公式构建器.html">新建 / 编辑基数方案</a>
+          <button class="btn" type="button">导出基数方案清单</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <h2>规则包列表</h2>
+        <span class="meta">勾选首列「规则明细」展开包内规则，与月度调整表运单明细交互一致</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-person" style="width:1%">规则明细</th>
+              <th>规则包名称 / 编码</th>
+              <th>分公司 <span class="req-star">*</span></th>
+              <th>部门</th>
+              <th>小组</th>
+              <th>包含规则数</th>
+              <th>版本</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="pkgRows">
+            <tr class="pkg-row sum-row" data-key="direct_hq">
+              <td class="expand-cell">
+                <label>
+                  <input type="checkbox" class="expand-toggle" data-target="pkg-detail-direct_hq" aria-label="展开规则明细" />
+                  <span>展开</span>
+                </label>
+              </td>
+              <td><div class="name">直客-总部-2026版</div><div class="sub">规则包_直客_总部_2026</div></td>
+              <td>总部</td>
+              <td>营销中心</td>
+              <td>—</td>
+              <td>3</td>
+              <td>v1.4</td>
+              <td><span class="tag tag-ok">生效中</span></td>
+            </tr>
+            <tr id="pkg-detail-direct_hq" class="pkg-detail-row" style="display: none;">
+              <td colspan="8">
+                <div class="detail-box" data-detail-key="direct_hq"></div>
+              </td>
+            </tr>
+            <tr class="pkg-row sum-row" data-key="peer_east">
+              <td class="expand-cell">
+                <label>
+                  <input type="checkbox" class="expand-toggle" data-target="pkg-detail-peer_east" aria-label="展开规则明细" />
+                  <span>展开</span>
+                </label>
+              </td>
+              <td><div class="name">同行-华东-标准版</div><div class="sub">PEER_EAST_STD</div></td>
+              <td>华东</td>
+              <td>同行事业部</td>
+              <td>华东组</td>
+              <td>2</td>
+              <td>v1.1</td>
+              <td><span class="tag tag-warn">草稿</span></td>
+            </tr>
+            <tr id="pkg-detail-peer_east" class="pkg-detail-row" style="display: none;">
+              <td colspan="8">
+                <div class="detail-box" data-detail-key="peer_east"></div>
+              </td>
+            </tr>
+            <tr class="pkg-row sum-row" data-key="cs_q2">
+              <td class="expand-cell">
+                <label>
+                  <input type="checkbox" class="expand-toggle" data-target="pkg-detail-cs_q2" aria-label="展开规则明细" />
+                  <span>展开</span>
+                </label>
+              </td>
+              <td><div class="name">客服-通用-2026Q2</div><div class="sub">CS_COMMON_2026Q2</div></td>
+              <td>深圳</td>
+              <td>客服运营部</td>
+              <td>—</td>
+              <td>2</td>
+              <td>v1.0</td>
+              <td><span class="tag tag-gray">停用</span></td>
+            </tr>
+            <tr id="pkg-detail-cs_q2" class="pkg-detail-row" style="display: none;">
+              <td colspan="8">
+                <div class="detail-box" data-detail-key="cs_q2"></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="foot-note">
+        <strong>MVP 说明：</strong><br />
+        1）一个规则包可包含多条规则，本页展示包与包内规则的对应关系；列表上方工具条提供基数维护入口，与查询条件区分。<br />
+        2）勾选首列「规则明细」复选框后，在该行下方展开包内规则，可多行同时展开。<br />
+        3）当前明细为包内规则副本视角，便于版本隔离与追溯；如未来做规则复用，可增加「来源规则 ID」列。<br />
+        4）销售产品、基数方案、提成扣等口径以各条「编辑规则」为准，本页不承载包级默认配置。<br />
+        5）包级组织：<strong>分公司</strong>必填；<strong>部门</strong>、<strong>小组</strong>选填，与「人员映射表」维度一致，便于规则命中与列表筛选。<br />
+        6）联调时建议增加校验：同包内规则优先级冲突、互斥组冲突、命中条件重叠。
+      </div>
+    </div>
+  </div>
+  <aside class="prd-panel" aria-label="PRD说明">
+    <h3>PRD 文档（规则包与子规则）</h3>
+    <h4>1. 背景与目标</h4>
+    <p>当前提成规则配置分散在规则包、规则明细、基数维护等多个页面。该页面承接「规则包主档 + 包内规则清单」管理，提供面向业务和运营的快速检索、展开查看、版本对照能力，保障按账期试算时可准确命中。</p>
+    <ul>
+      <li>目标 A：支持按分公司/部门/小组快速定位规则包。</li>
+      <li>目标 B：支持在列表内直接展开查看包内规则明细。</li>
+      <li>目标 C：确保规则包组织口径与人员映射一致，降低命中歧义。</li>
+    </ul>
+
+    <h4>2. 用户与场景</h4>
+    <ul>
+      <li>财务复核：按争议员工/组织查看该月命中的规则包范围。</li>
+      <li>管理层追溯：查看历史版本及其生效状态，定位配置变更来源。</li>
+    </ul>
+
+    <h4>3. 字段定义与口径</h4>
+    <ul>
+      <li>规则包名称 / 编码：用于业务识别与系统唯一定位。</li>
+      <li>分公司（必填）：规则包组织主维度，参与规则匹配。</li>
+      <li>部门（选填）：组织次级维度，用于细分适用范围。</li>
+      <li>小组（选填）：组织细粒度维度，用于精确归属。</li>
+      <li>版本：显示当前展示版本号，如 v1.4。</li>
+      <li>状态：生效中/草稿/停用，决定是否可用于自动匹配。</li>
+      <li>包含规则数：该版本规则包下可用规则条数。</li>
+    </ul>
+
+    <h4>4. 核心业务流程</h4>
+    <ul>
+      <li>步骤 1：用户通过筛选区输入关键字、组织、状态、月份。</li>
+      <li>步骤 2：系统返回规则包列表，展示组织与状态摘要。</li>
+      <li>步骤 3：用户勾选「规则明细」展开包内规则。</li>
+      <li>步骤 4：用户可跳转规则编辑页调整单条规则，或进入规则包编辑页维护包级信息。</li>
+      <li>步骤 5：调整后发布新版本，后续按账期命中新版本。</li>
+    </ul>
+
+    <h4>5. 交互说明</h4>
+    <ul>
+      <li>首列复选框为展开开关，支持多行同时展开。</li>
+      <li>展开区默认按规则优先级展示，并显示互斥组与状态。</li>
+      <li>列表上方工具条集中放置基数维护入口，避免与筛选区混用。</li>
+    </ul>
+
+    <h4>6. 校验与约束</h4>
+    <ul>
+      <li>分公司必填，保存时为空则阻断并提示。</li>
+      <li>规则包状态为「生效中」时，包内至少存在 1 条生效规则。</li>
+      <li>同一规则包内若优先级冲突或互斥组冲突，需保存前提示。</li>
+      <li>若指定组织维度过细（小组级），需校验其上级组织一致性。</li>
+    </ul>
+
+    <h4>7. 命中逻辑（与人员映射联动）</h4>
+    <ul>
+      <li>按业务归属月先选中有效人员映射（分公司/部门/小组/提成角色）。</li>
+      <li>若人员映射指定规则包，则进一步校验规则包在该月有效。</li>
+      <li>若未指定规则包，则按规则中心自动匹配有效规则包。</li>
+    </ul>
+
+    <h4>8. 异常与兜底</h4>
+    <ul>
+      <li>无可用规则包：返回空结果并提示检查组织与状态条件。</li>
+      <li>存在多包命中：按优先策略（组织粒度优先、版本优先）处理。</li>
+      <li>规则明细加载失败：仅影响展开区域，列表主信息保持可用。</li>
+    </ul>
+
+    <h4>9. 非功能要求</h4>
+    <ul>
+      <li>筛选响应目标：常规查询 2 秒内返回。</li>
+      <li>支持审计：记录规则包创建、编辑、发布、停用操作日志。</li>
+      <li>保证可追溯：历史版本不可直接覆盖，采用新增版本方式。</li>
+    </ul>
+
+    <h4>10. MVP 范围与后续规划</h4>
+    <ul>
+      <li>MVP：列表 + 展开明细 + 基础筛选 + 跳转编辑。</li>
+      <li>下一期：批量发布、版本对比、引用链路分析、冲突自动诊断。</li>
+    </ul>
+  </aside>
+  </div>
+
+  <script>
+    (function () {
+      var data = {
+        direct_hq: {
+          title: "直客-总部-2026版",
+          rows: [
+            ["直客业务员毛利阶梯", "规则_直客业务员_毛利阶梯", "直客业务员", "全部场景", "毛利阶梯", "100", "互斥组_直客_A", "生效中"],
+            ["客服-有业务员客服", "规则_客服_有业务员客服_比例", "直客客服", "有业务员客服", "固定比例", "300", "互斥组_客服_A", "生效中"],
+            ["客服-无业务员客服", "规则_客服_无业务员客服_比例", "直客客服", "无业务员客服", "固定比例", "301", "互斥组_客服_A", "草稿"]
+          ]
+        },
+        peer_east: {
+          title: "同行-华东-标准版",
+          rows: [
+            ["同行销售量级阶梯", "规则_同行业务员_量级阶梯", "同行业务员", "全部场景", "毛利阶梯", "120", "互斥组_同行_A", "草稿"],
+            ["同行经理营收比例", "规则_同行经理_营收比例", "同行经理", "全部场景", "固定比例", "220", "互斥组_同行_B", "草稿"]
+          ]
+        },
+        cs_q2: {
+          title: "客服-通用-2026Q2",
+          rows: [
+            ["客服基础营收比例", "规则_客服_基础营收比例", "直客客服", "全部场景", "固定比例", "260", "互斥组_客服_基础", "停用"],
+            ["客服跨月冲销调整", "规则_客服_跨月冲销调整", "直客客服", "有业务员客服", "固定比例", "320", "互斥组_客服_B", "停用"]
+          ]
+        }
+      };
+
+      function renderChildRows(rows) {
+        var html = "";
+        rows.forEach(function (r) {
+          var tagClass = r[7] === "生效中" ? "tag-ok" : (r[7] === "草稿" ? "tag-warn" : "tag-gray");
+          html += "<tr>" +
+            "<td><div class='name'>" + r[0] + "</div><div class='sub'>" + r[1] + "</div></td>" +
+            "<td>" + r[2] + "</td>" +
+            "<td>" + r[3] + "</td>" +
+            "<td>" + r[4] + "</td>" +
+            "<td>" + r[5] + "</td>" +
+            "<td>" + r[6] + "</td>" +
+            "<td><span class='tag " + tagClass + "'>" + r[7] + "</span></td>" +
+            "<td class='op'><a href='编辑规则-MVP.html'>查看</a><a href='编辑规则-MVP.html'>编辑</a></td>" +
+            "</tr>";
+        });
+        return html;
+      }
+
+      function buildDetailInner(key) {
+        var d = data[key];
+        if (!d) return "";
+        return (
+          "<div class='detail-head'><strong>规则包「" + d.title + "」规则明细</strong><span>共 " + d.rows.length + " 条规则</span></div>" +
+          "<table class='detail-table'>" +
+          "<thead><tr><th>规则名称 / 编码</th><th>适用角色</th><th>服务场景</th><th>计算方式</th><th>优先级</th><th>互斥组</th><th>状态</th><th>操作</th></tr></thead>" +
+          "<tbody>" + renderChildRows(d.rows) + "</tbody></table>"
+        );
+      }
+
+      document.querySelectorAll(".expand-toggle").forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          var tid = cb.getAttribute("data-target");
+          var detailTr = document.getElementById(tid);
+          if (!detailTr) return;
+          var box = detailTr.querySelector(".detail-box");
+          var key = box ? box.getAttribute("data-detail-key") : "";
+          if (cb.checked && box && !box.getAttribute("data-built")) {
+            box.innerHTML = buildDetailInner(key);
+            box.setAttribute("data-built", "1");
+          }
+          detailTr.style.display = cb.checked ? "table-row" : "none";
+          var label = cb.closest("label");
+          if (label) {
+            var hint = label.querySelector("span");
+            if (hint) hint.textContent = cb.checked ? "收起" : "展开";
+          }
+        });
+      });
+    })();
+  </script>
+    </main>
+  </div>
+<script id="commission-nav-active">
+(function () {
+  var cur = "";
+  var m = /[/\\]([^/?#]+\.html)/i.exec(location.href || "");
+  if (m) cur = (m[1] || "").toLowerCase();
+  document.querySelectorAll(".sidenav-link").forEach(function (a) {
+    var h = (a.getAttribute("href") || "").split("?")[0];
+    if (h && h.toLowerCase() === cur) a.classList.add("active");
+  });
+})();
+  </script>
+</body>
+</html>

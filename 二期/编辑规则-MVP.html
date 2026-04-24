@@ -1,0 +1,1103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>编辑规则（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --green-bg: #ecfdf3;
+      --green-text: #027a48;
+      --blue-bg: #eff6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .page { max-width: 1320px; margin: 0 auto; padding: 20px 16px 100px; }
+    .top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .edit-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .side-nav {
+      position: sticky;
+      top: 16px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .side-nav-title {
+      font-size: 12px;
+      color: var(--sub);
+      margin: 2px 6px 8px;
+    }
+    .nav-link {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: #374151;
+      text-decoration: none;
+      font-size: 13px;
+      margin-bottom: 4px;
+      border: 1px solid transparent;
+    }
+    .nav-link:hover { background: #f8fafc; }
+    .nav-link.active {
+      color: var(--primary);
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      font-weight: 600;
+    }
+    .top h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+    .meta { font-size: 13px; color: var(--sub); margin: 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .sec-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 14px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+      background: var(--blue-bg);
+    }
+    .sec-title.sub { border-left-color: #16a34a; background: #f0fdf4; }
+    .sec-title.warn { border-left-color: #d97706; background: #fffbeb; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 20px;
+    }
+    @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+    .field-full { grid-column: 1 / -1; }
+    .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .field input, .field select { height: 36px; }
+    .field textarea { min-height: 72px; padding: 8px 10px; resize: vertical; }
+    .hint { font-size: 12px; color: var(--sub); margin-top: 6px; line-height: 1.5; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips.box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fff;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .chip.on { border-color: var(--primary); background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .tab.active { border-color: #93c5fd; background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .tab[aria-disabled="true"] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .calc-panel { display: none; margin-top: 4px; }
+    .calc-panel.active { display: block; }
+    .preview-box {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+      font-size: 13px;
+    }
+    .preview-box strong { color: #1e40af; }
+    .preview-kv { color: var(--sub); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+    .tier-wrap { overflow-x: auto; }
+    .tier-table {
+      width: 100%;
+      min-width: 520px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .tier-table th, .tier-table td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .tier-table th { background: #fafbff; color: #4b5563; font-weight: 600; }
+    .builder-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .expr-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fafafa;
+    }
+    .expr-title {
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 6px;
+    }
+    .expr-toolbar {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    .token-grid, .op-grid {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .token-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .op-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .token, .op-btn {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      padding: 6px 4px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .token:hover, .op-btn:hover { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+    .mini-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-mini {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #fff;
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .mono {
+      width: 100%;
+      min-height: 88px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      background: #fff;
+      resize: vertical;
+    }
+    @media (max-width: 720px) { .builder-grid { grid-template-columns: 1fr; } }
+    .sticky-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.96);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      z-index: 50;
+    }
+    .sticky-inner {
+      max-width: 1320px;
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .req { color: #b42318; }
+    @media (max-width: 980px) {
+      .edit-layout { grid-template-columns: 1fr; }
+      .side-nav { position: static; }
+    }
+  </style>
+<style id="commission-nav-skin">
+/* 提成管理 · 左侧主导航（与各页 :root 独立） */
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+.app-main { flex: 1; min-width: 0; background: #f5f7fb; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">规则</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包与子规则</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">基数维护</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">规则包编辑</a>
+        <div class="sidenav-section-label">人员与映射</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">成本与调整</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">试算</div>
+        <a href="统一试算结果-正向与异常.html" class="sidenav-link">统一试算结果</a>
+        <a href="提成试算结果.html" class="sidenav-link">提成试算结果</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+
+  <div class="page">
+    <div class="top">
+      <div>
+        <a href="规则引擎中心列表.html" class="btn">← 返回规则引擎列表</a>
+        <h1 style="margin-top:12px;">编辑规则</h1>
+        <p class="meta">规则编码：<strong>规则_直客业务员_毛利阶梯</strong> · 当前版本 <strong>v1.4</strong>（草稿可改，发布后生成新版本）</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn">试算预览</button>
+        <button type="button" class="btn">变更日志</button>
+        <button type="button" class="btn btn-primary">保存草稿</button>
+        <button type="button" class="btn btn-primary">保存并发布</button>
+      </div>
+    </div>
+
+    <div class="edit-layout">
+      <aside class="side-nav">
+        <div class="side-nav-title">模块导航</div>
+        <a class="nav-link active" href="#sec-basic">基本信息</a>
+        <a class="nav-link" href="#sec-deduct">提成扣配置</a>
+        <a class="nav-link" href="#sec-product">销售产品与结算参数</a>
+        <a class="nav-link" href="#sec-match">匹配控制</a>
+        <a class="nav-link" href="#sec-expression">表达式与计算公式</a>
+        <a class="nav-link" href="#sec-base">基数方案与计算方式</a>
+        <a class="nav-link" href="#sec-audit">备注与审计</a>
+      </aside>
+      <div class="edit-content">
+
+    <div id="sec-basic" class="card">
+      <div class="sec-title">基本信息</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>规则名称 <span class="req">*</span></label>
+          <input type="text" value="直客业务员毛利阶梯" />
+        </div>
+        <div class="field">
+          <label>规则编码 <span class="req">*</span></label>
+          <input type="text" value="规则_直客业务员_毛利阶梯" readonly />
+          <div class="hint">编码创建后不可改；复制规则将生成新编码。</div>
+        </div>
+        <div class="field">
+          <label>所属规则包</label>
+          <select>
+            <option>直客-总部-2026版（规则包_直客_总部_2026）</option>
+            <option>— 不归属规则包</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>状态</label>
+          <select>
+            <option>草稿</option>
+            <option>待发布</option>
+            <option>生效中</option>
+            <option>已停用</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>生效起始 <span class="req">*</span></label>
+          <input type="date" value="2026-01-01" />
+        </div>
+        <div class="field">
+          <label>生效截止</label>
+          <input type="date" value="2026-12-31" />
+          <div class="hint">空表示长期有效（与产品约定一致）。</div>
+        </div>
+        <div class="field field-full">
+          <label>规则说明</label>
+          <textarea placeholder="对内说明，可选">按业务毛利分档计提；与互斥组 互斥组_直客_A 内其他规则二选一命中。</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-deduct" class="card">
+      <div class="sec-title">提成扣配置（规则层）</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>提成扣类型 <span class="req">*</span>（可多选）</label>
+          <div class="chips box">
+            <span class="chip on">客服提成</span>
+            <span class="chip">部分产品补提成</span>
+            <span class="chip on">表外导入</span>
+            <span class="chip">师傅提成扣</span>
+            <span class="chip">未转正超3000扣1400</span>
+          </div>
+          <div class="hint">选择即启用：勾选哪种类型就扣哪种，不勾选则不扣该类型。</div>
+        </div>
+        <div class="field">
+          <label>是否启用提成扣 <span class="req">*</span></label>
+          <select>
+            <option>启用</option>
+            <option>不启用</option>
+          </select>
+        </div>
+        <div class="field field-full">
+          <label>提成扣计算说明</label>
+          <textarea>应发提成 = 应计提成 - 客服提成扣减金额 - 财务导入提成扣金额；客服提成当前按“直接扣提成”口径处理。</textarea>
+          <div class="hint">口径约定：总开关关闭时不扣任何类型；总开关开启时按「提成扣类型」勾选项执行扣减。</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-product" class="card">
+      <div class="sec-title sub">销售产品与结算参数</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>销售产品（规则匹配）<span class="req">*</span>（可多选）</label>
+          <div class="chips box">
+            <span class="chip on">海派特价</span>
+            <span class="chip on">主营产品</span>
+            <span class="chip">空运出口</span>
+            <span class="chip">海运整柜</span>
+            <span class="chip">跨境电商专线</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>结算方式</label>
+          <select>
+            <option>月清</option>
+            <option>滚动7个月累计多退少补</option>
+            <option>按规则包默认</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>基本提成点（%）</label>
+          <input type="text" value="取当前配置点" readonly style="background:#f9fafb;" />
+        </div>
+        <div class="field">
+          <label>累计规则</label>
+          <select>
+            <option>每满1年累计+2%</option>
+            <option>按司龄分档固定点位</option>
+            <option>不累计</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>累计上限（%）</label>
+          <input type="text" value="8.00%" />
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-match" class="card">
+      <div class="sec-title sub">适用角色与匹配控制（分公司 + 小组 + 提成角色 + 入职时间 + 员工状态 + 账号ID）</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>分公司 <span class="req">*</span></label>
+          <select>
+            <option>总部</option>
+            <option>深圳</option>
+            <option>坂田</option>
+            <option>福永</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>小组 <span class="req">*</span></label>
+          <select>
+            <option>联动组</option>
+            <option>稳航组</option>
+            <option>全部小组</option>
+          </select>
+        </div>
+        <div class="field field-full">
+          <label>适用提成角色 <span class="req">*</span>（可多选）</label>
+          <div class="chips">
+            <span class="chip on">直客业务员</span>
+            <span class="chip">直客主管</span>
+            <span class="chip">直客客服</span>
+            <span class="chip">同行业务员</span>
+          </div>
+          <div class="hint">点击切换选中；保存时至少选一个。</div>
+        </div>
+        <div class="field">
+          <label>服务场景（service_mode）</label>
+          <select>
+            <option>全部场景</option>
+            <option>有业务员客服</option>
+            <option>无业务员客服</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>匹配优先级</label>
+          <input type="number" value="100" min="0" />
+        </div>
+        <div class="field">
+          <label>入职时间起（命中）</label>
+          <input type="date" value="2025-04-08" />
+        </div>
+        <div class="field">
+          <label>入职时间止（命中）</label>
+          <input type="date" value="" />
+          <div class="hint">为空表示无上限；命中按员工入职日期落在区间内判断。</div>
+        </div>
+        <div class="field">
+          <label>员工状态（命中）</label>
+          <select>
+            <option>全部</option>
+            <option>试用</option>
+            <option>转正</option>
+          </select>
+          <div class="hint">苏州主管提成可按“试用/转正”区分命中规则。</div>
+        </div>
+        <div class="field">
+          <label>来源业务账号ID（命中）</label>
+          <input type="text" value="wuyazi_001" placeholder="如：wuyazi_001" />
+          <div class="hint">建议使用唯一账号ID命中，避免姓名重名误判。</div>
+        </div>
+        <div class="field">
+          <label>命中账号回显字段</label>
+          <input type="text" value="业务员账号ID + 账号名称" readonly style="background:#f9fafb;" />
+        </div>
+        <div class="field">
+          <label>负毛利处理策略</label>
+          <select>
+            <option>自动识别（推荐）</option>
+            <option>扣毛利</option>
+            <option>扣提成</option>
+            <option>月清不扣</option>
+          </select>
+          <div class="hint">自动识别口径：结算方式=月清时默认“月清不扣”；点数区间包含负毛利时默认“扣提成”；否则默认“扣毛利”。可人工覆盖。</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-expression" class="card">
+      <div class="sec-title">命中条件（当前口径：分公司 + 小组 + 提成角色 + 入职时间 + 员工状态 + 账号ID）</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>表达式与计算公式编辑器</label>
+          <div class="builder-grid">
+            <div class="expr-box">
+              <div class="expr-title">条件表达式（系统）</div>
+              <div class="expr-toolbar">
+                <div class="token-grid">
+                  <div class="token" data-insert="#{分公司}">分公司</div>
+                  <div class="token" data-insert="#{小组}">小组</div>
+                  <div class="token" data-insert="#{提成角色}">提成角色</div>
+                  <div class="token" data-insert="#{入职时间}">入职时间</div>
+                  <div class="token" data-insert="#{员工状态}">员工状态</div>
+                  <div class="token" data-insert="#{来源业务账号ID}">来源业务账号ID</div>
+                  <div class="token" data-insert="#{组员月均票数}">组员月均票数</div>
+                  <div class="token" data-insert="#{销售产品}">销售产品</div>
+                </div>
+                <div class="op-grid">
+                  <div class="op-btn" data-insert=" && ">&amp;&amp;</div>
+                  <div class="op-btn" data-insert=" || ">||</div>
+                  <div class="op-btn" data-insert=" == ">==</div>
+                  <div class="op-btn" data-insert=" >= ">&gt;=</div>
+                  <div class="op-btn" data-insert=" <= ">&lt;=</div>
+                  <div class="op-btn" data-insert=" != ">!=</div>
+                </div>
+                <div class="op-grid">
+                  <div class="op-btn" data-insert=" > ">&gt;</div>
+                  <div class="op-btn" data-insert=" < ">&lt;</div>
+                  <div class="op-btn" data-insert=" ( ">(</div>
+                  <div class="op-btn" data-insert=" ) ">)</div>
+                  <div class="op-btn" data-insert=" in ">in</div>
+                  <div class="op-btn" data-insert="'深圳'">'深圳'</div>
+                </div>
+              </div>
+              <textarea id="condExprEditor" class="mono" placeholder="#{分公司}=='苏州' && #{小组}=='联动组' && #{提成角色} in ['客服主管'] && #{员工状态}=='转正' && #{来源业务账号ID}=='wuyazi_001' && #{组员月均票数}>=1600"></textarea>
+              <div class="mini-actions">
+                <button id="btnExprTplLinked" type="button" class="btn-mini">联动组模板</button>
+                <button id="btnExprTplStable" type="button" class="btn-mini">稳航组模板</button>
+                <button id="btnExprUndo" type="button" class="btn-mini">撤销一步</button>
+                <button id="btnExprClear" type="button" class="btn-mini">清空</button>
+              </div>
+            </div>
+            <div class="expr-box">
+              <div class="expr-title">计算公式（系统）</div>
+              <div class="expr-toolbar">
+                <div class="token-grid">
+                  <div class="token calc-token" data-insert="#{净利润基数}">净利润基数</div>
+                  <div class="token calc-token" data-insert="#{基本提成点}">基本提成点</div>
+                  <div class="token calc-token" data-insert="#{部分产品补提成}">部分产品补提成</div>
+                  <div class="token calc-token" data-insert="#{客服提成扣}">客服提成扣</div>
+                  <div class="token calc-token" data-insert="#{表外导入扣}">表外导入扣</div>
+                  <div class="token calc-token" data-insert="#{师傅提成扣}">师傅提成扣</div>
+                </div>
+                <div class="op-grid">
+                  <div class="op-btn calc-op" data-insert="+">+</div>
+                  <div class="op-btn calc-op" data-insert="-">-</div>
+                  <div class="op-btn calc-op" data-insert="*">*</div>
+                  <div class="op-btn calc-op" data-insert="/">/</div>
+                  <div class="op-btn calc-op" data-insert="(">(</div>
+                  <div class="op-btn calc-op" data-insert=")">)</div>
+                </div>
+                <div class="op-grid">
+                  <div class="op-btn calc-op" data-insert="max(">max(</div>
+                  <div class="op-btn calc-op" data-insert="min(">min(</div>
+                  <div class="op-btn calc-op" data-insert="0">0</div>
+                  <div class="op-btn calc-op" data-insert="1000">1000</div>
+                  <div class="op-btn calc-op" data-insert=",">,</div>
+                  <div class="op-btn calc-op" data-insert="%">%</div>
+                </div>
+              </div>
+              <textarea id="calcExprEditor" class="mono" placeholder="(#{净利润基数}*#{基本提成点})+#{部分产品补提成}-#{客服提成扣}-#{表外导入扣}-#{师傅提成扣}-#{未转正超3000扣1400}"></textarea>
+              <div class="mini-actions">
+                <button id="btnCalcTplBase" type="button" class="btn-mini">基础模板</button>
+                <button id="btnCalcTplFull" type="button" class="btn-mini">含扣减模板</button>
+                <button id="btnCalcUndo" type="button" class="btn-mini">撤销一步</button>
+                <button id="btnCalcClear" type="button" class="btn-mini">清空</button>
+              </div>
+            </div>
+          </div>
+          <div class="hint">门槛条件与命中条件统一写入「条件表达式（系统）」；账号建议使用唯一ID命中并在结果明细回显。基数层仅维护固定口径公式，规则层负责命中判断与负毛利策略分流。</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-base" class="card">
+      <div class="sec-title warn">基数方案与计算方式</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>基数方案编码 <span class="req">*</span></label>
+          <select>
+            <option>基数方案_毛利标准（毛利 - 系统成本 - 表外成本）</option>
+            <option>基数方案_同行毛利</option>
+            <option>基数方案_净利润标准</option>
+          </select>
+          <div class="hint">基数在「基数/公式维护」中配置；此处仅引用编码。</div>
+        </div>
+      </div>
+
+      <div class="tabs calc-mode-tabs" role="tablist">
+        <button type="button" class="tab active" role="tab" aria-selected="true" data-panel="calc-panel-tier">毛利阶梯</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-panel="calc-panel-flat">固定比例</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-panel="calc-panel-piece">分段函数（二期）</button>
+      </div>
+
+      <div id="calc-panel-tier" class="calc-panel active" role="tabpanel">
+        <div class="form-grid">
+          <div class="field">
+            <label>阶梯类型</label>
+            <select>
+              <option>全额按档</option>
+              <option>超额累进</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>回款发放门槛</label>
+            <select>
+              <option>不限制</option>
+              <option>回款率 ≥ 80%</option>
+              <option>回款率 ≥ 90%</option>
+            </select>
+          </div>
+        </div>
+
+        <p style="font-size:13px;color:var(--sub);margin:12px 0 8px;">阶梯明细（下界含、上界不含，与财务口径一致）</p>
+        <div class="tier-wrap">
+          <table class="tier-table">
+            <thead>
+              <tr>
+                <th>档位</th>
+                <th>基数下限（含）</th>
+                <th>基数上限（不含）</th>
+                <th>提成比例</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><input type="text" value="0" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="100000" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="3.00%" style="width:100%;border:none;padding:4px;" /></td>
+                <td><a href="#" style="color:var(--primary);font-size:13px;">删除</a></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><input type="text" value="100000" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="300000" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="5.00%" style="width:100%;border:none;padding:4px;" /></td>
+                <td><a href="#" style="color:var(--primary);font-size:13px;">删除</a></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><input type="text" value="300000" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="999999999" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="8.00%" style="width:100%;border:none;padding:4px;" /></td>
+                <td><a href="#" style="color:var(--primary);font-size:13px;">删除</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="btn" style="margin-top:10px;">+ 增加档位</button>
+      </div>
+
+      <div id="calc-panel-flat" class="calc-panel" role="tabpanel">
+        <div class="form-grid">
+          <div class="field">
+            <label>固定比例（%）<span class="req">*</span></label>
+            <input type="number" id="flatRatePct" value="3.5" min="0" max="100" step="0.01" />
+            <div class="hint">引擎落库可与展示口径换算（如 0.035）；此处按百分比录入便于业务核对。</div>
+          </div>
+          <div class="field">
+            <label>比例基数口径<span class="req">*</span></label>
+            <select id="flatBaseKind">
+              <option value="scheme">与本规则引用「基数方案」一致（推荐）</option>
+              <option value="net_rev">净营收（ACTUAL_REVENUE）</option>
+              <option value="gross_profit">毛利润（规则基数）</option>
+              <option value="cs_rev">客服营收基数</option>
+            </select>
+            <div class="hint">固定比例计提 = 比例基数 × 固定比例；基数字段需与基数层公式可对齐。</div>
+          </div>
+          <div class="field">
+            <label>回款发放门槛</label>
+            <select id="flatPaybackGate">
+              <option>不限制</option>
+              <option>回款率 ≥ 80%</option>
+              <option>回款率 ≥ 90%</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>封顶策略（MVP）</label>
+            <select id="flatCapPolicy">
+              <option value="none">无封顶</option>
+              <option value="abs">按绝对额封顶（二期联动试算）</option>
+              <option value="pct">按基数比例封顶（二期）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>展示精度</label>
+            <select id="flatRoundMode">
+              <option value="2">金额保留 2 位小数</option>
+              <option value="0">金额取整到元</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>示意基数（仅本页试算）</label>
+            <input type="number" id="flatMockBase" value="500000" min="0" step="1000" />
+            <div class="hint">正式环境由订单/台账汇总得到；此处用于原型即时反馈。</div>
+          </div>
+        </div>
+
+        <div class="preview-box">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;">
+            <strong>计提示意（非落库结果）</strong>
+            <button type="button" class="btn-mini" id="btnFlatPreview">刷新示意</button>
+          </div>
+          <div id="flatPreviewMain" class="preview-kv">—</div>
+          <div id="flatPreviewFormula" class="preview-kv"></div>
+        </div>
+        <div class="hint" style="margin-top:10px;">切换回「毛利阶梯」不会清空本页已填比例；保存时以当前激活页签对应的计算方式写入规则版本。</div>
+      </div>
+
+      <div id="calc-panel-piece" class="calc-panel" role="tabpanel">
+        <p class="hint" style="margin:8px 0 0;">分段函数（按表达式/多段折线）将在二期与规则引擎表达式能力对齐后开放；MVP 请使用「毛利阶梯」或「固定比例」。</p>
+      </div>
+    </div>
+
+    <div id="sec-audit" class="card">
+      <div class="sec-title">备注与审计</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>内部备注</label>
+          <textarea placeholder="选填"></textarea>
+        </div>
+        <div class="field field-full">
+          <label>最近修改</label>
+          <input type="text" value="张三 · 2026-04-16 10:24" readonly style="background:#f9fafb;" />
+        </div>
+      </div>
+    </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sticky-bar">
+    <div class="sticky-inner">
+      <a href="规则引擎中心列表.html" class="btn">取消</a>
+      <button type="button" class="btn">保存草稿</button>
+      <button type="button" class="btn btn-primary">保存并发布</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var calcTabBar = document.querySelector(".calc-mode-tabs");
+      if (calcTabBar) {
+        var calcTabs = calcTabBar.querySelectorAll(".tab[data-panel]");
+        var calcPanels = {
+          "calc-panel-tier": document.getElementById("calc-panel-tier"),
+          "calc-panel-flat": document.getElementById("calc-panel-flat"),
+          "calc-panel-piece": document.getElementById("calc-panel-piece")
+        };
+        calcTabs.forEach(function (t) {
+          t.addEventListener("click", function () {
+            var pid = t.getAttribute("data-panel");
+            if (!pid || !calcPanels[pid]) return;
+            calcTabs.forEach(function (x) {
+              x.classList.toggle("active", x === t);
+              x.setAttribute("aria-selected", x === t ? "true" : "false");
+            });
+            Object.keys(calcPanels).forEach(function (key) {
+              var p = calcPanels[key];
+              if (p) p.classList.toggle("active", key === pid);
+            });
+          });
+        });
+      }
+
+      function formatMoney(n) {
+        return (Math.round(n * 100) / 100).toLocaleString("zh-CN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+      function updateFlatPreview() {
+        var rateEl = document.getElementById("flatRatePct");
+        var baseEl = document.getElementById("flatMockBase");
+        var baseKind = document.getElementById("flatBaseKind");
+        var capEl = document.getElementById("flatCapPolicy");
+        var mainEl = document.getElementById("flatPreviewMain");
+        var formulaEl = document.getElementById("flatPreviewFormula");
+        if (!rateEl || !mainEl) return;
+        var rate = parseFloat(String(rateEl.value).replace(",", ""), 10);
+        if (isNaN(rate)) rate = 0;
+        var base = parseFloat(String(baseEl && baseEl.value).replace(",", ""), 10);
+        if (isNaN(base)) base = 0;
+        var raw = base * (rate / 100);
+        var roundEl = document.getElementById("flatRoundMode");
+        var displayAmt = raw;
+        if (roundEl && roundEl.value === "0") displayAmt = Math.round(raw);
+        else displayAmt = Math.round(raw * 100) / 100;
+        var capNote = "";
+        if (capEl && capEl.value === "abs") capNote = "（封顶策略已选「绝对额」，示意中暂未扣封顶）";
+        if (capEl && capEl.value === "pct") capNote = "（封顶策略已选「按比例」，示意中暂未扣封顶）";
+        var baseLabel = baseKind && baseKind.selectedOptions[0]
+          ? baseKind.selectedOptions[0].textContent
+          : "比例基数";
+        mainEl.innerHTML =
+          "示意基数 <strong>" + formatMoney(base) + "</strong> × 固定比例 <strong>" + rate + "%</strong>" +
+          " ⇒ 计提额 <strong>" + formatMoney(displayAmt) + " CNY</strong>" + capNote;
+        if (formulaEl) {
+          formulaEl.textContent =
+            "口径：" + baseLabel + "；保存后由规则引擎按账期汇总基数并与回款门槛等策略一并校验。";
+        }
+      }
+      var btnFlat = document.getElementById("btnFlatPreview");
+      if (btnFlat) btnFlat.addEventListener("click", updateFlatPreview);
+      ["flatRatePct", "flatMockBase", "flatBaseKind", "flatCapPolicy", "flatRoundMode", "flatPaybackGate"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("change", updateFlatPreview);
+      });
+      ["flatRatePct", "flatMockBase"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("input", updateFlatPreview);
+      });
+      updateFlatPreview();
+      document.querySelectorAll(".chip").forEach(function (c) {
+        c.addEventListener("click", function () {
+          c.classList.toggle("on");
+        });
+      });
+
+      var navLinks = Array.prototype.slice.call(document.querySelectorAll(".nav-link"));
+      var sections = navLinks.map(function (link) {
+        return document.querySelector(link.getAttribute("href"));
+      }).filter(Boolean);
+      function setActiveNav(id) {
+        navLinks.forEach(function (link) {
+          var active = link.getAttribute("href") === "#" + id;
+          link.classList.toggle("active", active);
+        });
+      }
+      function updateActiveByScroll() {
+        var current = sections[0];
+        sections.forEach(function (sec) {
+          var rect = sec.getBoundingClientRect();
+          if (rect.top <= 160) current = sec;
+        });
+        if (current && current.id) setActiveNav(current.id);
+      }
+      navLinks.forEach(function (link) {
+        link.addEventListener("click", function (e) {
+          e.preventDefault();
+          var target = document.querySelector(link.getAttribute("href"));
+          if (!target) return;
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          setActiveNav(target.id);
+        });
+      });
+      window.addEventListener("scroll", updateActiveByScroll, { passive: true });
+      updateActiveByScroll();
+
+      var condEditor = document.getElementById("condExprEditor");
+      var exprHistory = [];
+      function pushExprHistory() {
+        exprHistory.push(condEditor.value);
+        if (exprHistory.length > 30) exprHistory.shift();
+      }
+      function insertExpr(text) {
+        pushExprHistory();
+        var start = condEditor.selectionStart || condEditor.value.length;
+        var end = condEditor.selectionEnd || condEditor.value.length;
+        condEditor.value = condEditor.value.slice(0, start) + text + condEditor.value.slice(end);
+        var nextPos = start + text.length;
+        condEditor.focus();
+        condEditor.setSelectionRange(nextPos, nextPos);
+      }
+
+      document.querySelectorAll(".token, .op-btn").forEach(function (el) {
+        el.addEventListener("click", function () {
+          insertExpr(el.getAttribute("data-insert") || "");
+        });
+      });
+
+      document.getElementById("btnExprUndo").addEventListener("click", function () {
+        var prev = exprHistory.pop();
+        if (typeof prev === "string") {
+          condEditor.value = prev;
+          condEditor.focus();
+        }
+      });
+      document.getElementById("btnExprClear").addEventListener("click", function () {
+        pushExprHistory();
+        condEditor.value = "";
+        condEditor.focus();
+      });
+      document.getElementById("btnExprTplLinked").addEventListener("click", function () {
+        pushExprHistory();
+        condEditor.value = "#{分公司}=='深圳' && #{小组}=='联动组' && #{提成角色} in ['客服主管'] && #{来源业务账号ID}=='wuyazi_001' && #{组员月均票数}>=1600";
+      });
+      document.getElementById("btnExprTplStable").addEventListener("click", function () {
+        pushExprHistory();
+        condEditor.value = "#{分公司}=='深圳' && #{小组}=='稳航组' && #{提成角色} in ['客服主管'] && #{来源业务账号ID}=='wuyazi_001' && #{组员月均票数}>=1000";
+      });
+
+      var calcEditor = document.getElementById("calcExprEditor");
+      var calcHistory = [];
+      function pushCalcHistory() {
+        calcHistory.push(calcEditor.value);
+        if (calcHistory.length > 30) calcHistory.shift();
+      }
+      function insertCalc(text) {
+        pushCalcHistory();
+        var start = calcEditor.selectionStart || calcEditor.value.length;
+        var end = calcEditor.selectionEnd || calcEditor.value.length;
+        calcEditor.value = calcEditor.value.slice(0, start) + text + calcEditor.value.slice(end);
+        var nextPos = start + text.length;
+        calcEditor.focus();
+        calcEditor.setSelectionRange(nextPos, nextPos);
+      }
+
+      document.querySelectorAll(".calc-token, .calc-op").forEach(function (el) {
+        el.addEventListener("click", function () {
+          insertCalc(el.getAttribute("data-insert") || "");
+        });
+      });
+
+      document.getElementById("btnCalcUndo").addEventListener("click", function () {
+        var prev = calcHistory.pop();
+        if (typeof prev === "string") {
+          calcEditor.value = prev;
+          calcEditor.focus();
+        }
+      });
+      document.getElementById("btnCalcClear").addEventListener("click", function () {
+        pushCalcHistory();
+        calcEditor.value = "";
+        calcEditor.focus();
+      });
+      document.getElementById("btnCalcTplBase").addEventListener("click", function () {
+        pushCalcHistory();
+        calcEditor.value = "#{净利润基数}*#{基本提成点}";
+      });
+      document.getElementById("btnCalcTplFull").addEventListener("click", function () {
+        pushCalcHistory();
+        calcEditor.value = "(#{净利润基数}*#{基本提成点})+#{部分产品补提成}-#{客服提成扣}-#{表外导入扣}-#{师傅提成扣}-#{未转正超3000扣1400}";
+      });
+    })();
+  </script>
+    </main>
+  </div>
+<script id="v1-topmenu-links">
+  (function () {
+    var nav = document.querySelector(".sidenav-nav");
+    if (!nav) return;
+    nav.innerHTML = "" +
+      "<div class='sidenav-section-label'>V1首版（开发）</div>" +
+      "<a href='月度提成归档与运单明细-MVP.html' class='sidenav-link'>月底归档与运单底表</a>" +
+      "<a href='表外导入成本列表-MVP.html' class='sidenav-link'>月度调整表</a>" +
+      "<a href='导入表外成本弹窗页-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 导入表外成本</a>" +
+      "<a href='导入绩效系数弹窗页-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 导入绩效系数</a>" +
+      "<a href='人员映射表-MVP.html' class='sidenav-link'>人员映射表</a>" +
+      "<a href='新增人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 新增人员映射</a>" +
+      "<a href='编辑人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 编辑人员映射</a>" +
+      "<a href='批量导入人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 批量导入人员映射</a>";
+  })();
+</script>
+<script id="commission-nav-active">
+(function () {
+  var cur = "";
+  var m = /[/\\]([^/?#]+\.html)/i.exec(location.href || "");
+  if (m) cur = (m[1] || "").toLowerCase();
+  document.querySelectorAll(".sidenav-link").forEach(function (a) {
+    var h = (a.getAttribute("href") || "").split("?")[0];
+    if (h && h.toLowerCase() === cur) a.classList.add("active");
+  });
+})();
+  </script>
+</body>
+</html>

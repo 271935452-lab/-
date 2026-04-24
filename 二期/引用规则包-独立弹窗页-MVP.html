@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>引用规则包（独立弹窗页 · MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+    }
+    /* 整页即弹窗层：可单独打开，也可 window.open / iframe 嵌入 */
+    .popup-root {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .modal {
+      width: 100%;
+      max-width: 760px;
+      max-height: min(92vh, 880px);
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    .modal-head h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .modal-close {
+      border: none;
+      background: transparent;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--sub);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .modal-close:hover { background: #f3f4f6; color: var(--text); }
+    .modal-body {
+      padding: 16px 18px;
+      overflow-y: auto;
+    }
+    .modal-foot {
+      padding: 12px 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex-shrink: 0;
+      background: #fafafa;
+    }
+    .modal-foot .right { display: flex; gap: 8px; flex-wrap: wrap; }
+    .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      padding: 0 10px;
+    }
+    .field input, .field select { height: 36px; }
+    .field textarea { min-height: 56px; padding: 8px 10px; resize: vertical; }
+    .hint { font-size: 12px; color: var(--sub); margin-top: 6px; line-height: 1.5; }
+    .read-only {
+      background: #f9fafb;
+      color: #374151;
+      font-size: 13px;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 16px;
+    }
+    .field-full { grid-column: 1 / -1; }
+    @media (max-width: 560px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .field-full { grid-column: auto; }
+    }
+    .req { color: #b42318; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .foot-hint { font-size: 12px; color: var(--sub); max-width: 360px; line-height: 1.45; }
+  </style>
+<style id="commission-nav-skin">
+/* 提成管理 · 左侧主导航（与各页 :root 独立） */
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+.app-main { flex: 1; min-width: 0; background: #f5f7fb; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">规则</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包与子规则</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">基数维护</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">规则包编辑</a>
+        <div class="sidenav-section-label">人员与映射</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">成本与调整</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">试算</div>
+        <a href="统一试算结果-正向与异常.html" class="sidenav-link">统一试算结果</a>
+        <a href="提成试算结果.html" class="sidenav-link">提成试算结果</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+
+  <div id="popupRoot" class="popup-root" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div id="dlg" class="modal" role="document">
+      <div class="modal-head">
+        <h1 id="dlgTitle">引用规则包</h1>
+        <button type="button" class="modal-close" id="btnCloseX" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>员工姓名 <span class="req">*</span></label>
+            <input type="text" placeholder="支持搜索选人（MVP 手填）" />
+          </div>
+          <div class="field">
+            <label>工号 <span class="req">*</span></label>
+            <input type="text" placeholder="如 E102933" />
+          </div>
+          <div class="field">
+            <label>部门</label>
+            <input type="text" placeholder="组织路径" value="营销中心 / 直客一部" />
+          </div>
+          <div class="field">
+            <label>业务板块 <span class="req">*</span></label>
+            <select>
+              <option>直客</option>
+              <option>同行</option>
+              <option>渠道</option>
+              <option>客服</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>规则包编码 <span class="req">*</span></label>
+            <select id="pkgSelect">
+              <option value="">请选择规则包</option>
+              <option value="DIRECT_HQ_2026" data-name="直客-总部-2026版">DIRECT_HQ_2026</option>
+              <option value="PEER_EAST_STD" data-name="同行-华东-标准版">PEER_EAST_STD</option>
+              <option value="CHANNEL_OUTSOURCE_2026" data-name="渠道-外派-年度版">CHANNEL_OUTSOURCE_2026</option>
+              <option value="CS_COMMON_2026Q2" data-name="客服-通用-2026Q2">CS_COMMON_2026Q2</option>
+            </select>
+            <div class="hint">选项来自已发布规则包主数据；实现时可改为远程搜索。</div>
+          </div>
+          <div class="field">
+            <label>规则包名称（带出）</label>
+            <div id="pkgName" class="read-only">未选择</div>
+          </div>
+          <div class="field">
+            <label>生效起始 <span class="req">*</span></label>
+            <input type="date" value="2026-04-01" />
+          </div>
+          <div class="field">
+            <label>生效截止</label>
+            <input type="date" value="" />
+            <div class="hint">空表示长期有效。</div>
+          </div>
+          <div class="field">
+            <label>状态</label>
+            <select>
+              <option>待生效</option>
+              <option>生效中</option>
+              <option>已失效</option>
+            </select>
+          </div>
+          <div class="field field-full">
+            <label>变更说明</label>
+            <textarea id="chgNote" placeholder="调岗 / 新政策切换 / 纠错等"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <p class="foot-hint">本页为独立 HTML，便于新窗口预览或 iframe 嵌入；与人员映射表内嵌弹窗字段保持一致。</p>
+        <div class="right">
+          <a class="btn" href="personnel-rule-package-mapping-mvp.html">返回人员映射表</a>
+          <button type="button" class="btn" id="btnCancel">取消</button>
+          <button type="button" class="btn" id="btnReset">重置</button>
+          <button type="button" class="btn btn-primary">保存映射</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var root = document.getElementById("popupRoot");
+      var dlg = document.getElementById("dlg");
+      var sel = document.getElementById("pkgSelect");
+      var nameEl = document.getElementById("pkgName");
+      var note = document.getElementById("chgNote");
+
+      function syncPkgName() {
+        var opt = sel.options[sel.selectedIndex];
+        if (!sel.value) {
+          nameEl.textContent = "未选择";
+          return;
+        }
+        nameEl.textContent = opt.getAttribute("data-name") || "—";
+      }
+
+      function leave() {
+        if (window.opener) {
+          window.close();
+          return;
+        }
+        window.location.href = "personnel-rule-package-mapping-mvp.html";
+      }
+
+      sel.addEventListener("change", syncPkgName);
+      syncPkgName();
+
+      document.getElementById("btnCloseX").addEventListener("click", leave);
+      document.getElementById("btnCancel").addEventListener("click", leave);
+
+      document.getElementById("btnReset").addEventListener("click", function () {
+        sel.value = "";
+        syncPkgName();
+        if (note) note.value = "";
+      });
+
+      root.addEventListener("click", function (e) {
+        if (e.target === root) leave();
+      });
+
+      dlg.addEventListener("click", function (e) {
+        e.stopPropagation();
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") leave();
+      });
+    })();
+  </script>
+    </main>
+  </div>
+<script id="v1-topmenu-links">
+  (function () {
+    var nav = document.querySelector(".sidenav-nav");
+    if (!nav) return;
+    nav.innerHTML = "" +
+      "<div class='sidenav-section-label'>V1首版（开发）</div>" +
+      "<a href='月度提成归档与运单明细-MVP.html' class='sidenav-link'>月底归档与运单底表</a>" +
+      "<a href='表外导入成本列表-MVP.html' class='sidenav-link'>月度调整表</a>" +
+      "<a href='导入表外成本弹窗页-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 导入表外成本</a>" +
+      "<a href='导入绩效系数弹窗页-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 导入绩效系数</a>" +
+      "<a href='人员映射表-MVP.html' class='sidenav-link'>人员映射表</a>" +
+      "<a href='新增人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 新增人员映射</a>" +
+      "<a href='编辑人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 编辑人员映射</a>" +
+      "<a href='批量导入人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 批量导入人员映射</a>";
+  })();
+</script>
+<script id="commission-nav-active">
+(function () {
+  var cur = "";
+  var m = /[/\\]([^/?#]+\.html)/i.exec(location.href || "");
+  if (m) cur = (m[1] || "").toLowerCase();
+  document.querySelectorAll(".sidenav-link").forEach(function (a) {
+    var h = (a.getAttribute("href") || "").split("?")[0];
+    if (h && h.toLowerCase() === cur) a.classList.add("active");
+  });
+})();
+  </script>
+</body>
+</html>

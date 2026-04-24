@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>基数维护（公式构建器）</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #dc2626;
+      --warn: #f97316;
+      --primary: #2563eb;
+      --primary-600: #1d4ed8;
+      --teal: #5f7d7d;
+      --teal-hover: #4f6a6a;
+      --keypad: #7fb5ff;
+      --keypad-hover: #5fa3ff;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: var(--primary-600); border-color: var(--primary-600); }
+
+    .content {
+      flex: 1;
+      padding: 14px 16px 18px;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+    }
+
+    .left {
+      padding: 14px 14px 10px;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .req::before {
+      content: "*";
+      color: var(--danger);
+      margin-right: 4px;
+    }
+
+    .input,
+    .select,
+    .textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .textarea {
+      min-height: 86px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .right {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #374151;
+      margin: 2px 0 8px;
+    }
+
+    .hint {
+      color: var(--danger);
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 0 0 8px;
+    }
+
+    .builder-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 10px;
+    }
+
+    .tile-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .tile {
+      border: 1px solid #cfd8d8;
+      background: var(--teal);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 6px;
+      font-size: 12px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      line-height: 1.25;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tile:hover { background: var(--teal-hover); }
+
+    .tile.warn {
+      background: #fb923c;
+      border-color: #fdba74;
+    }
+
+    .tile.active {
+      outline: 2px solid #fbbf24;
+      outline-offset: 1px;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .key {
+      border: 1px solid #93c5fd;
+      background: var(--keypad);
+      color: #0b1f3a;
+      border-radius: 8px;
+      padding: 10px 0;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .key:hover { background: var(--keypad-hover); }
+
+    .expr-box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fafafa;
+    }
+
+    .expr-title {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .mono {
+      width: 100%;
+      min-height: 64px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      background: #fff;
+      resize: vertical;
+    }
+
+    .mini-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn-mini {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    thead th {
+      background: #f9fafb;
+      color: #4b5563;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 8px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      background: #fff;
+    }
+
+    .cell-textarea {
+      width: 100%;
+      min-height: 70px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      background: #fff;
+    }
+
+    .cell-mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .stack-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .btn-del {
+      border-color: #fecaca;
+      color: var(--danger);
+    }
+
+    .btn-clear {
+      border-color: #fed7aa;
+      color: var(--warn);
+    }
+
+    .btn-add {
+      border-color: #bfdbfe;
+      color: var(--primary);
+    }
+
+    .footer-note {
+      padding: 10px 12px 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .import-banner {
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .import-banner .text {
+      font-size: 12px;
+      color: #1f2937;
+      line-height: 1.6;
+    }
+
+    .import-banner .meta {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .import-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 150px;
+    }
+  </style>
+<style id="commission-nav-skin">
+/* 提成管理 · 左侧主导航（与各页 :root 独立） */
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+.app-main { flex: 1; min-width: 0; background: #f5f7fb; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">规则</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包与子规则</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">基数维护</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">规则包编辑</a>
+        <div class="sidenav-section-label">人员与映射</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">成本与调整</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">试算</div>
+        <a href="统一试算结果-正向与异常.html" class="sidenav-link">统一试算结果</a>
+        <a href="提成试算结果.html" class="sidenav-link">提成试算结果</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+
+  <div class="shell">
+    <header class="topbar">
+      <div class="title">编辑基数方案 #基数方案_净利润跨期扣减</div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button">保存</button>
+        <button class="btn" type="button">关闭</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="card left">
+        <div class="field">
+          <label class="label req">基数方案名称</label>
+          <input class="input" value="净利润基数（支持扣操作内陆/跨期扣减）" />
+        </div>
+
+        <div class="field">
+          <label class="label req">基数方案编码</label>
+          <input class="input" value="基数方案_净利润跨期扣减" />
+        </div>
+
+        <div class="field">
+          <label class="label">生效开始</label>
+          <input class="input" type="date" value="2026-01-01" />
+        </div>
+
+        <div class="field">
+          <label class="label req">输出指标类型</label>
+          <select class="select">
+            <option>净利润基数</option>
+            <option>计费重</option>
+            <option>应收金额</option>
+            <option>组员实发提成</option>
+            <option>票数</option>
+            <option>实际柜数</option>
+            <option>按总计费重/80柜数</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label">生效结束</label>
+          <input class="input" type="date" value="2026-12-31" />
+        </div>
+
+        <div class="field">
+          <label class="label">备注</label>
+          <textarea class="textarea" placeholder="可填写本次基数口径调整说明、适用范围、注意事项等"></textarea>
+        </div>
+      </section>
+
+      <section class="card right">
+        <div class="import-banner">
+          <div class="text">
+            <strong>表外成本导入不在此页录入金额</strong>：此处只维护「组件编码占位符」与是否参与基数扣减的口径。
+            <div class="meta">
+              最近导入批次：<span style="color:#111827;font-weight:600;">BATCH_20260416_01</span>（成功 118 / 预警 6 / 失败 4）
+            </div>
+          </div>
+          <div class="import-actions">
+            <button class="btn-mini" type="button" onclick="window.open('personnel-mapping-import.html','_blank')">打开批量导入页</button>
+            <button class="btn-mini" type="button">查看导入明细</button>
+          </div>
+        </div>
+
+        <p class="hint">
+          维护方式示意：先选择「指标/成本组件」标签 → 在右侧键盘补充运算符与括号 → 在下方条件行中分别维护中文可读表达式与系统表达式。
+          <br />
+          支持净利润两套口径（扣操作费/内陆费 与 不扣操作费/内陆费）及跨期扣减口径。表外成本仅引用组件编码（如 <span class="cell-mono">#{OFFBOOK_FIN_ADJ}</span>），具体金额由财务导入模块按月入账。
+        </p>
+
+        <div class="builder-grid">
+          <div>
+            <div class="panel-title">变量与计算公式</div>
+            <div class="tile-grid" id="varGrid">
+              <div class="tile" data-insert="#{GROSS_PROFIT}">毛利</div>
+              <div class="tile" data-insert="#{OFFBOOK_COST_SUM}">表外成本</div>
+              <div class="tile" data-insert="#{SYS_REIMBURSE_FEE}">报销费</div>
+              <div class="tile" data-insert="#{SYS_OP_FEE}">操作费</div>
+              <div class="tile" data-insert="#{SYS_INLAND_FEE}">内陆费</div>
+              <div class="tile" data-insert="#{WEIGHT_CHARGEABLE}">计费重</div>
+              <div class="tile" data-insert="#{RECEIVABLE_AMOUNT}">应收金额</div>
+              <div class="tile" data-insert="#{TEAM_PAID_COMMISSION}">组员实发提成</div>
+              <div class="tile" data-insert="#{TICKET_COUNT}">票数</div>
+              <div class="tile" data-insert="#{ACTUAL_CONTAINER_COUNT}">实际柜数</div>
+              <div class="tile" data-insert="#{CONTAINER_COUNT_BY_WEIGHT80}">按总计费重/80柜数</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="panel-title">运算符键盘</div>
+            <div class="keypad" id="keypad">
+              <div class="key" data-insert="7">7</div>
+              <div class="key" data-insert="8">8</div>
+              <div class="key" data-insert="9">9</div>
+              <div class="key" data-insert="/">/</div>
+              <div class="key" data-insert="(">(</div>
+
+              <div class="key" data-insert="4">4</div>
+              <div class="key" data-insert="5">5</div>
+              <div class="key" data-insert="6">6</div>
+              <div class="key" data-insert="*">*</div>
+              <div class="key" data-insert=")">)</div>
+
+              <div class="key" data-insert="1">1</div>
+              <div class="key" data-insert="2">2</div>
+              <div class="key" data-insert="3">3</div>
+              <div class="key" data-insert="-">-</div>
+              <div class="key" data-insert="&&">&amp;&amp;</div>
+
+              <div class="key" data-insert="0">0</div>
+              <div class="key" data-insert=".">.</div>
+              <div class="key" data-insert="+">+</div>
+              <div class="key" data-insert="==">==</div>
+              <div class="key" data-insert="||">||</div>
+
+              <div class="key" data-insert="!=">!=</div>
+              <div class="key" data-insert=">">&gt;</div>
+              <div class="key" data-insert="<">&lt;</div>
+              <div class="key" data-insert=">=">&gt;=</div>
+              <div class="key" data-insert="<=">&lt;=</div>
+
+              <div class="key" data-insert="?">?</div>
+              <div class="key" data-insert=":">:</div>
+              <div class="key" data-insert="max(">max(</div>
+              <div class="key" data-insert="min(">min(</div>
+              <div class="key" data-insert=",">,</div>
+            </div>
+
+            <div style="height:10px;"></div>
+            <div class="expr-title">提示：点击变量或运算符会插入到当前聚焦的公式输入框。</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px;"><input type="checkbox" /></th>
+                <th style="min-width:200px;">计算公式中文</th>
+                <th style="min-width:260px;">计算公式（系统）</th>
+                <th style="width:120px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+          <textarea id="rowACalcZh" class="cell-textarea">净利润基数 = 毛利 - 表外成本 - 报销费 - 操作费 - 内陆费 - 上月毛利扣减额</textarea>
+                </td>
+                <td>
+          <textarea id="rowACalcExpr" class="cell-textarea cell-mono">#{GROSS_PROFIT}-#{OFFBOOK_COST_SUM}-#{SYS_REIMBURSE_FEE}-#{SYS_OP_FEE}-#{SYS_INLAND_FEE}-#{LAST_MONTH_GP_DEDUCT}</textarea>
+                </td>
+                <td>
+                  <div class="stack-btns">
+                    <button class="btn-mini btn-del" type="button">删除</button>
+                    <button class="btn-mini btn-clear" type="button">清空</button>
+                    <button class="btn-mini btn-add" type="button">新增</button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+          <textarea id="rowBCalcZh" class="cell-textarea">经营规模口径 = 计费重、应收金额、组员实发提成、票数、实际柜数、按总计费重/80柜数</textarea>
+                </td>
+                <td>
+          <textarea id="rowBCalcExpr" class="cell-textarea cell-mono">#{WEIGHT_CHARGEABLE}+#{RECEIVABLE_AMOUNT}+#{TEAM_PAID_COMMISSION}+#{TICKET_COUNT}+#{ACTUAL_CONTAINER_COUNT}+#{CONTAINER_COUNT_BY_WEIGHT80}</textarea>
+                </td>
+                <td>
+                  <div class="stack-btns">
+                    <button class="btn-mini btn-del" type="button">删除</button>
+                    <button class="btn-mini btn-clear" type="button">清空</button>
+                    <button class="btn-mini btn-add" type="button">新增</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>
+          <textarea class="cell-textarea">调整后毛利基数 = 当月毛利 - 上月毛利扣减额</textarea>
+                </td>
+                <td>
+          <textarea class="cell-textarea cell-mono">#{GROSS_PROFIT}-#{LAST_MONTH_GP_DEDUCT}</textarea>
+                </td>
+                <td>
+                  <div class="stack-btns">
+                    <button class="btn-mini btn-del" type="button">删除</button>
+                    <button class="btn-mini btn-clear" type="button">清空</button>
+                    <button class="btn-mini btn-add" type="button">新增</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="footer-note">
+          说明：本页为静态原型，用于对齐你们现有“附加费公式构建器”的交互习惯。当前版本已简化为仅维护计算公式，不在基数层维护条件表达式；业务命中条件与负毛利策略统一在规则层配置。
+          <br />
+          导入类组件（<span class="cell-mono">OFFBOOK_*</span>）的值来源应为「财务导入批次」，系统算费组件（报销费/操作费/内陆费）来源于系统核算结果。规则层可根据负毛利策略决定是否执行扣减。
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      function appendToFocused(text) {
+        var focused = document.activeElement;
+        if (!focused || focused.tagName !== "TEXTAREA") return;
+        var start = focused.selectionStart || focused.value.length;
+        var end = focused.selectionEnd || focused.value.length;
+        focused.value = focused.value.slice(0, start) + text + focused.value.slice(end);
+        var nextPos = start + text.length;
+        focused.focus();
+        focused.setSelectionRange(nextPos, nextPos);
+      }
+
+      document.querySelectorAll("[data-insert]").forEach(function (node) {
+        node.addEventListener("click", function () {
+          appendToFocused(node.getAttribute("data-insert") || "");
+        });
+      });
+
+    })();
+  </script>
+    </main>
+  </div>
+<script id="commission-nav-active">
+(function () {
+  var cur = "";
+  var m = /[/\\]([^/?#]+\.html)/i.exec(location.href || "");
+  if (m) cur = (m[1] || "").toLowerCase();
+  document.querySelectorAll(".sidenav-link").forEach(function (a) {
+    var h = (a.getAttribute("href") || "").split("?")[0];
+    if (h && h.toLowerCase() === cur) a.classList.add("active");
+  });
+})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>计提结果报表（快照追溯 MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --ok-bg: #ecfdf3;
+      --ok-text: #027a48;
+      --warn-bg: #fffaeb;
+      --warn-text: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+    .app-sidenav {
+      width: 232px;
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      padding: 0 0 24px;
+    }
+    .sidenav-brand { padding: 20px 18px 16px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+    .sidenav-title { font-size: 17px; font-weight: 700; }
+    .sidenav-sub { font-size: 11px; color: var(--sub); margin-top: 6px; }
+    .sidenav-nav { flex: 1; overflow-y: auto; }
+    .sidenav-section-label { font-size: 11px; font-weight: 600; color: #9ca3af; padding: 14px 18px 6px; }
+    .sidenav-link {
+      display: block;
+      padding: 9px 18px 9px 15px;
+      margin: 0 8px 2px;
+      font-size: 14px;
+      color: #374151;
+      text-decoration: none;
+      border-radius: 8px;
+      border-left: 3px solid transparent;
+    }
+    .sidenav-link:hover { background: #f8fafc; color: var(--primary); }
+    .sidenav-link.active { background: #eff6ff; color: var(--primary); font-weight: 600; border-left-color: var(--primary); }
+    .app-main { flex: 1; min-width: 0; }
+    .page { max-width: 100%; margin: 20px auto; padding: 0 16px 28px; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .header h1 { margin: 0; font-size: 22px; }
+    .header p { margin: 8px 0 0; color: var(--sub); font-size: 13px; line-height: 1.5; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-block;
+      cursor: pointer;
+    }
+    .btn + .btn { margin-left: 8px; }
+    .btn-primary { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      margin-bottom: 12px;
+    }
+    .filter {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 14px 16px;
+      align-items: end;
+    }
+    .field label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--sub); }
+    .field input, .field select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 14px 16px;
+    }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #fafcff;
+    }
+    .kpi .k { font-size: 12px; color: var(--sub); }
+    .kpi .v { margin-top: 6px; font-size: 20px; font-weight: 700; }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fafbff;
+    }
+    .toolbar .meta { color: var(--sub); font-size: 12px; }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      min-width: 4200px;
+      border-collapse: collapse;
+    }
+    th.col-log { background: #ecfdf3; color: #14532d; }
+    th.col-cust { background: #eff6ff; color: #1e3a8a; }
+    th.col-fin { background: #fff7ed; color: #9a3412; }
+    th.col-org { background: #f5f3ff; color: #5b21b6; }
+    th.col-snap { background: #f3f4f6; color: #374151; }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    th { background: #fafbff; font-size: 12px; color: #4b5563; }
+    tr:hover td { background: #fafcff; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .tag-ok { background: var(--ok-bg); color: var(--ok-text); }
+    .tag-warn { background: var(--warn-bg); color: var(--warn-text); }
+    .op a {
+      color: var(--primary);
+      text-decoration: none;
+      margin-right: 10px;
+      font-size: 13px;
+    }
+    .foot-note {
+      padding: 12px 16px;
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 1.7;
+      border-top: 1px solid var(--line);
+      background: #fafafa;
+      border-radius: 0 0 12px 12px;
+    }
+    @media (max-width: 1200px) {
+      .filter { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+      .kpi-row { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .filter, .kpi-row { grid-template-columns: 1fr; }
+      .app-shell { flex-direction: column; }
+      .app-sidenav { width: 100%; border-right: none; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">规则</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包与子规则</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">基数维护</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">规则包编辑</a>
+        <div class="sidenav-section-label">人员与映射</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <div class="sidenav-section-label">试算与报表</div>
+        <a href="统一试算结果-正向与异常.html" class="sidenav-link">统一试算结果</a>
+        <a href="提成试算结果.html" class="sidenav-link">提成试算结果</a>
+        <a href="计提结果报表-快照追溯-MVP.html" class="sidenav-link active">计提结果报表（快照）</a>
+        <a href="月度提成归档与运单明细-MVP.html" class="sidenav-link">月度归档与运单明细</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+      <div class="page">
+        <div class="header">
+          <div>
+            <h1>计提结果报表（快照追溯）</h1>
+            <p>基于月度快照批次生成报表；明细列与<strong>Excel 运费/结算底表</strong>字段对齐（运单、标销/财务月份、客户与销售归因、费用与含税口径、财务产品/归属部门等），右侧追加快照与计提追溯列。</p>
+          </div>
+          <div>
+            <button class="btn">切换批次</button>
+            <button class="btn">导出明细</button>
+            <button class="btn btn-primary">冻结本批次</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="filter">
+            <div class="field">
+              <label>账期（月）</label>
+              <input type="month" value="2026-04" />
+            </div>
+            <div class="field">
+              <label>计算批次号</label>
+              <select>
+                <option>BATCH_202604_03（success）</option>
+                <option>BATCH_202604_02（frozen）</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>分公司</label>
+              <select><option value="">全部</option><option>总部</option><option>深圳</option><option>华东</option></select>
+            </div>
+            <div class="field">
+              <label>部门</label>
+              <input type="text" placeholder="模糊搜索" />
+            </div>
+            <div class="field">
+              <label>提成人</label>
+              <input type="text" placeholder="账号/姓名" />
+            </div>
+            <div class="field">
+              <label>规则包</label>
+              <input type="text" placeholder="名称/编码" />
+            </div>
+            <div class="field">
+              <label>运单号</label>
+              <input type="text" placeholder="精确/模糊" />
+            </div>
+            <div class="field">
+              <label>单号/订单号</label>
+              <input type="text" placeholder="精确/模糊" />
+            </div>
+            <div class="field">
+              <label>任务号</label>
+              <input type="text" placeholder="可选" />
+            </div>
+            <div class="field">
+              <label>客户类型</label>
+              <select><option value="">全部</option><option>直营</option><option>代理</option><option>直客</option></select>
+            </div>
+            <div class="field">
+              <label>业务员</label>
+              <input type="text" placeholder="模糊" />
+            </div>
+            <div class="field">
+              <label>大区</label>
+              <input type="text" placeholder="模糊" />
+            </div>
+            <div class="field">
+              <label>国家</label>
+              <input type="text" placeholder="模糊" />
+            </div>
+            <div class="field">
+              <label>产品名</label>
+              <input type="text" placeholder="模糊" />
+            </div>
+            <div class="field">
+              <label>费用名称</label>
+              <input type="text" placeholder="模糊" />
+            </div>
+            <div class="field">
+              <label>归属部门</label>
+              <input type="text" placeholder="模糊" />
+            </div>
+            <div class="field">
+              <label>快照一致性</label>
+              <select><option value="">全部</option><option>一致</option><option>疑似漂移</option></select>
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button class="btn btn-primary" style="width:100%;">查询</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="kpi-row">
+            <div class="kpi"><div class="k">底表行数（运单×费用粒度）</div><div class="v">18,420</div></div>
+            <div class="kpi"><div class="k">计提人数</div><div class="v">1,286</div></div>
+            <div class="kpi"><div class="k">计提总额</div><div class="v">¥12,438,922</div></div>
+            <div class="kpi"><div class="k">异常单数</div><div class="v">46</div></div>
+            <div class="kpi"><div class="k">快照批次</div><div class="v">BATCH_202604_03</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toolbar">
+            <div class="meta">报表粒度：与 Excel 一致，按<strong>运单 + 费用行</strong>展开（一行费用一行）；列底色区分：绿=物流/时间，蓝=客户与销售，橙=费用与结算金额，紫=财务/组织，灰=快照与计提。</div>
+            <div>
+              <button class="btn">查看批次元数据</button>
+              <button class="btn">查看快照保留策略</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-log">运单号</th>
+                  <th class="col-log">揽收日期</th>
+                  <th class="col-log">标销月份</th>
+                  <th class="col-log">财务月份</th>
+                  <th class="col-log">计费重</th>
+                  <th class="col-log">件数</th>
+                  <th class="col-log">任务号</th>
+                  <th class="col-log">单号/订单号</th>
+                  <th class="col-log">标准运费</th>
+                  <th class="col-log">型号</th>
+                  <th class="col-cust">客户类型</th>
+                  <th class="col-cust">客户名称</th>
+                  <th class="col-cust">业务员</th>
+                  <th class="col-cust">范围</th>
+                  <th class="col-cust">始发</th>
+                  <th class="col-cust">业务代表处</th>
+                  <th class="col-cust">业务代表名</th>
+                  <th class="col-cust">大区</th>
+                  <th class="col-cust">省份</th>
+                  <th class="col-cust">城市</th>
+                  <th class="col-cust">国家</th>
+                  <th class="col-fin">产品名</th>
+                  <th class="col-fin">结算方式</th>
+                  <th class="col-fin">费用名称</th>
+                  <th class="col-fin">币种</th>
+                  <th class="col-fin">含税应收金额</th>
+                  <th class="col-fin">不含税金额</th>
+                  <th class="col-fin">税额</th>
+                  <th class="col-fin">营收</th>
+                  <th class="col-fin">毛利</th>
+                  <th class="col-fin">毛利率</th>
+                  <th class="col-fin">费用金额</th>
+                  <th class="col-fin">结算币种</th>
+                  <th class="col-fin">成本分类</th>
+                  <th class="col-fin">汇率类型</th>
+                  <th class="col-fin">汇率</th>
+                  <th class="col-fin">结算金额</th>
+                  <th class="col-fin">结算本币</th>
+                  <th class="col-org">划分产品</th>
+                  <th class="col-org">财务产品</th>
+                  <th class="col-org">产品组</th>
+                  <th class="col-org">归属部门</th>
+                  <th class="col-org">该项目是否有业务员</th>
+                  <th class="col-org">当前是否存有业务员</th>
+                  <th class="col-snap">账期（计提）</th>
+                  <th class="col-snap">分公司</th>
+                  <th class="col-snap">提成人</th>
+                  <th class="col-snap">提成角色</th>
+                  <th class="col-snap">规则包（版本）</th>
+                  <th class="col-snap">命中规则（版本）</th>
+                  <th class="col-snap">提成基数</th>
+                  <th class="col-snap">比例/档位</th>
+                  <th class="col-snap">提成金额</th>
+                  <th class="col-snap">快照ID</th>
+                  <th class="col-snap">一致性</th>
+                  <th class="col-snap">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>WB202604088901</td>
+                  <td>2026-04-02</td>
+                  <td>2026-04</td>
+                  <td>2026-04</td>
+                  <td>128.5</td>
+                  <td>3</td>
+                  <td>TASK-77821</td>
+                  <td>SO202604010023</td>
+                  <td>1,860.00</td>
+                  <td>普货-A</td>
+                  <td>直营</td>
+                  <td>深圳某科技有限公司</td>
+                  <td>黄丽青</td>
+                  <td>华南</td>
+                  <td>SZX</td>
+                  <td>深圳代表处</td>
+                  <td>王代表</td>
+                  <td>华南大区</td>
+                  <td>广东</td>
+                  <td>深圳</td>
+                  <td>美国</td>
+                  <td>空运标准</td>
+                  <td>月结</td>
+                  <td>运费</td>
+                  <td>USD</td>
+                  <td>2,450.00</td>
+                  <td>2,311.32</td>
+                  <td>138.68</td>
+                  <td>2,450.00</td>
+                  <td>420.00</td>
+                  <td>17.1%</td>
+                  <td>2,450.00</td>
+                  <td>CNY</td>
+                  <td>干线运输</td>
+                  <td>月末中间价</td>
+                  <td>7.2456</td>
+                  <td>17,751.72</td>
+                  <td>17,751.72</td>
+                  <td>空运</td>
+                  <td>国际空运</td>
+                  <td>华南空运组</td>
+                  <td>深圳客服部</td>
+                  <td>是</td>
+                  <td>是</td>
+                  <td>2026-04</td>
+                  <td>总部</td>
+                  <td>黄丽青</td>
+                  <td>直客客服</td>
+                  <td>规则包_直客_总部_2026（v1.4）</td>
+                  <td>规则_客服_有业务员客服_比例（v1.2）</td>
+                  <td>17,751.72</td>
+                  <td>6%</td>
+                  <td>1,065.10</td>
+                  <td>SNAP_ROW_889201</td>
+                  <td><span class="tag tag-ok">一致</span></td>
+                  <td class="op"><a href="#">计算链路</a><a href="#">JSON快照</a></td>
+                </tr>
+                <tr>
+                  <td>WB202604088901</td>
+                  <td>2026-04-02</td>
+                  <td>2026-04</td>
+                  <td>2026-04</td>
+                  <td>128.5</td>
+                  <td>3</td>
+                  <td>TASK-77821</td>
+                  <td>SO202604010023</td>
+                  <td>1,860.00</td>
+                  <td>普货-A</td>
+                  <td>直营</td>
+                  <td>深圳某科技有限公司</td>
+                  <td>黄丽青</td>
+                  <td>华南</td>
+                  <td>SZX</td>
+                  <td>深圳代表处</td>
+                  <td>王代表</td>
+                  <td>华南大区</td>
+                  <td>广东</td>
+                  <td>深圳</td>
+                  <td>美国</td>
+                  <td>空运标准</td>
+                  <td>月结</td>
+                  <td>燃油附加费</td>
+                  <td>USD</td>
+                  <td>320.00</td>
+                  <td>301.89</td>
+                  <td>18.11</td>
+                  <td>320.00</td>
+                  <td>55.00</td>
+                  <td>17.2%</td>
+                  <td>320.00</td>
+                  <td>CNY</td>
+                  <td>附加费</td>
+                  <td>月末中间价</td>
+                  <td>7.2456</td>
+                  <td>2,318.59</td>
+                  <td>2,318.59</td>
+                  <td>空运</td>
+                  <td>国际空运</td>
+                  <td>华南空运组</td>
+                  <td>深圳客服部</td>
+                  <td>是</td>
+                  <td>是</td>
+                  <td>2026-04</td>
+                  <td>总部</td>
+                  <td>黄丽青</td>
+                  <td>直客客服</td>
+                  <td>规则包_直客_总部_2026（v1.4）</td>
+                  <td>规则_客服_有业务员客服_比例（v1.2）</td>
+                  <td>2,318.59</td>
+                  <td>6%</td>
+                  <td>139.12</td>
+                  <td>SNAP_ROW_889202</td>
+                  <td><span class="tag tag-ok">一致</span></td>
+                  <td class="op"><a href="#">计算链路</a><a href="#">JSON快照</a></td>
+                </tr>
+                <tr>
+                  <td>WB202604088915</td>
+                  <td>2026-04-05</td>
+                  <td>2026-04</td>
+                  <td>2026-04</td>
+                  <td>86.0</td>
+                  <td>1</td>
+                  <td>TASK-77840</td>
+                  <td>SO202604010024</td>
+                  <td>980.00</td>
+                  <td>标快-B</td>
+                  <td>代理</td>
+                  <td>华东某货代有限公司</td>
+                  <td>林志伟</td>
+                  <td>华东</td>
+                  <td>PVG</td>
+                  <td>华东代表处</td>
+                  <td>李代表</td>
+                  <td>华东大区</td>
+                  <td>上海</td>
+                  <td>上海</td>
+                  <td>德国</td>
+                  <td>海运拼箱</td>
+                  <td>票结</td>
+                  <td>运费</td>
+                  <td>EUR</td>
+                  <td>1,980.00</td>
+                  <td>1,866.04</td>
+                  <td>113.96</td>
+                  <td>1,980.00</td>
+                  <td>310.00</td>
+                  <td>15.7%</td>
+                  <td>1,980.00</td>
+                  <td>CNY</td>
+                  <td>干线运输</td>
+                  <td>月末中间价</td>
+                  <td>7.8234</td>
+                  <td>15,490.33</td>
+                  <td>15,490.33</td>
+                  <td>海运</td>
+                  <td>国际海运</td>
+                  <td>华东海运组</td>
+                  <td>同行事业部</td>
+                  <td>是</td>
+                  <td>是</td>
+                  <td>2026-04</td>
+                  <td>华东</td>
+                  <td>林志伟</td>
+                  <td>同行业务员</td>
+                  <td>PEER_EAST_STD（v1.1）</td>
+                  <td>规则_同行业务员_量级阶梯（v1.0）</td>
+                  <td>15,490.33</td>
+                  <td>阶梯2</td>
+                  <td>774.52</td>
+                  <td>SNAP_ROW_889215</td>
+                  <td><span class="tag tag-warn">疑似漂移</span></td>
+                  <td class="op"><a href="#">计算链路</a><a href="#">比对口径</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="foot-note">
+            <strong>快照保留逻辑（建议实现）：</strong><br />
+            1）每月/每次试算生成一个 <code>batch_id</code>，并固化批次元数据（账期、操作人、开始时间、版本引用）。<br />
+            2）订单底表按 Excel 行结构固化（运单维度 + 费用行维度），形成 <code>commission_order_snapshot</code>：每行挂 <code>snapshot_id + batch_id + source_row_hash</code>，列集合与导入模板一致，便于对账。<br />
+            3）规则命中结果单独固化 <code>commission_rule_hit_snapshot</code>，记录规则包版本、规则版本、命中条件快照。<br />
+            4）计提结果固化到 <code>commission_result_detail</code>，并关联 <code>snapshot_id</code>，确保可追溯“原始字段 -> 命中规则 -> 金额”。<br />
+            5）批次冻结后不可覆盖，仅可新建批次；历史报表默认读取冻结批次，确保审计稳定。<br />
+            6）保留策略建议：结果明细长期保存；订单快照保留 24~36 个月；原始全量底表可冷存归档。
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
