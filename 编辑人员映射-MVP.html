@@ -100,6 +100,49 @@
       justify-content: flex-end;
       gap: 8px;
     }
+
+    .conflict-role-panel {
+      margin-top: 12px;
+      padding: 14px 14px 12px;
+      border-radius: 10px;
+      border: 1px solid #fcd34d;
+      background: linear-gradient(180deg, #fffbeb 0%, #fff 50%);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    .conflict-role-panel[hidden] { display: none !important; }
+    .conflict-role-panel-title {
+      font-weight: 700;
+      margin: 0 0 8px;
+      color: #92400e;
+      font-size: 13px;
+    }
+    .conflict-role-panel-desc {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .conflict-role-checkbox {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .conflict-role-checkbox input {
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+    .conflict-role-panel-foot {
+      margin: 10px 0 0;
+      font-size: 12px;
+      color: var(--sub);
+    }
   </style>
 <style id="commission-nav-skin">
 /* 提成管理 · 左侧主导航（与各页 :root 独立） */
@@ -378,6 +421,18 @@ body { background: rgba(15, 23, 42, 0.5); }
         </div>
       </div>
 
+      <div id="panelRoleOverlapConflict" class="conflict-role-panel" hidden aria-live="polite">
+        <div class="conflict-role-panel-title">同工号 · 映射区间未改 · 提成角色变更</div>
+        <p class="conflict-role-panel-desc">
+          检测到<strong>员工工号、昵称、姓名</strong>与入库一致，且<strong>映射生效区间与提成计算区间</strong>与当前编辑前一致，仅<strong>提成角色</strong>被修改。请选择保存策略：
+        </p>
+        <label class="conflict-role-checkbox">
+          <input type="checkbox" id="chkAppendMappingRecord" />
+          <span><strong>生成新的映射记录</strong>（新增一条数据；保留原记录可追溯）</span>
+        </label>
+        <p class="conflict-role-panel-foot">若不勾选，则<strong>覆盖本条映射</strong>为当前表单内容。</p>
+      </div>
+
       <div class="sticky-ft">
         <a href="人员映射表-MVP.html" class="btn">取消</a>
         <button type="button" class="btn btn-primary">保存</button>
@@ -439,6 +494,45 @@ body { background: rgba(15, 23, 42, 0.5); }
       fillSelect(document.getElementById("f_role"), roles, d.role);
       document.getElementById("f_rule").value = d.rule;
       document.getElementById("f_remark").value = d.remark;
+
+      var baseline = {
+        workNo: d.workNo,
+        nickname: d.nickname,
+        name: d.name,
+        start: d.start || "",
+        end: d.end || "",
+        calcStart: d.calcStart || "",
+        calcEnd: d.calcEnd || "",
+        role: d.role
+      };
+      function norm(v) {
+        return (v || "").trim();
+      }
+      function refreshRoleOverlapConflict() {
+        var panel = document.getElementById("panelRoleOverlapConflict");
+        var chk = document.getElementById("chkAppendMappingRecord");
+        if (!panel || !chk) return;
+        var identity =
+          norm(document.getElementById("f_workNo").value) === norm(baseline.workNo) &&
+          norm(document.getElementById("f_nickname").value) === norm(baseline.nickname) &&
+          norm(document.getElementById("f_name").value) === norm(baseline.name);
+        var dates =
+          document.getElementById("f_start").value === baseline.start &&
+          document.getElementById("f_end").value === baseline.end &&
+          document.getElementById("f_calcStart").value === baseline.calcStart &&
+          document.getElementById("f_calcEnd").value === baseline.calcEnd;
+        var roleNow = document.getElementById("f_role").value;
+        var show = identity && dates && roleNow !== baseline.role;
+        panel.hidden = !show;
+        if (!show) chk.checked = false;
+      }
+      ["input", "change"].forEach(function (ev) {
+        ["f_name", "f_start", "f_end", "f_calcStart", "f_calcEnd", "f_role"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.addEventListener(ev, refreshRoleOverlapConflict);
+        });
+      });
+      refreshRoleOverlapConflict();
     })();
   </script>
     </main>
@@ -489,16 +583,17 @@ body { background: rgba(15, 23, 42, 0.5); }
   <ul>
     <li><strong>员工工号、员工昵称</strong>：编辑页由接口带出，前端<strong>置灰只读</strong>，不可修改，保证与系统账号、主数据一致；仅在「新增人员映射」时可录入。</li>
     <li><strong>主数据校验范围（编辑）</strong>：保存时<strong>仅对本次变更的新值</strong>做必要校验；<strong>本条记录已落库的历史字段不与当前员工管理数据做回溯对账</strong>（员工管理已改档时，旧快照与现网花名册不一致不拦截保存）。若可编辑字段中含姓名等，仅校验<strong>修改后的新值</strong>与工号/主数据关系。</li>
-    <li>同一员工工号多条记录，映射区间不得重叠。</li>
+    <li>同一员工工号多条映射的<strong>时间交叉</strong>与<strong>唯一性</strong>以实现为准；<strong>同工号、映射生效与提成计算区间均未改、仅提成角色变更</strong>时，按页面选项<strong>新增一条</strong>或<strong>覆盖本条</strong>。</li>
     <li>提成区间必须被映射区间包含。</li>
     <li>人员状态：试用/转正/离职。</li>
   </ul>
   <h4>交互说明</h4>
   <ul>
     <li>编辑保存时校验新旧记录冲突（区间重叠等）。</li>
+    <li><strong>同工号同映射区间、仅提成角色变更</strong>：当<strong>员工工号、昵称、姓名</strong>与入库一致，且<strong>映射生效区间与提成计算区间</strong>均未被改动，仅<strong>提成角色</strong>修改时，页面展示选项：<strong>勾选「生成新的映射记录」</strong>则<strong>新增一条</strong>映射数据（保留原记录）；<strong>不勾选</strong>则<strong>覆盖本条</strong>映射。</li>
     <li>员工工号、员工昵称输入框使用只读样式（灰底），禁止修改；误需换人/换号时引导至新增映射（与《人员映射表》PRD「账号多映射与关键信息变更」一致）。</li>
     <li>与《人员映射表》一致：<strong>导入</strong>靠昵称+姓名匹配工号；<strong>编辑</strong>不强制旧数据与现网主数据再匹配。</li>
-    <li>若修改映射生效区间，则生成新记录，并将上一条记录的截止时间更新为当前记录起始时间。</li>
+    <li>若修改<strong>映射生效区间</strong>导致需切段的新时段（与原区间无交叉或产品定义为独立段落），则生成新记录并将衔接规则以实现为准；与<strong>同区间仅改角色</strong>的选项触发条件不同。</li>
     <li>若影响已归档批次，提示「仅影响未归档数据」。</li>
   </ul>
   <h4>与其他模块联动逻辑</h4><ul><li>规则命中实时读最新有效映射。</li><li>归档批次冻结后不回写历史结果。</li></ul>
