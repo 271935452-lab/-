@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>提成试算过程日志</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --log-highlight: #dbeafe;
+      --log-highlight-border: #93c5fd;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+    .app-sidenav {
+      width: 232px;
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      padding: 0 0 24px;
+    }
+    .sidenav-brand { padding: 20px 18px 16px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px; }
+    .sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+    .sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+    .sidenav-nav { flex: 1; overflow-y: auto; }
+    .sidenav-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      padding: 14px 18px 6px;
+    }
+    .sidenav-link {
+      display: block;
+      padding: 9px 18px 9px 15px;
+      margin: 0 8px 2px;
+      font-size: 14px;
+      color: #374151;
+      text-decoration: none;
+      border-radius: 8px;
+      border-left: 3px solid transparent;
+    }
+    .sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+    .sidenav-link.active {
+      background: #eff6ff;
+      color: #2563eb;
+      font-weight: 600;
+      border-left-color: #2563eb;
+    }
+    .app-main { flex: 1; min-width: 0; background: #f5f7fb; }
+    .page { max-width: 1400px; margin: 0 auto; padding: 20px 16px 32px; }
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .page-head h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .page-head .sub { margin: 8px 0 0; font-size: 13px; color: var(--sub); line-height: 1.5; max-width: 720px; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .meta-strip {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.75;
+      color: #374151;
+    }
+    .meta-strip strong { color: #111827; font-weight: 600; }
+    .meta-strip .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      overflow: hidden;
+    }
+    .card-cap {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--sub);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 240px); }
+    table.log-grid {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+    .log-grid th {
+      background: #fafbff;
+      color: #4b5563;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .log-grid td {
+      font-size: 13px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      line-height: 1.55;
+    }
+    .log-grid td.col-no { width: 52px; color: var(--sub); font-variant-numeric: tabular-nums; }
+    .log-grid td.col-by { width: 120px; color: var(--sub); font-size: 12px; }
+    .log-grid td.col-time { width: 168px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #374151; white-space: nowrap; }
+    .log-grid tr:hover td { background: #fafcff; }
+    .log-grid tr.row-highlight td {
+      background: var(--log-highlight);
+      border-bottom-color: var(--log-highlight-border);
+    }
+    .log-grid .content-main { color: #111827; }
+    .log-grid .hint { font-size: 12px; color: var(--sub); margin-top: 4px; }
+    .foot {
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.65;
+      border-top: 1px solid var(--line);
+    }
+    @media (max-width: 900px) {
+      .app-shell { flex-direction: column; }
+      .app-sidenav { width: 100%; border-right: none; border-bottom: 1px solid #e5e7eb; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">规则</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包与子规则</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">基数维护</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">规则包编辑</a>
+        <div class="sidenav-section-label">人员与映射</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <div class="sidenav-section-label">试算</div>
+        <a href="统一试算结果-正向与异常.html" class="sidenav-link">统一试算结果</a>
+        <a href="提成试算结果.html" class="sidenav-link">提成试算结果</a>
+        <a href="提成试算日志-MVP.html" class="sidenav-link active" aria-current="page">提成试算日志</a>
+        <a href="提成试算表-直客与同行-MVP.html" class="sidenav-link">提成试算表（直客/同行）</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <h1>提成试算过程日志</h1>
+            <p class="sub">
+              对照「计费日志」形态：按序号输出引擎步骤、数据来源与<strong>可复核公式</strong>；链路含<strong>规则包解析（候选）→ 规则包命中（锁定）→ 子规则命中</strong>。以下为示例员工<strong>汪张帝等</strong>、运单
+              <span class="mono">WB-MAP202603-007</span>、规则 <span class="mono">DIRECT_SALES_GP_TIER</span> 的示意链路（数值为原型演示，以实现为准）。
+            </p>
+          </div>
+          <div>
+            <button type="button" class="btn" onclick="window.print()">打印 / PDF</button>
+            <button type="button" class="btn btn-primary">返回试算结果</button>
+          </div>
+        </div>
+
+        <div class="meta-strip" role="region" aria-label="当前试算上下文">
+          <strong>试算批次：</strong><span class="mono">TRIAL-202603-WZD-001</span>
+          &nbsp;·&nbsp;
+          <strong>计薪月：</strong>2026-03
+          &nbsp;·&nbsp;
+          <strong>系统账号：</strong>汪张帝等
+          &nbsp;·&nbsp;
+          <strong>映射行号：</strong>8
+          &nbsp;·&nbsp;
+          <strong>引擎流水：</strong><span class="mono">ENG-LOG-20260325143022891</span>
+        </div>
+
+        <div class="card">
+          <div class="card-cap">
+            <span>日志明细（按执行顺序）</span>
+            <span style="font-size:12px;">创建人列为空表示系统自动写入</span>
+          </div>
+          <div class="table-wrap">
+            <table class="log-grid">
+              <thead>
+                <tr>
+                  <th scope="col">NO.</th>
+                  <th scope="col">日志内容</th>
+                  <th scope="col">创建人</th>
+                  <th scope="col">创建时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="col-no">1</td>
+                  <td>
+                    <div class="content-main">试算任务启动：批次 <span class="mono">TRIAL-202603-WZD-001</span>；计薪月 <strong>2026-03</strong>；触发来源=<strong>统一试算</strong>；引擎实例=<span class="mono">commission-engine#7f3a</span>；规则快照版本=<span class="mono">2026-03-15T08:00:00Z</span></div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:22</td>
+                </tr>
+                <tr>
+                  <td class="col-no">2</td>
+                  <td>
+                    <div class="content-main">输入上下文加载：系统账号=<strong>汪张帝等</strong>；映射表行号=<strong>8</strong>；分公司=<strong>义乌总部</strong>；部门=<strong>销售二部</strong>；提成岗位=<strong>直客业务员</strong>；业务线代码=<span class="mono">direct</span>；客户类型（运单）=<strong>直客</strong></div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:22</td>
+                </tr>
+                <tr>
+                  <td class="col-no">3</td>
+                  <td>
+                    <div class="content-main">人员映射校验：计薪月落在映射生效区间 [<span class="mono">长期</span>] 与提成计算区间内；人员状态=<strong>在职</strong>；备注字段已随上下文带出（「净利润特殊申请…」仅审计展示，<strong>不参与</strong>本引擎阶梯命中；特例若需生效应在规则或月度因子中配置）</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:22</td>
+                </tr>
+                <tr>
+                  <td class="col-no">4</td>
+                  <td>
+                    <div class="content-main">规则包解析（候选）：组织维度=分公司 <strong>义乌总部</strong> + 岗位 <strong>直客业务员</strong>；载入<strong>候选</strong>规则包列表=<span class="mono">[ RP_YW_DIRECT_2026Q1, RP_YW_LEGACY_2025Q4 ]</span>（示意）；校验生效区间、版本可用性及<strong>编排冲突</strong>（顺序 / 互斥 / 相加声明）</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:23</td>
+                </tr>
+                <tr>
+                  <td class="col-no">5</td>
+                  <td>
+                    <div class="content-main"><strong>规则包命中（锁定）：</strong>按优先级 / 映射引用 / 产品线口径收窄后锁定=<span class="mono">RP_YW_DIRECT_2026Q1</span>；发布版本=<strong>v3</strong>；编排类型=<strong>顺序执行</strong>（本示例·直客）；快照写入 <span class="mono">commission_rule_pkg_hit</span></div>
+                    <div class="hint">对应场景表中「命中规则包」步骤：必须先锁定包，再解析互斥组 / 相加组并进入子规则队列。</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:23</td>
+                </tr>
+                <tr>
+                  <td class="col-no">6</td>
+                  <td>
+                    <div class="content-main"><strong>子规则命中：</strong><span class="mono">service_mode=全部场景</span>；命中规则编码=<strong class="mono">DIRECT_SALES_GP_TIER</strong>（直客业务员-毛利阶梯）；基数方案引用=<span class="mono">COMMISSION_GP_STD</span>；计算模式=<strong>GP_TIERED</strong></div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:23</td>
+                </tr>
+                <tr>
+                  <td class="col-no">7</td>
+                  <td>
+                    <div class="content-main">基数构建（方案 <span class="mono">COMMISSION_GP_STD</span>）：口径=<strong>毛利 − 系统成本项 − 导入成本项（费用性质=毛利扣）</strong>；本批次运单聚合前原始毛利合计=<strong>10445.00</strong> CNY；表外毛利扣汇总=<strong>0.00</strong> → 提成链路<strong>计算净利润</strong>=<strong>10445.00</strong></div>
+                    <div class="hint">与底表字段「计算净利润」对齐：calc_net_profit = gross_profit − offbook_gp_deduct_sum</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:23</td>
+                </tr>
+                <tr>
+                  <td class="col-no">8</td>
+                  <td>
+                    <div class="content-main">运单范围筛选：到货月=<strong>2026-03</strong>；归因业务员账号=<strong>汪张帝等</strong>；命中运单笔数=<strong>1</strong>；运单号=<span class="mono">WB-MAP202603-007</span>；归档批次引用=<span class="mono">ARCH_202603_01</span></div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:24</td>
+                </tr>
+                <tr>
+                  <td class="col-no">9</td>
+                  <td>
+                    <div class="content-main">运单行明细（摘要）：应收=<strong>39488.00</strong>；业务员成本=<strong>29043.00</strong>；<strong>毛利=10445.00</strong>；实收=<strong>38303.00</strong>；回款率=<strong>97%</strong>；销售产品=<strong>海运拼箱</strong>；客服是否有业务员=<strong>有业务员</strong></div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:24</td>
+                </tr>
+                <tr>
+                  <td class="col-no">10</td>
+                  <td>
+                    <div class="content-main">万能调整池（表外）加载：关联运单=<span class="mono">WB-MAP202603-007</span>；费用性质=<strong>扣提成</strong>；金额=<strong>521.00</strong> CNY；费用类型=<strong>深圳提成补贴</strong>；导入批次=<span class="mono">ADJ-IMP-202603-0182</span>；备注含映射行号与岗位摘要（审计）</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:24</td>
+                </tr>
+                <tr>
+                  <td class="col-no">11</td>
+                  <td>
+                    <div class="content-main">毛利阶梯匹配：以<strong>计算净利润 10445.00</strong> 为计费基数档位查找；命中档位=<strong>第 2 档</strong>（下界含、上界不含）；档位提成比例=<strong>40.0000%</strong>（示意，与规则版本 <span class="mono">v1.4</span> 一致）</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:25</td>
+                </tr>
+                <tr class="row-highlight">
+                  <td class="col-no">12</td>
+                  <td>
+                    <div class="content-main"><strong>计算公式：</strong>未封顶提成 = 计费基数 × 档位比例 = <strong>10445.00 × 40.0000% = 4178.0000</strong>（演示口径；取整策略以实现为准）</div>
+                    <div class="hint">类比计费日志中的「(计费重/单位)×单价」：此处展示提成链路核心乘法步骤，便于财务复核。</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:25</td>
+                </tr>
+                <tr>
+                  <td class="col-no">13</td>
+                  <td>
+                    <div class="content-main">表外<strong>扣提成</strong>汇总作用于发放：<strong>−521.00</strong>（不与「计算净利润」混减；单列进入提成扣减）</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:25</td>
+                </tr>
+                <tr>
+                  <td class="col-no">14</td>
+                  <td>
+                    <div class="content-main"><strong>计算公式：</strong>示意本期业务员应计提净值 = 未封顶提成 <strong>4178.00</strong> − 扣提成导入 <strong>521.00</strong> = <strong>3657.00</strong> CNY（未含封顶/保底/绩效系数；若配置则继续向下叠加）</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:26</td>
+                </tr>
+                <tr>
+                  <td class="col-no">15</td>
+                  <td>
+                    <div class="content-main">分摊与客服：本规则主体=<strong>直客业务员</strong>；客服分成场景跳过（如需展示客服明细可另行挂载 <span class="mono">CS_WITH_SALES_RATE</span> 并行试算）</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:26</td>
+                </tr>
+                <tr>
+                  <td class="col-no">16</td>
+                  <td>
+                    <div class="content-main">风险与负毛利策略：策略=<strong>负毛利不计提</strong>；本单毛利 <strong>&gt; 0</strong>，策略通过；无多规则冲突；未进入异常队列</div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:26</td>
+                </tr>
+                <tr>
+                  <td class="col-no">17</td>
+                  <td>
+                    <div class="content-main"><strong>试算结束：</strong>员工 <strong>汪张帝等</strong>、批次 <span class="mono">TRIAL-202603-WZD-001</span> 状态=<strong>成功</strong>；输出摘要笔数=<strong>1</strong>；本条链路耗时=<strong>4261 ms</strong></div>
+                  </td>
+                  <td class="col-by">—</td>
+                  <td class="col-time">2026-03-25 14:30:26</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="foot">
+            说明：本页为原型示意；序号已与<strong>规则包解析 → 规则包命中（锁定）→ 子规则命中</strong>链路对齐。「创建人」可用于后续扩展为手工重算、财务覆写等操作的审计字段；时间戳可按引擎真实写入顺序对齐。
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

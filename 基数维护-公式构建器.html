@@ -539,6 +539,8 @@
         <p class="hint">
           维护方式示意：先选择「指标/成本组件」标签 → 在右侧键盘补充运算符与括号 → 在下方条件行中分别维护中文可读表达式与系统表达式。
           <br />
+          <strong>上月结转·毛利</strong>仅在<strong>本页基数公式</strong>中引用（如 <span class="cell-mono">#{上月结转_毛利调整}</span> / <span class="cell-mono">#{LAST_MONTH_GP_DEDUCT}</span>）；<strong>提成结转</strong>由台账导入后在<strong>规则编辑页扣减链</strong>引用 <span class="cell-mono">#{上月结转_提成调整}</span>，不在基数公式重复扣减。
+          <br />
           支持净利润两套口径（扣操作费/内陆费 与 不扣操作费/内陆费）及跨期扣减口径。表外成本仅引用组件编码（如 <span class="cell-mono">#{OFFBOOK_FIN_ADJ}</span>），具体金额由财务导入模块按月入账。
         </p>
 
@@ -554,9 +556,12 @@
               <div class="tile" data-insert="#{WEIGHT_CHARGEABLE}">计费重</div>
               <div class="tile" data-insert="#{RECEIVABLE_AMOUNT}">应收金额</div>
               <div class="tile" data-insert="#{TEAM_PAID_COMMISSION}">组员实发提成</div>
+              <div class="tile" data-insert="#{TEAM_RECEIVABLE_SUM}">组员应收之和</div>
+              <div class="tile" data-insert="#{TEAM_AVG_TICKET_COUNT}">组员平均票数</div>
               <div class="tile" data-insert="#{TICKET_COUNT}">票数</div>
               <div class="tile" data-insert="#{ACTUAL_CONTAINER_COUNT}">实际柜数</div>
-              <div class="tile" data-insert="#{CONTAINER_COUNT_BY_WEIGHT80}">按总计费重/80柜数</div>
+              <div class="tile" data-insert="#{上月结转_毛利调整}">上月结转·毛利</div>
+              <div class="tile" data-insert="#{LAST_MONTH_GP_DEDUCT}">上月毛利扣减（别名）</div>
             </div>
           </div>
 
@@ -619,10 +624,10 @@
               <tr>
                 <td><input type="checkbox" /></td>
                 <td>
-          <textarea id="rowACalcZh" class="cell-textarea">净利润基数 = 毛利 - 表外成本 - 报销费 - 操作费 - 内陆费 - 上月毛利扣减额</textarea>
+          <textarea id="rowACalcZh" class="cell-textarea">净利润基数 = 毛利 - 表外成本 - 报销费 - 操作费 - 内陆费 − 上月结转·毛利（台账）</textarea>
                 </td>
                 <td>
-          <textarea id="rowACalcExpr" class="cell-textarea cell-mono">#{GROSS_PROFIT}-#{OFFBOOK_COST_SUM}-#{SYS_REIMBURSE_FEE}-#{SYS_OP_FEE}-#{SYS_INLAND_FEE}-#{LAST_MONTH_GP_DEDUCT}</textarea>
+          <textarea id="rowACalcExpr" class="cell-textarea cell-mono">#{GROSS_PROFIT}-#{OFFBOOK_COST_SUM}-#{SYS_REIMBURSE_FEE}-#{SYS_OP_FEE}-#{SYS_INLAND_FEE}-#{上月结转_毛利调整}</textarea>
                 </td>
                 <td>
                   <div class="stack-btns">
@@ -636,10 +641,10 @@
               <tr>
                 <td><input type="checkbox" /></td>
                 <td>
-          <textarea id="rowBCalcZh" class="cell-textarea">经营规模口径 = 计费重、应收金额、组员实发提成、票数、实际柜数、按总计费重/80柜数</textarea>
+          <textarea id="rowBCalcZh" class="cell-textarea">经营规模口径 = 计费重、应收金额、组员实发提成、组员应收之和、组员平均票数、票数、实际柜数、按总计费重/80柜数</textarea>
                 </td>
                 <td>
-          <textarea id="rowBCalcExpr" class="cell-textarea cell-mono">#{WEIGHT_CHARGEABLE}+#{RECEIVABLE_AMOUNT}+#{TEAM_PAID_COMMISSION}+#{TICKET_COUNT}+#{ACTUAL_CONTAINER_COUNT}+#{CONTAINER_COUNT_BY_WEIGHT80}</textarea>
+          <textarea id="rowBCalcExpr" class="cell-textarea cell-mono">#{WEIGHT_CHARGEABLE}+#{RECEIVABLE_AMOUNT}+#{TEAM_PAID_COMMISSION}+#{TEAM_RECEIVABLE_SUM}+#{TEAM_AVG_TICKET_COUNT}+#{TICKET_COUNT}+#{ACTUAL_CONTAINER_COUNT}+#{CONTAINER_COUNT_BY_WEIGHT80}</textarea>
                 </td>
                 <td>
                   <div class="stack-btns">
@@ -652,10 +657,10 @@
               <tr>
                 <td><input type="checkbox" /></td>
                 <td>
-          <textarea class="cell-textarea">调整后毛利基数 = 当月毛利 - 上月毛利扣减额</textarea>
+          <textarea class="cell-textarea">调整后毛利基数 = 当月毛利 − 上月结转·毛利（基数层）</textarea>
                 </td>
                 <td>
-          <textarea class="cell-textarea cell-mono">#{GROSS_PROFIT}-#{LAST_MONTH_GP_DEDUCT}</textarea>
+          <textarea class="cell-textarea cell-mono">#{GROSS_PROFIT}-#{上月结转_毛利调整}</textarea>
                 </td>
                 <td>
                   <div class="stack-btns">
@@ -670,9 +675,27 @@
         </div>
 
         <div class="footer-note">
-          说明：本页为静态原型，用于对齐你们现有“附加费公式构建器”的交互习惯。当前版本已简化为仅维护计算公式，不在基数层维护条件表达式；业务命中条件与负毛利策略统一在规则层配置。
-          <br />
-          导入类组件（<span class="cell-mono">OFFBOOK_*</span>）的值来源应为「财务导入批次」，系统算费组件（报销费/操作费/内陆费）来源于系统核算结果。规则层可根据负毛利策略决定是否执行扣减。
+          <strong>PRD 说明（基数口径）</strong><br />
+          1）本页用于维护提成计算所引用的<strong>基数方案</strong>与<strong>公式口径</strong>，不在本页维护角色命中与条件表达式；人员、规则包、规则层的匹配逻辑统一由其他页面配置。<br />
+          2）<strong>毛利类上月结转</strong>仅在本页基数公式中引用；<strong>提成类上月结转</strong>只在规则层扣减链中引用 <span class="cell-mono">#{上月结转_提成调整}</span>，避免双重扣减。<br />
+          3）导入类组件（<span class="cell-mono">OFFBOOK_*</span>）的值来源于财务导入批次；系统算费组件（报销费 / 操作费 / 内陆费）来源于系统核算结果。<br />
+          4）新增变量 <span class="cell-mono">#{TEAM_RECEIVABLE_SUM}</span> 表示组员应收之和，<span class="cell-mono">#{TEAM_AVG_TICKET_COUNT}</span> 表示组员平均票数，支持主管/经理类规则按组员汇总口径取值。<br />
+          5）本页基数口径统一按当期账期计算，跨期回溯时需按账期规则锁定数据范围。<br />
+          6）规则里的生效区间建议保留，入职时间仅作为人员映射或规则附加条件，不建议直接替代规则生效区间。<br /><br />
+          <strong>二、基数说明</strong><br />
+          毛利：当期运单底表的毛利字段。<br />
+          表外成本：月度调整表当期的毛利扣之和。<br />
+          律师费：财务凭证表费用类型为“律师费”且付款时间为当期的金额。<br />
+          仓储费：财务凭证表费用类型为“仓储费”且付款时间为下个月的金额。<br />
+          操作费：当期运单的件数 × 1.5。<br />
+          内陆费：当期运单的服务商为指定服务商的出货计费重 × 0.6。<br />
+          计费重：当期匹配规则下，销售产品和客户（如有）匹配后的所有运单收货计费重之和。<br />
+          应收金额：当期匹配规则下所有运单应收金额之和。<br />
+          组员实发提成：当期主管下关联组员实发提成之和，先执行业务员再执行主管。<br />
+          组员应收之和：当期主管下关联组员所有运单应收之和，先执行业务员再执行主管。<br />
+          组员平均票数：当期主管下关联组员总票数 ÷ 组员数。<br />
+          票数：当期匹配规则下所有票数。<br />
+          总计费重/80：当期匹配规则下所有运单收货计费重 ÷ 80，取整。
         </div>
       </section>
     </main>

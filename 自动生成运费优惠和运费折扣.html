@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>自动生成运费优惠和运费折扣</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --line: #dbe3ef;
+      --text: #1f2937;
+      --sub: #6b7280;
+      --blue: #0b63ce;
+      --blue2: #0f4fa8;
+      --orange: #f59e0b;
+      --green: #16a34a;
+      --red: #dc2626;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --overlay: rgba(15, 23, 42, 0.45);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 76px 1fr; }
+    .sidebar { background: #0f172a; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 10px; }
+    .logo { width: 42px; height: 42px; margin: 4px 0 8px; border-radius: 50%; background: linear-gradient(135deg, #0b63ce, #22c55e); display: flex; align-items: center; justify-content: center; font-weight: 700; box-shadow: var(--shadow); }
+    .nav-dot { width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); color: #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .nav-dot.active { background: rgba(11,99,206,.24); color: #fff; border-color: rgba(11,99,206,.45); }
+    .main { min-width: 0; }
+    .topbar { height: 54px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 16px 0 18px; }
+    .crumbs { font-size: 13px; color: var(--sub); }
+    .top-actions { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--sub); flex-wrap: wrap; }
+    .content { padding: 14px 16px 16px; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; align-items: start; }
+    .sheet { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+    .sheet-hd { padding: 12px 14px 10px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .sheet-title { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+    .sheet-title h1 { margin: 0; font-size: 18px; font-weight: 700; }
+    .sheet-title .sub { color: var(--sub); font-size: 12px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn { border: 1px solid var(--line); background: #fff; color: var(--text); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .btn:hover { background: #f8fafc; }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-primary:hover { background: var(--blue2); }
+    .btn-soft { background: #f8fbff; color: var(--blue); border-color: #cfe2ff; }
+    .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #c7f0d1; color: var(--green); background: #f0fdf4; }
+    .sheet-bd { padding: 12px 14px 14px; }
+    .filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+    .field input, .field select, .field textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font: inherit; background: #fff; color: var(--text); }
+    .field textarea { min-height: 88px; resize: vertical; }
+    .table-card { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+    .table-tools { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; background: #fafcff; }
+    .table-tools .note { font-size: 12px; color: var(--sub); }
+    .table-scroll { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1100px; font-size: 13px; }
+    th, td { border-bottom: 1px solid #eef2f7; padding: 10px 10px; text-align: left; white-space: nowrap; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; }
+    tr:hover td { background: #fbfdff; }
+    .empty { padding: 70px 20px; text-align: center; color: var(--sub); font-size: 14px; }
+    .summary { margin-top: 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .summary-card { border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(180deg, #fff, #fbfcfe); padding: 12px 14px; box-shadow: var(--shadow); }
+    .summary-card .k { font-size: 12px; color: var(--sub); }
+    .summary-card .v { font-size: 18px; font-weight: 700; margin-top: 4px; }
+    .summary-card .d { font-size: 12px; color: var(--sub); margin-top: 6px; line-height: 1.6; }
+    .side { display: grid; gap: 12px; }
+    .side-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+    .side-card .hd { padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 700; background: #fbfcff; }
+    .side-card .bd { padding: 12px 14px; }
+    .flow { display: grid; gap: 10px; }
+    .step { position: relative; padding-left: 22px; font-size: 13px; line-height: 1.6; color: #334155; }
+    .step::before { content: ""; position: absolute; left: 2px; top: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+    .copy-box { border: 1px dashed #cbd5e1; background: #f8fafc; border-radius: 10px; padding: 10px; white-space: pre-wrap; line-height: 1.7; font-size: 12px; color: #334155; }
+    .footer { padding: 10px 14px 14px; border-top: 1px solid var(--line); background: #fafafa; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .footer-note { color: var(--sub); font-size: 12px; line-height: 1.6; }
+    .tip { color: var(--orange); font-weight: 700; }
+    .modal-mask { position: fixed; inset: 0; background: var(--overlay); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+    .modal-mask.show { display: flex; }
+    .modal { width: min(860px, 100%); background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(15, 23, 42, .25); overflow: hidden; }
+    .modal-sm { width: min(560px, 100%); }
+    .modal-hd { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #fbfcff; }
+    .modal-hd h3 { margin: 0; font-size: 16px; }
+    .modal-bd { padding: 16px; }
+    .modal-ft { padding: 12px 16px 16px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--line); background: #fafafa; }
+    .modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .modal-grid .full { grid-column: 1 / -1; }
+    .radio-list { display: grid; gap: 10px; }
+    .radio-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+    .radio-item input { margin-top: 3px; }
+    .mini-note { font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .pill { padding: 5px 10px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 12px; border: 1px solid #dbeafe; }
+    .log-box { border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; padding: 12px; font-size: 12px; line-height: 1.8; color: #334155; white-space: pre-wrap; }
+    .close-x { border: 0; background: transparent; font-size: 20px; cursor: pointer; color: var(--sub); line-height: 1; }
+    @media (max-width: 1100px) {
+      .workspace { grid-template-columns: 1fr; }
+      .side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 820px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .content { padding: 10px; }
+      .filters, .summary, .side, .modal-grid { grid-template-columns: 1fr; }
+      .topbar { padding: 0 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="侧边导航">
+      <div class="logo">T</div>
+      <div class="nav-dot">运</div>
+      <div class="nav-dot active">优</div>
+      <div class="nav-dot">折</div>
+      <div class="nav-dot">单</div>
+      <div class="nav-dot">设</div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="crumbs">运费管理 / 运费优惠与折扣 / 自动生成文档</div>
+        <div class="top-actions">
+          <span>创建于 2026-05-08 16:20:11</span>
+          <a href="#" style="color:var(--blue); text-decoration:none;">上一条</a>
+          <a href="#" style="color:var(--blue); text-decoration:none;">下一条</a>
+          <a href="#" style="color:var(--blue); text-decoration:none;">返回</a>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="workspace">
+          <section class="sheet">
+            <div class="sheet-hd">
+              <div class="sheet-title">
+                <h1>自动生成运费优惠和运费折扣</h1>
+                <span class="sub">文档中心 / 规则配置 / 自动生成</span>
+              </div>
+              <div class="toolbar">
+                <span class="badge">已启用</span>
+                <button class="btn btn-soft" type="button" id="openNewDocBtn">新建文档</button>
+                <button class="btn btn-primary" type="button" id="generateBtn">生成文档</button>
+              </div>
+            </div>
+
+            <div class="sheet-bd">
+              <div class="filters">
+                <div class="field">
+                  <label>客户</label>
+                  <input type="text" value="腾信物流-直营网" />
+                </div>
+                <div class="field">
+                  <label>运费产品</label>
+                  <input type="text" value="FBA头程 / 海运" />
+                </div>
+                <div class="field">
+                  <label>生效时间</label>
+                  <input type="text" value="2026-05-08 00:00" />
+                </div>
+                <div class="field">
+                  <label>失效时间</label>
+                  <input type="text" value="2026-06-30 23:59" />
+                </div>
+                <div class="field">
+                  <label>生成方式</label>
+                  <select>
+                    <option>按规则自动生成</option>
+                    <option>按模板生成</option>
+                    <option>按选中单据生成</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="table-card">
+                <div class="table-tools">
+                  <div class="note">生成结果将自动落入列表，支持人工校验、编辑、作废与重新生成。</div>
+                  <div class="toolbar">
+                    <button class="btn" type="button" id="openBatchBtn">批量生成</button>
+                    <button class="btn" type="button" id="openLogBtn">查看日志</button>
+                    <button class="btn" type="button">导出</button>
+                  </div>
+                </div>
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>序号</th>
+                        <th>文档编号</th>
+                        <th>客户</th>
+                        <th>优惠类型</th>
+                        <th>折扣/优惠值</th>
+                        <th>币种</th>
+                        <th>适用范围</th>
+                        <th>生效时间</th>
+                        <th>失效时间</th>
+                        <th>创建人</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td colspan="11"><div class="empty">暂无数据</div></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="summary">
+                <div class="summary-card">
+                  <div class="k">今日自动生成</div>
+                  <div class="v">0</div>
+                  <div class="d">规则匹配后生成的运费优惠/折扣文档数量。</div>
+                </div>
+                <div class="summary-card">
+                  <div class="k">待人工确认</div>
+                  <div class="v">0</div>
+                  <div class="d">已生成但未通过审核的文档，支持一键确认。</div>
+                </div>
+                <div class="summary-card">
+                  <div class="k">生成异常</div>
+                  <div class="v" style="color:var(--red);">0</div>
+                  <div class="d">规则缺失、字段为空、日期冲突等异常会进入日志。</div>
+                </div>
+              </div>
+
+              <div style="margin-top:12px;" class="table-card">
+                <div class="table-tools">
+                  <div class="note">文档内容预览</div>
+                  <div class="toolbar">
+                    <button class="btn" type="button" id="copyContentBtn">复制内容</button>
+                    <button class="btn btn-soft" type="button">下载文档</button>
+                  </div>
+                </div>
+                <div style="padding:12px 14px;">
+                  <div class="copy-box" id="copyText">文档名称：运费优惠与运费折扣自动生成单
+客户：腾信物流-直营网
+产品：FBA头程 / 海运
+规则说明：系统根据客户等级、线路、重量段、目的地与活动周期自动匹配优惠策略。
+生成结果：折扣 8.5 折 / 运费优惠 300 元
+有效期：2026-05-08 至 2026-06-30
+备注：如规则冲突，优先级按“客户专属 > 活动规则 > 通用规则”执行。</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footer">
+              <div class="footer-note"><span class="tip">需求提示：</span>页面支持按条件自动生成文档，生成后可编辑、审核、导出；右侧提供状态流转与操作说明。</div>
+              <button class="btn" type="button">关闭</button>
+            </div>
+          </section>
+
+          <aside class="side">
+            <div class="side-card">
+              <div class="hd">操作流转</div>
+              <div class="bd">
+                <div class="flow">
+                  <div class="step">选择客户与运费产品</div>
+                  <div class="step">按规则自动生成文档</div>
+                  <div class="step">人工确认或调整</div>
+                  <div class="step">导出并下发执行</div>
+                </div>
+                <div class="pill-row">
+                  <span class="pill">支持新增弹窗</span>
+                  <span class="pill">支持日志弹窗</span>
+                  <span class="pill">支持批量生成</span>
+                </div>
+              </div>
+            </div>
+            <div class="side-card">
+              <div class="hd">规则说明</div>
+              <div class="bd" style="font-size:13px; line-height:1.8; color:#334155;">
+                支持按客户等级、目的地、重量段、线路、活动周期自动套用优惠或折扣策略；冲突时按优先级处理。
+              </div>
+            </div>
+            <div class="side-card">
+              <div class="hd">复制文案</div>
+              <div class="bd">
+                <div class="copy-box" style="margin:0;" id="sideCopy">折扣 8.5 折
+运费优惠 300 元
+有效期：2026-05-08 至 2026-06-30
+适用：FBA头程 / 海运</div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-mask" id="newDocModal" role="dialog" aria-modal="true" aria-labelledby="newDocTitle">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3 id="newDocTitle">新建运费优惠/折扣文档</h3>
+        <button class="close-x" type="button" data-close="newDocModal">&times;</button>
+      </div>
+      <div class="modal-bd">
+        <div class="modal-grid">
+          <div class="field">
+            <label>客户</label>
+            <input type="text" value="腾信物流-直营网" />
+          </div>
+          <div class="field">
+            <label>优惠类型</label>
+            <select>
+              <option>运费折扣</option>
+              <option>运费优惠</option>
+              <option>阶梯优惠</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>折扣/优惠值</label>
+            <input type="text" value="8.5折 / 300元" />
+          </div>
+          <div class="field">
+            <label>币种</label>
+            <select>
+              <option>CNY</option>
+              <option>USD</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>生效时间</label>
+            <input type="text" value="2026-05-08 00:00" />
+          </div>
+          <div class="field">
+            <label>失效时间</label>
+            <input type="text" value="2026-06-30 23:59" />
+          </div>
+          <div class="field full">
+            <label>适用范围</label>
+            <input type="text" value="FBA头程 / 海运 / 美国仓" />
+          </div>
+          <div class="field full">
+            <label>备注</label>
+            <textarea>支持按客户等级、重量段、目的地自动匹配优惠策略。</textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn" type="button" data-close="newDocModal">取消</button>
+        <button class="btn btn-primary" type="button" id="saveDocBtn">保存并生成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="batchModal" role="dialog" aria-modal="true" aria-labelledby="batchTitle">
+    <div class="modal modal-sm">
+      <div class="modal-hd">
+        <h3 id="batchTitle">批量生成设置</h3>
+        <button class="close-x" type="button" data-close="batchModal">&times;</button>
+      </div>
+      <div class="modal-bd">
+        <div class="radio-list">
+          <label class="radio-item"><input type="radio" name="batchType" checked /><div><div>按客户等级批量生成</div><div class="mini-note">适合统一活动周期。</div></div></label>
+          <label class="radio-item"><input type="radio" name="batchType" /><div><div>按线路批量生成</div><div class="mini-note">适合多线路优惠同步配置。</div></div></label>
+          <label class="radio-item"><input type="radio" name="batchType" /><div><div>按选中单据批量生成</div><div class="mini-note">适合局部补发。</div></div></label>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn" type="button" data-close="batchModal">取消</button>
+        <button class="btn btn-primary" type="button" id="confirmBatchBtn">开始生成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="logModal" role="dialog" aria-modal="true" aria-labelledby="logTitle">
+    <div class="modal modal-sm">
+      <div class="modal-hd">
+        <h3 id="logTitle">生成日志</h3>
+        <button class="close-x" type="button" data-close="logModal">&times;</button>
+      </div>
+      <div class="modal-bd">
+        <div class="log-box">2026-05-08 16:20:11 | 系统待命
+2026-05-08 16:20:12 | 检查到客户：腾信物流-直营网
+2026-05-08 16:20:13 | 规则命中：FBA头程 / 海运
+2026-05-08 16:20:14 | 预估生成结果：8.5折 + 300元优惠
+2026-05-08 16:20:15 | 状态：可提交人工确认</div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn btn-primary" type="button" data-close="logModal">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const copyText = document.getElementById('copyText').innerText;
+      const sideCopy = document.getElementById('sideCopy').innerText;
+      const modals = {
+        newDocModal: document.getElementById('newDocModal'),
+        batchModal: document.getElementById('batchModal'),
+        logModal: document.getElementById('logModal')
+      };
+
+      function openModal(id) { modals[id].classList.add('show'); }
+      function closeModal(id) { modals[id].classList.remove('show'); }
+      function copyToClipboard(text, okMsg) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => alert(okMsg)).catch(() => alert('复制失败，请手动复制。'));
+        } else {
+          alert('当前浏览器不支持自动复制，请手动复制。');
+        }
+      }
+
+      document.getElementById('openNewDocBtn').addEventListener('click', () => openModal('newDocModal'));
+      document.getElementById('openBatchBtn').addEventListener('click', () => openModal('batchModal'));
+      document.getElementById('openLogBtn').addEventListener('click', () => openModal('logModal'));
+      document.getElementById('generateBtn').addEventListener('click', () => openModal('newDocModal'));
+      document.getElementById('copyContentBtn').addEventListener('click', () => copyToClipboard(copyText, '已复制文档内容（MVP演示）。'));
+      document.getElementById('saveDocBtn').addEventListener('click', () => { closeModal('newDocModal'); alert('已保存并生成（MVP演示）。'); });
+      document.getElementById('confirmBatchBtn').addEventListener('click', () => { closeModal('batchModal'); alert('已开始批量生成（MVP演示）。'); });
+
+      document.querySelectorAll('[data-close]').forEach(el => {
+        el.addEventListener('click', () => closeModal(el.getAttribute('data-close')));
+      });
+      Object.values(modals).forEach(mask => {
+        mask.addEventListener('click', (e) => { if (e.target === mask) mask.classList.remove('show'); });
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') Object.values(modals).forEach(mask => mask.classList.remove('show'));
+      });
+    })();
+  </script>
+</body>
+</html>

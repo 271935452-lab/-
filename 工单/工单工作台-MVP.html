@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工单工作台（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --teal: #0d9488;
+      --red: #dc2626;
+      --amber: #d97706;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .page { max-width: 1400px; margin: 0 auto; padding: 20px 16px 80px; }
+    .top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .top h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+    .meta { font-size: 13px; color: var(--sub); margin: 0; max-width: 520px; line-height: 1.55; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-ghost { background: #f0fdfa; border-color: #99f6e4; color: #0f766e; }
+    .crumb { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+    .crumb a { color: var(--primary); text-decoration: none; }
+    .role-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .role-bar span { font-size: 12px; color: var(--sub); margin-right: 4px; }
+    .role-chip {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      cursor: pointer;
+    }
+    .role-chip.active {
+      border-color: #5eead4;
+      background: #ecfdf5;
+      color: #0f766e;
+      font-weight: 600;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .kpi .label { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+    .kpi .num { font-size: 22px; font-weight: 700; }
+    .kpi .hint { font-size: 11px; color: #94a3b8; margin-top: 6px; line-height: 1.4; }
+    .kpi.warn { border-color: #fecaca; background: #fef2f2; }
+    .kpi.warn .num { color: var(--red); }
+    .kpi.amber { border-color: #fde68a; background: #fffbeb; }
+    .kpi.amber .num { color: var(--amber); }
+    .filters {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: flex-end;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .filters label { font-size: 11px; color: var(--sub); display: block; margin-bottom: 4px; }
+    .filters select, .filters input {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+      min-width: 120px;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 0;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 0;
+    }
+    .tabs button {
+      border: none;
+      background: transparent;
+      padding: 10px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--sub);
+      border-radius: 8px 8px 0 0;
+    }
+    .tabs button.active {
+      background: var(--card);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: 0 -1px 0 var(--card);
+      border: 1px solid var(--line);
+      border-bottom-color: var(--card);
+      margin-bottom: -1px;
+    }
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 0 12px 12px 12px;
+      overflow: auto;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { background: #f8fafc; font-weight: 600; color: #475569; white-space: nowrap; }
+    tr:hover td { background: #fafbfc; }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f1f5f9;
+      margin-right: 4px;
+      margin-top: 2px;
+    }
+    .tag.gq { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+    .tag.gh {               background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .tag.wd {               background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+    .st-wait { color: #b45309; font-weight: 600; }
+    .st-doing { color: #1d4ed8; font-weight: 600; }
+    .st-sla { color: var(--red); font-weight: 600; }
+    .link { color: var(--primary); text-decoration: none; font-weight: 600; }
+    .link:hover { text-decoration: underline; }
+    .split-note {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px dashed var(--line);
+      background: #f8fafc;
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="crumb"><a href="原型导航-工单模块.html">工单模块</a> / 工作台</div>
+    <div class="top">
+      <div>
+        <h1>工单工作台</h1>
+        <p class="meta">业务员、产品、港前（付雪线）、港后各客服、海外仓、财务各自看到「待处理 / 我发起 / 我参与」的体量。下方 KPI 演示<strong>当前视角角色</strong>下的统计（可切换）。已按港前、港后、尾端、异常督办、费用结案拆分场景与责任人。</p>
+      </div>
+      <div class="actions">
+        <a class="btn btn-ghost" href="原型导航-工单模块.html">导航</a>
+        <a class="btn btn-primary" href="新建工单-MVP.html">新建工单</a>
+      </div>
+    </div>
+
+    <div class="role-bar">
+      <span>演示视角：</span>
+      <button type="button" class="role-chip active" data-role="sales">业务员</button>
+      <button type="button" class="role-chip" data-role="product">产品</button>
+      <button type="button" class="role-chip" data-role="fu">港前客服（付雪）</button>
+      <button type="button" class="role-chip" data-role="after">港后客服（私卡/FBA/自提）</button>
+      <button type="button" class="role-chip" data-role="exception">异常督办</button>
+      <button type="button" class="role-chip" data-role="finance">财务</button>
+      <button type="button" class="role-chip" data-role="osw">海外仓</button>
+    </div>
+
+    <div class="kpi-grid" id="kpi">
+      <div class="kpi">
+        <div class="label">我需处理 / 待办</div>
+        <div class="num" data-k="todo">12</div>
+        <div class="hint">含待接收、处理中由当前角色负责的事项</div>
+      </div>
+      <div class="kpi">
+        <div class="label">我发起的工单</div>
+        <div class="num" data-k="mine">28</div>
+        <div class="hint">企微/系统发起后归属为发起人可见</div>
+      </div>
+      <div class="kpi amber">
+        <div class="label">SLA 即将到期（12h / 第6天）</div>
+        <div class="num" data-k="sla">4</div>
+        <div class="hint">媒体区断更类：第6天需跟进提醒</div>
+      </div>
+      <div class="kpi warn">
+        <div class="label">已超期未闭环</div>
+        <div class="num" data-k="over">1</div>
+        <div class="hint">仅演示：付雪未驳回也未接收逾时</div>
+      </div>
+      <div class="kpi">
+        <div class="label" id="kpiExtraLabel">海外仓待处理（与我相关）</div>
+        <div class="num" id="kpiExtraNum">6</div>
+        <div class="hint" id="kpiExtraHint">港前预报后海外仓未回传的条数</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div>
+        <label>阶段</label>
+        <select id="fStage">
+          <option value="">全部</option>
+          <option value="港前">港前</option>
+          <option value="港后">港后</option>
+          <option value="尾端">尾端</option>
+          <option value="异常督办">异常督办</option>
+          <option value="费用结案">费用结案</option>
+        </select>
+      </div>
+      <div>
+        <label>场景</label>
+        <select id="fScene">
+          <option value="">全部</option>
+          <option value="港前·拆柜前找付雪">港前·拆柜前找付雪</option>
+          <option value="港前·柜子计划拦截换标">港前·柜子计划拦截换标</option>
+          <option value="港前·拆柜报告异常">港前·拆柜报告异常</option>
+          <option value="港后·私卡改地址">港后·私卡改地址</option>
+          <option value="港后·私卡预约联系不上">港后·私卡预约联系不上</option>
+          <option value="港后·私卡改尾端方式">港后·私卡改尾端方式</option>
+          <option value="港后·FBA改仓">港后·FBA改仓</option>
+          <option value="港后·FBA改原单费用">港后·FBA改原单费用</option>
+          <option value="港后·FBA尾端派送">港后·FBA尾端派送</option>
+          <option value="港后·自提单卡派转自提">港后·自提单卡派转自提</option>
+          <option value="港后·自提到仓提货">港后·自提到仓提货</option>
+          <option value="尾端·未上架索赔">尾端·未上架索赔</option>
+          <option value="异常督办·媒体区断更">异常督办·媒体区断更</option>
+          <option value="异常督办·预约联系不上">异常督办·预约联系不上</option>
+          <option value="费用结案·改原单费用">费用结案·改原单费用</option>
+        </select>
+      </div>
+      <div>
+        <label>关键词</label>
+        <input type="search" id="fQ" placeholder="工单号 / 柜号 / 运单" />
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button type="button" class="active" data-tab="all">全部</button>
+      <button type="button" data-tab="wait">待我处理</button>
+      <button type="button" data-tab="start">我发起</button>
+      <button type="button" data-tab="os">海外仓在处理</button>
+      <button type="button" data-tab="exception">异常督办</button>
+      <button type="button" data-tab="finance">财务待结案</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>工单号</th>
+            <th>标题 / 场景</th>
+            <th>阶段</th>
+            <th>状态</th>
+            <th>发起人</th>
+            <th>当前处理</th>
+            <th>SLA</th>
+            <th>更新</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="split-note">
+      <strong>港前 / 港后分流说明：</strong>「柜子计划、拦截、换标、共享表、预报海外仓」归港前（付雪接收/驳回）；私卡、FBA、自提、单卡派转派、改尾端方式归港后；「未上架」走尾端索赔子流程（亚马逊客服 → 海外仓核实 → 财务）。单卡派原流程在系统中以「生成工单 → 转工单 → 转自提」类型记录，便于统计与审计。
+    </div>
+  </div>
+  <script>
+    const rows = [
+      { id: "WO-202605-001", title: "拆柜前找付雪", stage: "港前", scene: "港前·拆柜前找付雪", status: "待付雪接收", starter: "张三·业务", handler: "付雪", sla: "企微已推 · 8h 内接收", tab: "wait", role: "fu", osw: false },
+      { id: "WO-202605-002", title: "柜子计划拦截换标预报", stage: "港前", scene: "港前·柜子计划拦截换标", status: "海外仓预报中", starter: "系统·柜子计划", handler: "共享表 / 海外仓", sla: "24h 内更新", tab: "os", role: "osw", osw: true },
+      { id: "WO-202605-003", title: "拆柜报告少件复核", stage: "港前", scene: "港前·拆柜报告异常", status: "海外仓核实中", starter: "系统·拆柜", handler: "海外仓拆柜组", sla: "24h 内清点反馈", tab: "os", role: "osw", osw: true },
+      { id: "WO-202605-004", title: "私卡改派送地址", stage: "港后", scene: "港后·私卡改地址", status: "处理中", starter: "李四·业务", handler: "私卡客服-阳", sla: "指令当日回执", tab: "wait", role: "after", osw: false },
+      { id: "WO-202605-005", title: "私卡预约联系不上", stage: "港后", scene: "港后·私卡预约联系不上", status: "待客服回电客户", starter: "私卡客服", handler: "港后客服值班", sla: "反向工单 4h", tab: "wait", role: "after", osw: false },
+      { id: "WO-202605-006", title: "FBA 改仓", stage: "港后", scene: "港后·FBA改仓", status: "待海外仓排期", starter: "王五·产品", handler: "海外仓私卡组", sla: "—", tab: "os", role: "osw", osw: true },
+      { id: "WO-202605-007", title: "FBA 改原单费用", stage: "费用结案", scene: "费用结案·改原单费用", status: "待财务确认", starter: "钱七·业务", handler: "财务", sla: "当日受理 / 2 天复核", tab: "finance", role: "finance", osw: false },
+      { id: "WO-202605-008", title: "单卡派 → 转自提", stage: "港后", scene: "港后·自提单卡派转自提", status: "待自提客服接单", starter: "赵六·业务", handler: "自提客服-李俊", sla: "转派 2h 内", tab: "wait", role: "after", osw: false },
+      { id: "WO-202605-009", title: "尾端改派送方式", stage: "港后", scene: "港后·私卡改尾端方式", status: "处理中", starter: "周九·产品", handler: "FBA客服", sla: "—", tab: "start", role: "product", osw: false },
+      { id: "WO-202605-010", title: "ASIN 未上架索赔", stage: "尾端", scene: "尾端·未上架索赔", status: "待海外仓3日内反馈", starter: "孙八·业务", handler: "海外仓+财务", sla: "D+3 海外仓", tab: "finance", role: "finance", osw: true },
+      { id: "WO-202605-011", title: "业务媒体区断更跟进", stage: "异常督办", scene: "异常督办·媒体区断更", status: "已接收·调查中", starter: "刘奎林", handler: "媒体运营", sla: "12h 开查 · 第6天跟进", tab: "exception", role: "exception", osw: false, slaUrgent: true },
+      { id: "WO-202605-012", title: "预约送仓联系人空号", stage: "异常督办", scene: "异常督办·预约联系不上", status: "待客服回电客户", starter: "私卡客服", handler: "港后客服值班", sla: "反向工单 4h", tab: "exception", role: "exception", osw: false },
+      { id: "WO-202605-013", title: "货已接回改发货渠道", stage: "港后", scene: "港后·FBA尾端派送", status: "已通知配仓组", starter: "周九·产品", handler: "配仓组", sla: "—", tab: "start", role: "product", osw: false },
+    ];
+
+    const kpiByRole = {
+      sales: { todo: 12, mine: 28, sla: 4, over: 1, extraLabel: "关联海外仓处理中", extraNum: 6, extraHint: "我发起且海外仓未结的条数" },
+      product: { todo: 5, mine: 14, sla: 1, over: 0, extraLabel: "产品关注·跨部门", extraNum: 3, extraHint: "@产品 的协同单" },
+      fu: { todo: 18, mine: 2, sla: 6, over: 2, extraLabel: "待我接收/驳回", extraNum: 18, extraHint: "企微工单池" },
+      after: { todo: 34, mine: 6, sla: 9, over: 0, extraLabel: "港后待办", extraNum: 4, extraHint: "私卡 / FBA / 自提处理池" },
+      exception: { todo: 11, mine: 3, sla: 7, over: 1, extraLabel: "异常督办池", extraNum: 8, extraHint: "断更、联系不上、超期跟进" },
+      finance: { todo: 9, mine: 1, sla: 2, over: 0, extraLabel: "待结案索赔 / 费用", extraNum: 5, extraHint: "未上架索赔与改原单费用" },
+      osw: { todo: 42, mine: 0, sla: 5, over: 1, extraLabel: "本仓待办总量", extraNum: 42, extraHint: "各组汇总（提柜拆柜/私卡/快递自提）" },
+    };
+
+    let currentRole = "sales";
+    let currentTab = "all";
+
+    function stageTag(s) {
+      if (s === "港前") return "tag gq";
+      if (s === "港后") return "tag gh";
+      return "tag wd";
+    }
+
+    function renderTable() {
+      const stage = document.getElementById("fStage").value;
+      const scene = document.getElementById("fScene").value;
+      const q = document.getElementById("fQ").value.trim().toLowerCase();
+      const tb = document.getElementById("tbody");
+      const filtered = rows.filter(r => {
+        if (stage && r.stage !== stage) return false;
+        if (scene && r.scene !== scene) return false;
+        if (q && !`${r.id} ${r.title}`.toLowerCase().includes(q)) return false;
+        if (currentTab === "wait") {
+          if (currentRole === "fu" && r.role !== "fu") return false;
+          if (currentRole === "after" && r.role !== "after") return false;
+          if (currentRole === "osw" && r.role !== "osw") return false;
+          if (currentRole === "exception" && r.stage !== "异常督办") return false;
+          if (currentRole === "sales" && !["待付雪接收", "处理中"].includes(r.status)) return false;
+        }
+        if (currentTab === "start") {
+          if (!(r.tab === "start" || r.starter.includes("业务"))) return false;
+        }
+        if (currentTab === "os") return r.osw === true;
+        if (currentTab === "exception") return r.stage === "异常督办";
+        if (currentTab === "finance") return r.role === "finance" || r.stage === "费用结案" || r.scene === "尾端·未上架索赔";
+        return true;
+      });
+
+      tb.innerHTML = filtered.length
+        ? filtered.map(r => {
+            const stClass = r.slaUrgent ? "st-sla" : (r.status.includes("待") ? "st-wait" : "st-doing");
+            return `<tr>
+              <td><a class="link" href="工单详情-MVP.html#${r.id}">${r.id}</a></td>
+              <td>${r.title}<br/><span class="tag">${r.scene}</span></td>
+              <td><span class="${stageTag(r.stage)}">${r.stage}</span></td>
+              <td class="${stClass}">${r.status}</td>
+              <td>${r.starter}</td>
+              <td>${r.handler}</td>
+              <td style="font-size:12px;color:#64748b">${r.sla}</td>
+              <td>05-05 10:20</td>
+            </tr>`;
+          }).join("")
+        : `<tr><td colspan="8" style="text-align:center;padding:24px;color:#94a3b8">无匹配数据（演示筛选项）</td></tr>`;
+    }
+
+    function applyKpi() {
+      const k = kpiByRole[currentRole];
+      document.querySelector("[data-k=todo]").textContent = k.todo;
+      document.querySelector("[data-k=mine]").textContent = k.mine;
+      document.querySelector("[data-k=sla]").textContent = k.sla;
+      document.querySelector("[data-k=over]").textContent = k.over;
+      document.getElementById("kpiExtraLabel").textContent = k.extraLabel;
+      document.getElementById("kpiExtraNum").textContent = k.extraNum;
+      document.getElementById("kpiExtraHint").textContent = k.extraHint;
+    }
+
+    document.querySelectorAll(".role-chip").forEach(el => {
+      el.addEventListener("click", () => {
+        document.querySelectorAll(".role-chip").forEach(c => c.classList.remove("active"));
+        el.classList.add("active");
+        currentRole = el.getAttribute("data-role");
+        applyKpi();
+        renderTable();
+      });
+    });
+
+    document.querySelectorAll(".tabs button").forEach(el => {
+      el.addEventListener("click", () => {
+        document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+        el.classList.add("active");
+        currentTab = el.getAttribute("data-tab");
+        renderTable();
+      });
+    });
+
+    ["fStage", "fScene", "fQ"].forEach(id => {
+      document.getElementById(id).addEventListener("input", renderTable);
+      document.getElementById(id).addEventListener("change", renderTable);
+    });
+
+    applyKpi();
+    renderTable();
+  </script>
+</body>
+</html>

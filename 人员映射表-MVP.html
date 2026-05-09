@@ -800,6 +800,7 @@
               <th class="col-green">所属部门</th>
               <th class="col-green">小组</th>
               <th class="col-green">入职时间</th>
+              <th class="col-green">结算提成时间</th>
               <th class="col-green">转正时间</th>
               <th class="col-green">离职时间</th>
               <th class="col-yellow">映射生效起始</th>
@@ -823,6 +824,7 @@
               <td>深圳</td>
               <td>深圳客服部</td>
               <td>一组</td>
+              <td>2024-06-01</td>
               <td>2024-06-01</td>
               <td>2024-09-01</td>
               <td>—</td>
@@ -849,6 +851,7 @@
               <td>同行事业部</td>
               <td>华东组</td>
               <td>2022-03-01</td>
+              <td>2022-03-01</td>
               <td>2022-06-01</td>
               <td>2026-03-15</td>
               <td>2025-10-01</td>
@@ -874,6 +877,7 @@
               <td>直客销售部</td>
               <td>—</td>
               <td>2019-05-06</td>
+              <td>2026-04-01</td>
               <td>2019-08-01</td>
               <td>—</td>
               <td>2026-04-01</td>
@@ -1078,7 +1082,7 @@
         3）「已失效」用于映射区间已结束、未续签或到期未延期的记录。<br />
         4）「不发提成」用于提成计算不计提、或区间未覆盖等不参与计提场景（与映射生效可并存）。<br />
         5）批量导入、新增、编辑：<code>批量导入人员映射-MVP.html</code>、<code>新增人员映射-MVP.html</code>、<code>编辑人员映射-MVP.html?id=</code>。<br />
-        6）字段口径：<strong>映射生效</strong>判断人员是否归属该条映射；<strong>提成计算</strong>判断是否参与计提。<strong>分公司、提成角色</strong>为保存与导入校验必填项，并作为规则匹配上下文（与规则中心条件字段对齐）。<strong>指定规则包</strong>存规则包主数据编码，列表展示名称、编码、版本与发布状态（与「规则包-规则子母表」一致）；空则按规则中心自动匹配。
+        6）字段口径：<strong>映射生效</strong>判断人员是否归属该条映射；<strong>提成计算</strong>判断是否参与计提。<strong>分公司、提成角色</strong>为保存与导入校验必填项，并作为规则匹配上下文（与规则中心条件字段对齐）。<strong>指定规则包</strong>存规则包主数据编码，列表展示名称、编码、版本与发布状态（与「规则包-规则子母表」一致）；空则按规则中心自动匹配。<strong>结算提成时间</strong>（二期优化）：默认同步入职时间，可修改；用于阶梯入职分段等特殊口径对齐。
       </div>
     </div>
   </div>
@@ -2020,22 +2024,6 @@
       });
     })();
   </script>
-<script id="v1-topmenu-links">
-  (function () {
-    var nav = document.querySelector(".sidenav-nav");
-    if (!nav) return;
-    nav.innerHTML = "" +
-      "<div class='sidenav-section-label'>V1首版（开发）</div>" +
-      "<a href='月度提成归档与运单明细-MVP.html' class='sidenav-link'>月底归档与运单底表</a>" +
-      "<a href='表外导入成本列表-MVP.html' class='sidenav-link'>月度调整表</a>" +
-      "<a href='导入表外成本弹窗页-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 导入表外成本</a>" +
-      "<a href='导入绩效系数弹窗页-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 导入绩效系数</a>" +
-      "<a href='人员映射表-MVP.html' class='sidenav-link'>人员映射表</a>" +
-      "<a href='新增人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 新增人员映射</a>" +
-      "<a href='编辑人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 编辑人员映射</a>" +
-      "<a href='批量导入人员映射-MVP.html' class='sidenav-link' style='padding-left:32px;font-size:13px;'>- 批量导入人员映射</a>";
-  })();
-</script>
 <script id="commission-nav-active">
 (function () {
   var cur = "";
@@ -2068,6 +2056,7 @@
   .prd-side p, .prd-side li { font-size: 12px; color: #334155; line-height: 1.6; }
   .prd-side ul { margin: 0; padding-left: 16px; }
   .prd-chip { display: inline-block; font-size: 11px; color: #1d4ed8; background: #dbeafe; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; }
+  .prd-chip.phase2 { color: #047857; background: #d1fae5; border: 1px solid #a7f3d0; }
   @media (max-width: 1500px) { body { padding-right: 0; } .prd-side { display: none; } }
 </style>
 <aside class="prd-side" aria-label="PRD 文档">
@@ -2086,11 +2075,13 @@
     <li>唯一主键：员工工号（业务上由<strong>员工昵称 + 员工姓名</strong>与员工主数据匹配后落点；见下「导入 / 编辑」校验差异）。</li>
     <li><strong>批量导入</strong>：以模板中的<strong>员工昵称、员工姓名</strong>与<strong>员工管理/主数据</strong>匹配并解析<strong>工号</strong>后入库；匹配不上则预检失败，需修正模板或先维护主数据。</li>
     <li><strong>编辑保存</strong>：仅对<strong>本次提交中变更的新值</strong>做与主数据/业务规则相关的校验；<strong>本条记录已落库的历史字段（如入库时的昵称、姓名等快照）不再与当前员工管理数据做回溯比对</strong>——员工管理侧若已修改花名册，历史上传数据与现网不一致为预期情况，<strong>不因「旧数据对不上现网」而拦截保存</strong>。</li>
+    <li><span class="prd-chip phase2">二期优化</span> <strong>结算提成时间</strong>：用于业绩/提成起算参考日期；<strong>默认等于入职时间</strong>，允许在新增/编辑/导入中单列维护（晚于入职的场景单独标记）。与「映射生效」「提成计算」区间并行存储；命中规则以产品口径为准。</li>
     <li>必填：分公司、提成角色、映射起始、人员状态。</li>
     <li>区间口径：默认“映射区间 = 提成区间”；若单独填写提成区间，必须被映射区间完全包含。</li>
     <li><strong>映射生效状态</strong>（列表列）：仅区分 <strong>生效中</strong> 与 <strong>已失效</strong>。当前业务日期落在映射生效起始～截止（截止为「长期」则视为未到期）内为<strong>生效中</strong>；否则为<strong>已失效</strong>。<strong>不提供「即将到期」预警态</strong>；到期前提醒通过调度/报表或运维配置另行处理。</li>
     <li><strong>提成计算状态</strong>（列表列，对应计提是否在区间内；业务上亦称提成发放口径）：仅区分 <strong>计提中</strong> 与 <strong>已失效</strong>。当前业务日期落在提成计算起始～截止内、且满足计提前置条件为<strong>计提中</strong>；区间外或停止计提/不发提成等等价场景展示为<strong>已失效</strong>（细分原因可走备注与后台枚举）。<strong>不提供「即将到期」预警态</strong>。</li>
     <li>可发提成时间：不可超过映射生效区间上限。</li>
+    <li><strong>人员映射关联规则</strong>：按<strong>分公司 + 提成角色 + 生效时间（账期）</strong>匹配规则包；若人员映射同时存在<strong>分公司 + 部门 + 小组</strong>，则优先按<strong>分公司 + 部门 + 小组 + 提成角色 + 生效时间（账期）</strong>匹配规则包。若命中多个规则包，则关联结果置空；若未命中，则关联结果置空。</li>
   </ul>
   <h4>交互说明</h4>
   <ul>
@@ -2125,7 +2116,10 @@
   </ul>
   <h4>与其他模块联动逻辑</h4>
   <ul>
-    <li>规则包：按分公司+提成角色+账期命中可用规则。</li>
+    <li><strong>规则包匹配主线</strong>：按<strong>分公司 + 提成角色 + 生效时间（账期）</strong>匹配规则包；人员映射中的分公司、提成角色与当期账期需同时落在有效区间内。</li>
+    <li><strong>组织维度优先级</strong>：若人员映射同时存在<strong>分公司 + 部门 + 小组</strong>，则优先按<strong>分公司 + 部门 + 小组 + 提成角色 + 生效时间（账期）</strong>去匹配规则包；若该更细粒度维度未命中，再视产品策略决定是否回退到仅按<strong>分公司 + 提成角色 + 生效时间（账期）</strong>匹配。当前原型默认<strong>不自动回退</strong>，避免跨组织误命中。</li>
+    <li><strong>多命中处理</strong>：同一条映射在同一账期内若命中多个规则包，则关联结果置空，并记录为冲突数据，供人工处理。</li>
+    <li><strong>未命中处理</strong>：若无任何规则包命中，则关联结果置空，进入未关联规则页签。</li>
     <li>月度调整：按员工工号+月度关联绩效系数与表外调整。</li>
     <li>月底归档：取归档批次账期内有效映射记录作为归因依据。</li>
   </ul>

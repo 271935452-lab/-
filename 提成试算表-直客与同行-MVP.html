@@ -1,0 +1,1315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>提成试算表（人·月度·多维口径）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --green-head: #86efac;
+      --green-cell: #bbf7d0;
+      --purple-head: #e9d5ff;
+      --purple-edge: #c084fc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+    .app-sidenav {
+      width: 232px;
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      padding: 0 0 24px;
+    }
+    .sidenav-brand { padding: 20px 18px 16px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+    .sidenav-title { font-size: 17px; font-weight: 700; }
+    .sidenav-sub { font-size: 11px; color: var(--sub); margin-top: 6px; }
+    .sidenav-nav { flex: 1; overflow-y: auto; }
+    .sidenav-section-label { font-size: 11px; font-weight: 600; color: #9ca3af; padding: 14px 18px 6px; }
+    .sidenav-link {
+      display: block;
+      padding: 9px 18px 9px 15px;
+      margin: 0 8px 2px;
+      font-size: 14px;
+      color: #374151;
+      text-decoration: none;
+      border-radius: 8px;
+      border-left: 3px solid transparent;
+    }
+    .sidenav-link:hover { background: #f8fafc; color: var(--primary); }
+    .sidenav-link.active {
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 600;
+      border-left-color: var(--primary);
+    }
+    .app-main { flex: 1; min-width: 0; background: var(--bg); }
+    .page { padding: 20px 16px 40px; max-width: 100%; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .header h1 { margin: 0; font-size: 22px; }
+    .header p { margin: 8px 0 0; color: var(--sub); font-size: 13px; max-width: 960px; line-height: 1.55; }
+    .pill-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .pill {
+      border: 1px solid var(--line);
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .pill.active { border-color: var(--primary); color: var(--primary); font-weight: 600; background: #eff6ff; }
+    .meta-bar {
+      font-size: 13px;
+      color: #374151;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      line-height: 1.65;
+    }
+    .meta-bar strong { color: #111827; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+    .btn-primary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-link {
+      border: none;
+      background: none;
+      padding: 0;
+      color: var(--primary);
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+      font-family: inherit;
+    }
+    .btn-link:hover { color: var(--primary-hover); }
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .sel-hint { font-size: 13px; color: var(--sub); }
+    .sel-hint strong { color: #111827; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      overflow: hidden;
+    }
+    .card-cap {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--sub);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 240px); }
+    table.trial-sheet {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 2380px;
+      font-size: 12px;
+    }
+    .trial-sheet th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid #e7e5e4;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+      background: #fafafa;
+      color: #44403c;
+    }
+    .trial-sheet th.grp-business { background: #f1f5f9; }
+    .trial-sheet th.grp-type {
+      background: var(--green-head);
+      color: #14532d;
+      box-shadow: inset 0 0 0 1px #22c55e;
+    }
+    .trial-sheet th.grp-finance { background: #fff7ed; color: #9a3412; }
+    .trial-sheet th.grp-peer { background: #dbeafe; color: #1e3a8a; }
+    .trial-sheet th.grp-commission {
+      background: var(--purple-head);
+      color: #581c87;
+      box-shadow: inset 0 -2px 0 var(--purple-edge);
+    }
+    .trial-sheet td {
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid #f5f5f4;
+      vertical-align: middle;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .trial-sheet td.text-left { text-align: left; }
+    .trial-sheet td.cell-type {
+      background: var(--green-cell);
+      font-weight: 600;
+      color: #14532d;
+      text-align: center;
+    }
+    .trial-sheet tbody tr:hover td { background: #fafcff; }
+    .trial-sheet tbody tr:hover td.cell-type { background: #86efac; }
+    .trial-sheet .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
+    .accrued-yes {
+      font-size: 12px;
+      font-weight: 600;
+      color: #047857;
+      background: #d1fae5;
+      padding: 2px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+    .accrued-no {
+      font-size: 12px;
+      font-weight: 600;
+      color: #b45309;
+      background: #fef3c7;
+      padding: 2px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+    .trial-sheet td.text-center { text-align: center; }
+    .pay-hit {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #047857;
+      background: #d1fae5;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      cursor: help;
+    }
+    .pay-near {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #b45309;
+      background: #fef3c7;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      cursor: help;
+    }
+    .pay-block {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #b91c1c;
+      background: #fee2e2;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      cursor: help;
+    }
+    .ar-mini-note {
+      font-size: 11px;
+      color: var(--sub);
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+    .tag-direct { color: #1d4ed8; }
+    .tag-peer { color: #a16207; }
+    .tag-service { color: #0f766e; }
+    .tag-channel { color: #7c3aed; }
+    .na { color: #94a3b8; }
+    .foot {
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.65;
+      border-top: 1px solid var(--line);
+    }
+    .hidden-row { display: none; }
+    body.modal-open { overflow: hidden; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal-box {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+      max-width: 920px;
+      width: 100%;
+      max-height: min(88vh, 720px);
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-box.modal-wide { max-width: 1040px; max-height: min(90vh, 800px); }
+    .modal-hd {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .modal-hd h2 { margin: 0; font-size: 17px; }
+    .modal-hd p { margin: 6px 0 0; font-size: 12px; color: var(--sub); line-height: 1.5; }
+    .modal-close {
+      border: none;
+      background: #f3f4f6;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      color: #4b5563;
+      flex-shrink: 0;
+    }
+    .modal-close:hover { background: #e5e7eb; }
+    .modal-bd { padding: 12px 18px; overflow: auto; flex: 1; min-height: 0; }
+    .modal-ft {
+      padding: 12px 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .log-table th {
+      background: #f8fafc;
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      white-space: nowrap;
+    }
+    .log-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .log-table td.col-no { width: 44px; color: var(--sub); text-align: center; }
+    .log-table td.col-by { width: 88px; color: var(--sub); font-size: 11px; }
+    .log-table td.col-time {
+      width: 148px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .log-table td.col-num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .log-table th.col-num { text-align: right; }
+    .log-table tr.row-highlight td { background: #dbeafe; }
+    .issue-summary {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.65;
+      margin-bottom: 12px;
+    }
+    .issue-summary ul { margin: 8px 0 0; padding-left: 18px; }
+    .issue-choice {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .issue-choice strong { color: #111827; }
+    .issue-choice.recommended { border-color: #93c5fd; background: #eff6ff; }
+    .field-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font-size: 13px; }
+    .field-check input { margin-top: 3px; }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #111827;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      z-index: 1100;
+      opacity: 0;
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+      max-width: 92vw;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .chk-col { width: 36px; text-align: center; }
+    .trial-sheet th.chk-col,
+    .trial-sheet td.chk-col {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      background: #fff;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    .trial-sheet thead th.chk-col { background: #f1f5f9; z-index: 4; }
+    @media (max-width: 900px) {
+      .app-shell { flex-direction: column; }
+      .app-sidenav { width: 100%; border-right: none; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">试算</div>
+        <a href="统一试算结果-正向与异常.html" class="sidenav-link">统一试算结果</a>
+        <a href="提成试算结果.html" class="sidenav-link">提成试算结果</a>
+        <a href="提成试算日志-MVP.html" class="sidenav-link">提成试算日志</a>
+        <a href="提成试算表-直客与同行-MVP.html" class="sidenav-link active" aria-current="page">提成试算表（多维口径）</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+      <div class="page">
+        <div class="header">
+          <div>
+            <h1>提成试算表（人 · 月度聚合）</h1>
+            <p>
+              <strong>无运单号：</strong>每行 = 同一员工在归因<strong>月度</strong>内的汇总结果（原型示意）。
+              <strong>计提口径分流：</strong>直客按<strong>计算净利润</strong>参与阶梯；同行按<strong>计费重 × 固定提成点（元/kg）</strong>；
+              客服按<strong>应收合计</strong>计提；渠道按<strong>对内毛利</strong>（毛利 − 渠道返点 − 毛利性质导入扣减，示意对齐 CHANNEL）。
+              <strong>是否计提</strong>标识当期是否进入正式计提/发放链路；为「否」时仍可保留试算金额供核对。
+              <strong>发放回款核验</strong>对照配置的回款率下限提示「已达 / 临近 / 未达」；明细入口列出<strong>未核销账单费用</strong>供财务人工决定是否纳入本轮发放。
+            </p>
+          </div>
+          <div>
+            <button type="button" class="btn" onclick="window.print()">打印</button>
+          </div>
+        </div>
+
+        <div class="meta-bar">
+          <strong>试算批次：</strong><span class="mono">TRIAL-PERSON-MONTH-202603</span>
+          &nbsp;·&nbsp; <strong>币种：</strong>CNY
+          &nbsp;·&nbsp; <strong>视图：</strong><span id="viewLabel">全部</span>
+        </div>
+
+        <div class="pill-row" role="tablist" aria-label="业务类型筛选">
+          <button type="button" class="pill active" data-filter="all" role="tab" aria-selected="true">全部</button>
+          <button type="button" class="pill" data-filter="直客" role="tab" aria-selected="false">直客</button>
+          <button type="button" class="pill" data-filter="同行" role="tab" aria-selected="false">同行</button>
+          <button type="button" class="pill" data-filter="客服" role="tab" aria-selected="false">客服</button>
+          <button type="button" class="pill" data-filter="渠道" role="tab" aria-selected="false">渠道</button>
+        </div>
+
+        <div class="card">
+          <div class="card-cap">
+            <div class="toolbar-actions">
+              <button type="button" class="btn" id="btnSelectVisible">全选当前视图</button>
+              <button type="button" class="btn btn-primary" id="btnOpenIssue" disabled>确认发放提成…</button>
+              <span class="sel-hint" id="selHint">已选 <strong>0</strong> 人 · 合计最终提成 <strong>0.00</strong> CNY</span>
+            </div>
+            <span style="font-size:12px;color:var(--sub);">横向滚动 · 「计费日志」=计提追溯 · 「未回款明细」= 未核销费用便于放款人工核验（回款下限阈值以实现配置为准）</span>
+          </div>
+          <div class="table-wrap">
+            <table class="trial-sheet">
+              <thead>
+                <tr>
+                  <th class="grp-business chk-col" scope="col">
+                    <input type="checkbox" id="chkAllTrial" title="全选当前视图可见行" aria-label="全选当前视图可见行" />
+                  </th>
+                  <th class="grp-business">NO.</th>
+                  <th class="grp-business">月度</th>
+                  <th class="grp-business">员工姓名</th>
+                  <th class="grp-business">系统账号</th>
+                  <th class="grp-business">分公司</th>
+                  <th class="grp-business">提成角色</th>
+                  <th class="grp-business">是否计提</th>
+                  <th class="grp-type">业务类型</th>
+                  <th class="grp-finance">应收<br /><span style="font-weight:400;font-size:10px;">汇总</span></th>
+                  <th class="grp-finance">成本<br /><span style="font-weight:400;font-size:10px;">汇总</span></th>
+                  <th class="grp-finance">毛利<br /><span style="font-weight:400;font-size:10px;">汇总</span></th>
+                  <th class="grp-finance">表外<br />毛利扣</th>
+                  <th class="grp-finance">表外<br />提成扣</th>
+                  <th class="grp-finance">计算净利润<br /><span style="font-weight:400;font-size:10px;">毛利−毛利扣</span></th>
+                  <th class="grp-finance">回款率</th>
+                  <th class="grp-finance">发放回款<br /><span style="font-weight:400;font-size:10px;">核验提示</span></th>
+                  <th class="grp-finance">未核销应收<br /><span style="font-weight:400;font-size:10px;">明细入口</span></th>
+                  <th class="grp-finance">本月结转上月<br /><span style="font-weight:400;font-size:10px;color:#92400e;">毛利调整 ±</span></th>
+                  <th class="grp-finance">本月结转上月<br /><span style="font-weight:400;font-size:10px;color:#1e40af;">提成调整 ±</span></th>
+                  <th class="grp-peer">计费重<br /><span style="font-weight:400;font-size:10px;">kg·汇总</span></th>
+                  <th class="grp-peer">固定提成点<br /><span style="font-weight:400;font-size:10px;">元/kg</span></th>
+                  <th class="grp-commission">计提基数</th>
+                  <th class="grp-commission">基数口径</th>
+                  <th class="grp-commission">阶梯/<br />比例摘要</th>
+                  <th class="grp-commission">提成金额</th>
+                  <th class="grp-commission">扣减/<br />调整</th>
+                  <th class="grp-commission">最终提成</th>
+                  <th class="grp-business">规则编码</th>
+                  <th class="grp-business">操作</th>
+                </tr>
+              </thead>
+              <tbody id="trialBody">
+                <tr
+                  data-type="直客"
+                  data-account="liying_sz"
+                  data-name="李颖"
+                  data-month="2026-03"
+                  data-final="24092"
+                  data-rule="DIRECT_SALES_GP_TIER"
+                >
+                  <td class="chk-col"><input type="checkbox" class="js-row-chk" aria-label="选择 李颖" /></td>
+                  <td class="text-left">1</td>
+                  <td class="text-left">2026-03</td>
+                  <td class="text-left">李颖</td>
+                  <td class="text-left mono">liying_sz</td>
+                  <td class="text-left">华南分公司</td>
+                  <td class="text-left">直客业务员</td>
+                  <td class="text-center"><span class="accrued-yes">是</span></td>
+                  <td class="cell-type">直客</td>
+                  <td>186,200.00</td>
+                  <td>122,800.00</td>
+                  <td>63,400.00</td>
+                  <td>0.00</td>
+                  <td>0.00</td>
+                  <td>63,400.00</td>
+                  <td>98%</td>
+                  <td class="text-left"><span class="pay-hit" title="产品配置：聚合回款率≥98%视为已达发放回款下限（示意）">已达下限</span></td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-ar">查看未回款明细</button><div class="ar-mini-note">未核销敞口合计 ¥3,724.00 · 可点开核对账单</div></td>
+                  <td>0.00</td>
+                  <td>0.00</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td>63,400.00</td>
+                  <td class="text-left">净利润汇总</td>
+                  <td class="text-left">毛利阶梯 档3 · 38%</td>
+                  <td>24,092.00</td>
+                  <td>0.00</td>
+                  <td><strong>24,092.00</strong></td>
+                  <td class="text-left mono tag-direct">DIRECT_SALES_GP_TIER</td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-log">计费日志</button></td>
+                </tr>
+                <tr
+                  data-type="直客"
+                  data-account="wangzhangdi_deng"
+                  data-name="汪张帝等"
+                  data-month="2026-03"
+                  data-final="12013"
+                  data-rule="DIRECT_SALES_GP_TIER"
+                >
+                  <td class="chk-col"><input type="checkbox" class="js-row-chk" aria-label="选择 汪张帝等" /></td>
+                  <td class="text-left">2</td>
+                  <td class="text-left">2026-03</td>
+                  <td class="text-left">汪张帝等</td>
+                  <td class="text-left mono">wangzhangdi_deng</td>
+                  <td class="text-left">义乌总部</td>
+                  <td class="text-left">直客业务员</td>
+                  <td class="text-center"><span class="accrued-yes">是</span></td>
+                  <td class="cell-type">直客</td>
+                  <td>118,464.00</td>
+                  <td>87,129.00</td>
+                  <td>31,335.00</td>
+                  <td>0.00</td>
+                  <td>521.00</td>
+                  <td>31,335.00</td>
+                  <td>96%</td>
+                  <td class="text-left"><span class="pay-near" title="介于临近区间（示意95%～97.9%），建议结合未核销明细再决定是否发放">临近阈值</span></td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-ar">查看未回款明细</button><div class="ar-mini-note">未核销敞口合计 ¥4,738.56</div></td>
+                  <td>−200.00</td>
+                  <td>−180.00</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td>31,335.00</td>
+                  <td class="text-left">净利润汇总</td>
+                  <td class="text-left">毛利阶梯 档2 · 40%</td>
+                  <td>12,534.00</td>
+                  <td>−521.00</td>
+                  <td><strong>12,013.00</strong></td>
+                  <td class="text-left mono tag-direct">DIRECT_SALES_GP_TIER</td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-log">计费日志</button></td>
+                </tr>
+                <tr
+                  data-type="同行"
+                  data-account="lin_zhiwei"
+                  data-name="林志伟"
+                  data-month="2026-03"
+                  data-final="1663.2"
+                  data-rule="PEER_WEIGHT_FIXED_RATE"
+                >
+                  <td class="chk-col"><input type="checkbox" class="js-row-chk" aria-label="选择 林志伟" /></td>
+                  <td class="text-left">3</td>
+                  <td class="text-left">2026-03</td>
+                  <td class="text-left">林志伟</td>
+                  <td class="text-left mono">lin_zhiwei</td>
+                  <td class="text-left">华东分公司</td>
+                  <td class="text-left">同行业务员</td>
+                  <td class="text-center"><span class="accrued-yes">是</span></td>
+                  <td class="cell-type">同行</td>
+                  <td>52,680.00</td>
+                  <td>34,560.00</td>
+                  <td>18,120.00</td>
+                  <td>960.00</td>
+                  <td>360.00</td>
+                  <td>17,160.00</td>
+                  <td>93%</td>
+                  <td class="text-left"><span class="pay-block" title="低于发放回款下限（示意&lt;95%），系统默认不建议勾选发放">未达下限</span></td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-ar">查看未回款明细</button><div class="ar-mini-note">未核销敞口合计 ¥12,076.00</div></td>
+                  <td>0.00</td>
+                  <td>0.00</td>
+                  <td>4,215.00</td>
+                  <td>0.48</td>
+                  <td>2,023.20</td>
+                  <td class="text-left">计费重×点</td>
+                  <td class="text-left">4215kg×0.48</td>
+                  <td>2,023.20</td>
+                  <td>−360.00</td>
+                  <td><strong>1,663.20</strong></td>
+                  <td class="text-left mono tag-peer">PEER_WEIGHT_FIXED_RATE</td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-log">计费日志</button></td>
+                </tr>
+                <tr
+                  data-type="同行"
+                  data-account="zhao_min_peer"
+                  data-name="赵敏"
+                  data-month="2026-03"
+                  data-final="2240"
+                  data-rule="PEER_WEIGHT_FIXED_RATE"
+                >
+                  <td class="chk-col"><input type="checkbox" class="js-row-chk" aria-label="选择 赵敏" /></td>
+                  <td class="text-left">4</td>
+                  <td class="text-left">2026-03</td>
+                  <td class="text-left">赵敏</td>
+                  <td class="text-left mono">zhao_min_peer</td>
+                  <td class="text-left">深圳分公司</td>
+                  <td class="text-left">同行业务员</td>
+                  <td class="text-center"><span class="accrued-yes">是</span></td>
+                  <td class="cell-type">同行</td>
+                  <td>128,900.00</td>
+                  <td>90,500.00</td>
+                  <td>38,400.00</td>
+                  <td>0.00</td>
+                  <td>0.00</td>
+                  <td>38,400.00</td>
+                  <td>89%</td>
+                  <td class="text-left"><span class="pay-block" title="低于发放回款下限（示意）">未达下限</span></td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-ar">查看未回款明细</button><div class="ar-mini-note">未核销敞口合计 ¥14,179.00</div></td>
+                  <td>100.00</td>
+                  <td>50.00</td>
+                  <td>12,800.00</td>
+                  <td>0.35</td>
+                  <td>4,480.00</td>
+                  <td class="text-left">计费重×点</td>
+                  <td class="text-left">团队池50%后置</td>
+                  <td>4,480.00</td>
+                  <td>0.00</td>
+                  <td><strong>2,240.00</strong></td>
+                  <td class="text-left mono tag-peer">PEER_WEIGHT_FIXED_RATE</td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-log">计费日志</button></td>
+                </tr>
+                <tr
+                  data-type="客服"
+                  data-account="huang_liqing_cs"
+                  data-name="黄丽青"
+                  data-month="2026-03"
+                  data-final="3966"
+                  data-rule="CS_WITH_SALES_RATE"
+                >
+                  <td class="chk-col"><input type="checkbox" class="js-row-chk" aria-label="选择 黄丽青" /></td>
+                  <td class="text-left">5</td>
+                  <td class="text-left">2026-03</td>
+                  <td class="text-left">黄丽青</td>
+                  <td class="text-left mono">huang_liqing_cs</td>
+                  <td class="text-left">华东分公司</td>
+                  <td class="text-left">有业务员客服</td>
+                  <td class="text-center"><span class="accrued-yes">是</span></td>
+                  <td class="cell-type">客服</td>
+                  <td>428,600.00</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td>97%</td>
+                  <td class="text-left"><span class="pay-near" title="临近阈值：距下限差额较小，请核对客服归因应收核销进度">临近阈值</span></td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-ar">查看未回款明细</button><div class="ar-mini-note">未核销敞口合计 ¥12,858.00</div></td>
+                  <td>0.00</td>
+                  <td>0.00</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td>428,600.00</td>
+                  <td class="text-left">应收汇总</td>
+                  <td class="text-left">净应收 × 1.00%</td>
+                  <td>4,286.00</td>
+                  <td>−320.00</td>
+                  <td><strong>3,966.00</strong></td>
+                  <td class="text-left mono tag-service">CS_WITH_SALES_RATE</td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-log">计费日志</button></td>
+                </tr>
+                <tr
+                  data-type="客服"
+                  data-account="sun_yue_cs_ns"
+                  data-name="孙悦"
+                  data-month="2026-03"
+                  data-final="1161.6"
+                  data-rule="CS_NO_SALES_RATE"
+                >
+                  <td class="chk-col"><input type="checkbox" class="js-row-chk" aria-label="选择 孙悦" /></td>
+                  <td class="text-left">6</td>
+                  <td class="text-left">2026-03</td>
+                  <td class="text-left">孙悦</td>
+                  <td class="text-left mono">sun_yue_cs_ns</td>
+                  <td class="text-left">义乌总部</td>
+                  <td class="text-left">无业务员客服</td>
+                  <td class="text-center"><span class="accrued-no" title="映射停发·仍展示试算额">否</span></td>
+                  <td class="cell-type">客服</td>
+                  <td>96,800.00</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td>100%</td>
+                  <td class="text-left"><span class="pay-hit" title="已达下限；本行计提标识为否时仍可核对明细">已达下限</span></td>
+                  <td class="text-left"><span class="na">暂无未核销</span><div class="ar-mini-note">归因应收均已核销（示意）</div></td>
+                  <td>0.00</td>
+                  <td>−50.00</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td>96,800.00</td>
+                  <td class="text-left">应收汇总</td>
+                  <td class="text-left">净应收 × 1.20%</td>
+                  <td>1,161.60</td>
+                  <td>0.00</td>
+                  <td><strong>1,161.60</strong></td>
+                  <td class="text-left mono tag-service">CS_NO_SALES_RATE</td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-log">计费日志</button></td>
+                </tr>
+                <tr
+                  data-type="渠道"
+                  data-account="wu_yue_channel"
+                  data-name="吴越"
+                  data-month="2026-03"
+                  data-final="25300"
+                  data-rule="CHANNEL_MANAGER_SETTLE"
+                >
+                  <td class="chk-col"><input type="checkbox" class="js-row-chk" aria-label="选择 吴越" /></td>
+                  <td class="text-left">7</td>
+                  <td class="text-left">2026-03</td>
+                  <td class="text-left">吴越</td>
+                  <td class="text-left mono">wu_yue_channel</td>
+                  <td class="text-left">华南分公司</td>
+                  <td class="text-left">渠道经理</td>
+                  <td class="text-center"><span class="accrued-yes">是</span></td>
+                  <td class="cell-type">渠道</td>
+                  <td>560,000.00</td>
+                  <td>398,000.00</td>
+                  <td>162,000.00</td>
+                  <td>18,000.00</td>
+                  <td>0.00</td>
+                  <td>144,000.00</td>
+                  <td>94%</td>
+                  <td class="text-left"><span class="pay-block" title="低于发放回款下限（示意）">未达下限</span></td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-ar">查看未回款明细</button><div class="ar-mini-note">未核销敞口合计 ¥33,600.00</div></td>
+                  <td>320.00</td>
+                  <td>480.00</td>
+                  <td class="na">—</td>
+                  <td class="na">—</td>
+                  <td>110,800.00</td>
+                  <td class="text-left">对内毛利汇总</td>
+                  <td class="text-left">对内阶梯 档2 · 25%</td>
+                  <td>27,700.00</td>
+                  <td>−2,400.00</td>
+                  <td><strong>25,300.00</strong></td>
+                  <td class="text-left mono tag-channel">CHANNEL_MANAGER_SETTLE</td>
+                  <td class="text-left"><button type="button" class="btn-link js-open-log">计费日志</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="foot">
+            <strong>是否计提：</strong>标识该行在<strong>当期正式计提/发放链路</strong>中是否参与入账；<strong>否</strong>时仍可保留<strong>试算金额</strong>供核对（如映射停发、区间外仅展示等）。与「提成计算区间」「发放状态」联动规则以实现为准。<br /><br />
+            · <strong style="color:#92400e;">毛利调整结转</strong>：上月末滚入台账，在<strong>基数维护 / 基数方案公式</strong>中引用（如 <span class="mono">#{上月结转_毛利调整}</span>），作用于<strong>毛利→净利润→计提基数</strong>；<strong>不在规则编辑页</strong>配置。<br />
+            · <strong style="color:#1e40af;">提成调整结转</strong>：上月末滚入台账，由<strong>月度结转/提成导入</strong>进入引擎，在<strong>规则层扣减链</strong>引用 <span class="mono">#{上月结转_提成调整}</span>，进入<strong>扣减/调整</strong>或与<strong>最终提成</strong>合并；勿与基数公式重复扣减。<br />
+            两列均可为负；是否与当月公式合并及合并顺序以引擎配置为准。<br /><br />
+            <strong>直客：</strong>计提基数 = 当月归因该员工的<strong>计算净利润</strong>合计（阶梯落在净利润上）。「表外提成扣」不进净利润，在「扣减/调整」体现。<br />
+            <strong>同行：</strong>计提基数 = <strong>计费重合计 × 固定提成点</strong>；毛利/净利润列保留便于横向对账，不参与本条计提乘积。<br />
+            <strong>客服：</strong>计提基数 = <strong>应收汇总</strong>（可按产品约定扣减免赔等后进「净应收」，以实现为准）；成本/毛利列可为空。<br />
+            <strong>渠道：</strong>计提基数 = <strong>对内毛利</strong>（示意：毛利 − 渠道返点 − 毛利性质导入扣减）；与场景矩阵 <span class="mono">CHANNEL_MANAGER_SETTLE</span> / <span class="mono">COMMISSION_GP_CHANNEL</span> 对齐。<br /><br />
+            <strong>发放与导入分工（原型约定）：</strong><strong>确认发放提成</strong>走<strong>批量勾选 → 生成发放批次</strong>（审计友好、与试算快照对齐）。
+            <strong>万能池 / 绩效系数</strong>等属于<strong>事前数据校正</strong>，通过「月度调整表」<strong>导入</strong>入账后再试算；不宜用「导入」代替「发放」动作。<br /><br />
+            <strong>发放回款核验与未核销明细：</strong>列表中的「已达下限 / 临近阈值 / 未达下限」仅对照<strong>配置的回款率下限</strong>做可视化提示，<strong>不等于系统自动允许或禁止放款</strong>；是否与计提、捆绑规则、暂缓名单等联动以实现为准。点开「未回款明细」可核对<strong>未核销账单费用</strong>，便于财务结合账期与客户约定人工判断是否纳入本轮发放。
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="modal-backdrop" id="modalBillingLog" role="dialog" aria-modal="true" aria-labelledby="billingLogTitle">
+      <div class="modal-box modal-wide">
+        <div class="modal-hd">
+          <div>
+            <h2 id="billingLogTitle">计费日志（提成计提追溯）</h2>
+            <p id="billingLogSub">试算批次 <span class="mono">TRIAL-PERSON-MONTH-202603</span> · 单行引擎流水示意</p>
+          </div>
+          <button type="button" class="modal-close js-modal-close" aria-label="关闭" data-modal="modalBillingLog">×</button>
+        </div>
+        <div class="modal-bd">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th style="width:44px">NO.</th>
+                <th>日志内容</th>
+                <th style="width:96px">创建人</th>
+                <th style="width:156px">创建时间</th>
+              </tr>
+            </thead>
+            <tbody id="billingLogBody"></tbody>
+          </table>
+        </div>
+        <div class="modal-ft">
+          <button type="button" class="btn js-modal-close" data-modal="modalBillingLog">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="modalArDetail" role="dialog" aria-modal="true" aria-labelledby="arDetailTitle">
+      <div class="modal-box modal-wide">
+        <div class="modal-hd">
+          <div>
+            <h2 id="arDetailTitle">未核销应收 · 费用明细</h2>
+            <p id="arDetailSub">试算批次 <span class="mono">TRIAL-PERSON-MONTH-202603</span> · 归因月度内仍有余额的账单行（示意，便于放款前人工核对）</p>
+          </div>
+          <button type="button" class="modal-close js-modal-close" aria-label="关闭" data-modal="modalArDetail">×</button>
+        </div>
+        <div class="modal-bd">
+          <div class="issue-summary" id="arDetailSummary" style="margin-bottom:12px;font-size:12px;"></div>
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th style="width:132px">运单号 / 账单键</th>
+                <th style="width:88px">费用类型</th>
+                <th class="col-num" style="width:96px">应收</th>
+                <th class="col-num" style="width:96px">已核销</th>
+                <th class="col-num" style="width:96px">未核销</th>
+                <th style="width:104px">到期日</th>
+              </tr>
+            </thead>
+            <tbody id="arDetailBody"></tbody>
+          </table>
+        </div>
+        <div class="modal-ft">
+          <button type="button" class="btn js-modal-close" data-modal="modalArDetail">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="modalIssueConfirm" role="dialog" aria-modal="true" aria-labelledby="issueTitle">
+      <div class="modal-box">
+        <div class="modal-hd">
+          <div>
+            <h2 id="issueTitle">确认发放提成</h2>
+            <p>将勾选人员的<strong>最终提成</strong>写入发放批次（示意）；发放前须完成月度调整数据入账与复核。</p>
+          </div>
+          <button type="button" class="modal-close js-modal-close" aria-label="关闭" data-modal="modalIssueConfirm">×</button>
+        </div>
+        <div class="modal-bd">
+          <div class="issue-choice recommended">
+            <strong>推荐：批量操作（本页勾选）</strong><br />
+            适用于常态核发：与当前试算快照、员工+月度维度一致，可追溯批次号与操作人。财务按清单复核后一键生成发放批次。
+          </div>
+          <div class="issue-choice">
+            <strong>导入的定位：校正数据源，而非「发放」本身</strong><br />
+            表外成本、绩效系数等应通过 <a href="../表外导入成本列表-MVP.html" target="_blank" rel="noopener">月度调整表</a> /
+            <a href="../导入绩效系数弹窗页-MVP.html" target="_blank" rel="noopener">绩效导入</a> 在<strong>试算前</strong>完成；若发放名单来自 HR 薪酬系统对账，可增加「导入发放名单」能力作为<strong>补充通道</strong>（二期可选）。
+          </div>
+          <div class="issue-summary" id="issueSummaryBox">
+            <strong>本次勾选摘要</strong>
+            <ul id="issueLineList"></ul>
+            <div style="margin-top:10px"><strong>合计人数：</strong><span id="issueCount">0</span>　<strong>合计最终提成：</strong><span id="issueTotal">0.00</span> CNY</div>
+          </div>
+          <div class="field-check">
+            <input type="checkbox" id="issueAckAdjust" />
+            <label for="issueAckAdjust">已确认：万能池 / 绩效等月度调整已入账并完成本轮试算，发放金额与当前列表一致。</label>
+          </div>
+        </div>
+        <div class="modal-ft">
+          <button type="button" class="btn js-modal-close" data-modal="modalIssueConfirm">取消</button>
+          <button type="button" class="btn btn-primary" id="btnIssueSubmit" disabled>生成发放批次</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toastGlobal" role="status"></div>
+  </div>
+  <script>
+    (function () {
+      var LOG_SAMPLES = {
+        _default: [
+          { n: 1, t: "试算子任务启动：加载人·月度聚合上下文。", by: "—", time: "2026-03-25 14:30:18" },
+          { n: 2, t: "规则快照命中；基数口径按业务类型分流。", by: "—", time: "2026-03-25 14:30:18" },
+          { n: 3, t: "提成试算结束。", by: "—", time: "2026-03-25 14:30:19" }
+        ],
+        liying_sz: [
+          { n: 1, t: "输入：系统账号=liying_sz · 月度=2026-03 · 业务类型=直客 · 分公司=华南分公司。", by: "—", time: "2026-03-25 14:30:20" },
+          { n: 2, t: "归因聚合：应收合计 186200.00 · 成本 122800.00 · 毛利 63400.00 · 表外毛利扣 0 · 计算净利润 63400.00。", by: "—", time: "2026-03-25 14:30:20" },
+          { n: 3, t: "规则命中 DIRECT_SALES_GP_TIER · 基数口径=净利润汇总。", by: "—", time: "2026-03-25 14:30:21" },
+          { n: 4, t: "毛利阶梯：计费基数 63400.00 · 命中档3 · 比例 38%。", by: "—", time: "2026-03-25 14:30:21" },
+          { n: 5, t: "计算公式：63400.00 × 38.0000% = 24092.00（示意）", by: "—", time: "2026-03-25 14:30:21", hi: true },
+          { n: 6, t: "表外提成扣 0 · 最终提成 24092.00 · 状态=成功。", by: "—", time: "2026-03-25 14:30:22" }
+        ],
+        wangzhangdi_deng: [
+          { n: 1, t: "输入：wangzhangdi_deng · 2026-03 · 直客 · 义乌总部。", by: "—", time: "2026-03-25 14:31:02" },
+          { n: 2, t: "计算净利润=31335.00（毛利扣后口径）；表外提成扣已单列。", by: "—", time: "2026-03-25 14:31:02" },
+          { n: 3, t: "阶梯比例 40% · 未封顶提成 12534.00。", by: "—", time: "2026-03-25 14:31:03" },
+          { n: 4, t: "计算公式：12534.00 − 万能池扣提成 521.00 = 12013.00", by: "—", time: "2026-03-25 14:31:03", hi: true },
+          { n: 5, t: "试算结束。", by: "—", time: "2026-03-25 14:31:04" }
+        ],
+        lin_zhiwei: [
+          { n: 1, t: "同行口径：计费重合计 4215.000 kg · 固定提成点 0.48 元/kg。", by: "—", time: "2026-03-25 14:32:10" },
+          { n: 2, t: "计提基数 = 4215 × 0.48 = 2023.20（毛利列仅供对账）。", by: "—", time: "2026-03-25 14:32:10" },
+          { n: 3, t: "计算公式：2023.20 − 表外提成扣 360.00 = 1663.20", by: "—", time: "2026-03-25 14:32:11", hi: true },
+          { n: 4, t: "试算结束。", by: "—", time: "2026-03-25 14:32:11" }
+        ],
+        zhao_min_peer: [
+          { n: 1, t: "计费重 12800 kg × 0.35 = 4480.00 · 团队池后置分成 50%。", by: "—", time: "2026-03-25 14:32:40" },
+          { n: 2, t: "计算公式：4480.00 × 50% = 2240.00", by: "—", time: "2026-03-25 14:32:41", hi: true },
+          { n: 3, t: "试算结束。", by: "—", time: "2026-03-25 14:32:41" }
+        ],
+        huang_liqing_cs: [
+          { n: 1, t: "客服口径：计提基数=应收汇总 428600.00 · 规则 CS_WITH_SALES_RATE。", by: "—", time: "2026-03-25 14:33:05" },
+          { n: 2, t: "计算公式：428600.00 × 1.0000% = 4286.00", by: "—", time: "2026-03-25 14:33:05", hi: true },
+          { n: 3, t: "扣减调整 −320.00 → 最终提成 3966.00。", by: "—", time: "2026-03-25 14:33:06" }
+        ],
+        sun_yue_cs_ns: [
+          { n: 1, t: "无业务员客服 · 应收基数 96800.00 · 比例 1.20%。", by: "—", time: "2026-03-25 14:33:22" },
+          { n: 2, t: "计算公式：96800.00 × 1.2000% = 1161.60", by: "—", time: "2026-03-25 14:33:22", hi: true },
+          { n: 3, t: "试算结束。", by: "—", time: "2026-03-25 14:33:23" }
+        ],
+        wu_yue_channel: [
+          { n: 1, t: "渠道对内毛利基数 110800.00（已扣返点与毛利性质导入）。", by: "—", time: "2026-03-25 14:34:01" },
+          { n: 2, t: "对内阶梯 档2 · 比例 25% · 未封顶 27700.00。", by: "—", time: "2026-03-25 14:34:01" },
+          { n: 3, t: "计算公式：27700.00 − 专项调整 2400.00 = 25300.00", by: "—", time: "2026-03-25 14:34:02", hi: true },
+          { n: 4, t: "试算结束。", by: "—", time: "2026-03-25 14:34:02" }
+        ]
+      };
+
+      var AR_SAMPLES = {
+        liying_sz: [
+          { wb: "WB-SZ-202603-A881", fee: "运费", ar: 2680, clr: 1000, open: 1680, due: "2026-04-10" },
+          { wb: "WB-SZ-202603-B902", fee: "关税垫付", ar: 3680, clr: 1636, open: 2044, due: "2026-04-18" }
+        ],
+        wangzhangdi_deng: [
+          { wb: "WB-YW-202603-C112", fee: "运费", ar: 5238.56, clr: 4000, open: 1238.56, due: "2026-04-05" },
+          { wb: "WB-YW-202603-D205", fee: "附加费", ar: 4500, clr: 2500, open: 2000, due: "2026-04-12" },
+          { wb: "WB-YW-202603-E331", fee: "查验费", ar: 2100, clr: 600, open: 1500, due: "2026-04-20" }
+        ],
+        lin_zhiwei: [
+          { wb: "WB-HD-202603-F441", fee: "运费", ar: 8200, clr: 5200, open: 3000, due: "2026-04-08" },
+          { wb: "WB-HD-202603-G509", fee: "内陆拖车", ar: 5600, clr: 1800, open: 3800, due: "2026-04-15" },
+          { wb: "WB-HD-202603-H617", fee: "报关", ar: 2400, clr: 1800, open: 600, due: "2026-04-22" },
+          { wb: "WB-HD-202603-J724", fee: "仓储", ar: 3100, clr: 900, open: 2200, due: "2026-04-28" },
+          { wb: "WB-HD-202603-K801", fee: "保费分摊", ar: 2676, clr: 1200, open: 2476, due: "2026-05-02" }
+        ],
+        zhao_min_peer: [
+          { wb: "WB-SZP-202603-L902", fee: "运费", ar: 22400, clr: 15200, open: 7200, due: "2026-04-06" },
+          { wb: "WB-SZP-202603-M078", fee: "税金垫付", ar: 9800, clr: 4600, open: 5200, due: "2026-04-14" },
+          { wb: "WB-SZP-202603-N156", fee: "附加操作", ar: 4779, clr: 3000, open: 1779, due: "2026-04-25" }
+        ],
+        huang_liqing_cs: [
+          { wb: "CS-428601-H238", fee: "归因应收", ar: 85600, clr: 79400, open: 6200, due: "2026-04-09" },
+          { wb: "CS-428602-H239", fee: "归因应收", ar: 64200, clr: 57542, open: 6658, due: "2026-04-16" }
+        ],
+        wu_yue_channel: [
+          { wb: "CH-SC-202603-P001", fee: "干线运费", ar: 98000, clr: 80000, open: 18000, due: "2026-04-07" },
+          { wb: "CH-SC-202603-P002", fee: "目的港杂费", ar: 41200, clr: 31600, open: 9600, due: "2026-04-14" },
+          { wb: "CH-SC-202603-P003", fee: "关税垫付", ar: 24800, clr: 18800, open: 6000, due: "2026-04-26" }
+        ]
+      };
+
+      function formatMoney(n) {
+        var x = Number(n);
+        if (!isFinite(x)) x = 0;
+        return x.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function openModal(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add("show");
+        document.body.classList.add("modal-open");
+      }
+
+      function closeModal(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove("show");
+        if (!document.querySelector(".modal-backdrop.show")) {
+          document.body.classList.remove("modal-open");
+        }
+      }
+
+      document.querySelectorAll(".modal-backdrop").forEach(function (bd) {
+        bd.addEventListener("click", function (e) {
+          if (e.target === bd) closeModal(bd.id);
+        });
+      });
+
+      document.querySelectorAll(".js-modal-close").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var id = b.getAttribute("data-modal");
+          if (id) closeModal(id);
+        });
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key !== "Escape") return;
+        document.querySelectorAll(".modal-backdrop.show").forEach(function (m) {
+          closeModal(m.id);
+        });
+      });
+
+      function renderBillingLog(account, meta) {
+        var rows = LOG_SAMPLES[account] || LOG_SAMPLES._default;
+        var tbody = document.getElementById("billingLogBody");
+        var sub = document.getElementById("billingLogSub");
+        if (sub && meta) {
+          sub.innerHTML =
+            '试算批次 <span class="mono">TRIAL-PERSON-MONTH-202603</span> · ' +
+            meta.name +
+            '（<span class="mono">' +
+            account +
+            '</span>）· <span class="mono">' +
+            meta.rule +
+            "</span>";
+        }
+        tbody.innerHTML = rows
+          .map(function (r) {
+            var cls = r.hi ? ' class="row-highlight"' : "";
+            return (
+              "<tr" +
+              cls +
+              "><td class=\"col-no\">" +
+              r.n +
+              '</td><td class="text-left">' +
+              r.t +
+              '</td><td class="col-by">' +
+              r.by +
+              '</td><td class="col-time">' +
+              r.time +
+              "</td></tr>"
+            );
+          })
+          .join("");
+      }
+
+      function renderArDetail(account, meta) {
+        var rows = AR_SAMPLES[account];
+        var tbody = document.getElementById("arDetailBody");
+        var sub = document.getElementById("arDetailSub");
+        var sumBox = document.getElementById("arDetailSummary");
+        if (sub && meta) {
+          sub.innerHTML =
+            '试算批次 <span class="mono">TRIAL-PERSON-MONTH-202603</span> · ' +
+            meta.name +
+            '（<span class="mono">' +
+            account +
+            '</span>）· ' +
+            meta.month +
+            ' · 以下为<strong>未核销</strong>账单行（示意）';
+        }
+        if (!tbody) return;
+        if (!rows || !rows.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="6" class="text-left na">暂无未核销费用行（若列表仍显示敞口，请以账单中心为准）</td></tr>';
+          if (sumBox) sumBox.innerHTML = "";
+          return;
+        }
+        var totalOpen = 0;
+        rows.forEach(function (r) {
+          totalOpen += Number(r.open) || 0;
+        });
+        if (sumBox) {
+          sumBox.innerHTML =
+            '<strong>未核销敞口合计：</strong>' +
+            formatMoney(totalOpen) +
+            ' CNY · <span style="color:var(--sub)">与列表「未核销敞口合计」应对齐；到期日为账期/合同约定示意字段。</span>';
+        }
+        tbody.innerHTML = rows
+          .map(function (r) {
+            return (
+              "<tr><td class=\"mono\">" +
+              r.wb +
+              '</td><td>' +
+              r.fee +
+              '</td><td class="col-num">' +
+              formatMoney(r.ar) +
+              '</td><td class="col-num">' +
+              formatMoney(r.clr) +
+              '</td><td class="col-num"><strong>' +
+              formatMoney(r.open) +
+              '</strong></td><td class="mono">' +
+              r.due +
+              "</td></tr>"
+            );
+          })
+          .join("");
+      }
+
+      document.getElementById("trialBody").addEventListener("click", function (e) {
+        var arBtn = e.target.closest(".js-open-ar");
+        if (arBtn) {
+          var trAr = arBtn.closest("tr");
+          if (!trAr) return;
+          renderArDetail(trAr.getAttribute("data-account"), {
+            name: trAr.getAttribute("data-name"),
+            month: trAr.getAttribute("data-month")
+          });
+          openModal("modalArDetail");
+          return;
+        }
+        var btn = e.target.closest(".js-open-log");
+        if (!btn) return;
+        var tr = btn.closest("tr");
+        if (!tr) return;
+        renderBillingLog(tr.getAttribute("data-account"), {
+          name: tr.getAttribute("data-name"),
+          rule: tr.getAttribute("data-rule")
+        });
+        openModal("modalBillingLog");
+      });
+
+      function visibleRows() {
+        return Array.prototype.slice
+          .call(document.querySelectorAll("#trialBody tr[data-type]"))
+          .filter(function (tr) {
+            return !tr.classList.contains("hidden-row");
+          });
+      }
+
+      function syncChkAll() {
+        var chkAll = document.getElementById("chkAllTrial");
+        if (!chkAll) return;
+        var vis = visibleRows();
+        var chks = vis.map(function (tr) {
+          return tr.querySelector(".js-row-chk");
+        }).filter(Boolean);
+        var n = chks.filter(function (c) {
+          return c.checked;
+        }).length;
+        chkAll.checked = chks.length > 0 && n === chks.length;
+        chkAll.indeterminate = n > 0 && n < chks.length;
+      }
+
+      function updateSelHint() {
+        var total = 0;
+        var count = 0;
+        document.querySelectorAll("#trialBody tr[data-type]").forEach(function (tr) {
+          if (tr.classList.contains("hidden-row")) return;
+          var c = tr.querySelector(".js-row-chk");
+          if (!c || !c.checked) return;
+          count++;
+          total += parseFloat(tr.getAttribute("data-final")) || 0;
+        });
+        var hint = document.getElementById("selHint");
+        if (hint) {
+          hint.innerHTML =
+            '已选 <strong>' +
+            count +
+            '</strong> 人 · 合计最终提成 <strong>' +
+            formatMoney(total) +
+            "</strong> CNY";
+        }
+        var btnIssue = document.getElementById("btnOpenIssue");
+        if (btnIssue) btnIssue.disabled = count === 0;
+        syncChkAll();
+      }
+
+      document.getElementById("trialBody").addEventListener("change", function (e) {
+        if (e.target.classList.contains("js-row-chk")) updateSelHint();
+      });
+
+      var chkAllTrial = document.getElementById("chkAllTrial");
+      if (chkAllTrial) {
+        chkAllTrial.addEventListener("change", function () {
+          var on = chkAllTrial.checked;
+          visibleRows().forEach(function (tr) {
+            var c = tr.querySelector(".js-row-chk");
+            if (c) c.checked = on;
+          });
+          updateSelHint();
+        });
+      }
+
+      var btnSelectVisible = document.getElementById("btnSelectVisible");
+      if (btnSelectVisible) {
+        btnSelectVisible.addEventListener("click", function () {
+          var vis = visibleRows();
+          var allOn =
+            vis.length &&
+            vis.every(function (tr) {
+              var c = tr.querySelector(".js-row-chk");
+              return c && c.checked;
+            });
+          vis.forEach(function (tr) {
+            var c = tr.querySelector(".js-row-chk");
+            if (c) c.checked = !allOn;
+          });
+          updateSelHint();
+        });
+      }
+
+      var pills = document.querySelectorAll(".pill[data-filter]");
+      var rows = document.querySelectorAll("#trialBody tr[data-type]");
+      var viewLabel = document.getElementById("viewLabel");
+      var labels = {
+        all: "全部（人·月度）",
+        直客: "仅直客",
+        同行: "仅同行",
+        客服: "仅客服",
+        渠道: "仅渠道"
+      };
+
+      function setFilter(v) {
+        pills.forEach(function (p) {
+          var on = p.getAttribute("data-filter") === v;
+          p.classList.toggle("active", on);
+          p.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        rows.forEach(function (tr) {
+          var t = tr.getAttribute("data-type");
+          var show = v === "all" || t === v;
+          tr.classList.toggle("hidden-row", !show);
+        });
+        if (viewLabel) viewLabel.textContent = labels[v] || labels.all;
+        updateSelHint();
+      }
+
+      pills.forEach(function (p) {
+        p.addEventListener("click", function () {
+          setFilter(p.getAttribute("data-filter") || "all");
+        });
+      });
+
+      function syncIssueSubmit() {
+        var ack = document.getElementById("issueAckAdjust");
+        var submit = document.getElementById("btnIssueSubmit");
+        if (submit && ack) submit.disabled = !ack.checked;
+      }
+
+      var issueAck = document.getElementById("issueAckAdjust");
+      if (issueAck) issueAck.addEventListener("change", syncIssueSubmit);
+
+      var btnOpenIssue = document.getElementById("btnOpenIssue");
+      if (btnOpenIssue) {
+        btnOpenIssue.addEventListener("click", function () {
+          var lines = [];
+          var total = 0;
+          var count = 0;
+          visibleRows().forEach(function (tr) {
+            var c = tr.querySelector(".js-row-chk");
+            if (!c || !c.checked) return;
+            count++;
+            var fin = parseFloat(tr.getAttribute("data-final")) || 0;
+            total += fin;
+            lines.push(
+              "<li>" +
+                tr.getAttribute("data-name") +
+                " · " +
+                tr.getAttribute("data-month") +
+                ' · 最终提成 <strong>' +
+                formatMoney(fin) +
+                '</strong> · <span class="mono">' +
+                tr.getAttribute("data-rule") +
+                "</span></li>"
+            );
+          });
+          document.getElementById("issueLineList").innerHTML = lines.join("");
+          document.getElementById("issueCount").textContent = String(count);
+          document.getElementById("issueTotal").textContent = formatMoney(total);
+          if (issueAck) issueAck.checked = false;
+          syncIssueSubmit();
+          openModal("modalIssueConfirm");
+        });
+      }
+
+      var btnIssueSubmit = document.getElementById("btnIssueSubmit");
+      if (btnIssueSubmit) {
+        btnIssueSubmit.addEventListener("click", function () {
+          if (!issueAck || !issueAck.checked) return;
+          var batch = "PAY-" + Date.now().toString(36).toUpperCase().slice(-10);
+          closeModal("modalIssueConfirm");
+          var toast = document.getElementById("toastGlobal");
+          toast.textContent = "已生成发放批次（示意）：" + batch + " · 已写入计提待发台账（原型）";
+          toast.classList.add("show");
+          setTimeout(function () {
+            toast.classList.remove("show");
+          }, 3400);
+          visibleRows().forEach(function (tr) {
+            var c = tr.querySelector(".js-row-chk");
+            if (c && c.checked) c.checked = false;
+          });
+          updateSelHint();
+        });
+      }
+
+      updateSelHint();
+    })();
+  </script>
+</body>
+</html>
