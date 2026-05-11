@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>规则包详情（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --ok-bg: #ecfdf3;
+      --ok-text: #027a48;
+      --warn-bg: #fffaeb;
+      --warn-text: #b54708;
+      --gray-bg: #f3f4f6;
+      --gray-text: #4b5563;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .proto-layout {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px 16px 32px;
+    }
+    .page-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .page-head h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .page-head .code-line {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--sub);
+      font-family: ui-monospace, Consolas, monospace;
+    }
+    .page-head .code-line button {
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .head-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-ghost { background: #f9fafb; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    .tag-ok { background: var(--ok-bg); color: var(--ok-text); }
+    .tag-warn { background: var(--warn-bg); color: var(--warn-text); }
+    .tag-gray { background: var(--gray-bg); color: var(--gray-text); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .detail-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 10px 12px 0;
+      border-bottom: 1px solid var(--line);
+      background: #fafbff;
+    }
+    .detail-tab {
+      border: 1px solid transparent;
+      border-bottom: none;
+      background: transparent;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      color: var(--sub);
+    }
+    .detail-tab:hover { color: var(--primary); background: #fff; }
+    .detail-tab.on {
+      background: #fff;
+      color: var(--primary);
+      font-weight: 600;
+      border-color: var(--line);
+      border-bottom-color: #fff;
+      margin-bottom: -1px;
+    }
+    .tab-panel { display: none; padding: 16px; }
+    .tab-panel.show { display: block; }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px 16px;
+    }
+    @media (max-width: 900px) {
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 4px;
+    }
+    .field .val {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .acc {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+    .acc-hd {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #f8fafc;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .acc-hd .chev { font-size: 12px; color: var(--sub); transition: transform 0.15s; }
+    .acc.open .acc-hd .chev { transform: rotate(90deg); }
+    .acc-bd { display: none; padding: 12px; font-size: 13px; color: #374151; line-height: 1.65; border-top: 1px solid var(--line); }
+    .acc.open .acc-bd { display: block; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      color: var(--primary);
+    }
+    .table-wrap { overflow-x: auto; }
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 720px;
+    }
+    .data th, .data td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .data th {
+      background: #fafbff;
+      color: #4b5563;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .data tr.filtered-out { display: none; }
+    .rule-search {
+      width: 100%;
+      max-width: 320px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .ver-list { margin: 0; padding: 0; list-style: none; }
+    .ver-item { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+    .ver-hd {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      text-align: left;
+    }
+    .ver-hd:hover { background: #f8fafc; }
+    .ver-item.open .ver-hd { background: #f0f9ff; }
+    .ver-meta { color: var(--sub); font-size: 12px; }
+    .ver-bd { display: none; padding: 0 12px 12px; font-size: 12px; color: #4b5563; line-height: 1.65; border-top: 1px solid var(--line); background: #fafafa; }
+    .ver-item.open .ver-bd { display: block; }
+    .empty-hint {
+      padding: 24px;
+      text-align: center;
+      color: var(--sub);
+      font-size: 14px;
+    }
+    .foot-note {
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.65;
+      padding: 12px 16px;
+      background: #fafafa;
+      border-top: 1px solid var(--line);
+    }
+  </style>
+  <style id="commission-nav-skin">
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+.app-main { flex: 1; min-width: 0; background: #f5f7fb; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">0.更新说明</div>
+        <a href="更新记录-MVP.html" class="sidenav-link">更新记录</a>
+        <div class="sidenav-section-label">1.人员映射表</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">2.月度调整表</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">3.提成规则包</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包列表</a>
+        <a href="规则包详情-MVP.html" class="sidenav-link">规则包详情</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">新增编辑规则包</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">编辑基数</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <div class="sidenav-section-label">4.提成试算</div>
+        <a href="提成试算表-直客与同行-MVP.html" class="sidenav-link">提成试算表(直客/同行)</a>
+        <a href="月度提成归档与运单明细-MVP.html" class="sidenav-link">月度归档和运单底表</a>
+        <a href="提成试算表-直客与同行-MVP.html#dev-trial-log-matrix" class="sidenav-link">试算步骤矩阵（开发）</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+      <div class="proto-layout">
+        <div class="page-head">
+          <div>
+            <a class="btn btn-ghost" href="#" data-commission-leave>← 返回规则包列表</a>
+            <h1 id="pkgTitle">规则包详情</h1>
+            <p class="code-line">
+              <span id="pkgCodeLabel">编码：</span><strong id="pkgCode">—</strong>
+              <button type="button" class="btn btn-ghost" id="btnCopyCode" style="padding:4px 10px;font-size:12px;">复制编码</button>
+            </p>
+            <p style="margin:8px 0 0;font-size:13px;color:var(--sub);">从列表点击<strong>名称</strong>或<strong>编码</strong>进入本页；支持 URL 参数 <code>?code=</code> 直达指定包（MVP 本地枚举）。</p>
+          </div>
+          <div class="head-actions">
+            <span id="pkgStatusSlot"></span>
+            <a class="btn btn-primary" id="linkEditPkg" href="规则包编辑-弹窗页-MVP.html">编辑规则包</a>
+          </div>
+        </div>
+
+        <div id="pkgUnknown" class="card empty-hint" style="display:none;">
+          未识别规则包编码。请从<a href="规则包-规则子母表-MVP.html">规则包列表</a>重新进入，或改用演示编码：
+          <code>规则包_直客_总部_2026</code>、<code>PEER_EAST_STD</code>、<code>CS_COMMON_2026Q2</code>。
+        </div>
+
+        <div id="pkgMain" class="card" style="display:none;">
+          <div class="detail-tabs" role="tablist" aria-label="规则包详情分区">
+            <button type="button" class="detail-tab on" role="tab" aria-selected="true" data-tab="overview">概览</button>
+            <button type="button" class="detail-tab" role="tab" aria-selected="false" data-tab="rules">包内规则</button>
+            <button type="button" class="detail-tab" role="tab" aria-selected="false" data-tab="versions">版本历史</button>
+          </div>
+          <div id="panel-overview" class="tab-panel show" role="tabpanel">
+            <div class="grid-3">
+              <div class="field"><label>分公司</label><div class="val" id="fBranch">—</div></div>
+              <div class="field"><label>部门</label><div class="val" id="fDept">—</div></div>
+              <div class="field"><label>小组</label><div class="val" id="fTeam">—</div></div>
+              <div class="field"><label>提成角色</label><div class="val" id="fRole">—</div></div>
+              <div class="field"><label>当前版本</label><div class="val" id="fVer">—</div></div>
+              <div class="field"><label>生效区间</label><div class="val" id="fPeriod">—</div></div>
+              <div class="field"><label>回款截止时间</label><div class="val" id="fPayback">—</div></div>
+              <div class="field"><label>包内编排默认</label><div class="val" id="fOrch">—</div></div>
+              <div class="field"><label>包含规则数</label><div class="val" id="fCount">—</div></div>
+            </div>
+            <div class="acc open" id="accBiz">
+              <button type="button" class="acc-hd" id="accBizBtn" aria-expanded="true">
+                客户类型配置（包级）
+                <span class="chev">▸</span>
+              </button>
+              <div class="acc-bd" id="accBizBd">
+                <div class="chips" id="fChips"></div>
+                <p style="margin:10px 0 0;font-size:12px;color:var(--sub);">包级<strong>仅直客、同行</strong>两类，与试算「业务类型」及人员映射引用维度对齐（MVP 示意）。</p>
+              </div>
+            </div>
+          </div>
+          <div id="panel-rules" class="tab-panel" role="tabpanel">
+            <input type="search" class="rule-search" id="ruleFilter" placeholder="筛选规则名称 / 编码 / 角色…" autocomplete="off" />
+            <div class="table-wrap">
+              <table class="data">
+                <thead>
+                  <tr>
+                    <th>规则名称 / 编码</th>
+                    <th>适用角色</th>
+                    <th>服务场景</th>
+                    <th>计算方式</th>
+                    <th>优先级</th>
+                    <th>编排组</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="ruleBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="panel-versions" class="tab-panel" role="tabpanel">
+            <p style="margin:0 0 12px;font-size:13px;color:var(--sub);">点击版本行展开变更摘要（与规则包列表进入本页后查看版本历史为同一能力雏形）。</p>
+            <ul class="ver-list" id="verList"></ul>
+          </div>
+          <div class="foot-note">
+            MVP：本页为只读详情 + 本地交互演示；发布/对比以接口与权限为准。编辑入口跳转「新增编辑规则包」弹窗页，实现时可带编码预填。
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    (function () {
+      var PKG = {
+        规则包_直客_总部_2026: {
+          name: "直客-总部-2026版",
+          branch: "总部",
+          dept: "营销中心",
+          team: "—",
+          role: "直客业务员",
+          version: "v1.4",
+          status: "生效中",
+          statusClass: "tag-ok",
+          period: "2026-01-01 ~ 2026-12-31",
+          payback: "2026-01-31 18:00（包级回款统计截止）",
+          orch: "同角色相加",
+          chips: ["直客", "同行"],
+          rules: [
+            ["直客业务员毛利阶梯", "规则_直客业务员_毛利阶梯", "直客业务员", "全部场景", "毛利阶梯", "100", "互斥组_直客_A", "生效中"],
+            ["客服-有业务员客服", "规则_客服_有业务员客服_比例", "直客客服", "有业务员客服", "固定比例", "300", "互斥组_客服_A", "生效中"],
+            ["客服-无业务员客服", "规则_客服_无业务员客服_比例", "直客客服", "无业务员客服", "固定比例", "301", "互斥组_客服_A", "草稿"]
+          ],
+          versions: [
+            { ver: "v1.4", time: "2026-03-02 10:18", user: "王敏", sum: "发布：客户类型勾选为「直客 + 同行」；包内规则无增删。" },
+            { ver: "v1.3", time: "2026-02-10 16:40", user: "李程", sum: "保存草稿：回款截止时间由月末 23:59 调整为 18:00。" },
+            { ver: "v1.2", time: "2026-01-20 09:05", user: "系统", sum: "初始化导入：包内规则 3 条，编排组与规则中心对齐。" }
+          ]
+        },
+        PEER_EAST_STD: {
+          name: "同行-华东-标准版",
+          branch: "华东",
+          dept: "同行事业部",
+          team: "华东组",
+          role: "同行业务员",
+          version: "v1.1",
+          status: "草稿",
+          statusClass: "tag-warn",
+          period: "2026-04-01 ~ 2026-12-31",
+          payback: "2026-04-30 18:00",
+          orch: "同角色互斥",
+          chips: ["同行"],
+          rules: [
+            ["同行销售量级阶梯", "规则_同行业务员_量级阶梯", "同行业务员", "全部场景（销售产品驱动）", "毛利阶梯", "120", "相加组_同行_销售产品_A", "草稿"],
+            ["同行海运产品线点数", "规则_同行业务员_海运点", "同行业务员", "全部场景（销售产品驱动）", "计费重点数", "121", "相加组_同行_销售产品_A", "草稿"],
+            ["同行经理营收比例", "规则_同行经理_营收比例", "同行经理", "全部场景", "固定比例", "220", "互斥组_同行_B", "草稿"]
+          ],
+          versions: [
+            { ver: "v1.1", time: "2026-05-08 11:22", user: "赵洁", sum: "草稿：新增「同行经理营收比例」规则引用。" },
+            { ver: "v1.0", time: "2026-04-01 08:30", user: "赵洁", sum: "创建规则包主档，未发布。" }
+          ]
+        },
+        CS_COMMON_2026Q2: {
+          name: "客服-通用-2026Q2",
+          branch: "深圳",
+          dept: "客服运营部",
+          team: "—",
+          role: "直客客服",
+          version: "v1.0",
+          status: "停用",
+          statusClass: "tag-gray",
+          period: "2026-04-01 ~ 2026-06-30",
+          payback: "2026-06-30 18:00",
+          orch: "同角色相加",
+          chips: ["直客"],
+          rules: [
+            ["客服基础营收比例", "规则_客服_基础营收比例", "直客客服", "全部场景", "固定比例", "260", "互斥组_客服_基础", "停用"],
+            ["客服跨月冲销调整", "规则_客服_跨月冲销调整", "直客客服", "有业务员客服", "固定比例", "320", "互斥组_客服_B", "停用"]
+          ],
+          versions: [
+            { ver: "v1.0", time: "2026-06-01 09:00", user: "系统", sum: "停用：季度包下线，映射引用需切换至新包编码。" }
+          ]
+        }
+      };
+
+      var params = new URLSearchParams(window.location.search || "");
+      var rawCode = params.get("code");
+      var code = rawCode ? String(rawCode).trim() : "";
+      var data = code && PKG[code] ? PKG[code] : null;
+      if (!data) {
+        var firstKey = Object.keys(PKG)[0];
+        code = firstKey;
+        data = PKG[firstKey];
+        if (rawCode && rawCode.trim()) {
+          document.getElementById("pkgUnknown").style.display = "block";
+          document.getElementById("pkgMain").style.display = "none";
+          document.getElementById("pkgTitle").textContent = "规则包未找到";
+          document.getElementById("pkgCode").textContent = rawCode.trim();
+          document.getElementById("linkEditPkg").href = "规则包编辑-弹窗页-MVP.html";
+          document.getElementById("pkgStatusSlot").innerHTML = "";
+          return;
+        }
+      }
+
+      document.getElementById("pkgMain").style.display = "block";
+      document.getElementById("pkgUnknown").style.display = "none";
+      document.getElementById("pkgTitle").textContent = data.name;
+      document.getElementById("pkgCode").textContent = code;
+      document.getElementById("linkEditPkg").href = "规则包编辑-弹窗页-MVP.html";
+
+      var st = document.getElementById("pkgStatusSlot");
+      st.innerHTML =
+        '<span class="tag ' + data.statusClass + '">' + data.status + "</span>" +
+        '<span class="tag tag-gray">' + data.version + "</span>";
+
+      document.getElementById("fBranch").textContent = data.branch;
+      document.getElementById("fDept").textContent = data.dept;
+      document.getElementById("fTeam").textContent = data.team;
+      document.getElementById("fRole").textContent = data.role;
+      document.getElementById("fVer").textContent = data.version;
+      document.getElementById("fPeriod").textContent = data.period;
+      document.getElementById("fPayback").textContent = data.payback;
+      document.getElementById("fOrch").textContent = data.orch;
+      document.getElementById("fCount").textContent = String(data.rules.length);
+
+      var chips = document.getElementById("fChips");
+      chips.innerHTML = "";
+      data.chips.forEach(function (t) {
+        var s = document.createElement("span");
+        s.className = "chip";
+        s.textContent = t;
+        chips.appendChild(s);
+      });
+
+      function tagClass(s) {
+        if (s === "生效中") return "tag-ok";
+        if (s === "草稿") return "tag-warn";
+        return "tag-gray";
+      }
+
+      var tbody = document.getElementById("ruleBody");
+      tbody.innerHTML = "";
+      data.rules.forEach(function (r) {
+        var tr = document.createElement("tr");
+        tr.setAttribute("data-filter", (r[0] + " " + r[1] + " " + r[2] + " " + r[3]).toLowerCase());
+        tr.innerHTML =
+          "<td><strong>" +
+          r[0] +
+          "</strong><br /><span style=\"color:var(--sub);font-size:12px;\">" +
+          r[1] +
+          "</span></td>" +
+          "<td>" +
+          r[2] +
+          "</td>" +
+          "<td>" +
+          r[3] +
+          "</td>" +
+          "<td>" +
+          r[4] +
+          "</td>" +
+          "<td>" +
+          r[5] +
+          "</td>" +
+          "<td>" +
+          r[6] +
+          "</td>" +
+          '<td><span class="tag ' +
+          tagClass(r[7]) +
+          '">' +
+          r[7] +
+          "</span></td>" +
+          '<td><a href="编辑规则-MVP.html" style="color:var(--primary);text-decoration:none;font-size:13px;">编辑</a></td>';
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("ruleFilter").addEventListener("input", function () {
+        var q = (this.value || "").trim().toLowerCase();
+        tbody.querySelectorAll("tr").forEach(function (tr) {
+          var hay = tr.getAttribute("data-filter") || "";
+          tr.classList.toggle("filtered-out", q && hay.indexOf(q) === -1);
+        });
+      });
+
+      var verList = document.getElementById("verList");
+      data.versions.forEach(function (v, idx) {
+        var li = document.createElement("li");
+        li.className = "ver-item" + (idx === 0 ? " open" : "");
+        li.innerHTML =
+          '<button type="button" class="ver-hd" aria-expanded="' +
+          (idx === 0 ? "true" : "false") +
+          '">' +
+          "<div><strong>" +
+          v.ver +
+          "</strong> · " +
+          v.time +
+          "</div>" +
+          '<div class="ver-meta">' +
+          v.user +
+          " · 点击查看摘要</div></button>" +
+          '<div class="ver-bd">' +
+          v.sum +
+          "</div>";
+        verList.appendChild(li);
+      });
+
+      verList.addEventListener("click", function (e) {
+        var btn = e.target.closest(".ver-hd");
+        if (!btn) return;
+        var item = btn.closest(".ver-item");
+        if (!item) return;
+        var open = !item.classList.contains("open");
+        verList.querySelectorAll(".ver-item").forEach(function (x) {
+          x.classList.remove("open");
+          var b = x.querySelector(".ver-hd");
+          if (b) b.setAttribute("aria-expanded", "false");
+        });
+        if (open) {
+          item.classList.add("open");
+          btn.setAttribute("aria-expanded", "true");
+        }
+      });
+
+      document.querySelectorAll(".detail-tab").forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          var id = tab.getAttribute("data-tab");
+          document.querySelectorAll(".detail-tab").forEach(function (t) {
+            t.classList.toggle("on", t === tab);
+            t.setAttribute("aria-selected", t === tab ? "true" : "false");
+          });
+          document.querySelectorAll(".tab-panel").forEach(function (p) {
+            p.classList.remove("show");
+          });
+          document.getElementById("panel-" + id).classList.add("show");
+        });
+      });
+
+      document.getElementById("accBizBtn").addEventListener("click", function () {
+        var acc = document.getElementById("accBiz");
+        var open = !acc.classList.contains("open");
+        acc.classList.toggle("open", open);
+        this.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      document.getElementById("btnCopyCode").addEventListener("click", function () {
+        var t = document.getElementById("pkgCode").textContent || "";
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(t).then(
+            function () {
+              alert("已复制：" + t);
+            },
+            function () {
+              prompt("请手动复制：", t);
+            }
+          );
+        } else {
+          prompt("请手动复制：", t);
+        }
+      });
+    })();
+  </script>
+  <script src="commission-nav-close.js"></script>
+</body>
+</html>

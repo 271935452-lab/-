@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>数据字典 · 内陆费服务商与费用类型（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --ok: #059669;
+      --ok-bg: #ecfdf5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .app-main { display: flex; flex-direction: column; }
+    .page {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 20px 16px 40px;
+    }
+    .header { margin-bottom: 16px; }
+    .header h1 { margin: 0 0 8px; font-size: 22px; }
+    .header p { margin: 0; font-size: 13px; color: var(--sub); max-width: 900px; line-height: 1.55; }
+
+    /* 主内容区：左侧字典子类 + 右侧表格（便于继续追加子字典） */
+    .dict-workbench {
+      display: flex;
+      align-items: stretch;
+      min-height: 520px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      overflow: hidden;
+    }
+    .dict-tab-rail {
+      width: 220px;
+      flex-shrink: 0;
+      background: #f8fafc;
+      border-right: 1px solid var(--line);
+      padding: 14px 0 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .dict-tab-rail-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      letter-spacing: 0.06em;
+      padding: 0 14px 12px;
+    }
+    .dict-tab-btn {
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: transparent;
+      padding: 11px 12px 11px 14px;
+      font-size: 14px;
+      color: #374151;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      line-height: 1.4;
+      border-radius: 0;
+    }
+    .dict-tab-btn:hover { background: #eef2f7; color: var(--primary); }
+    .dict-tab-btn.active {
+      background: #fff;
+      color: var(--primary);
+      font-weight: 600;
+      border-left-color: var(--primary);
+    }
+    .dict-tab-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      color: var(--sub);
+    }
+    .dict-tab-rail-foot {
+      margin-top: auto;
+      padding: 12px 14px 6px;
+      border-top: 1px solid var(--line);
+    }
+    .dict-tab-hint {
+      display: block;
+      font-size: 11px;
+      color: #9ca3af;
+      line-height: 1.45;
+    }
+    .dict-panel-area {
+      flex: 1;
+      min-width: 0;
+      background: var(--bg);
+      padding: 12px;
+      overflow: auto;
+    }
+    .dict-panel-area .dict-panel { display: none; }
+    .dict-panel-area .dict-panel.active { display: block; }
+
+    @media (max-width: 900px) {
+      .dict-workbench {
+        flex-direction: column;
+        min-height: 0;
+      }
+      .dict-tab-rail {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: stretch;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+        padding: 10px 8px 8px;
+        gap: 6px;
+      }
+      .dict-tab-rail-title {
+        width: 100%;
+        padding: 0 8px 6px;
+      }
+      .dict-tab-btn {
+        flex: 1;
+        min-width: 0;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 8px;
+        text-align: center;
+        font-size: 13px;
+        border-radius: 8px;
+      }
+      .dict-tab-btn.active {
+        border-left: none;
+        border-bottom-color: var(--primary);
+        background: #eff6ff;
+      }
+      .dict-tab-rail-foot {
+        width: 100%;
+        margin-top: 0;
+        padding: 8px 10px 2px;
+        border-top: none;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .filter {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      align-items: flex-end;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 4px;
+    }
+    .field input, .field select {
+      min-width: 160px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .toolbar {
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+    }
+    .toolbar .spacer { flex: 1; min-width: 8px; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn:hover { background: #f9fafb; }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1180px; }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 13px;
+      border-bottom: 1px solid #eef2f7;
+    }
+    th {
+      background: #f9fafb;
+      color: #4b5563;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tr.prov-inland-yes td { background: #fff7ed; }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .tag-on { background: var(--ok-bg); color: var(--ok); }
+    .tag-off { background: #fef2f2; color: #b91c1c; }
+    .link { color: var(--primary); cursor: pointer; text-decoration: none; margin-right: 10px; font-size: 13px; }
+    .link:hover { text-decoration: underline; }
+    .foot-note {
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.65;
+      background: #fafafa;
+      border-top: 1px solid var(--line);
+    }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+
+    /* modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow: auto;
+      box-shadow: 0 20px 50px rgba(0,0,0,.15);
+    }
+    .modal-hd {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-hd h2 { margin: 0; font-size: 16px; }
+    .modal-bd { padding: 16px 18px; }
+    .modal-ft {
+      padding: 12px 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .form-row textarea { min-height: 72px; resize: vertical; }
+    label.req::before {
+      content: "*";
+      color: #dc2626;
+      margin-right: 4px;
+    }
+    .close-x {
+      border: none;
+      background: none;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--sub);
+    }
+  </style>
+  <style id="commission-nav-skin">
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+.app-main { flex: 1; min-width: 0; background: #f5f7fb; height: 100vh; overflow: hidden; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand { border-bottom: none; margin-bottom: 0; padding: 8px 10px; flex: 1; min-width: 140px; }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">0.更新说明</div>
+        <a href="更新记录-MVP.html" class="sidenav-link">更新记录</a>
+        <div class="sidenav-section-label">1.人员映射表</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">2.月度调整表</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">3.提成规则包</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包列表</a>
+        <a href="规则包详情-MVP.html" class="sidenav-link">规则包详情</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">新增编辑规则包</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">编辑基数</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <div class="sidenav-section-label">4.提成试算</div>
+        <a href="提成试算表-直客与同行-MVP.html" class="sidenav-link">提成试算表(直客/同行)</a>
+        <a href="月度提成归档与运单明细-MVP.html" class="sidenav-link">月度归档和运单底表</a>
+        <a href="提成试算表-直客与同行-MVP.html#dev-trial-log-matrix" class="sidenav-link">试算步骤矩阵（开发）</a>
+        <div class="sidenav-section-label">5.数据字典</div>
+        <a href="数据字典-内陆费服务商与费用类型-MVP.html" class="sidenav-link active">数据字典</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+      <div class="page">
+        <div class="header">
+          <h1>数据字典 · 内陆费服务商与费用类型</h1>
+          <p>
+            维护<strong>运单维度扣内陆费</strong>所需主数据：当运单「服务商」命中下列<strong>需扣内陆费的服务商</strong>时，按归档/试算口径计算
+            <span class="mono">出货计费重 × 单价系数</span>（默认系数 <strong>0.6</strong> 元/kg，可逐服务商覆盖）。
+            <strong>费用类型</strong>字典用于表外导入、财务凭证与月度调整等场景的统一编码；已按业务台账<strong>左列毛利扣 / 右列提成扣</strong>录入并<strong>简化名称</strong>，备注中保留原名称与导入来源。内陆费、操作费为系统口径单列。
+          </p>
+        </div>
+
+        <div class="dict-workbench">
+          <nav class="dict-tab-rail" role="tablist" aria-label="字典子类">
+            <div class="dict-tab-rail-title">字典分类</div>
+            <button type="button" class="dict-tab-btn active" role="tab" id="tab-prov" aria-selected="true" aria-controls="panel-prov" data-tab="prov">需扣内陆费的服务商</button>
+            <button type="button" class="dict-tab-btn" role="tab" id="tab-fee" aria-selected="false" aria-controls="panel-fee" data-tab="fee">费用类型</button>
+            <div class="dict-tab-rail-foot">
+              <span class="dict-tab-hint">后续可在下方追加页签：如分公司、提成角色、销售产品等（MVP 占位）。</span>
+            </div>
+          </nav>
+          <div class="dict-panel-area">
+        <div id="panel-prov" class="dict-panel active" role="tabpanel" aria-labelledby="tab-prov">
+          <div class="card">
+            <div class="filter">
+              <div class="field">
+                <label for="fProvCode">服务商编码</label>
+                <input id="fProvCode" type="text" placeholder="模糊" />
+              </div>
+              <div class="field">
+                <label for="fProvName">服务商名称</label>
+                <input id="fProvName" type="text" placeholder="模糊" />
+              </div>
+              <div class="field">
+                <label for="fProvMatch">运单匹配值</label>
+                <input id="fProvMatch" type="text" placeholder="与底表服务商字段精确匹配" />
+              </div>
+              <div class="field">
+                <label for="fProvCat">分类</label>
+                <select id="fProvCat">
+                  <option value="">全部</option>
+                  <option>专线</option>
+                  <option>快递</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="fProvInland">扣内陆费</label>
+                <select id="fProvInland">
+                  <option value="">全部</option>
+                  <option>是</option>
+                  <option>否</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="fProvEn">状态</label>
+                <select id="fProvEn">
+                  <option value="">全部</option>
+                  <option>启用</option>
+                  <option>停用</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-primary">查询</button>
+              <button type="button" class="btn">重置</button>
+            </div>
+            <div class="toolbar">
+              <button type="button" class="btn btn-primary" id="btnAddProv">+ 新增服务商</button>
+              <button type="button" class="btn">下载导入模板</button>
+              <button type="button" class="btn">批量导入</button>
+              <button type="button" class="btn">导出</button>
+              <span class="spacer"></span>
+              <span style="font-size:12px;color:var(--sub);">共 25 条 · 台账「代理/分类/内陆费有·无」同步</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>服务商编码</th>
+                    <th>服务商名称</th>
+                    <th>运单匹配值</th>
+                    <th>分类</th>
+                    <th>扣内陆费</th>
+                    <th>计费重口径</th>
+                    <th>单价系数(元/kg)</th>
+                    <th>启用</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="prov-inland-yes"><td class="mono">SVC_IL_001</td><td>全年达</td><td class="mono">全年达</td><td>专线</td><td><span class="tag tag-on">是</span></td><td>出货计费重</td><td>0.60</td><td><span class="tag tag-on">启用</span></td><td>台账内陆费「有」·橙色行</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr class="prov-inland-yes"><td class="mono">SVC_IL_002</td><td>上海翼飞</td><td class="mono">上海翼飞</td><td>快递</td><td><span class="tag tag-on">是</span></td><td>出货计费重</td><td>0.60</td><td><span class="tag tag-on">启用</span></td><td>台账内陆费「有」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr class="prov-inland-yes"><td class="mono">SVC_IL_003</td><td>上海欧克</td><td class="mono">上海欧克</td><td>快递</td><td><span class="tag tag-on">是</span></td><td>出货计费重</td><td>0.60</td><td><span class="tag tag-on">启用</span></td><td>台账内陆费「有」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr class="prov-inland-yes"><td class="mono">SVC_IL_004</td><td>上海迈迅</td><td class="mono">上海迈迅</td><td>快递</td><td><span class="tag tag-on">是</span></td><td>出货计费重</td><td>0.60</td><td><span class="tag tag-on">启用</span></td><td>台账内陆费「有」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr class="prov-inland-yes"><td class="mono">SVC_IL_005</td><td>迈趣</td><td class="mono">迈趣</td><td>快递</td><td><span class="tag tag-on">是</span></td><td>出货计费重</td><td>0.60</td><td><span class="tag tag-on">启用</span></td><td>台账内陆费「有」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr class="prov-inland-yes"><td class="mono">SVC_IL_006</td><td>环世通</td><td class="mono">环世通</td><td>快递</td><td><span class="tag tag-on">是</span></td><td>出货计费重</td><td>0.60</td><td><span class="tag tag-on">启用</span></td><td>台账内陆费「有」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_007</td><td>鑫乘</td><td class="mono">鑫乘</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」·归档内陆费列 0</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_008</td><td>心安</td><td class="mono">心安</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_009</td><td>维靳</td><td class="mono">维靳</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_010</td><td>世诚</td><td class="mono">世诚</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_011</td><td>欧吉通</td><td class="mono">欧吉通</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_012</td><td>坤宇</td><td class="mono">坤宇</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_013</td><td>快邮</td><td class="mono">快邮</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_014</td><td>骏威</td><td class="mono">骏威</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_015</td><td>巨远</td><td class="mono">巨远</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_016</td><td>皓鹏</td><td class="mono">皓鹏</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_017</td><td>航乐</td><td class="mono">航乐</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_018</td><td>海原</td><td class="mono">海原</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_019</td><td>冠誉</td><td class="mono">冠誉</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_020</td><td>博航</td><td class="mono">博航</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_021</td><td>澳华</td><td class="mono">澳华</td><td>专线</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_022</td><td>深圳中飞</td><td class="mono">深圳中飞</td><td>快递</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_023</td><td>金速</td><td class="mono">金速</td><td>快递</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_024</td><td>航洲运达</td><td class="mono">航洲运达</td><td>快递</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                  <tr><td class="mono">SVC_IL_025</td><td>风驰</td><td class="mono">风驰</td><td>快递</td><td><span class="tag tag-off">否</span></td><td>出货计费重</td><td>0.00</td><td><span class="tag tag-on">启用</span></td><td>台账「无」</td><td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="foot-note">
+              <strong>匹配规则（与《月度归档与运单底表》一致）：</strong>以运单「服务商」字段与上表<strong>运单匹配值</strong>做<strong>等值匹配</strong>（去空格/大小写规则由接口约定）。
+              命中且<strong>扣内陆费=是</strong> → 内陆费金额 = 出货计费重 × 单价系数；命中且为<strong>否</strong> → 内陆费列<strong>0</strong>；<strong>未命中</strong>本字典任一行 → 内陆费列<strong>0</strong>。
+              若命中多行以实现侧<strong>唯一命中</strong>策略为准（建议编码唯一 + 匹配值唯一）。橙色行为台账「内陆费=有」代理。
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-fee" class="dict-panel" role="tabpanel" aria-labelledby="tab-fee" hidden>
+          <div class="card">
+            <div class="filter">
+              <div class="field">
+                <label for="fFeeCode">费用类型编码</label>
+                <input id="fFeeCode" type="text" placeholder="模糊" />
+              </div>
+              <div class="field">
+                <label for="fFeeName">费用类型名称</label>
+                <input id="fFeeName" type="text" placeholder="模糊" />
+              </div>
+              <div class="field">
+                <label for="fFeeCat">费用大类</label>
+                <select id="fFeeCat">
+                  <option value="">全部</option>
+                  <option>内陆费</option>
+                  <option>毛利扣</option>
+                  <option>提成扣</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="fFeeInland">参与内陆费核算</label>
+                <select id="fFeeInland">
+                  <option value="">全部</option>
+                  <option>是</option>
+                  <option>否</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="fFeeLane">提成扣减链路</label>
+                <select id="fFeeLane">
+                  <option value="">全部</option>
+                  <option>扣毛利</option>
+                  <option>扣提成</option>
+                  <option>仅台账</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-primary">查询</button>
+              <button type="button" class="btn">重置</button>
+            </div>
+            <div class="toolbar">
+              <button type="button" class="btn btn-primary" id="btnAddFee">+ 新增费用类型</button>
+              <button type="button" class="btn">下载导入模板</button>
+              <button type="button" class="btn">批量导入</button>
+              <button type="button" class="btn">导出</button>
+              <span class="spacer"></span>
+              <span style="font-size:12px;color:var(--sub);">共 39 条字典项 · 毛利扣 16 + 提成扣 21 + 内陆费/操作费 2</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>费用类型编码</th>
+                    <th>费用类型名称（简化）</th>
+                    <th>费用大类</th>
+                    <th>参与内陆费核算</th>
+                    <th>提成扣减链路</th>
+                    <th>排序</th>
+                    <th>启用</th>
+                    <th>备注（原台账名称 / 来源）</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">FEE_INLAND_STD</td>
+                    <td>内陆运费（标准）</td>
+                    <td>内陆费</td>
+                    <td><span class="tag tag-on">是</span></td>
+                    <td>扣毛利</td>
+                    <td>5</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>与「需扣内陆费的服务商」联动；非 Excel 两列</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_OP_15</td>
+                    <td>操作费（件数）</td>
+                    <td>—</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>8</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>件数×1.5；归档与试算分列展示</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr><td colspan="9" style="background:#f1f5f9;font-weight:600;color:#475569;">毛利扣（特殊事项扣款 · 台账左列）</td></tr>
+                  <tr>
+                    <td class="mono">FEE_GP_COUNTERFEIT</td>
+                    <td>仿牌罚款</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>110</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：仿牌罚款 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_SALES_BEAR_COMM</td>
+                    <td>业务承担提成扣</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>120</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：业务承担扣提成 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_ADJ_MONTH_COMM</td>
+                    <td>毛利调整回算提成</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>130</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：毛利调整对应月份核算提成金额 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_UNLOCK_LATEFEE</td>
+                    <td>解锁滞纳金</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>140</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：解锁滞纳金 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_CAPITAL_OCCUPY</td>
+                    <td>资金占用费</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>150</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：资金成本占用费用（毛利侧）· 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_DEPPON_ORDER</td>
+                    <td>德邦下单分成</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>160</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：德邦下单提成（含 1.5 元/票分成等细则）· 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_NB_NEWACCT_PEN</td>
+                    <td>宁波新户未达标扣款</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>170</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：宁波新开户规则未达成扣款 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_MGR_PERF_COMM</td>
+                    <td>主管绩效提成</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>180</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：主管提成绩效 · 导入绩效</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_CS1PCT_FROM_SALES</td>
+                    <td>业务客服1%扣业务</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>190</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：业务客服 1% 提成扣除业务员 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_YW_PEER_PAY_CS</td>
+                    <td>义乌同行担客服提成</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>200</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：客服提成由义乌同行业务承担 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_SZ_PEER_PAY_CS</td>
+                    <td>深圳同行担客服提成</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>210</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：客服提成由深圳同行业务承担 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_PEER_DROPSHIP_COMM</td>
+                    <td>同行一件代发提成</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>220</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：同行业务员一件代发提成 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_PF_FULL_FROM_COMM</td>
+                    <td>公积金全额扣提成</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>230</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：公积金由提成全额扣 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_TANGSENG_NET_5</td>
+                    <td>唐僧运无忧客户 5%</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>240</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：唐僧运无忧网络客户提成（系统业务员毛利×5%）· 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_NB_HAPPY_REIMB</td>
+                    <td>宁波幸福报销分摊</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>250</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：宁波表幸福报销费用（公司与个人 50/50 等）· 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_GP_CHS_PERSONAL_COMM</td>
+                    <td>储瀚社个人提成扣</td>
+                    <td>毛利扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣毛利</td>
+                    <td>260</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：储瀚社个人部分提成扣 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr><td colspan="9" style="background:#fef3c7;font-weight:600;color:#92400e;">提成扣（表外成本 · 台账右列）</td></tr>
+                  <tr>
+                    <td class="mono">FEE_CD_CREDIT_INS_GP</td>
+                    <td>中信保（业务担毛利）</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>310</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：中信保买保险业务员毛利承担 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_LCL_MATERIAL</td>
+                    <td>拼箱物料费</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>320</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：拼箱分箱物料明细 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_COMPRESS_PACK</td>
+                    <td>压缩包费</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>330</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：压缩包 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_KUAYUE_FREIGHT</td>
+                    <td>跨越物流费</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>340</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：跨越物流费 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_STORAGE_FEE</td>
+                    <td>仓储费</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>350</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：仓储收费 · 导入（与财务凭证「仓储费」付款月口径可对账）</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_DRIVER_PICKUP</td>
+                    <td>司机取件成本</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>360</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：业务司机取件收成本 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_CAPITAL_OCCUPY</td>
+                    <td>资金占用费</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>370</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：资金成本占用费用（表外/提成扣列）· 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_CHANNEL_COMM_COST</td>
+                    <td>渠道提成成本</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>380</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：渠道提成成本 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_SALES_DEPT4</td>
+                    <td>销售四部成本</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>390</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：销售四部成本 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_LEGAL_FEE</td>
+                    <td>律师费</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>400</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：律师费 · 导入（与财务凭证付款月）</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_DROPSHIP_FEE</td>
+                    <td>一件代发费</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>410</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：一件代发 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_CS_SALARY</td>
+                    <td>客服工资</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>420</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：业务客服工资 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_HZ_SALARY_AFTER2M</td>
+                    <td>杭州入职两月扣薪</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>430</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：杭州入职两个月后实发工资扣毛利 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_SZ_SALARY_TIMER</td>
+                    <td>苏州计时工资扣</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>440</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：苏州入职开始计时工资扣毛利（含人员例外）· 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_SS_COMPANY_GP</td>
+                    <td>社保公司承担（扣毛利）</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>450</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：毛利扣社保公司承担部分 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_AR1PCT_LONGYUN</td>
+                    <td>指定客户应收 1% 扣</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>460</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：龙云云三客户应收 1% 扣毛利（客户号见台账）· 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_US_WH_LANZHUOBO</td>
+                    <td>美线仓储费（兰）</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>470</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：兰卓波美国仓储费 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_NAIWEI_KG</td>
+                    <td>耐微科技扣（元/kg）</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>480</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：毛利扣蒋龙波客户耐微科技（1 元/kg 等）· 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_SZ_DIRECT_REGULAR</td>
+                    <td>深圳直客转正扣毛利</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>490</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：深圳直客业务庞麟转正后扣毛利 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_OP_FEE_REDUCTION</td>
+                    <td>操作费减免</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>500</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：减免操作费 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FEE_CD_KEY_ACCOUNT_MODE</td>
+                    <td>大客户模式提成</td>
+                    <td>提成扣</td>
+                    <td><span class="tag tag-off">否</span></td>
+                    <td>扣提成</td>
+                    <td>510</td>
+                    <td><span class="tag tag-on">启用</span></td>
+                    <td>原：大客户提成模式 · 导入</td>
+                    <td><a href="#" class="link">编辑</a><a href="#" class="link">停用</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="foot-note">
+              <strong>MVP 说明：</strong><strong>费用大类</strong>为「毛利扣」时，导入/试算走<strong>扣毛利</strong>链路；为「提成扣」时走<strong>扣提成</strong>链路（与台账右列表外成本列一致）。台账中行名含「扣毛利」字样但归在右列的，仍按<strong>提成扣大类 + 扣提成链路</strong>落库，与历史导入分类一致。
+              「参与内陆费核算」仅内陆运费标准行可为「是」。编码前缀建议 <span class="mono">FEE_GP_</span> 毛利扣、<span class="mono">FEE_CD_</span> 提成扣，便于开发筛选。同义多码在上线前做一次合并。
+            </div>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="modalProv" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalProvTitle">
+    <div class="modal">
+      <div class="modal-hd">
+        <h2 id="modalProvTitle">新增 · 需扣内陆费的服务商</h2>
+        <button type="button" class="close-x" data-close="modalProv" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="form-row">
+          <label class="req">服务商编码</label>
+          <input type="text" placeholder="唯一，如 SVC_IL_026" />
+        </div>
+        <div class="form-row">
+          <label class="req">服务商名称</label>
+          <input type="text" placeholder="展示名称" />
+        </div>
+        <div class="form-row">
+          <label class="req">运单匹配值</label>
+          <input type="text" placeholder="与运单底表「服务商」字段等值匹配" />
+        </div>
+        <div class="form-row">
+          <label class="req">分类</label>
+          <select>
+            <option>专线</option>
+            <option>快递</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="req">扣内陆费</label>
+          <select>
+            <option>是</option>
+            <option>否</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>计费重口径</label>
+          <select>
+            <option>出货计费重</option>
+            <option>收货计费重（慎用）</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="req">内陆费单价系数(元/kg)</label>
+          <input type="number" step="0.01" value="0.60" />
+        </div>
+        <div class="form-row">
+          <label>备注</label>
+          <textarea placeholder="对账说明、生效范围等"></textarea>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" data-close="modalProv">取消</button>
+        <button type="button" class="btn btn-primary" data-close="modalProv" onclick="alert('MVP：已保存（演示）');">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalFee" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalFeeTitle">
+    <div class="modal">
+      <div class="modal-hd">
+        <h2 id="modalFeeTitle">新增 · 费用类型</h2>
+        <button type="button" class="close-x" data-close="modalFee" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="form-row">
+          <label class="req">费用类型编码</label>
+          <input type="text" placeholder="唯一，如 FEE_XXX" />
+        </div>
+        <div class="form-row">
+          <label class="req">费用类型名称</label>
+          <input type="text" placeholder="中文名称" />
+        </div>
+        <div class="form-row">
+          <label class="req">费用大类</label>
+          <select>
+            <option>毛利扣</option>
+            <option>提成扣</option>
+            <option>内陆费</option>
+            <option>—</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>参与内陆费核算</label>
+          <select>
+            <option>否</option>
+            <option>是</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>提成扣减链路</label>
+          <select>
+            <option>扣毛利</option>
+            <option>扣提成</option>
+            <option>仅台账</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>排序</label>
+          <input type="number" value="100" />
+        </div>
+        <div class="form-row">
+          <label>备注</label>
+          <textarea></textarea>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" data-close="modalFee">取消</button>
+        <button type="button" class="btn btn-primary" data-close="modalFee" onclick="alert('MVP：已保存（演示）');">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="commission-nav-close.js"></script>
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll(".dict-tab-btn[data-tab]");
+      var panels = { prov: document.getElementById("panel-prov"), fee: document.getElementById("panel-fee") };
+      tabs.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var key = btn.getAttribute("data-tab");
+          tabs.forEach(function (b) {
+            var sel = b === btn;
+            b.classList.toggle("active", sel);
+            b.setAttribute("aria-selected", sel ? "true" : "false");
+          });
+          Object.keys(panels).forEach(function (k) {
+            var p = panels[k];
+            if (!p) return;
+            var on = k === key;
+            p.classList.toggle("active", on);
+            p.hidden = !on;
+          });
+        });
+      });
+
+      function openModal(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.add("open");
+      }
+      function closeModal(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove("open");
+      }
+      document.getElementById("btnAddProv").addEventListener("click", function () { openModal("modalProv"); });
+      document.getElementById("btnAddFee").addEventListener("click", function () { openModal("modalFee"); });
+      document.querySelectorAll("[data-close]").forEach(function (btn) {
+        btn.addEventListener("click", function () { closeModal(btn.getAttribute("data-close")); });
+      });
+      document.querySelectorAll(".modal-overlay").forEach(function (ov) {
+        ov.addEventListener("click", function (e) {
+          if (e.target === ov) ov.classList.remove("open");
+        });
+      });
+    })();
+  </script>
+  <style id="prd-side-panel">
+    body { padding-right: 370px; height: 100vh; overflow: hidden; }
+    .prd-side {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 360px;
+      height: 100vh;
+      overflow: auto;
+      overscroll-behavior: contain;
+      background: #f8fafc;
+      border-left: 1px solid #dbe3ee;
+      padding: 14px 14px 22px;
+      z-index: 1200;
+    }
+    .prd-side h3 { margin: 0 0 8px; font-size: 15px; }
+    .prd-side h4 { margin: 12px 0 6px; font-size: 13px; color: #0f172a; }
+    .prd-side p, .prd-side li { font-size: 12px; color: #334155; line-height: 1.6; }
+    .prd-side ul { margin: 0; padding-left: 16px; }
+    .prd-chip { display: inline-block; font-size: 11px; color: #1d4ed8; background: #dbeafe; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; }
+    @media (max-width: 1500px) { body { padding-right: 0; } .prd-side { display: none; } }
+  </style>
+  <aside class="prd-side" aria-label="PRD">
+    <span class="prd-chip">PRD · 数据字典</span>
+    <h3>内陆费服务商与费用类型</h3>
+    <h4>背景与目标</h4>
+    <p>为运单底表、月度归档与提成试算提供可配置主数据：<strong>需扣内陆费的服务商</strong>以台账「代理/分类/内陆费有·无」为准，与运单<strong>服务商</strong>等值匹配后决定内陆费列是否有金额；统一<strong>费用类型</strong>编码与扣减链路。</p>
+    <h4>字段定义与口径</h4>
+    <ul>
+      <li><strong>服务商 · 运单匹配值</strong>：与底表「服务商」等值匹配（大小写/去空格由接口约定）。</li>
+      <li><strong>服务商 · 分类</strong>：专线 / 快递，与台账「分类」列一致，供筛选与报表维度扩展。</li>
+      <li><strong>服务商 · 扣内陆费</strong>：是/否对应台账「有/无」；仅「是」参与计费。</li>
+      <li><strong>服务商 · 内陆费单价系数</strong>：默认 0.60 元/kg；「否」行系数记 0，列示金额恒为 0。</li>
+      <li><strong>费用大类</strong>：<strong>毛利扣</strong>（台账「特殊事项扣款」侧）、<strong>提成扣</strong>（台账「表外成本」侧）；与导入模板列映射一致。</li>
+      <li><strong>提成扣减链路</strong>：大类为毛利扣时为「扣毛利」；大类为提成扣时为「扣提成」（与台账右列归类一致；引擎层再与基数/结果校验衔接）。</li>
+      <li><strong>名称（简化）</strong>：列表与下拉用短名；<strong>备注</strong>保留 Excel 原名称与「导入/导入绩效」等来源。</li>
+      <li><strong>编码</strong>：<code>SVC_IL_*</code> 需扣内陆费服务商；<code>FEE_GP_*</code> 毛利扣费用类型；<code>FEE_CD_*</code> 提成扣费用类型；内陆费、操作费单独编码。</li>
+    </ul>
+    <h4>交互说明</h4>
+    <ul>
+      <li>左侧<strong>字典分类</strong>切换子表，右侧为筛选区与主表；支持新增（弹窗）、导入导出（MVP 占位）。窄屏时左侧为横向条，便于手机浏览。</li>
+      <li>停用服务商：历史运单仍可按版本快照解释，新单不再命中（策略可配置）。</li>
+    </ul>
+    <h4>与其它模块联动</h4>
+    <ul>
+      <li><strong>月度归档与运单底表</strong>：内陆费列按本页「需扣内陆费的服务商」匹配；未命中或「扣内陆费=否」为 0；见 <code>月度提成归档与运单明细-MVP.html</code> PRD。</li>
+      <li><strong>导入表外成本</strong>：费用类型下拉引用本字典编码。</li>
+      <li><strong>财务凭证</strong>：费用类型与付款月口径对齐域名笔记（仓储费、律师费等）。</li>
+    </ul>
+    <h4>字段取值来源（本页）</h4>
+    <ul>
+      <li>列表数据：主数据表（本页维护）；审计字段扩展：创建人、更新时间（实现时补全）。</li>
+    </ul>
+  </aside>
+</body>
+</html>
