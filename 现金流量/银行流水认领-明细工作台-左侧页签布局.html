@@ -1,0 +1,2881 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>现金流量 · 银行流水认领明细（左侧页签布局 · 对比版）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --green-bg: #ecfdf3;
+      --green-text: #027a48;
+      --amber-bg: #fffbeb;
+      --amber-text: #b45309;
+      --red-bg: #fef2f2;
+      --red-text: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      min-height: 100vh;
+    }
+    .page {
+      max-width: 1720px;
+      margin: 0 auto;
+      padding: 16px 16px 28px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 左侧竖向场景页签 + 右侧（筛选 / 凭证 / 列表） */
+    .workspace-shell {
+      display: flex;
+      align-items: stretch;
+      gap: 14px;
+      margin-bottom: 8px;
+      flex: 1;
+      min-height: 0;
+    }
+    .side-rail {
+      width: 220px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 10px 16px;
+      align-self: flex-start;
+      position: sticky;
+      top: 12px;
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
+      box-shadow: 0 1px 6px rgba(15, 23, 42, 0.05);
+    }
+    .side-rail-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #64748b;
+      text-transform: uppercase;
+      padding: 4px 10px 10px;
+      border-bottom: 1px dashed var(--line);
+      margin-bottom: 8px;
+    }
+    .side-rail .tabs-bar-vertical {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .side-rail .tab {
+      width: 100%;
+      justify-content: flex-start;
+      text-align: left;
+      white-space: normal;
+      line-height: 1.35;
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+    .side-rail .tab .badge {
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .layout-main-col {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .detail-body-inner > .tabs-wrap {
+      border-radius: 12px;
+    }
+    .detail-body-inner > .tabs-wrap > .tab-panel:first-of-type {
+      border-radius: 12px 12px 0 0;
+    }
+    @media (max-width: 900px) {
+      .workspace-shell { flex-direction: column; }
+      .side-rail {
+        width: 100%;
+        position: relative;
+        top: 0;
+        max-height: none;
+      }
+      .side-rail .tabs-bar-vertical {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .side-rail .tab { width: auto; flex: 1; min-width: 120px; }
+    }
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .header p { margin: 6px 0 0; font-size: 13px; color: var(--sub); max-width: 860px; line-height: 1.55; }
+    .header-links { font-size: 13px; }
+    .header-links a { color: var(--primary); }
+
+    .filter-bar {
+      display: block;
+      padding: 12px 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+    .filter-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .filter-toolbar-meta {
+      flex: 1;
+      font-size: 12px;
+      color: var(--sub);
+      min-width: 140px;
+    }
+    .filter-toolbar-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+    .btn-filter-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--primary);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .btn-filter-toggle:hover {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .btn-filter-toggle .toggle-chevron {
+      display: inline-block;
+      font-size: 10px;
+      line-height: 1;
+      transition: transform 0.22s ease;
+    }
+    .filter-bar.filter-bar--expanded .btn-filter-toggle .toggle-chevron {
+      transform: rotate(-180deg);
+    }
+    .filter-hint {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .filter-body-wrap {
+      display: block;
+    }
+    .filter-body-inner {
+      overflow: visible;
+      min-height: 0;
+    }
+    .filter-more {
+      display: none;
+      padding-top: 2px;
+    }
+    .filter-bar.filter-bar--expanded .filter-more {
+      display: block;
+    }
+    .filter-bar .filter-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    .search-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px 12px;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 1200px) {
+      .search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .field.field-range .range-inner {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+    .field.field-range .range-inner input {
+      flex: 1;
+      min-width: 0;
+    }
+    .field.field-range .range-sep {
+      color: var(--sub);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .field input, .field select {
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      min-width: 0;
+      width: 100%;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      height: 36px;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-sm { height: 30px; padding: 4px 10px; font-size: 12px; }
+
+    /* 凭证工具栏（与财务系统操作条对齐，原型为占位） */
+    .voucher-toolbar {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 0;
+      flex-shrink: 0;
+      box-shadow: 0 1px 6px rgba(15, 23, 42, 0.04);
+    }
+    .voucher-toolbar-hint {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.55;
+    }
+    .voucher-toolbar-hint strong { color: #0f172a; }
+    .voucher-toolbar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 0;
+    }
+    .voucher-toolbar--expanded .voucher-toolbar-head {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .voucher-toolbar-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+    .voucher-toolbar-meta {
+      flex: 1;
+      font-size: 12px;
+      color: var(--sub);
+      min-width: 100px;
+    }
+    .btn-voucher-toolbar-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--primary);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .btn-voucher-toolbar-toggle:hover {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .btn-voucher-toolbar-toggle .toggle-chevron {
+      display: inline-block;
+      font-size: 10px;
+      line-height: 1;
+      transition: transform 0.22s ease;
+    }
+    .voucher-toolbar--expanded .btn-voucher-toolbar-toggle .toggle-chevron {
+      transform: rotate(-180deg);
+    }
+    .voucher-toolbar:not(.voucher-toolbar--expanded) .voucher-toolbar-body {
+      display: none;
+    }
+    .tb-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tb-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .tb-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 6px;
+      border: 1px solid #3b82f6;
+      background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 1px 2px rgba(37, 99, 235, 0.35);
+    }
+    .tb-btn:hover {
+      filter: brightness(1.06);
+    }
+    .tb-btn:active {
+      transform: translateY(1px);
+    }
+    .tb-btn .ic {
+      font-size: 13px;
+      line-height: 1;
+      opacity: 0.95;
+    }
+    .tb-btn-danger {
+      border-color: #dc2626;
+      background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 1px 2px rgba(220, 38, 38, 0.35);
+    }
+    .tb-btn-muted {
+      opacity: 0.72;
+      border-style: dashed;
+    }
+    .tb-btn-muted:hover {
+      opacity: 0.9;
+    }
+
+    #p-in .table-wrap {
+      overflow-x: auto;
+      overflow-y: auto;
+    }
+    #p-in table.income-matrix {
+      min-width: 2000px;
+      font-size: 12px;
+    }
+    #p-in table.income-matrix thead th.dept-col {
+      max-width: 88px;
+      white-space: normal;
+      line-height: 1.25;
+      vertical-align: bottom;
+      hyphens: auto;
+    }
+    #p-in table.income-matrix tbody td.num {
+      font-size: 11px;
+    }
+    #p-in table.income-matrix tbody tr.row-income-summary {
+      background: #ecfdf3;
+      font-weight: 600;
+    }
+    #p-in table.income-matrix tbody tr.row-income-summary td:first-child,
+    #p-in table.income-matrix tbody tr.row-income-summary td:nth-child(2) {
+      color: #166534;
+    }
+
+    /* 现金流出 · 往来（4. 现金流出-往来） */
+    #p-due .table-wrap {
+      overflow-x: auto;
+      overflow-y: auto;
+    }
+    #p-due table.due-matrix {
+      min-width: 1180px;
+      font-size: 12px;
+    }
+    #p-due table.due-matrix tbody td.num {
+      font-size: 11px;
+    }
+    #p-due table.due-matrix tbody tr.row-due-month td {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: #0f172a;
+      padding: 8px 10px;
+    }
+
+    /* 现金流出 · 代理（2. 归集支付代理成本款：横向产品 / 纵向日期+代理） */
+    #p-agent .table-wrap {
+      overflow-x: auto;
+      overflow-y: auto;
+    }
+    #p-agent table.agent-matrix {
+      min-width: 1100px;
+      font-size: 12px;
+    }
+    #p-agent table.agent-matrix thead th.prod-col {
+      max-width: 96px;
+      white-space: normal;
+      line-height: 1.25;
+      vertical-align: bottom;
+    }
+    #p-agent table.agent-matrix tbody td.num {
+      font-size: 11px;
+    }
+    #p-agent table.agent-matrix tbody tr.row-agent-summary {
+      background: #fdf2f8;
+      font-weight: 600;
+    }
+    #p-agent table.agent-matrix tbody tr.row-agent-summary td:first-child,
+    #p-agent table.agent-matrix tbody tr.row-agent-summary td:nth-child(2) {
+      color: #9d174d;
+    }
+
+    /* 现金流出 · 费用（3. 归集日常支付费用：横向部门；列1日期、列2类型、列3员工） */
+    #p-fee .table-wrap {
+      overflow-x: auto;
+      overflow-y: auto;
+    }
+    #p-fee table.fee-matrix {
+      min-width: 2000px;
+      font-size: 12px;
+    }
+    #p-fee table.fee-matrix thead th.dept-col {
+      max-width: 88px;
+      white-space: normal;
+      line-height: 1.25;
+      vertical-align: bottom;
+    }
+    #p-fee table.fee-matrix tbody td.num {
+      font-size: 11px;
+    }
+    #p-fee table.fee-matrix tbody tr.row-fee-month td {
+      background: #fefce8;
+      font-weight: 600;
+      color: #713f12;
+      padding: 8px 10px;
+    }
+
+    .req-details {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0 14px 12px;
+      margin-top: 14px;
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+    .req-details > summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 12px 0;
+      list-style: none;
+    }
+    .req-details > summary::-webkit-details-marker { display: none; }
+    .req-inner {
+      font-size: 12px;
+      color: #374151;
+      line-height: 1.65;
+      border-top: 1px dashed var(--line);
+      padding-top: 10px;
+    }
+    .req-inner ol { margin: 0 0 0 1.1rem; padding: 0; }
+    .req-inner li { margin-bottom: 8px; }
+
+    .detail-section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-bottom: 0;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .detail-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+    .detail-toolbar-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .detail-body-wrap {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows 0.26s ease;
+      flex: 1;
+      min-height: 0;
+    }
+    .detail-section.is-collapsed .detail-body-wrap { grid-template-rows: 0fr; }
+    .detail-body-inner { overflow: hidden; min-height: 0; }
+
+    table[data-grid="1"] tbody tr:not(.empty-row):not(.row-income-summary):not(.row-agent-summary):not(.row-fee-month):not(.row-due-month) {
+      cursor: pointer;
+    }
+    table[data-grid="1"] tbody tr:not(.empty-row):hover { background: #f8fafc; }
+
+    .sum-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 10px 12px;
+      margin-top: 0;
+      border-top: 1px solid var(--line);
+      background: #fafbff;
+      font-size: 12px;
+      color: #334155;
+    }
+    .sum-strip strong { color: #0f172a; }
+
+    .claim-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      min-width: 168px;
+    }
+    .claim-rate-label { font-size: 11px; color: var(--sub); }
+    .claim-rate-input {
+      width: 100%;
+      max-width: 120px;
+      height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 6px;
+      font-size: 12px;
+    }
+
+    .modal-root {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .modal-root.is-open { display: flex; }
+    .modal-card {
+      background: #fff;
+      border-radius: 12px;
+      max-width: 520px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: auto;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--line);
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 600;
+    }
+    .modal-body { padding: 14px 16px; font-size: 13px; line-height: 1.6; color: #374151; }
+    .modal-body dl { margin: 0; }
+    .modal-body dt { color: var(--sub); font-size: 12px; margin-top: 8px; }
+    .modal-body dd { margin: 2px 0 0; }
+    .modal-foot { padding: 10px 14px; border-top: 1px solid var(--line); text-align: right; }
+
+    .tabs-wrap {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .tab {
+      border: 1px solid transparent;
+      background: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #374151;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab:hover { border-color: #cbd5e1; }
+    .tab.active {
+      border-color: var(--primary);
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .tab .badge {
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 20px;
+      text-align: center;
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .tab.active .badge { background: var(--primary); color: #fff; }
+    .tab-pending .badge { background: var(--amber-bg); color: var(--amber-text); }
+    .tab.active.tab-pending .badge { background: var(--amber-text); color: #fff; }
+
+    .tab-panel { display: none; padding: 16px; }
+    .tab-panel.active { display: block; }
+
+    .jump-hint {
+      font-size: 12px;
+      color: var(--sub);
+      padding: 10px 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      line-height: 1.55;
+    }
+    .jump-hint strong { color: #0f172a; }
+
+    .kpi-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .kpi {
+      flex: 1;
+      min-width: 160px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .kpi .k { font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .kpi .v { font-size: 18px; font-weight: 700; }
+
+    .table-wrap {
+      overflow-x: auto;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      max-height: calc(100vh - 268px);
+      -webkit-overflow-scrolling: touch;
+    }
+    table { width: 100%; min-width: 1080px; border-collapse: collapse; font-size: 13px; }
+    #p-pending .table-wrap table { min-width: 3600px; font-size: 12px; }
+    #p-pending thead th { padding: 8px 8px; }
+    #p-pending tbody td { padding: 8px; vertical-align: top; }
+    thead th {
+      background: #fafbff;
+      text-align: left;
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 600;
+      color: #4b5563;
+      white-space: nowrap;
+    }
+    thead th.green { background: #f0fdf4; color: #166534; }
+    thead th.amber { background: #fffbeb; color: #92400e; }
+    tbody td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    tbody tr:hover { background: #fafcff; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .inflow { color: var(--green-text); font-weight: 600; }
+    .outflow { color: var(--red-text); font-weight: 600; }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .tag-pending { background: var(--amber-bg); color: var(--amber-text); }
+    .tag-income { background: #dbeafe; color: #1e40af; }
+    .tag-agent { background: #fce7f3; color: #9d174d; }
+    .tag-fee { background: #e0e7ff; color: #3730a3; }
+    .tag-due { background: #ccfbf1; color: #0f766e; }
+    .empty-row td {
+      text-align: center;
+      color: var(--sub);
+      padding: 28px 12px;
+      font-size: 13px;
+    }
+
+    .claim-cell { white-space: nowrap; }
+    .claim-select {
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      padding: 0 8px;
+      margin-right: 6px;
+      max-width: 160px;
+    }
+    .actions-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+
+    .footnote {
+      margin-top: 12px;
+      margin-bottom: 0;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.65;
+      padding: 12px;
+      border-top: 1px dashed var(--line);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div>
+        <h1>现金流量 · 银行流水认领明细 <span style="font-size:13px;font-weight:600;color:var(--primary);">（左侧页签 · 对比版）</span></h1>
+        <p>
+          与《现金流量表-MVP》及《现金流量表.docx》口径一致：财务在银行模块对<strong>每一笔流水</strong>认领为「收入 / 代理 / 费用 / 往来」四类之一后，
+          该笔从<strong>待认领</strong>池移除，并出现在对应页签的明细表中，便于按现金流量项目与客户科目逐笔核对、与汇总表勾稽。
+        </p>
+      </div>
+      <div class="header-links">
+        <a href="现金流量表-MVP.html">打开现金流量表（汇总）</a>
+        <span style="color:var(--line);margin:0 8px;">|</span>
+        <a href="银行流水认领-明细工作台.html">原版 · 顶部页签布局</a>
+      </div>
+    </header>
+
+    <div class="workspace-shell">
+      <aside class="side-rail" id="sideRail" aria-label="场景切换">
+        <div class="side-rail-title">数据视图</div>
+        <div class="tabs-bar-vertical" role="tablist">
+          <button type="button" class="tab tab-pending active" data-panel="p-pending" role="tab">
+            待认领 <span class="badge" id="badge-pending">0</span>
+          </button>
+          <button type="button" class="tab" data-panel="p-in" role="tab">
+            现金流入 · 收入 <span class="badge" id="badge-in">0</span>
+          </button>
+          <button type="button" class="tab" data-panel="p-agent" role="tab">
+            现金流出 · 代理 <span class="badge" id="badge-agent">0</span>
+          </button>
+          <button type="button" class="tab" data-panel="p-fee" role="tab">
+            现金流出 · 费用 <span class="badge" id="badge-fee">0</span>
+          </button>
+          <button type="button" class="tab" data-panel="p-due" role="tab">
+            现金流出 · 往来 <span class="badge" id="badge-due">0</span>
+          </button>
+        </div>
+      </aside>
+      <div class="layout-main-col">
+
+    <div class="filter-bar" role="search" id="filterBar">
+      <div class="filter-toolbar">
+        <span class="filter-toolbar-title">筛选条件</span>
+        <span class="filter-toolbar-meta">默认一行；点右侧展开全部条件</span>
+        <button
+          type="button"
+          class="btn-filter-toggle"
+          id="btnToggleFilter"
+          aria-expanded="false"
+          aria-controls="filterMore"
+        >
+          <span class="toggle-label">展开全部</span>
+          <span class="toggle-chevron" aria-hidden="true">▼</span>
+        </button>
+      </div>
+      <div class="filter-body-wrap" id="filterBodyWrap">
+        <div class="filter-body-inner">
+      <div class="search-grid">
+        <div class="field">
+          <label for="qVoucherNo">凭证编号</label>
+          <input type="text" id="qVoucherNo" placeholder="请输入凭证编号" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="qClaimAccount">认领账户</label>
+          <select id="qClaimAccount">
+            <option value="">请输入认领账户</option>
+            <option>云能纵深（TX04321）</option>
+            <option>丰宇国际（10007475）</option>
+            <option>王增（YW0257）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qSerial">交易流水号</label>
+          <input type="text" id="qSerial" placeholder="请输入交易流水号" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="qClaimType">认领类型</label>
+          <select id="qClaimType">
+            <option value="">请选择认领类型</option>
+            <option>客户</option>
+            <option>员工</option>
+          </select>
+        </div>
+        <div class="field field-range">
+          <label>付款时间</label>
+          <div class="range-inner">
+            <input type="datetime-local" id="qPayTimeStart" step="1" />
+            <span class="range-sep">—</span>
+            <input type="datetime-local" id="qPayTimeEnd" step="1" />
+          </div>
+        </div>
+        <div class="field field-range">
+          <label>认领时间</label>
+          <div class="range-inner">
+            <input type="datetime-local" id="qClaimTimeStart" step="1" />
+            <span class="range-sep">—</span>
+            <input type="datetime-local" id="qClaimTimeEnd" step="1" />
+          </div>
+        </div>
+      </div>
+      <div class="filter-more" id="filterMore">
+          <p class="filter-hint">
+            下列筛选与财务「银行凭证 · 待认领」查询区字段对齐（原型仅收集条件，查询仍为示意）。
+          </p>
+      <div class="search-grid">
+        <div class="field">
+          <label for="qSettleMethod">结算方式</label>
+          <select id="qSettleMethod">
+            <option value="">请选择结算方式</option>
+            <option>月结</option>
+            <option>现结</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qFinSummary">财务摘要</label>
+          <select id="qFinSummary">
+            <option value="">请选择财务摘要</option>
+            <option>普通汇兑</option>
+            <option>货款</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qVoucherSource">凭证来源</label>
+          <select id="qVoucherSource">
+            <option value="">请选择凭证来源</option>
+            <option>泰隆银行抓取</option>
+            <option>招商银行抓取</option>
+            <option>批量导入</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qDelivery">交割方式</label>
+          <select id="qDelivery">
+            <option value="">请选择交割方式</option>
+            <option>电汇</option>
+            <option>网银</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qCurrency">币别</label>
+          <select id="qCurrency">
+            <option value="">请选择币别</option>
+            <option>人民币</option>
+            <option>美元</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qVoucherAmount">凭证金额</label>
+          <select id="qVoucherAmount">
+            <option value="">请选择凭证金额</option>
+            <option>0 ~ 1,000</option>
+            <option>1,000 ~ 10,000</option>
+            <option>10,000 以上</option>
+          </select>
+        </div>
+      </div>
+      <div class="search-grid">
+        <div class="field">
+          <label for="qRemark">备注</label>
+          <select id="qRemark">
+            <option value="">请选择备注</option>
+            <option>含「用途」运费</option>
+            <option>含「贷款」</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qFeeType">费用类型</label>
+          <select id="qFeeType">
+            <option value="">请选择费用类型</option>
+            <option>未分类</option>
+            <option>海运费</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qFeeDetail">费用明细</label>
+          <select id="qFeeDetail">
+            <option value="">请选择费用明细</option>
+            <option>未分类</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qFeeDept">费用部门</label>
+          <select id="qFeeDept">
+            <option value="">请选择费用部门</option>
+            <option>操作中心</option>
+            <option>销售中心</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qFeeEmp">费用员工</label>
+          <select id="qFeeEmp">
+            <option value="">请选择费用员工</option>
+            <option>（空）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qFinRemark">财务备注</label>
+          <select id="qFinRemark">
+            <option value="">请选择财务备注</option>
+            <option>（空）</option>
+          </select>
+        </div>
+      </div>
+      <div class="search-grid">
+        <div class="field">
+          <label for="qOurAccName">我方账户名称</label>
+          <select id="qOurAccName">
+            <option value="">请选择我方账户名称</option>
+            <option>泰隆银行(人民币)-776</option>
+            <option>深圳运通招商人民币0021</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="qCpAccName">对方账户名称</label>
+          <input type="text" id="qCpAccName" placeholder="请选择对方账户名称" list="dlCpAcc" autocomplete="off" />
+          <datalist id="dlCpAcc">
+            <option value="杭州云德纵深科技有限公司"></option>
+            <option value="义乌市丰丰国际货运代理有限公司"></option>
+          </datalist>
+        </div>
+        <div class="field">
+          <label for="qDc">借贷标识</label>
+          <select id="qDc">
+            <option value="">请选择借贷标识</option>
+            <option>收入</option>
+            <option>支出</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="rngStart">起始日期</label>
+          <input type="date" id="rngStart" value="2026-01-01" />
+        </div>
+        <div class="field">
+          <label for="rngEnd">结束日期</label>
+          <input type="date" id="rngEnd" value="2026-01-31" />
+        </div>
+        <div class="field">
+          <label for="bankAcct">银行账户</label>
+          <select id="bankAcct">
+            <option>招商银行 · 基本户（尾号 8866）</option>
+            <option>工商银行 · 一般户（示意）</option>
+          </select>
+        </div>
+      </div>
+      </div>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button type="button" class="btn btn-primary" id="btnQuery">查询</button>
+        <button type="button" class="btn" id="btnResetSearch">重置筛选</button>
+      </div>
+    </div>
+
+    <div class="voucher-toolbar" id="voucherToolbar" aria-label="凭证操作">
+      <div class="voucher-toolbar-head">
+        <span class="voucher-toolbar-title">功能区域</span>
+        <span class="voucher-toolbar-meta">查询、认领、审核等操作入口；可收起以腾出列表纵向空间</span>
+        <button
+          type="button"
+          class="btn-voucher-toolbar-toggle"
+          id="btnToggleVoucherToolbar"
+          aria-expanded="false"
+          aria-controls="voucherToolbarBody"
+        >
+          <span class="toggle-label">展开</span>
+          <span class="toggle-chevron" aria-hidden="true">▼</span>
+        </button>
+      </div>
+      <div class="voucher-toolbar-body" id="voucherToolbarBody">
+      <p class="voucher-toolbar-hint">
+        <strong>功能取舍说明（原型）：</strong>
+        <strong>必备</strong>：查询数据、查看详情、凭证认领、撤销认领、凭证审核、凭证导入、修改财务备注、系统认领规则；
+        <strong>建议有</strong>：新增/修改数据（补录纠错）、修改汇率(批量)、凭证作废；
+        <strong>强风险单独标红</strong>：删除数据；
+        <strong>二期/高级</strong>：凭证对冲、撤销对冲（先置灰占位）。
+      </p>
+      <div class="tb-rows">
+        <div class="tb-row">
+          <button type="button" class="tb-btn" data-action="query" title="展开全部筛选条件并执行查询">
+            <span class="ic" aria-hidden="true">🔍</span>查询数据
+          </button>
+          <button type="button" class="tb-btn" data-action="add" title="补录银行未抓取到的凭证">
+            <span class="ic" aria-hidden="true">＋</span>新增数据
+          </button>
+          <button type="button" class="tb-btn" data-action="edit" title="修改选中凭证主数据">
+            <span class="ic" aria-hidden="true">✎</span>修改数据
+          </button>
+          <button type="button" class="tb-btn" data-action="detail" title="侧滑/弹窗查看凭证全字段">
+            <span class="ic" aria-hidden="true">◎</span>查看详情
+          </button>
+          <button type="button" class="tb-btn" data-action="claim" title="与列表「确认认领」一致；批量需勾选行后接接口">
+            <span class="ic" aria-hidden="true">✎</span>凭证认领
+          </button>
+          <button type="button" class="tb-btn" data-action="unclaim" title="从已认领状态撤回至待认领">
+            <span class="ic" aria-hidden="true">↩</span>撤销认领
+          </button>
+          <button type="button" class="tb-btn" data-action="audit" title="认领后财务审核">
+            <span class="ic" aria-hidden="true">✓</span>凭证审核
+          </button>
+          <button type="button" class="tb-btn" data-action="void" title="整单作废，需权限与原因">
+            <span class="ic" aria-hidden="true">✓</span>凭证作废
+          </button>
+          <button type="button" class="tb-btn" data-action="import" title="Excel/银行文件批量导入">
+            <span class="ic" aria-hidden="true">✓</span>凭证导入
+          </button>
+          <button type="button" class="tb-btn" data-action="export" title="导出当前待认领列表或当前已认领页签矩阵（CSV/Excel，示意）">
+            <span class="ic" aria-hidden="true">↓</span>导出
+          </button>
+          <button type="button" class="tb-btn" data-action="fxbatch" title="多笔外币凭证统一改汇率">
+            <span class="ic" aria-hidden="true">✓</span>修改汇率(批量)
+          </button>
+          <button type="button" class="tb-btn tb-btn-danger" data-action="delete" title="物理/逻辑删除，强校验">
+            <span class="ic" aria-hidden="true">🗑</span>删除数据
+          </button>
+          <button type="button" class="tb-btn" data-action="finRemark" title="列表「财务备注」批量维护">
+            <span class="ic" aria-hidden="true">✓</span>修改财务备注
+          </button>
+          <button type="button" class="tb-btn tb-btn-muted" data-action="hedge" title="二期：与付款/收款对冲核销">
+            <span class="ic" aria-hidden="true">✓</span>凭证对冲
+          </button>
+          <button type="button" class="tb-btn tb-btn-danger tb-btn-muted" data-action="unhedge" title="二期：撤销对冲关系">
+            <span class="ic" aria-hidden="true">✓</span>撤销对冲
+          </button>
+        </div>
+        <div class="tb-row">
+          <button type="button" class="tb-btn" data-action="rules" title="跳转规则配置或抽屉">
+            <span class="ic" aria-hidden="true">📋</span>系统认领规则
+          </button>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="detail-section" id="detailSection">
+      <div class="detail-toolbar">
+        <span class="detail-toolbar-title">认领明细与多维聚合</span>
+        <button type="button" class="btn-filter-toggle" id="btnToggleDetail" aria-expanded="true" aria-controls="detailBodyWrap">
+          <span class="detail-toggle-label">收起明细</span><span class="toggle-chevron">▼</span>
+        </button>
+      </div>
+      <div class="detail-body-wrap" id="detailBodyWrap">
+        <div class="detail-body-inner">
+    <div class="tabs-wrap">
+      <!-- 横向页签已移至左侧栏；此处仅渲染各场景列表 -->
+
+      <!-- 待认领 -->
+      <div id="p-pending" class="tab-panel active" role="tabpanel">
+        <div class="jump-hint">
+          <strong>财务核对路径：</strong>先在本页签按日期、金额、对方户名与网银对账单比对；确认业务实质后，选择认领类型并确认。
+          认领成功后流水自动归入后方对应页签，总览 KPI「未认领笔数 / 金额」在正式系统中与《现金流量表》总览联动。
+          <strong>列表字段</strong>已与财务系统「银行凭证 · 待认领」列表对齐（凭证维度 + 金额流水 + 双方账户 + 费用/审核 + 系统字段），横向滚动查看全部列。
+          外币流水展示<strong>水单汇率</strong>与<strong>汇损</strong>（客户侧可手工、服务商侧可按月初基准 vs 水单自动算）；认领格内可填<strong>认领汇率</strong>供折算核对。
+        </div>
+        <div class="kpi-row" id="kpi-pending">
+          <div class="kpi">
+            <div class="k">待认领笔数</div>
+            <div class="v" id="kpi-pending-count">0</div>
+          </div>
+          <div class="kpi">
+            <div class="k">待认领流入合计</div>
+            <div class="v inflow" id="kpi-pending-in">¥ 0.00</div>
+          </div>
+          <div class="kpi">
+            <div class="k">待认领流出合计</div>
+            <div class="v outflow" id="kpi-pending-out">¥ 0.00</div>
+          </div>
+        </div>
+        <div class="actions-bar">
+          <span>演示：选择类型后点「确认认领」可将该行移至对应页签（纯前端示意）。</span>
+        </div>
+        <div class="table-wrap">
+          <table aria-label="待认领银行流水">
+            <thead>
+              <tr>
+                <th class="amber">序号</th>
+                <th class="amber">凭证编号</th>
+                <th class="amber">凭证状态</th>
+                <th>数据来源</th>
+                <th class="amber">交易流水号</th>
+                <th>借贷标识</th>
+                <th>币别</th>
+                <th class="num">汇率</th>
+                <th class="num">水单汇率</th>
+                <th class="num">汇损</th>
+                <th class="num">凭证金额</th>
+                <th class="num">人民币金额</th>
+                <th class="num">已使用金额</th>
+                <th class="num">未使用金额</th>
+                <th class="amber">付款时间</th>
+                <th>我方账户名称</th>
+                <th>我方账号号码</th>
+                <th>我方账户开户行</th>
+                <th>对方账户名称</th>
+                <th>对方账号号码</th>
+                <th>对方账户开户行</th>
+                <th>认领账户编号</th>
+                <th>认领账户名称</th>
+                <th>部门</th>
+                <th>费用部门</th>
+                <th>费用类型</th>
+                <th>认领类型</th>
+                <th>费用员工姓名</th>
+                <th>费用明细</th>
+                <th>财务备注</th>
+                <th>财务摘要</th>
+                <th>认领时间</th>
+                <th>审核时间</th>
+                <th>审核人</th>
+                <th>结算方式</th>
+                <th>交割方式</th>
+                <th>备注</th>
+                <th>创建人</th>
+                <th>修改时间</th>
+                <th>修改人</th>
+                <th class="amber">认领为现金流量</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-pending"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 流入 · 收入 -->
+      <div id="p-in" class="tab-panel" role="tabpanel">
+        <div class="jump-hint">
+          <strong>1. 现金流入 · 收入</strong>（与《现金流量表》「流入 · 收入」勾稽）：横向为<strong>部门</strong>（仅显示中文名），纵向为<strong>日期 + 客户</strong>；「未核销」为待匹配金额列。
+          下表为<strong>示意汇总</strong>；页签角标仍统计「已认领流水笔数」。
+          <strong>部门归属</strong>按<strong>认领时业务员所在部门</strong>落库，后续调岗不改历史行。
+          <strong>查看银行流水</strong>：点击下方矩阵<strong>数据行</strong>打开「关联银行流水」示意；或点
+          <button type="button" class="btn btn-primary btn-sm js-open-flow-hint" data-flow-tab="in">查看本页关联流水示意</button>。
+        </div>
+        <div class="table-wrap">
+          <table class="income-matrix" id="table-income-matrix" data-grid="1" aria-label="现金流入按部门拆分">
+            <thead>
+              <tr id="tr-income-head"></tr>
+            </thead>
+            <tbody id="tbody-in"></tbody>
+          </table>
+        </div>
+        <div class="sum-strip" id="sum-strip-in">
+          <span><strong>本月合计（本位币）</strong> 流入 ¥ 1,893,420.50（示意）</span>
+          <span><strong>本年累计</strong> ¥ 24,681,200.00（示意）</span>
+        </div>
+      </div>
+
+      <!-- 流出 · 代理 -->
+      <div id="p-agent" class="tab-panel" role="tabpanel">
+        <div class="jump-hint">
+          <strong>2. 现金流出 · 代理</strong>：归集支付代理成本款；横向为<strong>产品/渠道</strong>（美海、美空、渠道、制单、货拉拉三地），纵向为<strong>日期 + 代理（服务商）</strong>。
+          下表为示意；角标仍统计已认领「代理成本」笔数。
+          同一服务商<strong>默认环节</strong>归集；支持<strong>手工拆分</strong>报关、订舱等环节（正式环境多选或拆行）。
+          <button type="button" class="btn btn-primary btn-sm js-open-flow-hint" data-flow-tab="agent">查看本页关联流水示意</button>
+        </div>
+        <div class="table-wrap">
+          <table class="agent-matrix" id="table-agent-matrix" data-grid="1" aria-label="代理成本按产品与代理拆分">
+            <thead>
+              <tr id="tr-agent-head"></tr>
+            </thead>
+            <tbody id="tbody-agent"></tbody>
+          </table>
+        </div>
+        <div class="sum-strip" id="sum-strip-agent">
+          <span><strong>本月合计</strong> ¥ 8,542,300.00（示意）</span>
+          <span><strong>本年累计</strong> ¥ 96,120,800.00（示意）</span>
+          <span style="color:#64748b">服务商汇损：月初基准汇率 vs 水单汇率自动计算（可配置是否允许改）。</span>
+        </div>
+      </div>
+
+      <!-- 流出 · 费用 -->
+      <div id="p-fee" class="tab-panel" role="tabpanel">
+        <div class="jump-hint">
+          <strong>3. 现金流出 · 费用</strong>：归集各类日常支付费用；横向为<strong>部门</strong>（与「现金流入」部门列同名，仅中文），纵向为<strong>日期 + 费用类型 + 员工</strong>；金额记在发生部门列下。
+          大额工资等支持<strong>批量拆解</strong>（一条拆数百行）及<strong>导入工资 / 社保 / 医保</strong>模板生成子明细。
+          <button type="button" class="btn btn-primary btn-sm js-open-flow-hint" data-flow-tab="fee">查看本页关联流水示意</button>
+        </div>
+        <div class="table-wrap">
+          <table class="fee-matrix" id="table-fee-matrix" data-grid="1" aria-label="费用按部门拆分">
+            <thead>
+              <tr id="tr-fee-head"></tr>
+            </thead>
+            <tbody id="tbody-fee"></tbody>
+          </table>
+        </div>
+        <div class="sum-strip" id="sum-strip-fee">
+          <span><strong>本月合计</strong> ¥ 412,580.00（示意）</span>
+          <span><strong>本年累计</strong> ¥ 5,903,110.00（示意）</span>
+        </div>
+      </div>
+
+      <!-- 流出 · 往来 -->
+      <div id="p-due" class="tab-panel" role="tabpanel">
+        <div class="jump-hint">
+          <strong>4. 现金流出 · 往来</strong>：与《现金流量表》往来类流出勾稽；列为<strong>日期 → 部门 → 各往来科目 → 手工备注</strong>。
+          「内部转账」可为正/负；部门列仅展示中文名。
+          <button type="button" class="btn btn-primary btn-sm js-open-flow-hint" data-flow-tab="due">查看本页关联流水示意</button>
+        </div>
+        <div class="table-wrap">
+          <table class="due-matrix" id="table-due-matrix" data-grid="1" aria-label="现金流出往来明细">
+            <thead>
+              <tr id="tr-due-head"></tr>
+            </thead>
+            <tbody id="tbody-due"></tbody>
+          </table>
+        </div>
+        <div class="sum-strip" id="sum-strip-due">
+          <span><strong>本月合计</strong> ¥ 980,000.00（示意）</span>
+          <span><strong>本年累计</strong> ¥ 11,256,000.00（示意）</span>
+        </div>
+      </div>
+    </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+    <p class="footnote">
+      <strong>交付说明（给开发）：</strong><br />
+      ① 列表数据源为银行流水接口；认领写入「现金流量分类 + 认领人 + 认领时间」，并驱动汇总表聚合。<br />
+      ② 待认领池筛选条件：认领状态 = 未认领；各业务页签筛选：认领状态 = 已认领 AND 分类 = 对应枚举。<br />
+      ③ URL 可约定 <code>?tab=pending|in|agent|fee|due</code> 与日期、账户 query，便于从总览 KPI 跳转。<br />
+      ④ 与《现金流量表-MVP》中 <code>scenario=income|agent|fee|due</code> 及凭证明细钻取保持同一套分类码。<br />
+      ⑤ 「待认领」列表列已与财务系统银行凭证待认领界面字段对齐（含凭证状态、双方账户、费用/审核、系统审计字段）；接口可按列名一一映射。<br />
+      ⑥ 筛选默认仅展示<strong>第一行</strong>常用条件；点「展开全部」显示说明与其余行。正式环境可将各控件序列化为查询参数。<br />
+      ⑦ 筛选区下方<strong>功能区域</strong>（凭证操作按钮集）与财务系统对齐；红按钮为高风险操作，「凭证对冲/撤销对冲」为二期占位。<br />
+      ⑧ 「现金流入 · 收入」页签为<strong>日期 × 客户 × 未核销 × 部门列</strong>矩阵（部门仅中文名）；示例数据见脚本内 <code>INCOME_MOCK_ROWS</code>，正式环境由认领与归属部门汇总生成。<br />
+      ⑨ 「现金流出 · 往来」页签为<strong>日期、部门、内部转账、老板往来、员工借款、保证金/押金、财务部、理财本金、理财收益、手工备注栏</strong>十列；示例见 <code>DUE_MOCK_ROWS</code>。<br />
+      ⑩ 「现金流出 · 代理」页签为<strong>日期 × 代理（服务商）× 产品列</strong>（美海、美空、渠道、制单、货拉拉深圳/泉州/宁波）；示例见 <code>AGENT_MOCK_ROWS</code>。<br />
+      ⑪ 「现金流出 · 费用」页签为<strong>日期、类型、员工 × 部门列</strong>（部门与 <code>INCOME_DEPT_HEADERS</code> 一致）；示例见 <code>FEE_MOCK_ROWS</code>。<br />
+      ⑫ 待认领列表含<strong>水单汇率、汇损</strong>列；认领格内可填<strong>认领汇率</strong>；付汇/收汇汇损规则见页底「需求说明」。<br />
+      ⑬ 「导出」按当前页签导出待认领或矩阵；已认领页签内<strong>点击矩阵数据行</strong>或「查看本页关联流水示意」打开流水关联示意弹窗；明细区支持<strong>收起/展开</strong>；各矩阵底部为<strong>月合计/年累计</strong>示意条。<br />
+      ⑭ <strong>本文件为「左侧竖向场景页签」对比版</strong>：场景切换在左侧栏；筛选与<strong>功能区域</strong>（默认收起）及列表在右侧主栏；<strong>需求说明</strong>置于页面底部，便于列表区占据更大可视高度。原版（顶部横向页签）见 <a href="银行流水认领-明细工作台.html" style="color:var(--primary);">银行流水认领-明细工作台.html</a>。
+    </p>
+
+    <p style="margin-top:12px;font-size:13px;flex-shrink:0;">
+      <a href="../index.html" style="color:var(--primary);">← 返回原型导航首页</a>
+    </p>
+
+    <details class="req-details" id="reqDetails">
+      <summary>需求说明：交互与逻辑（认领后流水、收起、部门、服务商、费用拆解、导出、汇率与汇损、合计）</summary>
+      <div class="req-inner">
+        <ol>
+          <li><strong>已认领页签查看银行流水</strong>：在「收入 / 代理 / 费用 / 往来」矩阵中<strong>点击数据行</strong>（非空行、非月/年汇总行），弹出「关联银行流水」示意；也可在页签内说明区点「查看本页关联流水示意」打开占位弹窗。</li>
+          <li><strong>明细支持收起</strong>：认领明细区标题栏右侧「收起明细 / 展开明细」折叠下方全部页签表格，便于聚焦筛选与功能区域操作。</li>
+          <li><strong>业务员换部门</strong>：归属部门以<strong>认领时所在部门</strong>为准写入明细；后续人事调岗不追溯改写历史认领行（原型用文案说明）。</li>
+          <li><strong>服务商多环节</strong>：同一服务商默认归入系统配置的默认环节；支持<strong>手工拆分</strong>为报关、订舱等环节（多选或拆分明细行），汇总按环节+服务商聚合。</li>
+          <li><strong>费用批量拆解</strong>：一条工资类凭证可拆成数百行（按人/险种）；提供<strong>批量导入</strong>（工资、社保、医保模板），导入后生成子明细并参与部门列汇总。</li>
+          <li><strong>数据导出</strong>：功能区域内「导出」导出当前筛选条件下的待认领列表或当前页签矩阵（示意）。</li>
+          <li><strong>流水汇损</strong>：水单带<strong>水单汇率</strong>；付汇/收汇与记账本位币差额记<strong>汇损</strong>（列表列展示）。</li>
+          <li><strong>汇损规则</strong>：<strong>客户付款</strong>侧允许<strong>手工录入汇损</strong>；<strong>服务商付款</strong>侧由系统按<strong>月初基准汇率</strong>与水单汇率<strong>自动计算汇损</strong>（可配置是否可改）。</li>
+          <li><strong>认领时汇率</strong>：认领单元格内可填<strong>认领汇率</strong>（可选），用于本位币折算或二次核对，与「水单汇率」「汇损」列并存。</li>
+          <li><strong>月合计 / 年合计</strong>：各业务矩阵底部展示<strong>本月合计、本年累计</strong>（示意数值）；正式环境由服务端按账期聚合。</li>
+        </ol>
+      </div>
+    </details>
+
+  </div>
+
+  <div id="modalBankflow" class="modal-root" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalBankflowTitle">
+    <div class="modal-card" role="document">
+      <div class="modal-head">
+        <span id="modalBankflowTitle">关联银行流水（示意）</span>
+        <button type="button" class="btn" id="modalBankflowClose">关闭</button>
+      </div>
+      <div class="modal-body" id="modalBankflowBody"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-primary" id="modalBankflowOk">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var PENDING_COL_COUNT = 41;
+
+      /**
+       * 待认领行：含 KPI 用 amountIn/amountOut；其余字段与财务「待认领」列表对齐（示意数据）。
+       * @type {any[]}
+       */
+      var seedPending = [
+        {
+          id: "b1",
+          direction: "in",
+          amountIn: 2812,
+          amountOut: 0,
+          suggested: "income",
+          voucherNo: "2605004364",
+          voucherStatus: "待抵扣",
+          dataSource: "泰隆银行抓取",
+          serial: "2026051234705C330800202012345678901234567890",
+          dcText: "收入",
+          currency: "人民币",
+          rate: 1,
+          slipRate: 1,
+          fxLoss: 0,
+          voucherAmount: 2812,
+          rmbAmount: 2812,
+          usedAmount: "",
+          unusedAmount: 2812,
+          payTime: "2026-05-12 09:55:37",
+          ourAccName: "泰隆银行(人民币)-776",
+          ourAccNo: "33080020201000045776",
+          ourBank: "浙江泰隆商业银行",
+          cpAccName: "杭州云德纵深科技有限公司",
+          cpAccNo: "3301041060004131201",
+          cpBank: "杭州联合银行",
+          claimAccNo: "TX04321",
+          claimAccName: "云能纵深",
+          dept: "",
+          feeDept: "",
+          feeType: "未分类",
+          claimType: "客户",
+          feeEmpName: "",
+          feeDetail: "未分类",
+          finRemark: "",
+          finSummary: "",
+          claimTime: "",
+          auditTime: "",
+          auditor: "",
+          settleMethod: "",
+          deliveryMethod: "",
+          remark: "【摘要】普通汇兑【用途】运输费",
+          createdBy: "tl",
+          modifiedAt: "",
+          modifiedBy: "",
+        },
+        {
+          id: "b2",
+          direction: "in",
+          amountIn: 34158.67,
+          amountOut: 0,
+          suggested: "income",
+          voucherNo: "2605004363",
+          voucherStatus: "全部抵扣",
+          dataSource: "泰隆银行抓取",
+          serial: "2026051234705C330800202098765432109876543210",
+          dcText: "收入",
+          currency: "人民币",
+          rate: 1,
+          slipRate: 1,
+          fxLoss: 0,
+          voucherAmount: 34158.67,
+          rmbAmount: 34158.67,
+          usedAmount: 34158.67,
+          unusedAmount: 0,
+          payTime: "2026-05-12 10:02:18",
+          ourAccName: "泰隆银行(人民币)-776",
+          ourAccNo: "33080020201000045776",
+          ourBank: "浙江泰隆商业银行",
+          cpAccName: "义乌市丰丰国际货运代理有限公司",
+          cpAccNo: "33050167625700001301",
+          cpBank: "中国建设银行",
+          claimAccNo: "10007475",
+          claimAccName: "丰宇国际",
+          dept: "",
+          feeDept: "",
+          feeType: "未分类",
+          claimType: "客户",
+          feeEmpName: "",
+          feeDetail: "未分类",
+          finRemark: "",
+          finSummary: "",
+          claimTime: "2026-05-12 10:15:01",
+          auditTime: "",
+          auditor: "",
+          settleMethod: "",
+          deliveryMethod: "",
+          remark: "【用途】运费",
+          createdBy: "tl",
+          modifiedAt: "",
+          modifiedBy: "",
+        },
+        {
+          id: "b3",
+          direction: "in",
+          amountIn: 1580000,
+          amountOut: 0,
+          suggested: "income",
+          voucherNo: "2605004362",
+          voucherStatus: "待认领",
+          dataSource: "招商银行抓取",
+          serial: "BK202601030001CMB202605120001",
+          dcText: "收入",
+          currency: "人民币",
+          rate: 1,
+          slipRate: 1,
+          fxLoss: -95.2,
+          voucherAmount: 1580000,
+          rmbAmount: 1580000,
+          usedAmount: "",
+          unusedAmount: 1580000,
+          payTime: "2026-01-03 14:20:00",
+          ourAccName: "深圳运通招商人民币0021",
+          ourAccNo: "579902362110021",
+          ourBank: "招商银行深圳分行",
+          cpAccName: "浙江某某供应链有限公司",
+          cpAccNo: "6222000000000000123",
+          cpBank: "工商银行",
+          claimAccNo: "",
+          claimAccName: "",
+          dept: "",
+          feeDept: "",
+          feeType: "未分类",
+          claimType: "",
+          feeEmpName: "",
+          feeDetail: "未分类",
+          finRemark: "",
+          finSummary: "",
+          claimTime: "",
+          auditTime: "",
+          auditor: "",
+          settleMethod: "",
+          deliveryMethod: "",
+          remark: "【用途】货款",
+          createdBy: "cmb",
+          modifiedAt: "2026-05-12 10:15:00",
+          modifiedBy: "cmb",
+        },
+        {
+          id: "b4",
+          direction: "out",
+          amountIn: 0,
+          amountOut: 500,
+          suggested: "fee",
+          voucherNo: "2605004361",
+          voucherStatus: "待认领",
+          dataSource: "批量导入",
+          serial: "IMP202605120004",
+          dcText: "支出",
+          currency: "人民币",
+          rate: 1,
+          slipRate: 1,
+          fxLoss: 0,
+          voucherAmount: 500,
+          rmbAmount: 500,
+          usedAmount: "",
+          unusedAmount: 500,
+          payTime: "2026-05-11 16:00:00",
+          ourAccName: "",
+          ourAccNo: "",
+          ourBank: "",
+          cpAccName: "",
+          cpAccNo: "",
+          cpBank: "",
+          claimAccNo: "",
+          claimAccName: "",
+          dept: "",
+          feeDept: "",
+          feeType: "",
+          claimType: "",
+          feeEmpName: "",
+          feeDetail: "",
+          finRemark: "",
+          finSummary: "",
+          claimTime: "",
+          auditTime: "",
+          auditor: "",
+          settleMethod: "",
+          deliveryMethod: "",
+          remark: "【摘要】城商行-个人实时贷记来账【用途】贷款",
+          createdBy: "tl",
+          modifiedAt: "",
+          modifiedBy: "",
+        },
+        {
+          id: "b5",
+          direction: "out",
+          amountIn: 0,
+          amountOut: 642125.35,
+          suggested: "agent",
+          voucherNo: "2605004350",
+          voucherStatus: "待抵扣",
+          dataSource: "泰隆银行抓取",
+          serial: "BK202601040088",
+          dcText: "支出",
+          currency: "美元",
+          rate: 7.18,
+          slipRate: 7.206,
+          fxLoss: 1320.8,
+          voucherAmount: 89432.5,
+          rmbAmount: 642125.35,
+          usedAmount: "",
+          unusedAmount: 642125.35,
+          payTime: "2026-01-04 11:30:00",
+          ourAccName: "泰隆银行(人民币)-776",
+          ourAccNo: "33080020201000045776",
+          ourBank: "浙江泰隆商业银行",
+          cpAccName: "清关服务商 A",
+          cpAccNo: "3305010000999888777",
+          cpBank: "中国银行",
+          claimAccNo: "YW0257",
+          claimAccName: "王增",
+          dept: "",
+          feeDept: "操作中心",
+          feeType: "未分类",
+          claimType: "员工",
+          feeEmpName: "",
+          feeDetail: "未分类",
+          finRemark: "",
+          finSummary: "",
+          claimTime: "2026-05-12 10:15:00",
+          auditTime: "",
+          auditor: "",
+          settleMethod: "",
+          deliveryMethod: "",
+          remark: "海运费（外币）；汇损=月初基准 vs 水单汇率示意",
+          createdBy: "tl",
+          modifiedAt: "",
+          modifiedBy: "",
+        },
+        {
+          id: "b6",
+          direction: "out",
+          amountIn: 0,
+          amountOut: 10000000,
+          suggested: "due",
+          voucherNo: "2605004301",
+          voucherStatus: "待认领",
+          dataSource: "批量导入",
+          serial: "BK202601100332",
+          dcText: "支出",
+          currency: "人民币",
+          rate: 1,
+          slipRate: 1,
+          fxLoss: 0,
+          voucherAmount: 10000000,
+          rmbAmount: 10000000,
+          usedAmount: "",
+          unusedAmount: 10000000,
+          payTime: "2026-01-10 09:00:00",
+          ourAccName: "泰隆银行(人民币)-776",
+          ourAccNo: "33080020201000045776",
+          ourBank: "浙江泰隆商业银行",
+          cpAccName: "张某某",
+          cpAccNo: "6225880000000001",
+          cpBank: "招商银行",
+          claimAccNo: "",
+          claimAccName: "",
+          dept: "",
+          feeDept: "",
+          feeType: "未分类",
+          claimType: "",
+          feeEmpName: "",
+          feeDetail: "未分类",
+          finRemark: "",
+          finSummary: "",
+          claimTime: "",
+          auditTime: "",
+          auditor: "",
+          settleMethod: "",
+          deliveryMethod: "",
+          remark: "往来款",
+          createdBy: "tl",
+          modifiedAt: "",
+          modifiedBy: "",
+        },
+        {
+          id: "b7",
+          direction: "in",
+          amountIn: 72450,
+          amountOut: 0,
+          suggested: "income",
+          voucherNo: "2605004359",
+          voucherStatus: "待认领",
+          dataSource: "招商银行抓取",
+          serial: "FXIN20260515001",
+          dcText: "收入",
+          currency: "美元",
+          rate: 7.234,
+          slipRate: 7.268,
+          fxLoss: -268.35,
+          voucherAmount: 10000,
+          rmbAmount: 72450,
+          usedAmount: "",
+          unusedAmount: 72450,
+          payTime: "2026-05-15 11:00:00",
+          ourAccName: "深圳运通招商美元户",
+          ourAccNo: "NRA0021",
+          ourBank: "招商银行深圳分行",
+          cpAccName: "ABC LOGISTICS LTD",
+          cpAccNo: "622000111",
+          cpBank: "境外",
+          claimAccNo: "",
+          claimAccName: "",
+          dept: "",
+          feeDept: "",
+          feeType: "未分类",
+          claimType: "客户",
+          feeEmpName: "",
+          feeDetail: "未分类",
+          finRemark: "",
+          finSummary: "",
+          claimTime: "",
+          auditTime: "",
+          auditor: "",
+          settleMethod: "电汇",
+          deliveryMethod: "",
+          remark: "USD 货款；客户侧可手工调整汇损",
+          createdBy: "cmb",
+          modifiedAt: "",
+          modifiedBy: "",
+        },
+      ];
+
+      var pending = seedPending.slice();
+      /** @type {Record<string, any[]>} */
+      var claimed = { income: [], agent: [], fee: [], due: [] };
+
+      function money(n) {
+        var x = Number(n) || 0;
+        return "¥ " + x.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function fmtNumPlain(n) {
+        if (n === "" || n == null) return "—";
+        var x = Number(n);
+        if (isNaN(x)) return escapeHtml(String(n));
+        return x.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function dash(s) {
+        if (s === "" || s == null) return "—";
+        return escapeHtml(String(s));
+      }
+
+      function dcBadge(direction, dcText) {
+        var t = dcText || (direction === "in" ? "收入" : "支出");
+        var isIn = direction === "in" || t === "收入";
+        var cls = isIn ? "tag-income" : "tag-pending";
+        var style = isIn ? "" : ' style="color:#b91c1c;font-weight:600;"';
+        return '<span class="tag ' + cls + '"' + style + ">" + escapeHtml(t) + "</span>";
+      }
+
+      function nowClaimTime() {
+        var d = new Date();
+        var p = function (n) { return (n < 10 ? "0" : "") + n; };
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function zeros20() {
+        var a = [];
+        for (var i = 0; i < 20; i++) a.push(0);
+        return a;
+      }
+
+      /** 部门列仅展示中文名（与主数据编码对应关系由接口维护） */
+      var INCOME_DEPT_HEADERS = [
+        "杭州分公司",
+        "台州分公司",
+        "苏州分公司",
+        "北苑分公司",
+        "宁波分公司",
+        "潍坊分公司",
+        "中山分公司",
+        "厦门分公司",
+        "泉州分公司",
+        "广州分公司",
+        "青岛分公司",
+        "坂田同行",
+        "华南营销",
+        "深圳福永",
+        "同行部",
+        "营销一部",
+        "营销二部",
+        "营销三部",
+        "营销五部",
+        "营销部",
+      ];
+
+      var INCOME_MOCK_ROWS = [
+        {
+          date: "2026-01-01",
+          customer: "汇总",
+          unrec: 128920.35,
+          depts: [
+            420000, 310000, 285500, 150200, 198000, 80500, 120300, 95120, 88300, 260400, 140150,
+            220000, 180600, 162000, 90500, 75200, 72600, 68800, 64200, 110500,
+          ],
+          summary: true,
+        },
+        {
+          date: "2026-01-01",
+          customer: "浙江某某供应链有限公司",
+          unrec: 0,
+          depts: (function () {
+            var z = zeros20();
+            z[0] = 1000000;
+            z[4] = 580000;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-01",
+          customer: "杭州云德纵深科技有限公司",
+          unrec: 2812,
+          depts: (function () {
+            var z = zeros20();
+            z[0] = 2812;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-01",
+          customer: "义乌市丰丰国际货运代理有限公司",
+          unrec: 0,
+          depts: (function () {
+            var z = zeros20();
+            z[1] = 200000;
+            z[8] = 14158.67;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-02",
+          customer: "汇总",
+          unrec: 45200.12,
+          depts: (function () {
+            var z = zeros20();
+            z[2] = 320000;
+            z[10] = 89000;
+            z[12] = 156000;
+            z[15] = 44800;
+            z[16] = 22100;
+            return z;
+          })(),
+          summary: true,
+        },
+        {
+          date: "2026-01-02",
+          customer: "深圳市永诺达国际物流有限公司",
+          unrec: 0,
+          depts: (function () {
+            var z = zeros20();
+            z[6] = 96500;
+            z[11] = 12000;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-03",
+          customer: "***",
+          unrec: 5000,
+          depts: (function () {
+            var z = zeros20();
+            z[13] = 45000;
+            z[19] = 12000;
+            return z;
+          })(),
+        },
+      ];
+
+      var incomeTheadBuilt = false;
+
+      function buildIncomeThead() {
+        if (incomeTheadBuilt) return;
+        var tr = document.getElementById("tr-income-head");
+        if (!tr) return;
+        var html = '<th class="green">日期</th><th>客户</th><th class="num">未核销</th>';
+        INCOME_DEPT_HEADERS.forEach(function (name) {
+          html += '<th class="num dept-col">' + escapeHtml(name) + "</th>";
+        });
+        tr.innerHTML = html;
+        incomeTheadBuilt = true;
+      }
+
+      function fmtMatrixAmt(n) {
+        if (n == null || n === "" || Number(n) === 0) return "—";
+        return Number(n).toLocaleString("zh-CN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      }
+
+      function renderIncomeMatrix() {
+        buildIncomeThead();
+        var tb = document.getElementById("tbody-in");
+        if (!tb) return;
+        tb.innerHTML = "";
+        INCOME_MOCK_ROWS.forEach(function (r) {
+          var tr = document.createElement("tr");
+          if (r.summary) tr.className = "row-income-summary";
+          var tds =
+            "<td>" +
+            escapeHtml(r.date) +
+            "</td><td>" +
+            escapeHtml(r.customer) +
+            '</td><td class="num">' +
+            fmtMatrixAmt(r.unrec) +
+            "</td>";
+          var arr = r.depts && r.depts.length === 20 ? r.depts : zeros20();
+          arr.forEach(function (v) {
+            tds += '<td class="num">' + fmtMatrixAmt(v) + "</td>";
+          });
+          tr.innerHTML = tds;
+          tb.appendChild(tr);
+        });
+        if (claimed.income.length) {
+          var trNote = document.createElement("tr");
+          trNote.innerHTML =
+            '<td colspan="' +
+            (3 + INCOME_DEPT_HEADERS.length) +
+            '" style="text-align:left;padding:10px 12px;background:#eff6ff;color:#1e40af;font-size:12px;font-weight:500;border-top:1px solid #bfdbfe;">已认领「收入」流水 <strong>' +
+            claimed.income.length +
+            "</strong> 笔（与上表示意金额为独立维度，正式环境由认领结果回写汇总）。</td>";
+          tb.appendChild(trNote);
+        }
+      }
+
+      /** 代理成本横向产品列（与服务商/渠道归集维度一致） */
+      var AGENT_PRODUCT_HEADERS = [
+        "美海",
+        "美空",
+        "渠道",
+        "制单",
+        "货拉拉深圳",
+        "货拉拉泉州",
+        "货拉拉宁波",
+      ];
+
+      function zeros7() {
+        var a = [];
+        for (var zi = 0; zi < 7; zi++) a.push(0);
+        return a;
+      }
+
+      var AGENT_MOCK_ROWS = [
+        {
+          date: "2026-01-01",
+          agent: "汇总",
+          amounts: [1250000, 860000, 420000, 98000, 15600, 8900, 12400],
+          summary: true,
+        },
+        {
+          date: "2026-01-01",
+          agent: "***",
+          amounts: (function () {
+            var z = zeros7();
+            z[0] = 210000;
+            z[2] = 88000;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-01",
+          agent: "清关服务商 A",
+          amounts: (function () {
+            var z = zeros7();
+            z[0] = 320000;
+            z[3] = 12000;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-01",
+          agent: "DHL Express Asia",
+          amounts: (function () {
+            var z = zeros7();
+            z[1] = 450000;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-02",
+          agent: "汇总",
+          amounts: [180000, 220000, 65000, 15000, 3200, 2100, 4500],
+          summary: true,
+        },
+        {
+          date: "2026-01-02",
+          agent: "宁波港兴报关行",
+          amounts: (function () {
+            var z = zeros7();
+            z[0] = 95000;
+            z[6] = 8000;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-03",
+          agent: "深圳领速供应链（货拉拉）",
+          amounts: (function () {
+            var z = zeros7();
+            z[4] = 12800;
+            z[5] = 6400;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-04",
+          agent: "义乌丰丰国际货运代理有限公司",
+          amounts: (function () {
+            var z = zeros7();
+            z[2] = 112000;
+            z[3] = 5600;
+            return z;
+          })(),
+        },
+      ];
+
+      var agentTheadBuilt = false;
+
+      function buildAgentThead() {
+        if (agentTheadBuilt) return;
+        var tr = document.getElementById("tr-agent-head");
+        if (!tr) return;
+        var html = '<th class="green">日期</th><th>代理</th>';
+        AGENT_PRODUCT_HEADERS.forEach(function (name) {
+          html += '<th class="num prod-col">' + escapeHtml(name) + "</th>";
+        });
+        tr.innerHTML = html;
+        agentTheadBuilt = true;
+      }
+
+      function renderAgentMatrix() {
+        buildAgentThead();
+        var tb = document.getElementById("tbody-agent");
+        if (!tb) return;
+        tb.innerHTML = "";
+        AGENT_MOCK_ROWS.forEach(function (r) {
+          var tr = document.createElement("tr");
+          if (r.summary) tr.className = "row-agent-summary";
+          var tds =
+            "<td>" +
+            escapeHtml(r.date) +
+            "</td><td>" +
+            escapeHtml(r.agent) +
+            "</td>";
+          var arr = r.amounts && r.amounts.length === 7 ? r.amounts : zeros7();
+          arr.forEach(function (v) {
+            tds += '<td class="num outflow">' + fmtMatrixAmt(v) + "</td>";
+          });
+          tr.innerHTML = tds;
+          tb.appendChild(tr);
+        });
+        if (claimed.agent.length) {
+          var trNote = document.createElement("tr");
+          trNote.innerHTML =
+            '<td colspan="' +
+            (2 + AGENT_PRODUCT_HEADERS.length) +
+            '" style="text-align:left;padding:10px 12px;background:#fdf4ff;color:#86198f;font-size:12px;font-weight:500;border-top:1px solid #f0abfc;">已认领「代理成本」流水 <strong>' +
+            claimed.agent.length +
+            "</strong> 笔（与上表示意为独立维度）。</td>";
+          tb.appendChild(trNote);
+        }
+      }
+
+      var FEE_MOCK_ROWS = [
+        { type: "month", label: "2026年1月" },
+        {
+          date: "2026-01-01",
+          expenseType: "房租",
+          employee: "",
+          depts: (function () {
+            var z = zeros20();
+            z[4] = 1000;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-02",
+          expenseType: "内陆费",
+          employee: "兰卓波",
+          depts: (function () {
+            var z = zeros20();
+            z[15] = 5000;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-03",
+          expenseType: "水电物业费",
+          employee: "",
+          depts: (function () {
+            var z = zeros20();
+            z[0] = 32800;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-05",
+          expenseType: "席位软件订阅",
+          employee: "王敏",
+          depts: (function () {
+            var z = zeros20();
+            z[12] = 19900;
+            return z;
+          })(),
+        },
+        {
+          date: "2026-01-08",
+          expenseType: "快递及耗材",
+          employee: "前台",
+          depts: (function () {
+            var z = zeros20();
+            z[8] = 1260.5;
+            return z;
+          })(),
+        },
+      ];
+
+      var feeTheadBuilt = false;
+
+      function buildFeeThead() {
+        if (feeTheadBuilt) return;
+        var tr = document.getElementById("tr-fee-head");
+        if (!tr) return;
+        var html =
+          '<th class="green">日期</th><th>类型</th><th>员工</th>';
+        INCOME_DEPT_HEADERS.forEach(function (name) {
+          html += '<th class="num dept-col">' + escapeHtml(name) + "</th>";
+        });
+        tr.innerHTML = html;
+        feeTheadBuilt = true;
+      }
+
+      function renderFeeMatrix() {
+        buildFeeThead();
+        var tb = document.getElementById("tbody-fee");
+        if (!tb) return;
+        tb.innerHTML = "";
+        FEE_MOCK_ROWS.forEach(function (r) {
+          var tr = document.createElement("tr");
+          if (r.type === "month") {
+            tr.className = "row-fee-month";
+            tr.innerHTML =
+              '<td colspan="' +
+              (3 + INCOME_DEPT_HEADERS.length) +
+              '">' +
+              escapeHtml(r.label) +
+              "</td>";
+            tb.appendChild(tr);
+            return;
+          }
+          tr.innerHTML =
+            "<td>" +
+            escapeHtml(r.date) +
+            "</td><td>" +
+            escapeHtml(r.expenseType) +
+            "</td><td>" +
+            (r.employee != null && r.employee !== ""
+              ? escapeHtml(r.employee)
+              : "") +
+            "</td>";
+          var arr = r.depts && r.depts.length === 20 ? r.depts : zeros20();
+          arr.forEach(function (v) {
+            tr.innerHTML += '<td class="num outflow">' + fmtMatrixAmt(v) + "</td>";
+          });
+          tb.appendChild(tr);
+        });
+        if (claimed.fee.length) {
+          var trNote = document.createElement("tr");
+          trNote.innerHTML =
+            '<td colspan="' +
+            (3 + INCOME_DEPT_HEADERS.length) +
+            '" style="text-align:left;padding:10px 12px;background:#fff7ed;color:#9a3412;font-size:12px;font-weight:500;border-top:1px solid #fdba74;">已认领「费用」流水 <strong>' +
+            claimed.fee.length +
+            "</strong> 笔（与上表示意为独立维度）。</td>";
+          tb.appendChild(trNote);
+        }
+      }
+
+      var DUE_MOCK_ROWS = [
+        { type: "month", label: "2026年1月" },
+        {
+          date: "2026-01-01",
+          dept: "财务部",
+          internalTransfer: -10000,
+          boss: 0,
+          employeeLoan: 0,
+          deposit: 0,
+          financeDept: 5000,
+          principal: 0,
+          wealthIncome: 0,
+          remark: "集团资金池下拨",
+        },
+        {
+          date: "2026-01-02",
+          dept: "财务部",
+          internalTransfer: 10000,
+          boss: 0,
+          employeeLoan: 0,
+          deposit: 0,
+          financeDept: 0,
+          principal: 0,
+          wealthIncome: 0,
+          remark: "归还临时调款",
+        },
+        {
+          date: "2026-01-03",
+          dept: "杭州分公司",
+          internalTransfer: 0,
+          boss: 50000,
+          employeeLoan: 0,
+          deposit: 0,
+          financeDept: 0,
+          principal: 0,
+          wealthIncome: 0,
+          remark: "法定代表人往来暂记",
+        },
+        {
+          date: "2026-01-05",
+          dept: "营销二部",
+          internalTransfer: 0,
+          boss: 0,
+          employeeLoan: 15000,
+          deposit: 0,
+          financeDept: 0,
+          principal: 0,
+          wealthIncome: 0,
+          remark: "业务备用金借款",
+        },
+        {
+          date: "2026-01-08",
+          dept: "宁波分公司",
+          internalTransfer: 0,
+          boss: 0,
+          employeeLoan: 0,
+          deposit: 200000,
+          financeDept: 0,
+          principal: 0,
+          wealthIncome: 0,
+          remark: "口岸投标保证金",
+        },
+        {
+          date: "2026-01-12",
+          dept: "财务部",
+          internalTransfer: 0,
+          boss: 0,
+          employeeLoan: 0,
+          deposit: 0,
+          financeDept: 12800.5,
+          principal: 0,
+          wealthIncome: 0,
+          remark: "网银手续费归集",
+        },
+        {
+          date: "2026-01-15",
+          dept: "华南营销",
+          internalTransfer: 0,
+          boss: 0,
+          employeeLoan: 0,
+          deposit: 0,
+          financeDept: 0,
+          principal: 100000,
+          wealthIncome: 0,
+          remark: "结构性存款认购",
+        },
+        {
+          date: "2026-01-20",
+          dept: "财务部",
+          internalTransfer: 0,
+          boss: 0,
+          employeeLoan: 0,
+          deposit: 0,
+          financeDept: 0,
+          principal: 0,
+          wealthIncome: 326.88,
+          remark: "理财分红入账",
+        },
+      ];
+
+      var dueTheadBuilt = false;
+
+      function buildDueThead() {
+        if (dueTheadBuilt) return;
+        var tr = document.getElementById("tr-due-head");
+        if (!tr) return;
+        var heads = [
+          "日期",
+          "部门",
+          "内部转账",
+          "老板往来",
+          "员工借款",
+          "保证金/押金",
+          "财务部",
+          "理财本金",
+          "理财收益",
+          "手工备注栏",
+        ];
+        var html = "";
+        heads.forEach(function (h, i) {
+          var cls = i === 0 ? "green" : i >= 2 ? "num" : "";
+          html += "<th" + (cls ? ' class="' + cls + '"' : "") + ">" + escapeHtml(h) + "</th>";
+        });
+        tr.innerHTML = html;
+        dueTheadBuilt = true;
+      }
+
+      function renderDueMatrix() {
+        buildDueThead();
+        var tb = document.getElementById("tbody-due");
+        if (!tb) return;
+        tb.innerHTML = "";
+        DUE_MOCK_ROWS.forEach(function (r) {
+          var tr = document.createElement("tr");
+          if (r.type === "month") {
+            tr.className = "row-due-month";
+            tr.innerHTML = '<td colspan="10">' + escapeHtml(r.label) + "</td>";
+            tb.appendChild(tr);
+            return;
+          }
+          var it = r.internalTransfer;
+          var itCls = "num";
+          if (it && it < 0) itCls += " outflow";
+          else if (it && it > 0) itCls += " inflow";
+          tr.innerHTML =
+            "<td>" +
+            escapeHtml(r.date) +
+            "</td><td>" +
+            escapeHtml(r.dept) +
+            '</td><td class="' +
+            itCls +
+            '">' +
+            fmtMatrixAmt(it) +
+            "</td><td class=\"num\">" +
+            fmtMatrixAmt(r.boss) +
+            "</td><td class=\"num\">" +
+            fmtMatrixAmt(r.employeeLoan) +
+            "</td><td class=\"num\">" +
+            fmtMatrixAmt(r.deposit) +
+            "</td><td class=\"num\">" +
+            fmtMatrixAmt(r.financeDept) +
+            "</td><td class=\"num\">" +
+            fmtMatrixAmt(r.principal) +
+            "</td><td class=\"num\">" +
+            fmtMatrixAmt(r.wealthIncome) +
+            "</td><td>" +
+            escapeHtml(r.remark || "—") +
+            "</td>";
+          tb.appendChild(tr);
+        });
+        if (claimed.due.length) {
+          var trNote = document.createElement("tr");
+          trNote.innerHTML =
+            '<td colspan="10" style="text-align:left;padding:10px 12px;background:#ecfeff;color:#0f766e;font-size:12px;font-weight:500;border-top:1px solid #99f6e4;">已认领「往来」流水 <strong>' +
+            claimed.due.length +
+            "</strong> 笔（与上表示意为独立维度）。</td>";
+          tb.appendChild(trNote);
+        }
+      }
+
+      function renderPending() {
+        var tb = document.getElementById("tbody-pending");
+        tb.innerHTML = "";
+        if (!pending.length) {
+          var tr = document.createElement("tr");
+          tr.className = "empty-row";
+          tr.innerHTML =
+            '<td colspan="' +
+            PENDING_COL_COUNT +
+            '">当前账期无待认领流水（或已全部认领）。</td>';
+          tb.appendChild(tr);
+        } else {
+          pending.forEach(function (row, idx) {
+            var tr = document.createElement("tr");
+            var def = row.suggested || "income";
+            var nums = function (v, cls) {
+              var c = cls ? ' class="num ' + cls + '"' : ' class="num"';
+              return "<td" + c + ">" + fmtNumPlain(v) + "</td>";
+            };
+            tr.innerHTML =
+              "<td>" +
+              dash(String(idx + 1)) +
+              "</td><td>" +
+              dash(row.voucherNo) +
+              "</td><td>" +
+              dash(row.voucherStatus) +
+              "</td><td>" +
+              dash(row.dataSource) +
+              "</td><td style=\"max-width:200px;word-break:break-all;\">" +
+              dash(row.serial) +
+              "</td><td>" +
+              dcBadge(row.direction, row.dcText) +
+              "</td><td>" +
+              dash(row.currency) +
+              "</td>" +
+              nums(row.rate, "") +
+              nums(row.slipRate, "") +
+              nums(row.fxLoss, "") +
+              nums(row.voucherAmount, row.amountIn ? "inflow" : row.amountOut ? "outflow" : "") +
+              nums(row.rmbAmount, row.amountIn ? "inflow" : row.amountOut ? "outflow" : "") +
+              nums(row.usedAmount, "") +
+              nums(row.unusedAmount, "") +
+              "<td>" +
+              dash(row.payTime) +
+              "</td><td>" +
+              dash(row.ourAccName) +
+              "</td><td>" +
+              dash(row.ourAccNo) +
+              "</td><td>" +
+              dash(row.ourBank) +
+              "</td><td>" +
+              dash(row.cpAccName) +
+              "</td><td>" +
+              dash(row.cpAccNo) +
+              "</td><td>" +
+              dash(row.cpBank) +
+              "</td><td>" +
+              dash(row.claimAccNo) +
+              "</td><td>" +
+              dash(row.claimAccName) +
+              "</td><td>" +
+              dash(row.dept) +
+              "</td><td>" +
+              dash(row.feeDept) +
+              "</td><td>" +
+              dash(row.feeType) +
+              "</td><td>" +
+              dash(row.claimType) +
+              "</td><td>" +
+              dash(row.feeEmpName) +
+              "</td><td>" +
+              dash(row.feeDetail) +
+              "</td><td>" +
+              dash(row.finRemark) +
+              "</td><td>" +
+              dash(row.finSummary) +
+              "</td><td>" +
+              dash(row.claimTime) +
+              "</td><td>" +
+              dash(row.auditTime) +
+              "</td><td>" +
+              dash(row.auditor) +
+              "</td><td>" +
+              dash(row.settleMethod) +
+              "</td><td>" +
+              dash(row.deliveryMethod) +
+              "</td><td style=\"max-width:220px;white-space:normal;\">" +
+              dash(row.remark) +
+              "</td><td>" +
+              dash(row.createdBy) +
+              "</td><td>" +
+              dash(row.modifiedAt) +
+              "</td><td>" +
+              dash(row.modifiedBy) +
+              '</td><td class="claim-cell">' +
+              '<div class="claim-stack">' +
+              '<span class="claim-rate-label">认领汇率（可选）</span>' +
+              '<input type="number" class="claim-rate-input" step="0.0001" placeholder="—" data-id="' +
+              row.id +
+              '" />' +
+              '<select class="claim-select" data-id="' +
+              row.id +
+              '">' +
+              '<option value="income"' +
+              (def === "income" ? " selected" : "") +
+              ">收入</option>" +
+              '<option value="agent"' +
+              (def === "agent" ? " selected" : "") +
+              ">代理成本</option>" +
+              '<option value="fee"' +
+              (def === "fee" ? " selected" : "") +
+              ">费用</option>" +
+              '<option value="due"' +
+              (def === "due" ? " selected" : "") +
+              ">往来及其他</option>" +
+              "</select>" +
+              '<button type="button" class="btn btn-primary btn-sm js-claim" data-id="' +
+              row.id +
+              '">确认认领</button>' +
+              "</div></td>";
+            tb.appendChild(tr);
+          });
+        }
+        updateKpis();
+      }
+
+      function renderAllClaimed() {
+        renderIncomeMatrix();
+        renderAgentMatrix();
+        renderFeeMatrix();
+        renderDueMatrix();
+      }
+
+      function updateKpis() {
+        var sumIn = 0;
+        var sumOut = 0;
+        pending.forEach(function (r) {
+          sumIn += r.amountIn || 0;
+          sumOut += r.amountOut || 0;
+        });
+        document.getElementById("kpi-pending-count").textContent = String(pending.length);
+        document.getElementById("kpi-pending-in").textContent = money(sumIn);
+        document.getElementById("kpi-pending-out").textContent = money(sumOut);
+
+        document.getElementById("badge-pending").textContent = String(pending.length);
+        document.getElementById("badge-in").textContent = String(claimed.income.length);
+        document.getElementById("badge-agent").textContent = String(claimed.agent.length);
+        document.getElementById("badge-fee").textContent = String(claimed.fee.length);
+        document.getElementById("badge-due").textContent = String(claimed.due.length);
+      }
+
+      function claimById(id) {
+        var sel = document.querySelector('.claim-select[data-id="' + id + '"]');
+        var cat = sel ? sel.value : "income";
+        var idx = pending.findIndex(function (r) {
+          return r.id === id;
+        });
+        if (idx === -1) return;
+        var row = pending.splice(idx, 1)[0];
+        var rateEl = document.querySelector('.claim-rate-input[data-id="' + id + '"]');
+        row.claimRate = rateEl && rateEl.value ? String(rateEl.value).trim() : "";
+        row.claimedAt = nowClaimTime();
+        row.cfCategory = cat;
+        row.date = (row.payTime || "").split(" ")[0] || "";
+        row.counterparty = row.cpAccName || "";
+        row.memo = row.remark || "";
+        if (cat === "income") claimed.income.push(row);
+        else if (cat === "agent") claimed.agent.push(row);
+        else if (cat === "fee") claimed.fee.push(row);
+        else claimed.due.push(row);
+        renderPending();
+        renderAllClaimed();
+        activatePanel("p-" + (cat === "income" ? "in" : cat));
+      }
+
+      function activatePanel(panelId) {
+        document.querySelectorAll(".tab-panel").forEach(function (p) {
+          p.classList.toggle("active", p.id === panelId);
+        });
+        document.querySelectorAll("#sideRail .tab[data-panel]").forEach(function (btn) {
+          var pid = btn.getAttribute("data-panel");
+          btn.classList.toggle("active", pid === panelId);
+        });
+        var tabParam = panelId.replace("p-", "");
+        if (tabParam === "in") tabParam = "in";
+        var url = "?tab=" + encodeURIComponent(tabParam === "pending" ? "pending" : tabParam);
+        if (history.replaceState) history.replaceState(null, "", url);
+      }
+
+      function tabFromSearch() {
+        var q = new URLSearchParams(location.search);
+        var t = (q.get("tab") || "pending").toLowerCase();
+        var map = {
+          pending: "p-pending",
+          in: "p-in",
+          income: "p-in",
+          agent: "p-agent",
+          fee: "p-fee",
+          due: "p-due",
+        };
+        return map[t] || "p-pending";
+      }
+
+      var LS_DETAIL_COLLAPSED = "cashflow_bank_claim_detail_section_collapsed";
+
+      function tabLabelFromPanelId(panelId) {
+        var map = {
+          "p-in": "现金流入 · 收入",
+          "p-agent": "现金流出 · 代理",
+          "p-fee": "现金流出 · 费用",
+          "p-due": "现金流出 · 往来",
+        };
+        return map[panelId] || panelId;
+      }
+
+      function openBankFlowModal(panelId, tr) {
+        var modal = document.getElementById("modalBankflow");
+        var body = document.getElementById("modalBankflowBody");
+        if (!modal || !body) return;
+        var cells = tr ? tr.querySelectorAll("td") : [];
+        var rowPreview = "";
+        if (cells.length) {
+          var bits = [];
+          for (var i = 0; i < Math.min(6, cells.length); i++) {
+            bits.push((cells[i].textContent || "").replace(/\s+/g, " ").trim());
+          }
+          rowPreview =
+            "<p><strong>矩阵行摘录（示意）</strong></p><pre style=\"white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:8px;font-size:12px;\">" +
+            escapeHtml(bits.join(" | ")) +
+            "</pre>";
+        }
+        var tabName = tabLabelFromPanelId(panelId || "");
+        body.innerHTML =
+          "<p>从「<strong>" +
+          escapeHtml(tabName) +
+          "</strong>」查看<strong>关联银行流水</strong>：正式环境在此展示该汇总行对应的原始流水列表（凭证号、交易流水号、币别、水单汇率、汇损、交割方式等），支持穿透凭证详情。</p>" +
+          "<dl>" +
+          "<dt>数据来源</dt><dd>认领结果与银行核心明细一对多关联；可按认领批次追溯。</dd>" +
+          "<dt>汇率与汇损</dt><dd>同时展示记账汇率、认领汇率、水单汇率及汇损（规则见页底需求说明）。</dd>" +
+          "</dl>" +
+          rowPreview;
+        modal.classList.add("is-open");
+        modal.setAttribute("aria-hidden", "false");
+      }
+
+      function openBankFlowHint(tabKey) {
+        var map = { in: "p-in", agent: "p-agent", fee: "p-fee", due: "p-due" };
+        openBankFlowModal(map[(tabKey || "").toLowerCase()] || "p-in", null);
+      }
+
+      function closeBankFlowModal() {
+        var modal = document.getElementById("modalBankflow");
+        if (!modal) return;
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+      }
+
+      document.getElementById("tbody-pending").addEventListener("click", function (e) {
+        var btn = e.target.closest(".js-claim");
+        if (!btn) return;
+        claimById(btn.getAttribute("data-id"));
+      });
+
+      document.querySelectorAll("#sideRail .tab[data-panel]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          activatePanel(btn.getAttribute("data-panel"));
+        });
+      });
+
+      function val(id) {
+        var el = document.getElementById(id);
+        return el ? el.value : "";
+      }
+
+      function searchSummaryText() {
+        var parts = [];
+        parts.push("账期 " + val("rngStart") + " ~ " + val("rngEnd"));
+        parts.push("账户 " + val("bankAcct"));
+        if (val("qVoucherNo")) parts.push("凭证编号=" + val("qVoucherNo"));
+        if (val("qClaimAccount")) parts.push("认领账户=" + val("qClaimAccount"));
+        if (val("qSerial")) parts.push("流水号=" + val("qSerial"));
+        if (val("qClaimType")) parts.push("认领类型=" + val("qClaimType"));
+        if (val("qPayTimeStart") || val("qPayTimeEnd")) {
+          parts.push("付款时间 " + val("qPayTimeStart") + " — " + val("qPayTimeEnd"));
+        }
+        if (val("qClaimTimeStart") || val("qClaimTimeEnd")) {
+          parts.push("认领时间 " + val("qClaimTimeStart") + " — " + val("qClaimTimeEnd"));
+        }
+        if (val("qSettleMethod")) parts.push("结算方式=" + val("qSettleMethod"));
+        if (val("qFinSummary")) parts.push("财务摘要=" + val("qFinSummary"));
+        if (val("qVoucherSource")) parts.push("凭证来源=" + val("qVoucherSource"));
+        if (val("qDelivery")) parts.push("交割方式=" + val("qDelivery"));
+        if (val("qCurrency")) parts.push("币别=" + val("qCurrency"));
+        if (val("qVoucherAmount")) parts.push("凭证金额=" + val("qVoucherAmount"));
+        if (val("qRemark")) parts.push("备注=" + val("qRemark"));
+        if (val("qFeeType")) parts.push("费用类型=" + val("qFeeType"));
+        if (val("qFeeDetail")) parts.push("费用明细=" + val("qFeeDetail"));
+        if (val("qFeeDept")) parts.push("费用部门=" + val("qFeeDept"));
+        if (val("qFeeEmp")) parts.push("费用员工=" + val("qFeeEmp"));
+        if (val("qFinRemark")) parts.push("财务备注=" + val("qFinRemark"));
+        if (val("qOurAccName")) parts.push("我方账户=" + val("qOurAccName"));
+        if (val("qCpAccName")) parts.push("对方账户=" + val("qCpAccName"));
+        if (val("qDc")) parts.push("借贷标识=" + val("qDc"));
+        return parts.join("；");
+      }
+
+      function resetSearchFields() {
+        [
+          "qVoucherNo",
+          "qSerial",
+          "qCpAccName",
+          "qPayTimeStart",
+          "qPayTimeEnd",
+          "qClaimTimeStart",
+          "qClaimTimeEnd",
+        ].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+        [
+          "qClaimAccount",
+          "qClaimType",
+          "qSettleMethod",
+          "qFinSummary",
+          "qVoucherSource",
+          "qDelivery",
+          "qCurrency",
+          "qVoucherAmount",
+          "qRemark",
+          "qFeeType",
+          "qFeeDetail",
+          "qFeeDept",
+          "qFeeEmp",
+          "qFinRemark",
+          "qOurAccName",
+          "qDc",
+        ].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.selectedIndex = 0;
+        });
+        document.getElementById("rngStart").value = "2026-01-01";
+        document.getElementById("rngEnd").value = "2026-01-31";
+        var ba = document.getElementById("bankAcct");
+        if (ba) ba.selectedIndex = 0;
+      }
+
+      document.getElementById("btnQuery").addEventListener("click", function () {
+        var msg =
+          "原型演示：已收集筛选条件（未重新拉数）。\n\n" + searchSummaryText();
+        alert(msg);
+      });
+
+      document.getElementById("btnResetSearch").addEventListener("click", function () {
+        resetSearchFields();
+      });
+
+      var LS_FILTER_EXPANDED = "cashflow_bank_claim_filter_expanded_all";
+      try {
+        localStorage.removeItem("cashflow_bank_claim_filter_collapsed");
+      } catch (e) {}
+      var filterBar = document.getElementById("filterBar");
+      var btnToggleFilter = document.getElementById("btnToggleFilter");
+
+      function syncFilterExpandUI() {
+        if (!filterBar || !btnToggleFilter) return;
+        var expanded = filterBar.classList.contains("filter-bar--expanded");
+        btnToggleFilter.setAttribute("aria-expanded", String(expanded));
+        var lab = btnToggleFilter.querySelector(".toggle-label");
+        if (lab) lab.textContent = expanded ? "收起" : "展开全部";
+      }
+
+      if (filterBar && localStorage.getItem(LS_FILTER_EXPANDED) === "1") {
+        filterBar.classList.add("filter-bar--expanded");
+      }
+      syncFilterExpandUI();
+
+      if (btnToggleFilter) {
+        btnToggleFilter.addEventListener("click", function () {
+          filterBar.classList.toggle("filter-bar--expanded");
+          localStorage.setItem(
+            LS_FILTER_EXPANDED,
+            filterBar.classList.contains("filter-bar--expanded") ? "1" : "0"
+          );
+          syncFilterExpandUI();
+        });
+      }
+
+      var voucherToolbar = document.getElementById("voucherToolbar");
+      var LS_VOUCHER_EXPANDED = "cashflow_bank_claim_voucher_toolbar_expanded";
+      var btnToggleVoucherToolbar = document.getElementById("btnToggleVoucherToolbar");
+
+      function syncVoucherToolbarExpandUI() {
+        if (!voucherToolbar || !btnToggleVoucherToolbar) return;
+        var expanded = voucherToolbar.classList.contains("voucher-toolbar--expanded");
+        btnToggleVoucherToolbar.setAttribute("aria-expanded", String(expanded));
+        var vlab = btnToggleVoucherToolbar.querySelector(".toggle-label");
+        if (vlab) vlab.textContent = expanded ? "收起" : "展开";
+      }
+
+      try {
+        if (voucherToolbar && localStorage.getItem(LS_VOUCHER_EXPANDED) === "1") {
+          voucherToolbar.classList.add("voucher-toolbar--expanded");
+        }
+      } catch (e) {}
+      syncVoucherToolbarExpandUI();
+
+      if (btnToggleVoucherToolbar && voucherToolbar) {
+        btnToggleVoucherToolbar.addEventListener("click", function (e) {
+          e.stopPropagation();
+          voucherToolbar.classList.toggle("voucher-toolbar--expanded");
+          try {
+            localStorage.setItem(
+              LS_VOUCHER_EXPANDED,
+              voucherToolbar.classList.contains("voucher-toolbar--expanded") ? "1" : "0"
+            );
+          } catch (err) {}
+          syncVoucherToolbarExpandUI();
+        });
+      }
+
+      if (voucherToolbar) {
+        voucherToolbar.addEventListener("click", function (e) {
+          var b = e.target.closest(".tb-btn[data-action]");
+          if (!b) return;
+          var a = b.getAttribute("data-action");
+          if (a === "delete") {
+            if (!confirm("确认执行「删除数据」？\n\n原型仅演示，不会真实删除任何记录。")) return;
+            alert("【删除数据】已记录操作意图。正式环境需权限、软删除与审计日志。");
+            return;
+          }
+          if (a === "void") {
+            if (!confirm("确认「凭证作废」？\n\n作废后通常不可再认领/核销，原型不更改数据。")) return;
+            alert("【凭证作废】已记录。正式环境需作废原因、复核人及状态回写。");
+            return;
+          }
+          if (a === "query") {
+            if (filterBar) {
+              filterBar.classList.add("filter-bar--expanded");
+              localStorage.setItem(LS_FILTER_EXPANDED, "1");
+              syncFilterExpandUI();
+            }
+            var qb = document.getElementById("btnQuery");
+            if (qb) qb.click();
+            if (filterBar && filterBar.scrollIntoView) {
+              filterBar.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+            return;
+          }
+          if (a === "export") {
+            var active = document.querySelector(".tab-panel.active");
+            var pid = active ? active.id : "p-pending";
+            var scope =
+              pid === "p-pending"
+                ? "待认领列表（含水单汇率、汇损、认领汇率列）"
+                : pid === "p-in"
+                  ? "现金流入 · 收入矩阵"
+                  : pid === "p-agent"
+                    ? "现金流出 · 代理矩阵"
+                    : pid === "p-fee"
+                      ? "现金流出 · 费用矩阵"
+                      : "现金流出 · 往来矩阵";
+            alert(
+              "【导出】\n\n将导出：" +
+                scope +
+                "\n\n筛选摘要：\n" +
+                searchSummaryText() +
+                "\n\n正式环境：生成 Excel / CSV，支持异步任务与导出审计。"
+            );
+            return;
+          }
+          var msgs = {
+            add: "【新增数据】补录未入账流水/手工凭证。原型：此处应打开录入表单或跳转新页（未接接口）。",
+            edit: "【修改数据】修改选中凭证主信息。请先在列表中勾选一行（原型暂未接行选择）。",
+            detail: "【查看详情】打开凭证全字段、分录、关联运单/发票。请先选中一行。",
+            claim: "【凭证认领】与下方列表「确认认领」一致。批量认领 = 多选 + 统一现金流量项 + 接口提交。",
+            unclaim: "【撤销认领】将已认领记录退回「待认领」。需反写认领人/时间及汇总表（原型未实现）。",
+            audit: "【凭证审核】认领后审核节点；通过/驳回驱动后续核销或退回修改（接审批流）。",
+            import: "【凭证导入】Excel/银行回单文件批量导入，与「数据来源·批量导入」一致；应有模板与导入日志。费用类支持工资/社保/医保等批量拆解导入。",
+            export: "【导出】已单独处理：按当前页签与筛选条件导出。",
+            finRemark: "【修改财务备注】勾选多行后批量维护「财务备注」列（弹窗或抽屉）。",
+            fxbatch: "【修改汇率(批量)】外币凭证批量重算本位币金额；需复核权限与重算范围。",
+            hedge: "【凭证对冲】二期能力：与收/付款单或内部往来单配对生成对冲凭证（当前为占位）。",
+            unhedge: "【撤销对冲】二期能力：解除对冲关系并回滚关联状态（当前为占位）。",
+            rules: "【系统认领规则】维护认领优先级、关键词、默认现金流量项、黑白名单等（跳转配置中心，占位）。",
+          };
+          alert(msgs[a] || "未定义操作");
+        });
+      }
+
+      var modalRoot = document.getElementById("modalBankflow");
+      if (modalRoot) {
+        modalRoot.addEventListener("click", function (e) {
+          if (e.target === modalRoot) closeBankFlowModal();
+        });
+        var mClose = document.getElementById("modalBankflowClose");
+        var mOk = document.getElementById("modalBankflowOk");
+        if (mClose) mClose.addEventListener("click", closeBankFlowModal);
+        if (mOk) mOk.addEventListener("click", closeBankFlowModal);
+      }
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeBankFlowModal();
+      });
+
+      document.querySelectorAll(".js-open-flow-hint").forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          openBankFlowHint(btn.getAttribute("data-flow-tab"));
+        });
+      });
+
+      var detailSectionEl = document.getElementById("detailSection");
+      var btnToggleDetail = document.getElementById("btnToggleDetail");
+      if (detailSectionEl && btnToggleDetail) {
+        function syncDetailCollapse() {
+          var collapsed = detailSectionEl.classList.contains("is-collapsed");
+          btnToggleDetail.setAttribute("aria-expanded", collapsed ? "false" : "true");
+          var lab = btnToggleDetail.querySelector(".detail-toggle-label");
+          var ch = btnToggleDetail.querySelector(".toggle-chevron");
+          if (lab) lab.textContent = collapsed ? "展开明细" : "收起明细";
+          if (ch) ch.textContent = collapsed ? "▶" : "▼";
+        }
+        try {
+          if (localStorage.getItem(LS_DETAIL_COLLAPSED) === "1") detailSectionEl.classList.add("is-collapsed");
+        } catch (e1) {}
+        syncDetailCollapse();
+        btnToggleDetail.addEventListener("click", function () {
+          detailSectionEl.classList.toggle("is-collapsed");
+          try {
+            localStorage.setItem(LS_DETAIL_COLLAPSED, detailSectionEl.classList.contains("is-collapsed") ? "1" : "0");
+          } catch (e2) {}
+          syncDetailCollapse();
+        });
+      }
+
+      if (detailSectionEl) {
+        detailSectionEl.addEventListener("click", function (e) {
+          if (e.target.closest("button, a, input, select, textarea, label")) return;
+          var panel = e.target.closest(".tab-panel.active");
+          if (!panel || panel.id === "p-pending") return;
+          var tr = e.target.closest("table[data-grid='1'] tbody tr");
+          if (!tr || tr.classList.contains("empty-row")) return;
+          if (
+            tr.classList.contains("row-income-summary") ||
+            tr.classList.contains("row-agent-summary") ||
+            tr.classList.contains("row-fee-month") ||
+            tr.classList.contains("row-due-month")
+          )
+            return;
+          if (tr.querySelector("td[colspan]")) return;
+          openBankFlowModal(panel.id, tr);
+        });
+      }
+
+      renderPending();
+      renderAllClaimed();
+      activatePanel(tabFromSearch());
+    })();
+  </script>
+</body>
+</html>

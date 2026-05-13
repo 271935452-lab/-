@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SLA 数据维护（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --blue-bg: #eff6ff;
+      --amber-bg: #fffbeb;
+      --amber-bd: #fde68a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .page { max-width: 1280px; margin: 0 auto; padding: 20px 16px 64px; }
+    .crumb { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+    .crumb a { color: var(--primary); text-decoration: none; }
+    .top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .top h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+    .meta { font-size: 13px; color: var(--sub); margin: 0; max-width: 720px; line-height: 1.55; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text);
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-ghost { background: #f8fafc; border-color: var(--line); color: #334155; }
+    .callout {
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--amber-bd);
+      background: var(--amber-bg);
+      font-size: 12px;
+      color: #92400e;
+      line-height: 1.6;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: flex-end;
+      margin-bottom: 12px;
+      padding: 14px 16px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .filters label { font-size: 11px; color: var(--sub); display: block; margin-bottom: 4px; }
+    .filters select, .filters input {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+      min-width: 140px;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: auto;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    th { background: #f8fafc; font-weight: 600; color: #475569; white-space: nowrap; }
+    tr:hover td { background: #fafbfc; }
+    tr.filtered-out { display: none; }
+    td input[type="text"],
+    td input[type="number"],
+    td select {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+    td input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #64748b; }
+    .split-note {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px dashed var(--line);
+      background: #f8fafc;
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .save-status {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      line-height: 1.5;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .save-status .ic {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .save-status .tit { font-weight: 700; margin: 0 0 4px; }
+    .save-status .sub { margin: 0; font-size: 12px; color: var(--sub); line-height: 1.5; }
+    .save-status .ver { font-size: 11px; color: #94a3b8; margin-top: 6px; font-family: ui-monospace, Consolas, monospace; }
+    .save-status--saved {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+    .save-status--saved .ic { background: #d1fae5; color: #047857; }
+    .save-status--dirty {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #92400e;
+    }
+    .save-status--dirty .ic { background: #fef3c7; color: #b45309; }
+    .save-status--dirty.pulse { animation: slaPulse 1.2s ease-out 1; }
+    @keyframes slaPulse {
+      0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+      100% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+    }
+    .save-status--initial {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1e40af;
+    }
+    .save-status--initial .ic { background: #dbeafe; color: #1d4ed8; }
+    .save-status--flash {
+      animation: slaFlash 0.85s ease;
+    }
+    @keyframes slaFlash {
+      0% { filter: brightness(1.05); }
+      40% { filter: brightness(1.12); }
+      100% { filter: brightness(1); }
+    }
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #065f46;
+      color: #ecfdf5;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .scenario-box {
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #e0e7ff;
+      background: #eef2ff;
+      font-size: 12px;
+      color: #3730a3;
+      line-height: 1.65;
+    }
+    .scenario-box strong { color: #312e81; }
+    .scenario-box ol { margin: 8px 0 0; padding-left: 18px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="crumb">
+      <a href="原型导航-工单模块.html">工单模块</a> /
+      <a href="工单工作台-MVP.html">工作台</a> /
+      SLA 数据维护
+    </div>
+    <div class="top">
+      <div>
+        <h1>SLA 数据维护</h1>
+        <p class="meta">维护各<strong>业务场景</strong>下的时效口径：首响、处理/闭环、预警与升级规则。正式环境可由工单引擎按场景编码读取；本页为<strong>纯前端演示</strong>，「保存」写入浏览器 <code>sessionStorage</code>，刷新后仍保留直至关闭标签或清空站点数据。</p>
+      </div>
+      <div class="actions">
+        <a class="btn btn-ghost" href="原型导航-工单模块.html">导航</a>
+        <a class="btn btn-ghost" href="工单工作台-MVP.html">工作台</a>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>说明：</strong>「首响」指责任方首次接单/接收；「处理时限」指常态闭环目标（可与工作台 KPI「SLA 即将到期」阈值联动）；「预警提前」为黄灯提醒距截止的剩余小时数（演示用数值）。异常件类可填「第 N 天跟进」于备注策略列。
+    </div>
+
+    <div class="scenario-box">
+      <strong>已保存 · 交互演示场景（产品走查用）</strong>
+      <ol>
+        <li><strong>首次进入本页：</strong>若从未点过保存，顶部为蓝色提示「当前为演示默认数据」；从工作台改完 SLA 点保存后再次进入，会显示绿色<strong>已全部保存至本机</strong>及上次保存时间、操作人、配置版本号。</li>
+        <li><strong>编辑任意单元格：</strong>状态条切换为琥珀色<strong>有未保存的修改</strong>，「保存」按钮变为可点；离开页面前浏览器会提示是否放弃更改（演示）。</li>
+        <li><strong>点击保存：</strong>数据写入 <code>sessionStorage</code>；状态条变绿并<strong>闪烁一次</strong>，右上角弹出<strong>保存成功</strong>条，约 2.5 秒消失；版本号 +1，「保存」再次置灰直至下次修改。</li>
+        <li><strong>恢复演示默认：</strong>清空会话内配置，回到内置 10 条；此时视为<strong>未再次保存</strong>，可继续编辑后保存固化。</li>
+      </ol>
+    </div>
+
+    <div id="saveStatusBar" class="save-status save-status--initial" role="status" aria-live="polite">
+      <span class="ic" id="saveStatusIc">i</span>
+      <div>
+        <p class="tit" id="saveStatusTit">正在加载配置…</p>
+        <p class="sub" id="saveStatusSub"></p>
+        <p class="ver" id="saveStatusVer"></p>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div>
+        <label>阶段</label>
+        <select id="fStage">
+          <option value="">全部</option>
+          <option value="港前">港前</option>
+          <option value="港后">港后</option>
+          <option value="尾端">尾端</option>
+          <option value="异常件">异常件</option>
+          <option value="费用结案">费用结案</option>
+        </select>
+      </div>
+      <div>
+        <label>关键词</label>
+        <input type="search" id="fQ" placeholder="场景编码 / 场景名称" />
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button type="button" class="btn btn-primary" id="btnSave" disabled>保存（演示 · sessionStorage）</button>
+      <button type="button" class="btn" id="btnReset">恢复演示默认</button>
+      <button type="button" class="btn" id="btnAdd">新增一行</button>
+      <span class="mono" id="saveHint"></span>
+    </div>
+
+    <div id="toastSaved" class="toast" role="status" aria-live="polite">保存成功</div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:44px">启用</th>
+            <th style="width:120px">规则编码</th>
+            <th style="width:72px">阶段</th>
+            <th style="min-width:200px">场景名称（与工单一致）</th>
+            <th style="width:100px">责任角色</th>
+            <th style="width:88px">首响（h）</th>
+            <th style="width:100px">处理/闭环（h）</th>
+            <th style="width:100px">预警提前（h）</th>
+            <th style="min-width:120px">升级 / 督办策略</th>
+            <th style="min-width:160px">备注</th>
+            <th style="width:56px">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="split-note">
+      <strong>与工单工作台对齐：</strong>场景名称建议与「新建工单」「工作台」筛选中的 <code>港前·…</code> <code>港后·…</code> 等编码一致，便于后续接口按场景拉 SLA。财务、海外仓等跨角色场景可拆多行或共用「责任角色」字段（以实现为准）。<strong>已保存态：</strong>正式环境可对接「配置发布流水」与操作审计；本页用状态条 + Toast 模拟<strong>保存成功反馈</strong>与<strong>脏数据防护</strong>。
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "wo-sla-rules-v1";
+    const DEMO_OPERATOR = "李凡一（运营配置）·演示";
+
+    const defaultRows = [
+      { en: true, code: "SLA-GQ-001", stage: "港前", scene: "港前·拆柜前找付雪", role: "fu", firstH: 8, procH: 48, warnH: 2, escalate: "超首响未接收标红", note: "企微+系统双通道；付雪接收/驳回" },
+      { en: true, code: "SLA-GQ-002", stage: "港前", scene: "港前·柜子计划拦截换标", role: "fu", firstH: 8, procH: 24, warnH: 4, escalate: "预报未回传升级港前主管", note: "含共享表与海外仓预报" },
+      { en: true, code: "SLA-GQ-003", stage: "港前", scene: "港前·拆柜报告异常", role: "osw", firstH: 0, procH: 24, warnH: 6, escalate: "海外仓未反馈转付雪催办", note: "拆柜少件/破损核实" },
+      { en: true, code: "SLA-GH-001", stage: "港后", scene: "港后·私卡改地址", role: "after", firstH: 0, procH: 8, warnH: 2, escalate: "当日未回执提醒私卡组长", note: "指令当日回执" },
+      { en: true, code: "SLA-GH-002", stage: "港后", scene: "港后·私卡预约联系不上", role: "after", firstH: 4, procH: 24, warnH: 1, escalate: "反向工单港后池", note: "反向工单 4h 内回电" },
+      { en: true, code: "SLA-GH-003", stage: "港后", scene: "港后·FBA改仓", role: "osw", firstH: 0, procH: 0, warnH: 0, escalate: "排期异常@产品", note: "可与仓内 SLA 单独表关联" },
+      { en: true, code: "SLA-WD-001", stage: "尾端", scene: "尾端·未上架索赔", role: "finance", firstH: 0, procH: 72, warnH: 12, escalate: "D+3 海外仓未反馈升级", note: "自然日；财务结案另表" },
+      { en: true, code: "SLA-YC-001", stage: "异常件", scene: "异常件·媒体区断更", role: "exception", firstH: 12, procH: 144, warnH: 24, escalate: "第6天未闭环标红+推送主管", note: "12h 开查；每周跟进" },
+      { en: true, code: "SLA-YC-002", stage: "异常件", scene: "异常件·预约联系不上", role: "after", firstH: 4, procH: 24, warnH: 2, escalate: "同港后反向工单池", note: "与私卡预约场景一致" },
+      { en: true, code: "SLA-FI-001", stage: "费用结案", scene: "费用结案·改原单费用", role: "finance", firstH: 8, procH: 48, warnH: 8, escalate: "超复核窗口通报财务主管", note: "当日受理 / 2 日复核（演示折为小时）" },
+    ];
+
+    let rows = [];
+    /** 与最近一次「保存」或「加载后基线」对齐的快照，用于脏检测 */
+    let lastSnapshot = "";
+    /** 最近一次成功保存的元数据（演示） */
+    let lastMeta = { savedAt: null, savedBy: null, version: 0, legacy: false };
+
+    function snapshotRules() {
+      return JSON.stringify(collectRows());
+    }
+
+    function isDirty() {
+      return snapshotRules() !== lastSnapshot;
+    }
+
+    function fmtSavedAt(iso) {
+      if (!iso) return "—";
+      try {
+        const d = new Date(iso);
+        return d.toLocaleString("zh-CN", { hour12: false });
+      } catch (_) {
+        return iso;
+      }
+    }
+
+    function refreshSaveUi() {
+      const bar = document.getElementById("saveStatusBar");
+      const ic = document.getElementById("saveStatusIc");
+      const tit = document.getElementById("saveStatusTit");
+      const sub = document.getElementById("saveStatusSub");
+      const ver = document.getElementById("saveStatusVer");
+      const saveBtn = document.getElementById("btnSave");
+      if (!bar || !ic || !tit || !sub || !ver || !saveBtn) return;
+
+      const dirty = isDirty();
+      const canMigrateLegacy = !!(lastMeta.legacy && !lastMeta.savedAt);
+      saveBtn.disabled = !dirty && !canMigrateLegacy;
+
+      bar.classList.remove("save-status--saved", "save-status--dirty", "save-status--initial", "save-status--flash", "pulse");
+      void bar.offsetWidth;
+
+      if (dirty) {
+        bar.classList.add("save-status--dirty", "pulse");
+        ic.textContent = "!";
+        tit.textContent = "有未保存的修改";
+        sub.innerHTML =
+          "工单工作台将仍按<strong>上一次已成功保存</strong>的配置参与 SLA 演示，直至您再次保存覆盖本机会话。";
+        ver.textContent = lastMeta.savedAt
+          ? `基线版本 #${lastMeta.version} · 上次保存 ${fmtSavedAt(lastMeta.savedAt)}（当前编辑未写入）`
+          : "尚未产生任何带版本号的保存记录";
+      } else if (lastMeta.savedAt) {
+        bar.classList.add("save-status--saved");
+        ic.textContent = "✓";
+        tit.textContent = "已全部保存至本机";
+        sub.innerHTML = `上次保存：<strong>${fmtSavedAt(lastMeta.savedAt)}</strong> · 操作人：${lastMeta.savedBy || DEMO_OPERATOR}`;
+        ver.textContent = `配置版本 #${lastMeta.version} · 存储键 ${STORAGE_KEY}（演示）`;
+      } else {
+        bar.classList.add("save-status--initial");
+        ic.textContent = "i";
+        tit.textContent = lastMeta.legacy ? "已从会话加载规则（旧存储格式）" : "当前为演示默认数据";
+        sub.innerHTML = lastMeta.legacy
+          ? "检测到仅含规则数组的历史数据；请点击<strong>保存</strong>升级为带版本号与时间戳的结构（演示迁移）。"
+          : "尚未写入本机会话。可按下方<strong>场景步骤</strong>体验：改数字 → 保存 → 观察状态条与右上角提示。";
+        ver.textContent = "保存后将生成「配置版本」并可用于走查截图与需求说明";
+      }
+    }
+
+    function showToastSaved() {
+      const t = document.getElementById("toastSaved");
+      if (!t) return;
+      t.classList.add("show");
+      clearTimeout(showToastSaved._tm);
+      showToastSaved._tm = setTimeout(() => t.classList.remove("show"), 2600);
+    }
+
+    function flashSaveBar() {
+      const bar = document.getElementById("saveStatusBar");
+      if (!bar) return;
+      bar.classList.add("save-status--flash");
+      clearTimeout(flashSaveBar._tm);
+      flashSaveBar._tm = setTimeout(() => bar.classList.remove("save-status--flash"), 900);
+    }
+
+    function roleOptions(selected) {
+      const opts = [
+        ["fu", "港前（付雪）"],
+        ["after", "港后客服"],
+        ["osw", "海外仓"],
+        ["exception", "异常件"],
+        ["finance", "财务"],
+        ["product", "产品"],
+        ["sales", "业务员"],
+      ];
+      return opts
+        .map(
+          ([v, t]) =>
+            `<option value="${v}"${selected === v ? " selected" : ""}>${t}</option>`
+        )
+        .join("");
+    }
+
+    function rowHtml(r, idx) {
+      const esc = s =>
+        String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;");
+      return `<tr data-stage="${esc(r.stage)}" data-scene="${esc(r.scene)}" data-code="${esc(r.code)}">
+        <td style="text-align:center"><input type="checkbox" class="col-en" data-i="${idx}" ${r.en ? "checked" : ""} /></td>
+        <td><input type="text" class="col-code" data-i="${idx}" value="${esc(r.code)}" /></td>
+        <td>
+          <select class="col-stage" data-i="${idx}">
+            <option value="港前"${r.stage === "港前" ? " selected" : ""}>港前</option>
+            <option value="港后"${r.stage === "港后" ? " selected" : ""}>港后</option>
+            <option value="尾端"${r.stage === "尾端" ? " selected" : ""}>尾端</option>
+            <option value="异常件"${r.stage === "异常件" ? " selected" : ""}>异常件</option>
+            <option value="费用结案"${r.stage === "费用结案" ? " selected" : ""}>费用结案</option>
+          </select>
+        </td>
+        <td><input type="text" class="col-scene" data-i="${idx}" value="${esc(r.scene)}" /></td>
+        <td><select class="col-role" data-i="${idx}">${roleOptions(r.role)}</select></td>
+        <td><input type="number" class="col-first" data-i="${idx}" min="0" step="1" value="${r.firstH}" /></td>
+        <td><input type="number" class="col-proc" data-i="${idx}" min="0" step="1" value="${r.procH}" /></td>
+        <td><input type="number" class="col-warn" data-i="${idx}" min="0" step="1" value="${r.warnH}" /></td>
+        <td><input type="text" class="col-escalate" data-i="${idx}" value="${esc(r.escalate)}" /></td>
+        <td><input type="text" class="col-note" data-i="${idx}" value="${esc(r.note)}" /></td>
+        <td><button type="button" class="btn btn-del" data-i="${idx}" style="padding:4px 8px;font-size:12px">删</button></td>
+      </tr>`;
+    }
+
+    function readRowFromTr(tr) {
+      return {
+        en: tr.querySelector(".col-en")?.checked ?? false,
+        code: tr.querySelector(".col-code")?.value?.trim() ?? "",
+        stage: tr.querySelector(".col-stage")?.value ?? "",
+        scene: tr.querySelector(".col-scene")?.value?.trim() ?? "",
+        role: tr.querySelector(".col-role")?.value ?? "fu",
+        firstH: Number(tr.querySelector(".col-first")?.value) || 0,
+        procH: Number(tr.querySelector(".col-proc")?.value) || 0,
+        warnH: Number(tr.querySelector(".col-warn")?.value) || 0,
+        escalate: tr.querySelector(".col-escalate")?.value?.trim() ?? "",
+        note: tr.querySelector(".col-note")?.value?.trim() ?? "",
+      };
+    }
+
+    function collectRows() {
+      return [...document.querySelectorAll("#tbody tr")].map(readRowFromTr);
+    }
+
+    /**
+     * @param {{ syncBaseline?: boolean }} [opts] 仅在首次进入或「恢复默认」后为 true，用于对齐脏检测基线；普通增删改重绘勿同步，否则会误标为已保存。
+     */
+    function renderBody(opts) {
+      const syncBaseline = !!(opts && opts.syncBaseline);
+      const tb = document.getElementById("tbody");
+      tb.innerHTML = rows.map((r, i) => rowHtml(r, i)).join("");
+      applyFilter();
+      if (syncBaseline) lastSnapshot = snapshotRules();
+      refreshSaveUi();
+    }
+
+    function applyFilter() {
+      const st = document.getElementById("fStage").value;
+      const q = document.getElementById("fQ").value.trim().toLowerCase();
+      document.querySelectorAll("#tbody tr").forEach(tr => {
+        const okSt = !st || tr.getAttribute("data-stage") === st;
+        const hay = `${tr.getAttribute("data-code")} ${tr.getAttribute("data-scene")}`.toLowerCase();
+        const okQ = !q || hay.includes(q);
+        tr.classList.toggle("filtered-out", !(okSt && okQ));
+      });
+    }
+
+    function readStore() {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      try {
+        const p = JSON.parse(raw);
+        if (Array.isArray(p) && p.length) return { rules: p, savedAt: null, savedBy: null, version: 0, legacy: true };
+        if (p && Array.isArray(p.rules) && p.rules.length) {
+          return {
+            rules: p.rules,
+            savedAt: p.savedAt || null,
+            savedBy: p.savedBy || null,
+            version: typeof p.version === "number" ? p.version : 0,
+            legacy: false,
+          };
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    function load() {
+      const st = readStore();
+      if (st) {
+        rows = st.rules.map(r => ({ ...r }));
+        lastMeta = {
+          savedAt: st.savedAt,
+          savedBy: st.savedBy,
+          version: st.version,
+          legacy: !!st.legacy,
+        };
+        return;
+      }
+      rows = defaultRows.map(r => ({ ...r }));
+      lastMeta = { savedAt: null, savedBy: null, version: 0, legacy: false };
+    }
+
+    function save() {
+      const canMigrateLegacy = !!(lastMeta.legacy && !lastMeta.savedAt);
+      if (!isDirty() && !canMigrateLegacy) return;
+      rows = collectRows();
+      const ver = (lastMeta.version || 0) + 1;
+      const savedAt = new Date().toISOString();
+      const payload = { rules: rows, savedAt, savedBy: DEMO_OPERATOR, version: ver };
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      lastMeta = { savedAt, savedBy: DEMO_OPERATOR, version: ver, legacy: false };
+      lastSnapshot = snapshotRules();
+      refreshSaveUi();
+      showToastSaved();
+      flashSaveBar();
+      const hint = document.getElementById("saveHint");
+      if (hint) hint.textContent = "";
+    }
+
+    document.getElementById("btnSave").addEventListener("click", save);
+
+    document.getElementById("btnReset").addEventListener("click", () => {
+      if (!confirm("确定恢复为演示默认 SLA 行？将覆盖当前会话内已保存内容。")) return;
+      sessionStorage.removeItem(STORAGE_KEY);
+      rows = defaultRows.map(r => ({ ...r }));
+      lastMeta = { savedAt: null, savedBy: null, version: 0, legacy: false };
+      renderBody({ syncBaseline: true });
+    });
+
+    document.getElementById("btnAdd").addEventListener("click", () => {
+      rows = collectRows();
+      rows.push({
+        en: true,
+        code: "SLA-NEW-" + Date.now().toString(36).toUpperCase().slice(-6),
+        stage: "港后",
+        scene: "港后·（请修改场景名称）",
+        role: "after",
+        firstH: 8,
+        procH: 24,
+        warnH: 2,
+        escalate: "",
+        note: "",
+      });
+      renderBody();
+    });
+
+    document.getElementById("tbody").addEventListener("click", e => {
+      const btn = e.target.closest(".btn-del");
+      if (!btn) return;
+      const i = Number(btn.getAttribute("data-i"));
+      rows = collectRows();
+      rows.splice(i, 1);
+      renderBody();
+    });
+
+    document.getElementById("tbody").addEventListener("input", e => {
+      const tr = e.target.closest("tr");
+      if (!tr) return;
+      rows = collectRows();
+      tr.setAttribute("data-stage", tr.querySelector(".col-stage")?.value || "");
+      tr.setAttribute("data-scene", tr.querySelector(".col-scene")?.value || "");
+      tr.setAttribute("data-code", tr.querySelector(".col-code")?.value || "");
+      applyFilter();
+      refreshSaveUi();
+    });
+
+    document.getElementById("tbody").addEventListener("change", e => {
+      const tr = e.target.closest("tr");
+      if (!tr) return;
+      rows = collectRows();
+      tr.setAttribute("data-stage", tr.querySelector(".col-stage")?.value || "");
+      tr.setAttribute("data-scene", tr.querySelector(".col-scene")?.value || "");
+      tr.setAttribute("data-code", tr.querySelector(".col-code")?.value || "");
+      applyFilter();
+      refreshSaveUi();
+    });
+
+    ["fStage", "fQ"].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener("input", applyFilter);
+      el.addEventListener("change", applyFilter);
+    });
+
+    load();
+    renderBody({ syncBaseline: true });
+
+    window.addEventListener("beforeunload", e => {
+      if (isDirty()) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
+  </script>
+</body>
+</html>
