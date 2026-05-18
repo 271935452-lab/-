@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>业务数据统计（财务）· 合并计费 / 运费优惠与折扣弹窗（MVP）</title>
+  <style>
+    :root {
+      --bg: #e8ecf1;
+      --card: #fff;
+      --text: #1f2937;
+      --sub: #64748b;
+      --line: #d1d5db;
+      --blue: #1e6bd6;
+      --blue-h: #1558b8;
+      --red: #dc2626;
+      --green: #15803d;
+      --orange: #ea580c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .hint-bar {
+      padding: 10px 16px;
+      background: #fef3c7;
+      border-bottom: 1px solid #fcd34d;
+      font-size: 13px;
+      color: #92400e;
+    }
+    .stage {
+      min-height: calc(100vh - 44px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 12px 32px;
+    }
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.42);
+      z-index: 0;
+    }
+    .modal {
+      position: relative;
+      z-index: 1;
+      width: min(1180px, 100%);
+      max-height: calc(100vh - 80px);
+      background: var(--card);
+      border-radius: 4px;
+      border: 1px solid #c4ccd6;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-hd {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--line);
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+    }
+    .modal-hd-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 20px;
+      min-width: 0;
+      flex: 1;
+    }
+    .scene-select-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--sub);
+    }
+    .scene-select {
+      padding: 6px 10px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      min-width: 200px;
+      cursor: pointer;
+    }
+    .modal-hd .close {
+      border: 0;
+      background: transparent;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--sub);
+      line-height: 1;
+      padding: 0 4px;
+    }
+    .modal-bd {
+      padding: 0;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .scene-panel {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      align-items: stretch;
+      gap: 0;
+    }
+    .scene-panel.active {
+      display: grid;
+    }
+    .modal-main {
+      padding: 12px 16px 14px;
+      overflow: auto;
+      min-width: 0;
+      border-right: 1px solid var(--line);
+    }
+    .modal-prd {
+      padding: 12px 14px 16px;
+      background: #f1f5f9;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.75;
+      color: #334155;
+    }
+    .modal-prd h2 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .modal-prd .prd-lead {
+      margin: 0 0 12px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .modal-prd .prd-formula {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-size: 12px;
+      color: #0f172a;
+    }
+    .modal-prd .prd-formula code {
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+    }
+    .modal-prd ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .modal-prd li { margin-bottom: 10px; }
+    .modal-prd li:last-child { margin-bottom: 0; }
+    .modal-prd .prd-note {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #cbd5e1;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    @media (max-width: 900px) {
+      .scene-panel.active {
+        grid-template-columns: 1fr;
+      }
+      .modal-main {
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--line);
+      margin: -4px 0 12px;
+    }
+    .tab {
+      padding: 8px 18px;
+      font-size: 13px;
+      cursor: default;
+      border: 1px solid transparent;
+      border-bottom: none;
+      margin-bottom: -1px;
+      background: #e2e8f0;
+      color: var(--sub);
+    }
+    .tab.active {
+      background: #fff;
+      color: var(--text);
+      font-weight: 600;
+      border-color: var(--line);
+      border-radius: 4px 4px 0 0;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 20px;
+      align-items: center;
+      font-size: 13px;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    .meta-row .entry-from {
+      flex: 1 1 100%;
+      font-size: 12px;
+      color: #475569;
+      padding-bottom: 6px;
+      margin-bottom: 2px;
+      border-bottom: 1px dashed #cbd5e1;
+    }
+    .meta-row label.chk {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .meta-default {
+      font-size: 12px;
+      color: var(--sub);
+      flex: 1 1 220px;
+      line-height: 1.5;
+    }
+    .meta-default strong { color: #0f172a; }
+    .ro-only {
+      min-width: 56px;
+      white-space: normal;
+    }
+    .ro-only .ro-value {
+      font-size: 14px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    table.merge-ratio-off .col-merge-ratio {
+      display: none;
+    }
+    .cell-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: stretch;
+      min-width: 120px;
+      white-space: normal;
+    }
+    .cell-stack select, .cell-stack input.in-cell-wide {
+      width: 100%;
+      padding: 4px 6px;
+      font-size: 11px;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+    }
+    .cell-inline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      white-space: normal;
+    }
+    .cell-inline .in-cell { flex: 0 0 auto; }
+    th .th-sub {
+      display: block;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--sub);
+      margin-top: 4px;
+    }
+    .mini {
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      overflow: auto;
+      max-height: 320px;
+    }
+    .table-wrap-offer {
+      max-height: 360px;
+    }
+    .scene-panel table.tbl-offer {
+      min-width: 900px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 680px;
+    }
+    th, td {
+      border-bottom: 1px solid #eef2f7;
+      padding: 8px 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    th {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr.total td {
+      background: #eff6ff;
+      font-weight: 600;
+    }
+    td input.in-cell {
+      width: 72px;
+      padding: 4px 6px;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+    }
+    .tbl-offer select.sel-ratio {
+      min-width: 148px;
+      max-width: 220px;
+      width: 100%;
+      padding: 5px 8px;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      background: #fff;
+      color: var(--text);
+    }
+    .tbl-offer .dyn-offer-cell {
+      white-space: normal;
+      max-width: 300px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #334155;
+      font-weight: 500;
+    }
+    .tbl-offer .dyn-offer-cell.is-zero {
+      color: #94a3b8;
+      font-weight: 400;
+    }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .modal-ft {
+      padding: 10px 16px 12px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+      background: #fafafa;
+    }
+    .btn {
+      padding: 7px 18px;
+      border-radius: 3px;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .btn:hover { background: #f8fafc; }
+    .btn-primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--blue-h); }
+    .bulk-bar {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .bulk-bar .bulk-title {
+      font-weight: 700;
+      color: #1e40af;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .bulk-bar .bulk-bar-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 20px;
+      justify-content: space-between;
+    }
+    .bulk-bar .bulk-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      align-items: center;
+    }
+    .disc-sign-hint {
+      margin: 0;
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.45;
+      max-width: 280px;
+      padding: 6px 10px;
+      border-left: 3px solid #94a3b8;
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 0 4px 4px 0;
+    }
+    .disc-role-proto {
+      font-size: 12px;
+      color: var(--sub);
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+    .disc-role-proto > .disc-role-label {
+      font-weight: 600;
+      color: var(--text);
+    }
+    label.chk:has(input:disabled) {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+    .bulk-bar label.lbl-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+    }
+    .bulk-bar .in-bulk-price {
+      width: 96px;
+      padding: 5px 8px;
+      font-size: 13px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    .bulk-bar .sel-bulk-mode {
+      padding: 5px 8px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      min-width: 100px;
+    }
+    .bulk-bar .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    .scene-panel table.tbl-discount {
+      min-width: 560px;
+    }
+    .tbl-discount .disc-price {
+      width: 96px;
+      padding: 5px 8px;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+    }
+    .tbl-discount .disc-mode {
+      min-width: 100px;
+      padding: 5px 8px;
+      font-size: 12px;
+      border-radius: 3px;
+      border: 1px solid #cbd5e1;
+    }
+    .discount-leader-hint {
+      font-size: 11px;
+      color: var(--sub);
+      margin-top: 6px;
+    }
+    .tag-mvp {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #fef3c7;
+      color: #b45309;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="hint-bar">
+    以下三个弹窗均在「<strong>业务数据统计（财务）</strong>」页面<strong>新增入口</strong>打开（工具栏：合并计费、修改运费优惠、修改运费折扣）。本 HTML 为<strong>单文件合并原型</strong>，用标题栏「<strong>弹窗场景</strong>」下拉切换，便于开发/评审对照。
+  </div>
+  <div class="stage">
+    <div class="backdrop" aria-hidden="true"></div>
+    <div class="modal" role="dialog" aria-labelledby="dlgTitle">
+      <div class="modal-hd">
+        <div class="modal-hd-row">
+          <span id="dlgTitle">业务数据统计（财务）· 弹窗合并原型<span class="tag-mvp">MVP</span></span>
+          <label class="scene-select-wrap" for="sceneSelect">
+            弹窗场景
+            <select id="sceneSelect" class="scene-select" aria-label="切换弹窗场景">
+              <option value="merge" selected>合并计费</option>
+              <option value="offer">修改运费优惠</option>
+              <option value="discount">修改运费折扣</option>
+            </select>
+          </label>
+        </div>
+        <button type="button" class="close" title="关闭">&times;</button>
+      </div>
+      <div class="modal-bd">
+        <div class="scene-panel scene-merge active" data-scene="merge">
+        <div class="modal-main">
+        <div class="tabs">
+          <div class="tab active">卡派计费</div>
+          <div class="tab">（其他计费方式占位）</div>
+        </div>
+        <div class="meta-row">
+          <span class="entry-from"><strong>入口页面：</strong>业务数据统计（财务）— 本弹窗为该页工具栏「<strong>合并计费</strong>」打开。</span>
+          <span><strong>计费策略：</strong>卡派单票最小 12kg + 票进位</span>
+          <span><strong>合并计费重：</strong>834 kg</span>
+          <span><strong>合并票数：</strong>2</span>
+          <label class="chk"><input type="checkbox" checked /> 同步收货计费重</label>
+          <label class="chk"><input type="checkbox" id="chkSyncOfferRatio" /> 同步比重优惠</label>
+          <span id="mergeRatioHint" style="font-size:12px;color:var(--sub);">勾选「同步比重优惠」后展示「合并后比重优惠」列</span>
+        </div>
+
+        <div class="table-wrap">
+          <table id="tblMerge" class="merge-ratio-off">
+            <thead>
+              <tr>
+                <th>客户单号</th>
+                <th class="num">出货材积重</th>
+                <th class="num">出货实重</th>
+                <th class="num">核算出货计费重</th>
+                <th class="num">原比重优惠</th>
+                <th class="col-merge-ratio">合并后比重优惠<span class="th-sub">整单统一，只读展示</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>YH-20260516B</td>
+                <td class="num">312.50</td>
+                <td class="num">520.00</td>
+                <td class="num">520</td>
+                <td class="num">
+                  <div class="ro-only"><span class="ro-value">0.1</span></div>
+                </td>
+                <td class="num col-merge-ratio">
+                  <div class="cell-stack" style="align-items:flex-end;">
+                    <span>0.95</span>
+                    <span style="font-size:11px;color:var(--sub);font-weight:400;">整单统一</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>ZTY26517-28</td>
+                <td class="num">217.37</td>
+                <td class="num">313.06</td>
+                <td class="num">314</td>
+                <td class="num">
+                  <div class="ro-only"><span class="ro-value">0.2</span></div>
+                </td>
+                <td class="num col-merge-ratio">
+                  <div class="cell-stack" style="align-items:flex-end;">
+                    <span>0.95</span>
+                    <span style="font-size:11px;color:var(--sub);font-weight:400;">整单统一</span>
+                  </div>
+                </td>
+              </tr>
+              <tr class="total">
+                <td>合计 / 合并结果</td>
+                <td class="num">529.87</td>
+                <td class="num">833.06</td>
+                <td class="num">834</td>
+                <td>
+                  <div class="cell-stack">
+                    <span style="font-size:11px;color:var(--sub);">单票列不汇总</span>
+                    <span style="font-size:11px;">—</span>
+                  </div>
+                </td>
+                <td class="col-merge-ratio">
+                  <div class="cell-stack">
+                    <div class="cell-inline" style="justify-content:flex-end;">
+                      <span style="font-size:11px;color:var(--sub);">合并后比重优惠（系统计算，不可改）</span>
+                      <span class="num" style="font-weight:700;">0.95</span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mini" style="margin:10px 0 0;">
+          <strong>入口：</strong>业务数据统计（财务）。<strong>原比重优惠</strong>仅展示。<strong>合并后比重优惠</strong>仅在勾选「<strong>同步比重优惠</strong>」后出现，为<strong>只读</strong>、由系统按规则/配置计算，不支持在弹窗内修改；各明细票该列数值一致。规则见右侧 PRD。
+        </p>
+        </div>
+
+        <aside class="modal-prd" aria-label="合并计费 PRD 说明">
+          <h2>合并计费 · PRD 说明</h2>
+          <p class="prd-lead"><strong>入口页面：</strong>业务数据统计（财务）。</p>
+          <p class="prd-lead">勾选「同步比重优惠」后，展示「合并后比重优惠」列；数值<strong>只读</strong>，由系统按规则计算，不在弹窗内编辑。</p>
+          <div class="prd-formula">
+            <strong>新收货比重</strong>（示意）：<br />
+            <code>总收货实重 ÷ 总收货方数 = 新收货比重</code>
+          </div>
+          <ul>
+            <li>合并后的比重优惠与上述新收货比重关联展示（原型中为列表列「合并后比重优惠」）。</li>
+            <li>取值来源：<strong>销售成本价管理</strong>中，按<strong>销售产品</strong>匹配对应的<strong>比重优惠配置</strong>；<strong>合并后比重优惠</strong>在弹窗内<strong>只读展示</strong>计算结果，确认后按规则回写。</li>
+            <li>若<strong>未匹配到</strong>任何比重优惠配置，则相关比重字段<strong>显示为 0</strong>（含「原比重优惠」「合并后比重优惠」等）。</li>
+            <li>用户点击<strong>确定</strong>后：<strong>每一票</strong>均按该比重（及确认后的配置）去<strong>添加运费优惠</strong>。</li>
+          </ul>
+          <p class="prd-note">以上为需求说明文案，实现以研发与计费引擎规则为准；入口位于<strong>业务数据统计（财务）</strong>；窄屏下本说明区会叠到表格下方。</p>
+        </aside>
+        </div>
+
+        <div class="scene-panel scene-offer" data-scene="offer">
+          <div class="modal-main">
+            <div class="tabs">
+              <div class="tab active">运费优惠</div>
+              <div class="tab">（其他场景占位）</div>
+            </div>
+            <div class="meta-row">
+              <span class="entry-from"><strong>入口页面：</strong>业务数据统计（财务）— 本弹窗为该页工具栏「<strong>修改运费优惠</strong>」打开。</span>
+              <span><strong>已选运单：</strong>2 票</span>
+              <span class="meta-default"><strong>默认：</strong>优惠计入<strong>业务员成本</strong>；勾选「同步应收」后，同时按当前比重优惠同步至应收侧（示意，规则以 PRD/研发为准）。</span>
+              <label class="chk"><input type="checkbox" id="chkSyncAr" /> 同步应收</label>
+            </div>
+            <div class="table-wrap table-wrap-offer">
+              <table class="tbl-offer" id="tblOffer">
+                <thead>
+                  <tr>
+                    <th>客户名称</th>
+                    <th>客户单号</th>
+                    <th>FBA仓</th>
+                    <th>比重优惠</th>
+                    <th>比重后优惠</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>腾信演示客户 A</td>
+                    <td>YH-20260516B</td>
+                    <td>ONT8</td>
+                    <td>
+                      <select class="sel-ratio js-ratio-select" title="默认带出配置，可改选" aria-label="比重优惠">
+                        <option value="">（未匹配，按 0）</option>
+                        <option value="1:210减0.1" selected>1:210减0.1</option>
+                        <option value="1:220减0.2">1:220减0.2</option>
+                        <option value="1:230减0.3">1:230减0.3</option>
+                        <option value="1:240减0.4">1:240减0.4</option>
+                        <option value="1:250减0.6">1:250减0.6</option>
+                        <option value="1:300减1.2">1:300减1.2</option>
+                        <option value="1:350减1.5">1:350减1.5</option>
+                        <option value="1:400减2">1:400减2</option>
+                        <option value="1:500减2.5">1:500减2.5</option>
+                        <option value="1:600减3">1:600减3</option>
+                        <option value="1:700减3.2">1:700减3.2</option>
+                      </select>
+                    </td>
+                    <td class="dyn-offer-cell js-dyn-offer"></td>
+                  </tr>
+                  <tr>
+                    <td>腾信演示客户 B</td>
+                    <td>ZTY26517-28</td>
+                    <td>LAX9</td>
+                    <td>
+                      <select class="sel-ratio js-ratio-select" title="默认带出配置，可改选" aria-label="比重优惠">
+                        <option value="">（未匹配，按 0）</option>
+                        <option value="1:210减0.1">1:210减0.1</option>
+                        <option value="1:220减0.2">1:220减0.2</option>
+                        <option value="1:230减0.3">1:230减0.3</option>
+                        <option value="1:240减0.4">1:240减0.4</option>
+                        <option value="1:250减0.6">1:250减0.6</option>
+                        <option value="1:300减1.2" selected>1:300减1.2</option>
+                        <option value="1:350减1.5">1:350减1.5</option>
+                        <option value="1:400减2">1:400减2</option>
+                        <option value="1:500减2.5">1:500减2.5</option>
+                        <option value="1:600减3">1:600减3</option>
+                        <option value="1:700减3.2">1:700减3.2</option>
+                      </select>
+                    </td>
+                    <td class="dyn-offer-cell js-dyn-offer"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="mini" style="margin-top:10px;">
+              <strong>入口：</strong>业务数据统计（财务）。「比重优惠」为配置下拉（与销售成本价管理中比重优惠配置一致）；「比重后优惠」由接口按所选配置<strong>动态加载</strong>试算结果。确定后回写；未勾选「同步应收」时默认仅业务员成本侧（演示）。
+            </p>
+          </div>
+          <aside class="modal-prd" aria-label="修改运费优惠说明">
+            <h2>修改运费优惠 · 说明</h2>
+            <p class="prd-lead"><strong>入口页面：</strong>业务数据统计（财务）。</p>
+            <ul>
+              <li>每票<strong>默认带出</strong>匹配到的<strong>比重优惠</strong>配置；可在下拉中改选，选项集与销售成本价管理中的<strong>比重优惠配置</strong>一致（原型枚举见下拉）。</li>
+              <li><strong>比重后优惠</strong>列：随当前行所选配置<strong>动态加载</strong>试算结果（本页为前端演示文案，正式环境以接口返回为准）。</li>
+              <li>若<strong>未匹配到</strong>配置（选「未匹配，按 0」），比重后优惠按 <strong>0</strong> 展示。</li>
+              <li>默认落账：<strong>业务员成本</strong>。</li>
+              <li>勾选 <strong>同步应收</strong>：在默认基础上，将结果同步到应收费用（与合并计费勾选类控件同一交互习惯）。</li>
+            </ul>
+            <p class="prd-note">入口位于<strong>业务数据统计（财务）</strong>；通过标题栏「弹窗场景」可切换「合并计费」「修改运费折扣」等。</p>
+          </aside>
+        </div>
+
+        <div class="scene-panel scene-discount" data-scene="discount">
+          <div class="modal-main">
+            <div class="tabs">
+              <div class="tab active">运费折扣</div>
+              <div class="tab">（其他场景占位）</div>
+            </div>
+            <div class="meta-row">
+              <span class="entry-from"><strong>入口页面：</strong><strong>业务数据统计</strong>页面 — 本弹窗为该页工具栏「<strong>修改运费折扣</strong>」打开（财务、业务员等角色入口以系统权限为准）。</span>
+              <span><strong>选中范围：</strong>当前列表<strong>全部单号</strong>（演示 4 票）</span>
+              <span class="meta-default"><strong>应用范围：</strong>通过下方两个选项分别指定是否写入<strong>业务员成本</strong>、<strong>应收</strong>（规则见右侧 PRD）。</span>
+              <label class="chk"><input type="checkbox" id="chkDiscApplyCost" checked /> 应用于业务员成本</label>
+              <label class="chk"><input type="checkbox" id="chkDiscApplyAr" /> 应用于应收</label>
+              <span class="disc-role-proto" title="用于原型演示：模拟不同打开身份下的控件状态">
+                <span class="disc-role-label">演示·打开身份</span>
+                <label class="chk"><input type="radio" name="discountOpenRole" value="finance" checked /> 财务</label>
+                <label class="chk"><input type="radio" name="discountOpenRole" value="sales" /> 业务员</label>
+              </span>
+            </div>
+
+            <div class="bulk-bar">
+              <div class="bulk-title">整体修改</div>
+              <div class="bulk-bar-inner">
+                <div class="bulk-fields">
+                  <label class="lbl-inline">优惠单价
+                    <input type="text" class="in-bulk-price" id="bulkUnitPrice" value="1.20" inputmode="decimal" title="应用到全部行；优惠填负数，加价填正数" />
+                  </label>
+                  <label class="lbl-inline">加收模式
+                    <select class="sel-bulk-mode" id="bulkSurchargeMode" title="应用到全部行">
+                      <option value="覆盖" selected>覆盖</option>
+                      <option value="追加">追加</option>
+                    </select>
+                  </label>
+                  <button type="button" class="btn btn-primary btn-sm" id="btnBulkApplyDiscount">应用到全部明细行</button>
+                </div>
+                <p class="disc-sign-hint">说明：<strong>优惠</strong>请输入<strong>负数</strong>；<strong>加价</strong>请输入<strong>正数</strong>。</p>
+              </div>
+            </div>
+
+            <div class="table-wrap table-wrap-offer">
+              <table class="tbl-discount" id="tblDiscount">
+                <thead>
+                  <tr>
+                    <th>客户单号</th>
+                    <th class="num">优惠单价<span class="th-sub">优惠填负、加价填正</span></th>
+                    <th>加收模式</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="discount-leader">
+                    <td>YH-20260516B</td>
+                    <td class="num">
+                      <input type="text" class="disc-price js-disc-price" value="1.20" inputmode="decimal" aria-label="优惠单价" title="优惠填负数，加价填正数" />
+                    </td>
+                    <td>
+                      <select class="disc-mode js-disc-mode" aria-label="加收模式">
+                        <option value="覆盖" selected>覆盖</option>
+                        <option value="追加">追加</option>
+                      </select>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>ZTY26517-28</td>
+                    <td class="num">
+                      <input type="text" class="disc-price js-disc-price" value="1.20" inputmode="decimal" aria-label="优惠单价" title="优惠填负数，加价填正数" />
+                    </td>
+                    <td>
+                      <select class="disc-mode js-disc-mode">
+                        <option value="覆盖" selected>覆盖</option>
+                        <option value="追加">追加</option>
+                      </select>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>ICBU00001080189</td>
+                    <td class="num">
+                      <input type="text" class="disc-price js-disc-price" value="1.20" inputmode="decimal" aria-label="优惠单价" title="优惠填负数，加价填正数" />
+                    </td>
+                    <td>
+                      <select class="disc-mode js-disc-mode">
+                        <option value="覆盖" selected>覆盖</option>
+                        <option value="追加">追加</option>
+                      </select>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>ICBU00001080190</td>
+                    <td class="num">
+                      <input type="text" class="disc-price js-disc-price" value="1.20" inputmode="decimal" aria-label="优惠单价" title="优惠填负数，加价填正数" />
+                    </td>
+                    <td>
+                      <select class="disc-mode js-disc-mode">
+                        <option value="覆盖" selected>覆盖</option>
+                        <option value="追加">追加</option>
+                      </select>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="discount-leader-hint">
+              <button type="button" class="btn btn-sm" id="btnSyncFromFirstRow" style="margin-right:8px;">首行同步到以下各行</button>
+              仅需改<strong>第一行</strong>后点此按钮，其余行自动带成相同值；各行仍可<strong>单独再改</strong>。亦可先用上方「整体修改」一键铺全表。
+            </p>
+            <p class="mini" style="margin-top:10px;">
+              <strong>入口：</strong><strong>业务数据统计</strong>页面。确定后按「加收模式」将优惠单价参与计费；<strong>业务员成本 · 运费折扣</strong>由系统按 <strong>出货计费重 × 优惠单价</strong> 生成（演示规则）。勾选<strong>应用于业务员成本</strong> / <strong>应用于应收</strong>控制写入侧；业务员身份下「业务员成本」不可选（见右侧 PRD）。<strong>优惠单价</strong>：优惠填负数、加价填正数。
+            </p>
+          </div>
+          <aside class="modal-prd" aria-label="修改运费折扣说明">
+            <h2>修改运费折扣 · PRD</h2>
+            <p class="prd-lead">本功能挂在<strong>业务数据统计</strong>页面（与列表筛选结果联动；入口以工具栏「修改运费折扣」等形式呈现，具体以产品稿为准）。</p>
+            <p class="prd-lead"><strong>权限与落账范围：</strong><strong>财务</strong>操作时可分别勾选<strong>应用于业务员成本</strong>、<strong>应用于应收</strong>，使本次折扣同时或分别作用于两侧。<strong>业务员</strong>操作<strong>仅允许作用于应收</strong>：弹窗内两个复选框均展示，但<strong>「应用于业务员成本」置灰且不可选</strong>；仅「应用于应收」可勾选。</p>
+            <div class="prd-formula">
+              <strong>业务员成本 · 运费折扣</strong>（示意）：<br />
+              <code>出货计费重 × 优惠单价 → 运费折扣</code><br />
+              <span style="color:var(--sub);font-size:11px;">加收模式为「覆盖 / 追加」时，与原有折扣行的合并规则以研发为准（原型仅收集字段）。</span>
+            </div>
+            <div class="prd-formula" style="margin-top:10px;">
+              <strong>应收侧</strong>（示意）：<br />
+              <code>收货计费重 × 优惠单价</code><br />
+              <span style="color:var(--sub);font-size:11px;">与业务员成本侧区分：<strong>应收</strong>按<strong>收货计费重</strong>参与计算。</span>
+            </div>
+            <ul>
+              <li><strong>加收模式 · 覆盖（应收）：</strong>勾选「应用于应收」且模式为<strong>覆盖</strong>时，<strong>直接按所填「优惠单价」修改应收单价</strong>（即不再按「在原价上叠加减价」理解，而是以本单价为准覆盖；与成本侧是否同口径以研发为准）。</li>
+              <li><strong>加收模式 · 追加：</strong>「追加」时与原有单价/费用的叠加或并行规则以研发为准。</li>
+              <li><strong>优惠单价符号：</strong>表示<strong>优惠</strong>时请输入<strong>负数</strong>；表示<strong>加价</strong>时请输入<strong>正数</strong>。</li>
+              <li>入口为当前筛选结果<strong>全选单号</strong>批量处理。</li>
+              <li>列表字段：<strong>客户单号</strong>、<strong>优惠单价</strong>（可编辑）、<strong>加收模式</strong>（可编辑：<strong>覆盖</strong> / <strong>追加</strong>）。</li>
+              <li><strong>应用于业务员成本</strong> / <strong>应用于应收</strong>：两个选项并列展示；财务可组合勾选。业务员打开时「应用于业务员成本」禁用置灰，仅能勾选应收侧。</li>
+              <li><strong>整体修改</strong>：列表上方的优惠单价、加收模式，一键「应用到全部明细行」。</li>
+              <li><strong>首行填充</strong>：可只改第一行，再「首行同步到以下各行」；之后仍保留<strong>逐行单独修改</strong>权限。</li>
+            </ul>
+            <p class="prd-note">左侧「演示·打开身份」仅用于本 HTML 原型切换财务/业务员态，正式环境由登录角色与权限控制。</p>
+          </aside>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn">关闭</button>
+        <button type="button" class="btn btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var sceneSelect = document.getElementById('sceneSelect');
+      var panels = document.querySelectorAll('.scene-panel');
+      if (sceneSelect && panels.length) {
+        sceneSelect.addEventListener('change', function () {
+          var v = this.value;
+          panels.forEach(function (p) {
+            p.classList.toggle('active', p.getAttribute('data-scene') === v);
+          });
+        });
+      }
+
+      var chk = document.getElementById('chkSyncOfferRatio');
+      var table = document.getElementById('tblMerge');
+      var hint = document.getElementById('mergeRatioHint');
+      if (chk && table) {
+        function refresh() {
+          if (chk.checked) {
+            table.classList.remove('merge-ratio-off');
+            if (hint) hint.textContent = '已开启：展示「合并后比重优惠」列（只读，由系统计算）';
+          } else {
+            table.classList.add('merge-ratio-off');
+            if (hint) hint.textContent = '勾选「同步比重优惠」后展示「合并后比重优惠」列';
+          }
+        }
+        chk.addEventListener('change', refresh);
+        refresh();
+      }
+
+      (function initOfferRatioDyn() {
+        var tbl = document.getElementById('tblOffer');
+        if (!tbl) return;
+
+        function refreshDyn(select) {
+          var tr = select.closest('tr');
+          if (!tr) return;
+          var out = tr.querySelector('.js-dyn-offer');
+          if (!out) return;
+          var v = (select.value || '').trim();
+          if (!v) {
+            out.textContent = '未匹配配置：比重后优惠按 0（演示）。';
+            out.classList.add('is-zero');
+            return;
+          }
+          out.classList.remove('is-zero');
+          var m = v.match(/减([\d.]+)\s*$/);
+          var seg = m ? m[1] : '';
+          out.textContent =
+            '已按配置「' +
+            v +
+            '」动态加载：试算运费优惠档 -' +
+            seg +
+            '（演示；正式金额、币种以计费/接口为准）。';
+        }
+
+        tbl.querySelectorAll('.js-ratio-select').forEach(function (sel) {
+          sel.addEventListener('change', function () {
+            refreshDyn(sel);
+          });
+          refreshDyn(sel);
+        });
+      })();
+
+      (function initDiscountBulk() {
+        var tbl = document.getElementById('tblDiscount');
+        var bulkPrice = document.getElementById('bulkUnitPrice');
+        var bulkMode = document.getElementById('bulkSurchargeMode');
+        var btnBulk = document.getElementById('btnBulkApplyDiscount');
+        var btnFirst = document.getElementById('btnSyncFromFirstRow');
+        if (!tbl || !bulkPrice || !bulkMode || !btnBulk || !btnFirst) return;
+
+        function applyToAll(priceVal, modeVal) {
+          tbl.querySelectorAll('.js-disc-price').forEach(function (inp) {
+            inp.value = priceVal;
+          });
+          tbl.querySelectorAll('.js-disc-mode').forEach(function (sel) {
+            sel.value = modeVal;
+          });
+        }
+
+        btnBulk.addEventListener('click', function () {
+          applyToAll(bulkPrice.value.trim(), bulkMode.value);
+        });
+
+        btnFirst.addEventListener('click', function () {
+          var rows = tbl.querySelectorAll('tbody tr');
+          if (!rows.length) return;
+          var first = rows[0];
+          var p = first.querySelector('.js-disc-price');
+          var m = first.querySelector('.js-disc-mode');
+          if (!p || !m) return;
+          var pv = p.value.trim();
+          var mv = m.value;
+          for (var i = 1; i < rows.length; i++) {
+            var inp = rows[i].querySelector('.js-disc-price');
+            var sel = rows[i].querySelector('.js-disc-mode');
+            if (inp) inp.value = pv;
+            if (sel) sel.value = mv;
+          }
+        });
+      })();
+
+      (function initDiscountApplyRole() {
+        var cost = document.getElementById('chkDiscApplyCost');
+        var ar = document.getElementById('chkDiscApplyAr');
+        if (!cost || !ar) return;
+        function applyRole(isSales) {
+          if (isSales) {
+            cost.checked = false;
+            cost.disabled = true;
+            if (!ar.checked) ar.checked = true;
+          } else {
+            cost.disabled = false;
+            cost.checked = true;
+          }
+        }
+        document.querySelectorAll('input[name="discountOpenRole"]').forEach(function (radio) {
+          radio.addEventListener('change', function () {
+            applyRole(radio.value === 'sales');
+          });
+        });
+      })();
+    })();
+  </script>
+</body>
+</html>
