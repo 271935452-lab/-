@@ -358,17 +358,25 @@
       background: #fff;
       color: var(--text);
     }
-    .tbl-offer .dyn-offer-cell {
-      white-space: normal;
-      max-width: 300px;
+    .tbl-offer .in-offer-after {
+      width: 100%;
+      min-width: 120px;
+      max-width: 200px;
+      padding: 5px 8px;
       font-size: 12px;
-      line-height: 1.5;
-      color: #334155;
-      font-weight: 500;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      background: #fff;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
     }
-    .tbl-offer .dyn-offer-cell.is-zero {
+    .tbl-offer .in-offer-after.is-zero {
       color: #94a3b8;
-      font-weight: 400;
+    }
+    .tbl-offer .in-offer-after:focus {
+      border-color: var(--blue);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
     }
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
     .modal-ft {
@@ -656,7 +664,7 @@
                     <th>客户单号</th>
                     <th>FBA仓</th>
                     <th>比重优惠</th>
-                    <th>比重后优惠</th>
+                    <th>比重后优惠<span class="th-sub">默认同比重优惠带出，可改</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -680,7 +688,9 @@
                         <option value="1:700减3.2">1:700减3.2</option>
                       </select>
                     </td>
-                    <td class="dyn-offer-cell js-dyn-offer"></td>
+                    <td>
+                      <input type="text" class="in-offer-after js-dyn-offer" value="" inputmode="decimal" aria-label="比重后优惠" title="默认随左侧比重优惠带出，可手工修改" />
+                    </td>
                   </tr>
                   <tr>
                     <td>腾信演示客户 B</td>
@@ -702,13 +712,15 @@
                         <option value="1:700减3.2">1:700减3.2</option>
                       </select>
                     </td>
-                    <td class="dyn-offer-cell js-dyn-offer"></td>
+                    <td>
+                      <input type="text" class="in-offer-after js-dyn-offer" value="" inputmode="decimal" aria-label="比重后优惠" title="默认随左侧比重优惠带出，可手工修改" />
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <p class="mini" style="margin-top:10px;">
-              <strong>入口：</strong>业务数据统计（财务）。「比重优惠」为配置下拉（与销售成本价管理中比重优惠配置一致）；「比重后优惠」由接口按所选配置<strong>动态加载</strong>试算结果。确定后回写；未勾选「同步应收」时默认仅业务员成本侧（演示）。
+              <strong>入口：</strong>业务数据统计（财务）。「比重优惠」为配置下拉（与销售成本价管理中比重优惠配置一致）；「比重后优惠」默认随所选配置<strong>带出</strong>至输入框，<strong>可手工修改</strong>后确定回写；未勾选「同步应收」时默认仅业务员成本侧（演示）。
             </p>
           </div>
           <aside class="modal-prd" aria-label="修改运费优惠说明">
@@ -717,8 +729,8 @@
             <p class="prd-lead"><strong>入口页面：</strong>业务数据统计（财务）。</p>
             <ul>
               <li>每票<strong>默认带出</strong>匹配到的<strong>比重优惠</strong>配置；可在下拉中改选，选项集与销售成本价管理中的<strong>比重优惠配置</strong>一致（原型枚举见下拉）。</li>
-              <li><strong>比重后优惠</strong>列：随当前行所选配置<strong>动态加载</strong>试算结果（本页为前端演示文案，正式环境以接口返回为准）。</li>
-              <li>若<strong>未匹配到</strong>配置（选「未匹配，按 0」），比重后优惠按 <strong>0</strong> 展示。</li>
+              <li><strong>比重后优惠</strong>列：输入框展示，<strong>默认</strong>随当前行「比重优惠」配置<strong>带出</strong>（正式环境以接口试算为准）；用户可<strong>手工修改</strong>后再确定。</li>
+              <li>若<strong>未匹配到</strong>配置（选「未匹配，按 0」），比重后优惠默认填 <strong>0</strong>，仍可改。</li>
               <li>默认落账：<strong>业务员成本</strong>。</li>
               <li>勾选 <strong>同步应收</strong>：在默认基础上，将结果同步到应收费用（与合并计费勾选类控件同一交互习惯）。</li>
             </ul>
@@ -902,26 +914,26 @@
         var tbl = document.getElementById('tblOffer');
         if (!tbl) return;
 
+        function offerValueFromRatio(config) {
+          if (!config) return '0';
+          var m = config.match(/减([\d.]+)\s*$/);
+          if (m) return '-' + m[1];
+          return '0';
+        }
+
         function refreshDyn(select) {
           var tr = select.closest('tr');
           if (!tr) return;
-          var out = tr.querySelector('.js-dyn-offer');
-          if (!out) return;
+          var inp = tr.querySelector('.js-dyn-offer');
+          if (!inp) return;
           var v = (select.value || '').trim();
-          if (!v) {
-            out.textContent = '未匹配配置：比重后优惠按 0（演示）。';
-            out.classList.add('is-zero');
-            return;
+          var val = offerValueFromRatio(v);
+          inp.value = val;
+          if (!v || val === '0') {
+            inp.classList.add('is-zero');
+          } else {
+            inp.classList.remove('is-zero');
           }
-          out.classList.remove('is-zero');
-          var m = v.match(/减([\d.]+)\s*$/);
-          var seg = m ? m[1] : '';
-          out.textContent =
-            '已按配置「' +
-            v +
-            '」动态加载：试算运费优惠档 -' +
-            seg +
-            '（演示；正式金额、币种以计费/接口为准）。';
         }
 
         tbl.querySelectorAll('.js-ratio-select').forEach(function (sel) {
