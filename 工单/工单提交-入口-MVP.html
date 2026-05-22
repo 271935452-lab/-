@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工单提交 · 分类入口（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --teal: #0d9488;
+      --blue-bg: #eff6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .page { max-width: 1200px; margin: 0 auto; padding: 20px 16px 88px; }
+    .crumb { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+    .crumb a { color: var(--primary); text-decoration: none; }
+    .crumb a:hover { text-decoration: underline; }
+
+    .top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .top h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+    .meta { font-size: 13px; color: var(--sub); margin: 0; max-width: 560px; line-height: 1.55; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-block;
+      font-family: inherit;
+    }
+    .btn:hover { border-color: #cbd5e1; }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-ghost { background: #f0fdfa; border-color: #99f6e4; color: #0f766e; }
+
+    .callout {
+      background: var(--card);
+      border: 1px solid #99f6e4;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      font-size: 13px;
+      line-height: 1.65;
+      color: #374151;
+    }
+    .callout strong { color: #0f766e; }
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #0f766e;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .sec-title {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 14px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+      background: var(--blue-bg);
+    }
+    .sec-title .sub { font-size: 12px; font-weight: 400; color: var(--sub); }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 960px) { .card-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
+    .card-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    @media (max-width: 1100px) { .card-grid--4 { grid-template-columns: repeat(2, 1fr); } }
+
+    .entry-card {
+      position: relative;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 14px 14px 40px;
+      background: #fafbfc;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      font-family: inherit;
+      color: inherit;
+    }
+    .entry-card:hover {
+      border-color: #93c5fd;
+      background: #fff;
+    }
+    .entry-card:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+    .entry-card.selected {
+      border-color: var(--primary);
+      background: var(--blue-bg);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    .entry-card .radio {
+      position: absolute;
+      left: 14px;
+      top: 16px;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #cbd5e1;
+      border-radius: 50%;
+      background: #fff;
+    }
+    .entry-card.selected .radio {
+      border-color: var(--primary);
+      background: var(--primary);
+      box-shadow: inset 0 0 0 3px #fff;
+    }
+    .entry-card .hd {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .stage-badge {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      line-height: 1.2;
+    }
+    .stage-badge--pre { background: #dbeafe; color: #1d4ed8; }
+    .stage-badge--post { background: #e0e7ff; color: #4338ca; }
+    .stage-badge--tail { background: #fef3c7; color: #b45309; }
+    .stage-badge--misc { background: #f3f4f6; color: #4b5563; }
+    .entry-card h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.4;
+      flex: 1;
+    }
+    .entry-card .desc {
+      margin: 0;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.55;
+    }
+
+    .submit-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 30;
+      margin: 0 -16px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.96);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(8px);
+    }
+    .submit-bar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .submit-bar .sel {
+      font-size: 14px;
+      color: var(--sub);
+      min-width: 0;
+      flex: 1;
+    }
+    .submit-bar .sel strong { color: var(--text); }
+    .submit-bar .sel .stage-tag {
+      font-size: 12px;
+      color: #64748b;
+      margin-left: 4px;
+    }
+    .submit-bar-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .prd-foot {
+      margin-top: 4px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.65;
+    }
+    .prd-foot h3 { margin: 0 0 6px; font-size: 13px; color: #334155; font-weight: 700; }
+    .prd-foot code {
+      font-size: 11px;
+      background: #e2e8f0;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="crumb">
+      <a href="原型导航-工单模块.html">工单模块</a> /
+      <a href="工单工作台-MVP.html">工作台</a> / 工单提交
+    </div>
+
+    <header class="top">
+      <div>
+        <h1>工单提交</h1>
+        <p class="meta">先点选业务场景，再点底部<strong>发起工单</strong>进入新建页（自动预填阶段与场景）。熟手可在工作台直接「新建工单」。</p>
+      </div>
+      <div class="actions">
+        <a class="btn btn-ghost" href="工单工作台-MVP.html">返回工作台</a>
+        <a class="btn btn-ghost" href="工单场景流程-MVP.html">全部场景流程图</a>
+        <a class="btn" href="新建工单-MVP.html">跳过分类 · 直接新建</a>
+      </div>
+    </header>
+
+    <div class="callout" role="note">
+      <span class="pill">两步</span>
+      <strong>① 选择场景</strong>（单选）→ <strong>② 发起工单</strong>（底部固定按钮）。分类按港前 / 港后 / 尾端划分，与新建表单及分派规则一致。
+    </div>
+
+    <section class="panel" aria-labelledby="sec-pre">
+      <div class="sec-title" id="sec-pre">
+        港前 · 海外仓协同
+        <span class="sub">拆柜前 / 柜子计划 / 拆柜报告</span>
+      </div>
+      <div class="card-grid" role="radiogroup" aria-label="港前场景">
+        <button type="button" class="entry-card" data-label="拆柜前" data-stage="港前" data-scene="港前·拆柜前找付雪" data-flow="#f-fuxue">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--pre">港前</span><h3>拆柜前</h3></div>
+          <p class="desc">提交后由港前客服接收或驳回，再走拦截、换标、共享表与海外仓预报。</p>
+        </button>
+        <button type="button" class="entry-card" data-label="柜子计划协同" data-stage="港前" data-scene="港前·柜子计划拦截换标" data-flow="#f-plan">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--pre">港前</span><h3>柜子计划协同</h3></div>
+          <p class="desc">拦截、换标、共享表更新、预报海外仓；需记录柜子计划与处理人。</p>
+        </button>
+        <button type="button" class="entry-card" data-label="拆柜报告异常" data-stage="港前" data-scene="港前·拆柜报告异常" data-flow="#f-report">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--pre">港前</span><h3>拆柜报告异常</h3></div>
+          <p class="desc">海外仓拆柜报告少件、破损等；24h 内反馈并留痕。</p>
+        </button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="sec-post">
+      <div class="sec-title" id="sec-post">
+        港后 · 客服协同
+        <span class="sub">私卡 / FBA / 自提 / 改派送</span>
+      </div>
+      <div class="card-grid card-grid--4" role="radiogroup" aria-label="港后场景">
+        <button type="button" class="entry-card" data-label="私卡客服问题" data-stage="港后" data-scene="港后·私卡改地址" data-flow="#f-private">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--post">港后</span><h3>私卡客服问题</h3></div>
+          <p class="desc">改地址、预约联系不上（可反向工单）、改尾端派送方式等。</p>
+        </button>
+        <button type="button" class="entry-card" data-label="FBA 客服问题" data-stage="港后" data-scene="港后·FBA改仓" data-flow="#f-fba">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--post">港后</span><h3>FBA 客服问题</h3></div>
+          <p class="desc">改仓、改发货渠道、尾端派送调整；涉及出仓可勾选通知配仓组。</p>
+        </button>
+        <button type="button" class="entry-card" data-label="自提协同" data-stage="港后" data-scene="港后·自提单卡派转自提" data-flow="#f-pickup">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--post">港后</span><h3>自提协同</h3></div>
+          <p class="desc">单卡派转自提、到仓提货与回执确认；转派留痕。</p>
+        </button>
+        <button type="button" class="entry-card" data-label="改尾程派送方式" data-stage="港后" data-scene="港后·私卡改尾端方式" data-flow="#f-delivery-end">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--post">港后</span><h3>改尾程派送方式</h3></div>
+          <p class="desc">单卡派改自提、改私人卡派等；确认后写回运单尾程派送方式。</p>
+        </button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="sec-tail">
+      <div class="sec-title" id="sec-tail">
+        尾端 · 索赔与异常
+        <span class="sub">未上架 / 跟进 / 其他</span>
+      </div>
+      <div class="card-grid" role="radiogroup" aria-label="尾端与其它场景">
+        <button type="button" class="entry-card" data-label="未上架索赔" data-stage="尾端" data-scene="尾端·未上架索赔" data-flow="#f-claim">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--tail">尾端</span><h3>未上架索赔</h3></div>
+          <p class="desc">客户截图与资料 → 亚马逊客服 → 海外仓 3 日内反馈 → 核实 → 财务结案。</p>
+        </button>
+        <button type="button" class="entry-card" data-label="异常件跟进" data-stage="" data-scene="异常件·媒体区断更" data-flow="#f-exception">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--tail">异常</span><h3>异常件跟进</h3></div>
+          <p class="desc">媒体区断更、预约联系不上等；含 12h 开查、按周提醒、第 6 天标红。</p>
+        </button>
+        <button type="button" class="entry-card" data-label="其他问题" data-stage="" data-scene="" data-flow="#f-other">
+          <span class="radio" aria-hidden="true"></span>
+          <div class="hd"><span class="stage-badge stage-badge--misc">其他</span><h3>其他问题</h3></div>
+          <p class="desc">暂无法归入以上大类时选择此项，新建页自行选择具体场景。</p>
+        </button>
+      </div>
+    </section>
+
+    <footer class="prd-foot">
+      <h3>PRD · 与菜单、工作台的关系</h3>
+      <p>本页为<strong>选场景 + 统一发起</strong>；底部按钮携带 <code>stage</code> / <code>scene</code> 预填新建表单。工作台保留「新建工单」直链。<strong>原单费用调整</strong>由费用模块触发，不在本页入口。</p>
+    </footer>
+
+    <div class="submit-bar" role="region" aria-label="发起操作">
+      <div class="submit-bar-inner">
+        <div class="sel" id="selectedText">请先选择上方场景</div>
+        <div class="submit-bar-actions">
+          <a class="btn btn-ghost" id="flowLink" href="工单场景流程-MVP.html" hidden>查看流程</a>
+          <button type="button" class="btn btn-primary" id="btnSubmit" disabled>发起工单</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var cards = document.querySelectorAll(".entry-card");
+      var btnSubmit = document.getElementById("btnSubmit");
+      var selectedText = document.getElementById("selectedText");
+      var flowLink = document.getElementById("flowLink");
+      var selected = null;
+
+      function selectCard(card) {
+        cards.forEach(function (c) {
+          c.classList.toggle("selected", c === card);
+          c.setAttribute("aria-checked", c === card ? "true" : "false");
+        });
+        selected = {
+          label: card.getAttribute("data-label") || "",
+          stage: card.getAttribute("data-stage") || "",
+          scene: card.getAttribute("data-scene") || "",
+          flow: card.getAttribute("data-flow") || "",
+        };
+        var stagePart = selected.stage ? '<span class="stage-tag">· ' + selected.stage + "</span>" : "";
+        selectedText.innerHTML = "已选：<strong>" + selected.label + "</strong>" + stagePart;
+        btnSubmit.disabled = false;
+        if (selected.flow) {
+          flowLink.href = "工单场景流程-MVP.html" + selected.flow;
+          flowLink.hidden = false;
+        } else {
+          flowLink.hidden = true;
+        }
+      }
+
+      cards.forEach(function (card) {
+        card.setAttribute("role", "radio");
+        card.setAttribute("aria-checked", "false");
+        card.addEventListener("click", function () {
+          selectCard(card);
+        });
+        card.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            selectCard(card);
+          }
+        });
+      });
+
+      btnSubmit.addEventListener("click", function () {
+        if (!selected) return;
+        var url = "新建工单-MVP.html";
+        var q = [];
+        if (selected.stage) q.push("stage=" + encodeURIComponent(selected.stage));
+        if (selected.scene) q.push("scene=" + encodeURIComponent(selected.scene));
+        if (q.length) url += "?" + q.join("&");
+        location.href = url;
+      });
+
+      btnSubmit.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !btnSubmit.disabled) btnSubmit.click();
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="wo-prototype-nav.css" />
+  <script src="wo-prototype-nav.js" defer></script>
+</body>
+</html>

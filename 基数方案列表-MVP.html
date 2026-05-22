@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>基数方案列表（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --ok-bg: #ecfdf3;
+      --ok-text: #027a48;
+      --warn-bg: #fffbeb;
+      --warn-text: #b45309;
+      --gray-bg: #f3f4f6;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; }
+    .app-main { flex: 1; min-width: 0; background: var(--bg); min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .page {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 20px 16px 40px;
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .page-head h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+    .page-head .lead { margin: 0; font-size: 13px; color: var(--sub); line-height: 1.55; max-width: 720px; }
+    .head-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex-shrink: 0; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn:hover { border-color: #cbd5e1; }
+    .btn-primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      margin-bottom: 12px;
+    }
+    .filter {
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px 12px;
+      align-items: end;
+      border-bottom: 1px solid var(--line);
+    }
+    @media (max-width: 900px) { .filter { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 520px) { .filter { grid-template-columns: 1fr; } }
+    .field label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--sub); }
+    .field input, .field select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .filter-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: #4b5563;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    tbody tr:hover { background: #fafafa; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tag-ok { background: var(--ok-bg); color: var(--ok-text); }
+    .tag-draft { background: var(--gray-bg); color: #4b5563; }
+    .tag-off { background: #fef2f2; color: #b91c1c; }
+    .op-links a { color: var(--primary); text-decoration: none; font-size: 13px; margin-right: 10px; }
+    .op-links a:hover { text-decoration: underline; }
+    .foot-note {
+      padding: 12px 16px 16px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.55;
+    }
+  </style>
+  <style id="commission-nav-skin">
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+.app-main { flex: 1; min-width: 0; background: #f5f7fb; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand { border-bottom: none; margin-bottom: 0; padding: 8px 10px; flex: 1; min-width: 140px; }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">0.更新说明</div>
+        <a href="更新记录-MVP.html" class="sidenav-link">更新记录</a>
+        <div class="sidenav-section-label">1.人员映射表</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">2.月度调整表</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">3.基数方案</div>
+        <a href="基数方案列表-MVP.html" class="sidenav-link active">基数方案列表</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">编辑基数</a>
+        <div class="sidenav-section-label">4.提成规则包</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包列表</a>
+        <a href="规则包详情-MVP.html" class="sidenav-link">规则包详情</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">新增编辑规则包</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <div class="sidenav-section-label">5.提成试算</div>
+        <a href="提成试算表-直客与同行-MVP.html" class="sidenav-link">提成试算表(直客/同行)</a>
+        <a href="月度提成归档与运单明细-MVP.html" class="sidenav-link">月度归档和运单底表</a>
+        <a href="提成试算表-直客与同行-MVP.html#dev-trial-log-matrix" class="sidenav-link">试算步骤矩阵（开发）</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <h1>基数方案列表</h1>
+            <p class="lead">
+              维护可复用的基数方案主档：编码、生效区间与版本用于规则引用及试算/归档对账。点击<strong>编辑</strong>进入公式构建器（MVP 为单页示意，正式可按编码深链）。<strong>历史已发布版本</strong>建议只读展示，变更通过<strong>新版本</strong>或草稿发布。
+            </p>
+          </div>
+          <div class="head-actions">
+            <a class="btn btn-primary" href="基数维护-公式构建器.html">新建 / 打开构建器</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="filter">
+            <div class="field">
+              <label for="qKw">方案名称 / 编码</label>
+              <input id="qKw" type="text" placeholder="关键字" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="qStatus">状态</label>
+              <select id="qStatus">
+                <option value="">全部</option>
+                <option>生效中</option>
+                <option>草稿</option>
+                <option>已失效</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="qMonth">覆盖账期（月）</label>
+              <input id="qMonth" type="month" value="2026-05" />
+            </div>
+            <div class="field filter-actions">
+              <label style="visibility:hidden">操作</label>
+              <button type="button" class="btn btn-primary">查询</button>
+              <button type="button" class="btn">重置</button>
+            </div>
+          </div>
+          <div class="toolbar">
+            <span>共 <strong>5</strong> 条（示意数据）</span>
+            <span>被引用次数为引擎侧快照示意，以对账环境为准。</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>基数方案编码</th>
+                  <th>基数方案名称</th>
+                  <th>状态</th>
+                  <th>当前版本</th>
+                  <th>生效区间</th>
+                  <th>被引用规则包（示意）</th>
+                  <th>最近修改</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>基数方案_净利润跨期扣减</code></td>
+                  <td>净利润基数（支持扣操作内陆/跨期扣减）</td>
+                  <td><span class="tag tag-ok">生效中</span></td>
+                  <td>v12</td>
+                  <td>2026-01-01 ~ 2026-12-31</td>
+                  <td>3</td>
+                  <td>张** · 2026-05-08 14:20</td>
+                  <td class="op-links">
+                    <a href="基数维护-公式构建器.html">编辑</a>
+                    <a href="#">版本</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>基数方案_毛利标准（毛利 - 系统成本 - 表外成本）</code></td>
+                  <td>毛利标准基数</td>
+                  <td><span class="tag tag-ok">生效中</span></td>
+                  <td>v5</td>
+                  <td>2025-06-01 ~ 2026-12-31</td>
+                  <td>8</td>
+                  <td>李** · 2026-04-22 09:05</td>
+                  <td class="op-links">
+                    <a href="基数维护-公式构建器.html">编辑</a>
+                    <a href="#">版本</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>基数方案_同行毛利</code></td>
+                  <td>同行毛利基数</td>
+                  <td><span class="tag tag-draft">草稿</span></td>
+                  <td>v2-draft</td>
+                  <td>（未发布）</td>
+                  <td>0</td>
+                  <td>王** · 2026-05-12 11:40</td>
+                  <td class="op-links">
+                    <a href="基数维护-公式构建器.html">编辑</a>
+                    <a href="#">版本</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>基数方案_净利润标准</code></td>
+                  <td>净利润标准（不含跨期）</td>
+                  <td><span class="tag tag-off">已失效</span></td>
+                  <td>v3（终版）</td>
+                  <td>2024-01-01 ~ 2025-05-31</td>
+                  <td>2（历史）</td>
+                  <td>系统归档 · 2025-06-01 00:00</td>
+                  <td class="op-links">
+                    <a href="基数维护-公式构建器.html">查看</a>
+                    <a href="#">版本</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>基数方案_计费重规模</code></td>
+                  <td>计费重 / 柜量类规模基数</td>
+                  <td><span class="tag tag-ok">生效中</span></td>
+                  <td>v1</td>
+                  <td>2026-01-01 ~ 2026-12-31</td>
+                  <td>4</td>
+                  <td>赵** · 2026-03-03 16:18</td>
+                  <td class="op-links">
+                    <a href="基数维护-公式构建器.html">编辑</a>
+                    <a href="#">版本</a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="foot-note">
+            <strong>MVP 说明：</strong>筛选与「版本」列为交互占位；落库后主列表按方案聚合，版本时间线在独立抽屉或详情页展开。与《基数维护》PRD 中「基数方案版本 ID 供试算/归档引用」一致；从<strong>编辑规则</strong>页「编辑基数方案」外链与本列表<strong>编辑</strong>进入同一构建器示意。
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>编辑角色 · 池成员与数据范围（MVP）</title>
+  <style>
+    :root {
+      --page-bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --section-bg: #f8fafc;
+      --member-bg: #fafbff;
+      --teal-bd: #5eead4;
+      --teal-bg: #f0fdfa;
+      --teal-text: #0f766e;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+    }
+    .page-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--page-bg);
+    }
+    .wo-top {
+      flex-shrink: 0;
+      padding: 12px 16px 10px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .crumb { font-size: 12px; color: var(--sub); }
+    .crumb a { color: var(--primary); text-decoration: none; }
+    .crumb a:hover { text-decoration: underline; }
+    .wo-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn-top {
+      border: 1px solid var(--line);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      background: #f8fafc;
+      color: #334155;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-top:hover { border-color: #cbd5e1; color: var(--text); }
+    .btn-top-accent {
+      background: #ecfdf5;
+      border-color: #99f6e4;
+      color: var(--teal-text);
+    }
+    .btn-top-accent:hover { border-color: #5eead4; }
+
+    .demo-bg {
+      flex: 1;
+      min-height: 0;
+      background: linear-gradient(160deg, #e8eef8 0%, #f1f5f9 40%, #e2e8f0 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 14px 24px;
+    }
+    .modal {
+      width: 100%;
+      max-width: 720px;
+      max-height: min(calc(100vh - 120px), 920px);
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-hd {
+      flex-shrink: 0;
+      padding: 16px 20px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .modal-hd h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .modal-hd p {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.55;
+      max-width: 580px;
+    }
+    .modal-close {
+      border: none;
+      background: #f3f4f6;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      color: var(--sub);
+      flex-shrink: 0;
+      line-height: 1;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close:hover { background: #e5e7eb; color: var(--text); }
+    .modal-bd {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 20px 18px;
+    }
+    .modal-ft {
+      flex-shrink: 0;
+      padding: 12px 20px;
+      border-top: 1px solid var(--line);
+      background: #fafafa;
+      border-radius: 0 0 14px 14px;
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .modal-ft .ft-left {
+      margin-right: auto;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--primary);
+    }
+    .btn-ghost:hover { background: #eff6ff; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-outline-teal {
+      border-color: #99f6e4;
+      background: #ecfdf5;
+      color: #0f766e;
+    }
+    .btn-outline-teal:hover { border-color: #5eead4; }
+
+    .arch-callout {
+      font-size: 12px;
+      line-height: 1.65;
+      color: #134e4a;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--teal-bd);
+      background: var(--teal-bg);
+      margin-bottom: 16px;
+    }
+    .arch-callout strong { color: #0f766e; }
+    .arch-callout ol { margin: 8px 0 0; padding-left: 18px; }
+    .arch-callout li { margin-bottom: 4px; }
+
+    .section {
+      margin-bottom: 18px;
+    }
+    .section:last-child { margin-bottom: 0; }
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 10px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border-left: 3px solid var(--primary);
+      background: var(--section-bg);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .section-title.teal {
+      border-left-color: #14b8a6;
+      background: #f0fdfa;
+    }
+    .section-title span.hint {
+      font-weight: 500;
+      font-size: 11px;
+      color: var(--sub);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 16px;
+    }
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    .field-full { grid-column: 1 / -1; }
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .field label .req { color: #dc2626; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .field input, .field select { height: 36px; padding: 0 10px; }
+    .field textarea {
+      min-height: 52px;
+      padding: 8px 10px;
+      resize: vertical;
+    }
+    .field-hint {
+      font-size: 11px;
+      color: var(--sub);
+      margin-top: 5px;
+      line-height: 1.45;
+    }
+
+    .port-matrix {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .port-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 10px 16px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .port-row:last-child { border-bottom: none; }
+    .port-row-head {
+      flex: 0 0 100px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #374151;
+      padding-top: 4px;
+    }
+    @media (max-width: 520px) {
+      .port-row-head { flex: 0 0 100%; padding-top: 0; }
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .chip:hover { border-color: #93c5fd; background: #f8fbff; }
+    .chip input { margin: 0; accent-color: var(--primary); }
+    .chip.muted { opacity: 0.55; pointer-events: none; }
+    .sub-chips {
+      margin-left: 22px;
+      padding-left: 12px;
+      border-left: 2px solid #e5e7eb;
+      margin-top: 8px;
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .member-list { display: flex; flex-direction: column; gap: 12px; }
+    .member-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 12px 10px;
+      background: var(--member-bg);
+    }
+    .member-card-hd {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 8px;
+    }
+    .member-card-hd .idx {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .member-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
+    }
+    @media (max-width: 560px) {
+      .member-grid { grid-template-columns: 1fr; }
+    }
+
+    .rule-ref-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+    .rule-ref {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 520px;
+    }
+    .rule-ref th, .rule-ref td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    .rule-ref th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #475569;
+      white-space: nowrap;
+    }
+    .rule-ref tr:last-child td { border-bottom: none; }
+    .rule-ref code {
+      font-size: 11px;
+      background: #f1f5f9;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+    }
+
+    .preview {
+      font-size: 12px;
+      line-height: 1.65;
+      color: #374151;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #bfdbfe;
+      background: linear-gradient(180deg, #eff6ff 0%, #fff 55%);
+    }
+    .preview strong { color: var(--text); }
+    .preview ul { margin: 8px 0 0; padding-left: 18px; }
+    .preview li { margin-bottom: 4px; }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: #4b5563;
+      border: 1px solid var(--line);
+    }
+    .tag.on { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="wo-top">
+      <div class="crumb">
+        <a href="原型导航-工单模块.html">工单模块</a> /
+        编辑角色（池成员 · 数据范围）
+      </div>
+      <div class="wo-actions">
+        <a class="btn-top btn-top-accent" href="分派规则-工单池路由-MVP.html">分派规则配置</a>
+        <a class="btn-top" href="原型导航-工单模块.html">导航</a>
+        <a class="btn-top" href="工单工作台-MVP.html">工作台</a>
+      </div>
+    </header>
+
+    <div class="demo-bg">
+      <div class="modal" role="dialog" aria-labelledby="dlg-title" aria-modal="true">
+        <header class="modal-hd">
+          <div>
+            <h1 id="dlg-title">编辑角色（客服池）</h1>
+            <p>
+              <strong>本页</strong>维护「谁属于这个角色 / 池、能看多大范围、有哪些菜单能力」。<strong>工单往哪个池送</strong>（口岸 + 港前港后 + 问题子类 + <strong>销售产品</strong>如私卡 + <strong>客户类型</strong>如直客/同行等）在<strong>分派规则</strong>中单独配置；规则行的<strong>指派目标</strong>填写本角色的编码或池 ID，即<strong>规则 → 指向角色</strong>，而不是在本页逐条反挂规则。
+            </p>
+          </div>
+          <a class="modal-close" href="原型导航-工单模块.html" aria-label="关闭并返回工单导航">×</a>
+        </header>
+
+        <div class="modal-bd">
+          <div class="arch-callout">
+            <strong>与《美海岗位划分》的对应关系</strong>
+            <ol>
+              <li><strong>分派规则（另页）：</strong>维护「洛杉矶 + 港后 + 拆柜后私卡」等<strong>条件矩阵</strong>，条件里可引用<strong>产品属性</strong>（私卡）、<strong>客户主数据</strong>（直客/同行）等维度；命中后指派到<strong>本角色</strong>。</li>
+              <li><strong>本页（角色）：</strong>维护<strong>角色编码</strong>（供规则引用）、<strong>数据权限·口岸</strong>、<strong>功能职能标签</strong>、<strong>池内成员</strong>；不在此配置「直客 FBA / 同行 FBA」等分派条件，避免与规则重复、冲突。</li>
+              <li><strong>组织默认层级</strong>（业务员看自己、上级看下级、职能看全部）仍在<strong>组织 / 数据策略</strong>中统一处理；本角色页可与特例授权表叠加。</li>
+            </ol>
+          </div>
+
+          <!-- 1. 角色与岗位 -->
+          <section class="section" aria-labelledby="sec-base">
+            <h2 class="section-title" id="sec-base">角色与岗位 <span class="hint">供分派规则引用；与功能权限挂钩</span></h2>
+            <div class="form-grid">
+              <div class="field field-full">
+                <label for="roleName">角色 / 池显示名 <span class="req">*</span></label>
+                <input id="roleName" type="text" value="港后客服池（洛杉矶·私卡）" />
+                <p class="field-hint">对外展示名；与岗位表「岗位」列对齐时可加「池」后缀，表示多人共享队列。</p>
+              </div>
+              <div class="field">
+                <label for="roleCode">角色编码 <span class="req">*</span></label>
+                <input id="roleCode" type="text" value="ROLE_GH_LA_PRIVATE" readonly style="background:#f9fafb;color:#6b7280;" />
+                <p class="field-hint"><strong>分派规则</strong>里「指派目标」填此编码（或系统内池 ID）。保存后一般不可改。</p>
+              </div>
+              <div class="field">
+                <label for="postType">岗位大类 <span class="req">*</span></label>
+                <select id="postType">
+                  <option>岗前客服</option>
+                  <option selected>港后客服</option>
+                  <option>纽约客服</option>
+                  <option>外港客服</option>
+                  <option>整柜客服</option>
+                  <option>产品 / 运营（非客服池）</option>
+                  <option>自定义岗位</option>
+                </select>
+              </div>
+              <div class="field field-full">
+                <label>业务职能（多选，可选）</label>
+                <div class="tag-row" id="funcTags">
+                  <button type="button" class="tag on" data-toggle>客服工单池</button>
+                  <button type="button" class="tag" data-toggle>询价</button>
+                  <button type="button" class="tag" data-toggle>报价</button>
+                  <button type="button" class="tag" data-toggle>配舱 / 订舱</button>
+                  <button type="button" class="tag" data-toggle>财务对账</button>
+                </div>
+                <p class="field-hint">控制菜单与操作能力；与「数据范围·口岸」组合成可见数据边界。询价/报价等可与行级策略叠加。</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 2. 数据权限：港口 -->
+          <section class="section" aria-labelledby="sec-port">
+            <h2 class="section-title" id="sec-port">数据权限 · 港口 / 区域 <span class="hint">本池成员在列表/报表中默认可见的口岸范围</span></h2>
+            <div class="port-matrix">
+              <div class="port-row">
+                <div class="port-row-head">通用</div>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" id="portAll" /> 全港（所有口岸）</label>
+                </div>
+              </div>
+              <div class="port-row">
+                <div class="port-row-head">分区</div>
+                <div class="chips" style="flex-direction:column;align-items:flex-start;">
+                  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    <label class="chip"><input type="checkbox" checked /> 美西 · 洛杉矶</label>
+                    <label class="chip"><input type="checkbox" /> 美东 · 纽约</label>
+                  </div>
+                  <div style="width:100%;">
+                    <label class="chip" style="margin-bottom:4px;"><input type="checkbox" id="outerToggle" /> 外港（多选子港）</label>
+                    <div class="sub-chips" id="outerPorts">
+                      <label class="chip"><input type="checkbox" /> 芝加哥</label>
+                      <label class="chip"><input type="checkbox" /> 萨凡纳</label>
+                      <label class="chip"><input type="checkbox" /> 西雅图</label>
+                      <label class="chip"><input type="checkbox" /> 休斯顿</label>
+                      <label class="chip"><input type="checkbox" /> 奥克兰</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="field-hint" style="margin-top:8px;">勾选「全港」时禁用下方具体港；外港需先勾选父级再选子港。与分派规则中的「口岸条件」应语义一致或做校验提示。</p>
+          </section>
+
+          <!-- 3. 池成员（不再承担「私卡/直客」等分派条件） -->
+          <section class="section" aria-labelledby="sec-members">
+            <h2 class="section-title" id="sec-members">
+              池成员
+              <button type="button" class="btn btn-sm btn-ghost" id="addMember">+ 添加成员</button>
+            </h2>
+            <p class="field-hint" style="margin-top:0;margin-bottom:10px;">维护<strong>谁能接本池工单</strong>；工单<strong>为何进本池</strong>由分派规则决定（产品私卡、客户直客/同行等写在规则条件中）。</p>
+            <div class="member-list" id="memberList">
+              <div class="member-card" data-member-row>
+                <div class="member-card-hd">
+                  <span class="idx">成员 1</span>
+                  <button type="button" class="btn btn-sm remove-member" hidden aria-label="删除">删除</button>
+                </div>
+                <div class="member-grid">
+                  <div class="field field-full">
+                    <label>选择用户 <span class="req">*</span></label>
+                    <select>
+                      <option>阳 · 私卡客服</option>
+                      <option>盖如艳 · 私卡客服</option>
+                      <option>从组织架构搜索…</option>
+                    </select>
+                  </div>
+                  <div class="field field-full">
+                    <label>对内备注（可选）</label>
+                    <textarea placeholder="例如：主班 / 备份、擅长改址等；不参与系统分派匹配">洛杉矶港后私卡主班</textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 4. 分派规则引用本角色（只读示意） -->
+          <section class="section" aria-labelledby="sec-rules">
+            <h2 class="section-title teal" id="sec-rules">
+              分派规则引用（只读）
+              <a class="btn btn-sm btn-outline-teal" href="分派规则-工单池路由-MVP.html">去编辑规则</a>
+            </h2>
+            <p class="field-hint" style="margin-bottom:10px;">以下为演示数据：表示已有规则行的<strong>指派目标</strong>指向本角色 <code>ROLE_GH_LA_PRIVATE</code>。实际条件以规则页为准。</p>
+            <div class="rule-ref-wrap">
+              <table class="rule-ref">
+                <thead>
+                  <tr>
+                    <th>规则 ID</th>
+                    <th>条件摘要（维度）</th>
+                    <th>优先级</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>R-LA-GH-PVT-01</code></td>
+                    <td>口岸 <strong>洛杉矶</strong> + 港后 + 问题子类「拆柜后私卡」+ 产品含 <strong>私卡</strong></td>
+                    <td>100</td>
+                    <td><span class="pill">启用</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>R-LA-GH-PVT-02</code></td>
+                    <td>同上 + 场景「预约联系不上」转反向工单池</td>
+                    <td>110</td>
+                    <td><span class="pill">启用</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="field-hint" style="margin-top:8px;">直客 FBA / 同行 FBA 等<strong>不同指派目标</strong>应配置为<strong>不同角色/池</strong>（如 <code>ROLE_GH_LA_FBA_DIRECT</code>），各自有成员；规则行分别引用，避免在同一池上混绑两套产品+客户条件。</p>
+          </section>
+
+          <!-- 5. 预览 -->
+          <section class="section" aria-labelledby="sec-prev">
+            <h2 class="section-title" id="sec-prev">权限与分派关系（保存前校验）</h2>
+            <div class="preview">
+              <strong>当前页保存后将生效：</strong>
+              <ul>
+                <li><strong>数据范围：</strong>成员在「洛杉矶」口岸下的运单、柜子计划、港后工单等可见范围（与组织层级策略取交集）。</li>
+                <li><strong>功能：</strong>岗位「港后客服」+ 已选职能标签对应的菜单与操作。</li>
+                <li><strong>分派：</strong>命中 <code>R-LA-GH-PVT-*</code> 等规则的工单进入本池；<strong>不在本页</strong>修改规则条件；改指派逻辑请打开「分派规则配置」。</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+
+        <footer class="modal-ft">
+          <span class="ft-left">角色编码可被多条分派规则引用</span>
+          <a class="btn btn-outline-teal" href="分派规则-工单池路由-MVP.html">分派规则</a>
+          <button type="button" class="btn">取消</button>
+          <button type="button" class="btn">保存草稿</button>
+          <button type="button" class="btn btn-primary">保存并生效</button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var portAll = document.getElementById("portAll");
+      var outerToggle = document.getElementById("outerToggle");
+      var outerPorts = document.querySelectorAll("#outerPorts input");
+      var matrix = document.querySelector(".port-matrix");
+      function syncPortAll() {
+        var on = portAll && portAll.checked;
+        if (!matrix) return;
+        matrix.querySelectorAll('input[type="checkbox"]').forEach(function (el) {
+          if (el === portAll) return;
+          el.disabled = on;
+          el.closest(".chip") && el.closest(".chip").classList.toggle("muted", on);
+        });
+      }
+      if (portAll) {
+        portAll.addEventListener("change", syncPortAll);
+        syncPortAll();
+      }
+      if (outerToggle) {
+        outerToggle.addEventListener("change", function () {
+          outerPorts.forEach(function (el) {
+            el.disabled = !outerToggle.checked || (portAll && portAll.checked);
+            el.closest(".chip").classList.toggle("muted", el.disabled);
+          });
+        });
+        outerToggle.dispatchEvent(new Event("change"));
+      }
+
+      document.querySelectorAll("[data-toggle]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          btn.classList.toggle("on");
+        });
+      });
+
+      var memberList = document.getElementById("memberList");
+      var addMember = document.getElementById("addMember");
+      function renumberMembers() {
+        var cards = memberList.querySelectorAll("[data-member-row]");
+        cards.forEach(function (c, i) {
+          var idx = c.querySelector(".idx");
+          if (idx) idx.textContent = "成员 " + (i + 1);
+          var rm = c.querySelector(".remove-member");
+          if (rm) rm.hidden = cards.length <= 1;
+        });
+      }
+      if (addMember && memberList) {
+        addMember.addEventListener("click", function () {
+          var first = memberList.querySelector("[data-member-row]");
+          if (!first) return;
+          var clone = first.cloneNode(true);
+          clone.querySelectorAll("textarea, select").forEach(function (el) {
+            if (el.tagName === "TEXTAREA") el.value = "";
+            if (el.tagName === "SELECT") el.selectedIndex = 0;
+          });
+          memberList.appendChild(clone);
+          clone.querySelector(".remove-member").addEventListener("click", function () {
+            if (memberList.querySelectorAll("[data-member-row]").length <= 1) return;
+            clone.remove();
+            renumberMembers();
+          });
+          renumberMembers();
+        });
+        memberList.querySelectorAll(".remove-member").forEach(function (rm) {
+          rm.addEventListener("click", function () {
+            var row = rm.closest("[data-member-row]");
+            if (!row || memberList.querySelectorAll("[data-member-row]").length <= 1) return;
+            row.remove();
+            renumberMembers();
+          });
+        });
+        renumberMembers();
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="wo-prototype-nav.css" />
+  <script src="wo-prototype-nav.js" defer></script>
+</body>
+</html>
