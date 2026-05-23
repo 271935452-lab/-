@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜报价详情（MVP）</title>
+  <style>
+    :root {
+      --bg: #f4f6fa;
+      --card: #fff;
+      --line: #e5e7eb;
+      --text: #111827;
+      --sub: #6b7280;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --red: #dc2626;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 14px;
+    }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 56px 200px 1fr;
+    }
+    .icon-bar {
+      background: #0f172a; color: #fff;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 10px 0; gap: 8px;
+    }
+    .icon-bar .dot {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: rgba(255,255,255,.08); color: #cbd5e1;
+      display: flex; align-items: center; justify-content: center; font-size: 11px;
+    }
+    .icon-bar .dot.active { background: rgba(37,99,235,.3); color: #fff; }
+
+    .list-pane {
+      background: #fff; border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; min-width: 0;
+    }
+    .list-pane-hd {
+      padding: 12px 10px; border-bottom: 1px solid var(--line);
+      font-size: 12px; color: var(--sub);
+    }
+    .list-pane ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+    .list-pane li a {
+      display: block; padding: 10px 12px; font-size: 12px;
+      color: var(--text); text-decoration: none; border-bottom: 1px solid #f3f4f6;
+    }
+    .list-pane li a:hover { background: #f9fafb; }
+    .list-pane li a.active { background: #eff6ff; color: var(--blue); border-left: 3px solid var(--blue); }
+
+    .main-wrap { display: flex; flex-direction: column; min-width: 0; padding-bottom: 56px; }
+    .topbar {
+      height: 50px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; flex-shrink: 0;
+    }
+    .topbar h1 { margin: 0; font-size: 16px; font-weight: 700; }
+    .topbar .sub { font-size: 12px; color: var(--sub); font-weight: 400; margin-left: 6px; }
+    .top-actions { display: flex; gap: 12px; align-items: center; font-size: 12px; color: var(--sub); }
+    .top-actions a { color: var(--blue); text-decoration: none; }
+
+    .content { padding: 12px 14px; flex: 1; }
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      gap: 12px; align-items: start;
+    }
+    .sheet {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 8px; box-shadow: var(--shadow); overflow: hidden;
+    }
+    .sheet-bd { padding: 12px 14px 14px; }
+
+    .hero {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px; margin-bottom: 10px;
+    }
+    @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
+    .hero-card {
+      border-radius: 8px; padding: 12px 14px; border: 1px solid var(--line);
+      min-height: 68px;
+    }
+    .hero-card:nth-child(1) { background: linear-gradient(180deg, #fff4ef, #fffaf7); }
+    .hero-card:nth-child(2) { background: linear-gradient(180deg, #f6f0ff, #fcfbff); }
+    .hero-card:nth-child(3) { background: linear-gradient(180deg, #edfaff, #fbfeff); }
+    .hero-card .k { font-size: 12px; color: var(--sub); }
+    .hero-card .v { font-size: 15px; font-weight: 700; margin-top: 2px; }
+    .hero-card .meta { font-size: 12px; color: var(--sub); margin-top: 4px; line-height: 1.5; }
+
+    .info-block {
+      border: 1px solid var(--line); border-radius: 8px;
+      margin-bottom: 12px; overflow: hidden;
+    }
+    .info-hd {
+      padding: 10px 14px; background: #fafbff;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px; font-weight: 700;
+    }
+    .info-bd { padding: 14px; font-size: 13px; line-height: 1.75; color: #374151; }
+    .info-grid {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px;
+    }
+    @media (max-width: 640px) { .info-grid { grid-template-columns: 1fr; } }
+    .info-grid .lbl { color: var(--sub); }
+    .info-grid .val { color: var(--text); }
+    .info-grid .full { grid-column: 1 / -1; }
+    .price-tags { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+    .price-tag {
+      padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+      background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+    }
+    .attach { color: var(--blue); font-size: 12px; margin-top: 8px; }
+
+    .section {
+      border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 12px;
+    }
+    .section-hd {
+      padding: 10px 14px; background: #fafbff; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .section-hd h2 { margin: 0; font-size: 14px; font-weight: 700; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+      background: #f0fdf4; color: var(--green); border: 1px solid #bbf7d0;
+    }
+    .btn {
+      border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px;
+      font: inherit; font-size: 12px; cursor: pointer; background: #fff;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    .quote-item {
+      padding: 14px; border-bottom: 1px solid var(--line);
+    }
+    .quote-item:last-child { border-bottom: none; }
+    .quote-item-hd {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; gap: 10px; flex-wrap: wrap;
+    }
+    .quote-num {
+      width: 22px; height: 22px; border-radius: 4px;
+      background: #eef2ff; color: #4338ca;
+      font-size: 12px; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-right: 6px;
+    }
+    .quote-title { font-weight: 600; font-size: 13px; }
+    .tag-ai {
+      display: inline-block; margin-left: 8px; padding: 1px 6px;
+      border-radius: 4px; font-size: 11px; font-weight: 600;
+      background: #f0fdf4; color: var(--green); border: 1px solid #bbf7d0;
+    }
+    .tag-manual {
+      display: inline-block; margin-left: 8px; padding: 1px 6px;
+      border-radius: 4px; font-size: 11px; font-weight: 600;
+      background: #eff6ff; color: var(--blue); border: 1px solid #bfdbfe;
+    }
+    .fee-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px; margin: 10px 0;
+      padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px dashed #e2e8f0;
+    }
+    @media (max-width: 720px) { .fee-grid { grid-template-columns: 1fr; } }
+    .fee-cell .fk { font-size: 11px; color: var(--sub); margin-bottom: 2px; }
+    .fee-cell .fv { font-size: 16px; font-weight: 700; color: var(--text); }
+    .fee-cell .fu { font-size: 11px; color: var(--sub); }
+    .fee-extra {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+    }
+    .fee-extra-title {
+      font-size: 11px; font-weight: 600; color: #b45309; margin-bottom: 8px;
+    }
+    .fee-extra-list { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+    .fee-extra-item {
+      font-size: 12px; color: #78350f; line-height: 1.5;
+    }
+    .fee-extra-item strong { color: #92400e; font-weight: 600; }
+    .quote-meta { font-size: 12px; color: var(--sub); line-height: 1.7; }
+    .quote-meta strong { color: #334155; }
+
+    .notice {
+      padding: 12px 14px; font-size: 12px; line-height: 1.75; color: var(--red);
+      border-top: 1px solid #fecaca; background: #fef2f2;
+    }
+
+    .side { display: grid; gap: 12px; }
+    .side-card {
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 8px; box-shadow: var(--shadow); overflow: hidden;
+    }
+    .side-card .hd {
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      font-size: 14px; font-weight: 700;
+    }
+    .side-card .bd { padding: 12px 14px; }
+    .timeline { display: grid; gap: 0; }
+    .tl-item {
+      position: relative; padding: 0 0 16px 22px;
+      font-size: 12px; color: #475569; line-height: 1.55;
+    }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-item::before {
+      content: ""; position: absolute; left: 4px; top: 5px;
+      width: 10px; height: 10px; border-radius: 999px; background: #22c55e;
+    }
+    .tl-item::after {
+      content: ""; position: absolute; left: 8px; top: 17px; bottom: 0;
+      width: 2px; background: #e5e7eb;
+    }
+    .tl-item:last-child::after { display: none; }
+    .tl-item .time { color: #94a3b8; font-size: 11px; }
+    .tl-item.done::before { background: #22c55e; }
+    .tl-item.pending::before { background: #d1d5db; }
+    .copy-box {
+      border: 1px dashed #cbd5e1; background: #f8fafc;
+      border-radius: 8px; padding: 10px; font-size: 11px;
+      line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+    }
+
+    .fixed-footer {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+      background: #fff; border-top: 1px solid var(--line);
+      padding: 10px 16px; display: flex; justify-content: flex-end; gap: 10px;
+      box-shadow: 0 -4px 16px rgba(0,0,0,.06);
+    }
+    .dim-tag {
+      display: inline-block; margin-left: 6px; padding: 1px 8px;
+      border-radius: 999px; font-size: 11px; font-weight: 600;
+      background: #fef3c7; color: #b45309; vertical-align: middle;
+    }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .icon-bar, .list-pane { display: none; }
+      .workspace { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="icon-bar" aria-label="模块导航">
+      <div class="dot">企</div>
+      <div class="dot active">询</div>
+      <div class="dot">单</div>
+      <div class="dot">财</div>
+    </nav>
+
+    <aside class="list-pane">
+      <div class="list-pane-hd">询价列表 · 整柜</div>
+      <ul>
+        <li><a class="active" href="ESS整柜报价详情-MVP.html">XJ202605230018</a></li>
+        <li><a href="#">XJ202605220056</a></li>
+        <li><a href="#">XJ202605180088</a></li>
+        <li><a href="#">XJ202605150032</a></li>
+      </ul>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <h1>报价详情<span class="sub">（XJ202605230018）</span><span class="dim-tag">整柜 FCL</span></h1>
+        <div class="top-actions">
+          <span>创建于 2026-05-23 09:12:08</span>
+          <a href="#">上一条</a>
+          <a href="#">下一条</a>
+          <a href="#">刷新</a>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="workspace">
+          <section class="sheet">
+            <div class="sheet-bd">
+              <!-- 顶部摘要 -->
+              <div class="hero">
+                <div class="hero-card">
+                  <span class="k">起运港 → 目的港</span>
+                  <span class="v">盐田 → 洛杉矶 LA</span>
+                  <div class="meta">目的国：US / 美国 · 委托客户：深圳某某贸易</div>
+                </div>
+                <div class="hero-card">
+                  <span class="k">箱型 / 喜好船司</span>
+                  <span class="v">40HQ × 1</span>
+                  <div class="meta">喜好船司：COSCO / EMC</div>
+                </div>
+                <div class="hero-card">
+                  <span class="k">货物毛重 / 货好时间</span>
+                  <span class="v">18,500 KG</span>
+                  <div class="meta">货好时间：2026-06-08</div>
+                </div>
+              </div>
+
+              <!-- 货物 / 询价信息 -->
+              <div class="info-block">
+                <div class="info-hd">货物信息</div>
+                <div class="info-bd">
+                  <div class="info-grid">
+                    <div><span class="lbl">销售产品：</span><span class="val">美西整柜专线</span></div>
+                    <div><span class="lbl">产品性质：</span><span class="val">普货 · 家具</span></div>
+                    <div class="full">
+                      <span class="lbl">收货地址（邮编已确认）：</span><br />
+                      <span class="val">900 Enterprise Rd, Redlands, CA 92374, United States</span>
+                    </div>
+                    <div class="full">
+                      <span class="lbl">装柜地址：</span><br />
+                      <span class="val">广东省深圳市宝安区福永街道某某物流园 A 区 3 号门</span>
+                    </div>
+                    <div class="full">
+                      <span class="lbl">询价价格项：</span>
+                      <span class="price-tags">
+                        <span class="price-tag">海运费</span>
+                        <span class="price-tag">国外拖车费</span>
+                        <span class="price-tag">国内拖车费</span>
+                      </span>
+                    </div>
+                    <div class="full">
+                      <span class="lbl">询价详情：</span><span class="val">要 COSCO 优先；需含 ENS/AMS；免箱期 7+14。</span>
+                    </div>
+                  </div>
+                  <div class="attach">附件：装箱单.xlsx · 产品照片.zip</div>
+                </div>
+              </div>
+
+              <!-- 报价信息 -->
+              <div class="section">
+                <div class="section-hd">
+                  <div>
+                    <h2>报价信息</h2>
+                    <span class="badge">已报价</span>
+                  </div>
+                  <a class="btn btn-primary" href="ESS整柜报价编辑-MVP.html" style="text-decoration:none;display:inline-block;">修改方案</a>
+                </div>
+
+                <div class="quote-item">
+                  <div class="quote-item-hd">
+                    <div>
+                      <span class="quote-num">1</span>
+                      <span class="quote-title">BJ202605230018-01 · T25 美西整柜</span>
+                      <span class="tag-manual">人工</span>
+                    </div>
+                  </div>
+                  <div class="quote-meta">
+                    <strong>报价有效期：</strong>2026-06-01 至 2026-06-15 ·
+                    <strong>船司：</strong>COSCO · <strong>船期 ETD：</strong>2026-06-12 · <strong>航程：</strong>18 天
+                  </div>
+                  <div class="fee-grid">
+                    <div class="fee-cell">
+                      <div class="fk">海运费</div>
+                      <div class="fv">$1,850</div>
+                      <div class="fu">USD / 柜</div>
+                    </div>
+                    <div class="fee-cell">
+                      <div class="fk">国外拖车费</div>
+                      <div class="fv">$680</div>
+                      <div class="fu">USD / 柜</div>
+                    </div>
+                    <div class="fee-cell">
+                      <div class="fk">国内拖车费</div>
+                      <div class="fv">¥2,200</div>
+                      <div class="fu">CNY / 柜</div>
+                    </div>
+                  </div>
+                  <div class="fee-extra">
+                    <div class="fee-extra-title">其他费用</div>
+                    <div class="fee-extra-list">
+                      <div class="fee-extra-item"><strong>ENS/AMS</strong> $35 USD / 票</div>
+                      <div class="fee-extra-item"><strong>文件费</strong> ¥200 CNY / 柜</div>
+                    </div>
+                  </div>
+                  <div class="quote-meta"><strong>备注：</strong>含 ENS/AMS；截关前 2 天还重。附件：报价单.pdf</div>
+                </div>
+
+                <div class="quote-item">
+                  <div class="quote-item-hd">
+                    <div>
+                      <span class="quote-num">2</span>
+                      <span class="quote-title">BJ202605230018-02 · T25 美西整柜（备选）</span>
+                      <span class="tag-ai">AI</span>
+                    </div>
+                  </div>
+                  <div class="quote-meta">
+                    <strong>报价有效期：</strong>2026-06-01 至 2026-06-15 ·
+                    <strong>船司：</strong>EMC · <strong>船期 ETD：</strong>2026-06-14 · <strong>航程：</strong>19 天
+                  </div>
+                  <div class="fee-grid">
+                    <div class="fee-cell">
+                      <div class="fk">海运费</div>
+                      <div class="fv">$1,920</div>
+                      <div class="fu">USD / 柜</div>
+                    </div>
+                    <div class="fee-cell">
+                      <div class="fk">国外拖车费</div>
+                      <div class="fv">$720</div>
+                      <div class="fu">USD / 柜</div>
+                    </div>
+                    <div class="fee-cell">
+                      <div class="fk">国内拖车费</div>
+                      <div class="fv">¥2,350</div>
+                      <div class="fu">CNY / 柜</div>
+                    </div>
+                  </div>
+                  <div class="fee-extra">
+                    <div class="fee-extra-title">其他费用</div>
+                    <div class="fee-extra-list">
+                      <div class="fee-extra-item"><strong>AMS 改单费</strong> $40 USD / 票</div>
+                    </div>
+                  </div>
+                  <div class="quote-meta"><strong>备注：</strong>备选船期，货好时间可顺延 2 天。</div>
+                </div>
+
+                <div class="notice">
+                  注意事项：① 以上价格为整柜单柜报价，不含目的港 LOCAL 及关税；② 国外拖车费基于收货邮编 92374 核算，地址变更需重新询价；
+                  ③ 国内拖车费基于福永装柜地址，若装柜点变更请提前告知；④ 货好时间 2026-06-08 前 3 天需确认订舱。
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="side">
+            <div class="side-card">
+              <div class="hd">操作</div>
+              <div class="bd" style="display:grid;gap:8px;">
+                <button type="button" class="btn btn-primary" id="btnCopy">复制报价</button>
+                <a class="btn" href="ESS整柜询价详情-MVP.html" style="text-align:center;text-decoration:none;color:inherit;">询价方案详情</a>
+                <a class="btn" href="ESS整柜报价编辑-MVP.html" style="text-align:center;text-decoration:none;color:inherit;">编辑报价</a>
+              </div>
+            </div>
+            <div class="side-card">
+              <div class="hd">状态流转</div>
+              <div class="bd">
+                <div class="timeline">
+                  <div class="tl-item done">
+                    <div>创建询价</div>
+                    <div class="time">2026-05-23 09:12:08 · 张立明</div>
+                  </div>
+                  <div class="tl-item done">
+                    <div>发起询价</div>
+                    <div class="time">2026-05-23 09:15:22 · 张立明</div>
+                  </div>
+                  <div class="tl-item done">
+                    <div>开始报价</div>
+                    <div class="time">2026-05-23 10:05:33 · 王报价</div>
+                  </div>
+                  <div class="tl-item done">
+                    <div>报价完成</div>
+                    <div class="time">2026-05-23 10:28:15 · 王报价</div>
+                  </div>
+                  <div class="tl-item pending">
+                    <div>报价完结</div>
+                    <div class="time">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="side-card">
+              <div class="hd">复制文案</div>
+              <div class="bd">
+                <div class="copy-box" id="copyText">【整柜报价】盐田 → 洛杉矶 · 40HQ · 毛重 18500KG
+收货：92374 Redlands, CA
+装柜：深圳宝安福永某某物流园
+
+方案1 · COSCO · ETD 06-12 · 人工
+海运费 $1,850/柜 · 国外拖 $680/柜 · 国内拖 ¥2,200/柜
+其他：ENS/AMS $35/票 · 文件费 ¥200/柜
+有效期：06-01 ~ 06-15
+
+方案2 · EMC · ETD 06-14 · AI
+海运费 $1,920/柜 · 国外拖 $720/柜 · 国内拖 ¥2,350/柜
+其他：AMS改单费 $40/票</div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="fixed-footer">
+        <a class="btn" href="ESS我的报价-列表-MVP.html#fcl" style="text-decoration:none;color:inherit;">返回列表</a>
+        <button type="button" class="btn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("btnCopy").addEventListener("click", function () {
+      var text = document.getElementById("copyText").innerText;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          alert("已复制整柜报价文案（MVP演示）");
+        });
+      } else {
+        alert("请手动复制右侧文案");
+      }
+    });
+  </script>
+  <link rel="stylesheet" href="ess-prototype-nav.css" />
+  <script src="ess-prototype-nav.js" defer></script>
+</body>
+</html>

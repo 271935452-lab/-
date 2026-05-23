@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESS询价编辑（MVP）</title>
+  <style>
+    :root {
+      --bg: #f4f6fa;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-bg: #eff6ff;
+      --req: #dc2626;
+      --orange: #f97316;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+    }
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 16px 16px 72px;
+      width: 100%;
+    }
+    .page-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .page-hd h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .page-hd .count {
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+    }
+    .sec-title {
+      margin: 0;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      border-left: 4px solid var(--primary);
+      background: var(--primary-bg);
+      border-bottom: 1px solid var(--line);
+    }
+    .sec-body { padding: 16px 18px 18px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 24px;
+    }
+    @media (max-width: 720px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .req { color: var(--req); margin-left: 2px; }
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap input,
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 7px 10px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+    .input-wrap input { padding-right: 32px; }
+    .input-wrap .icon {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+      font-size: 14px;
+      pointer-events: none;
+    }
+    .field textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+    .field input[readonly] {
+      background: #f9fafb;
+      color: var(--sub);
+    }
+    .unit-wrap {
+      display: flex;
+      align-items: stretch;
+    }
+    .unit-wrap input {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-right: none;
+      flex: 1;
+    }
+    .unit-wrap .unit {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid #d1d5db;
+      border-left: none;
+      border-radius: 0 4px 4px 0;
+      background: #f9fafb;
+      color: var(--sub);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .hint {
+      margin-top: 5px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
+    .hint.warn { color: #b45309; }
+
+    /* 散货 / 整柜切换 */
+    .mode-switch {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      width: fit-content;
+      background: #f9fafb;
+    }
+    .mode-btn {
+      border: none;
+      background: transparent;
+      padding: 8px 20px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--sub);
+      transition: background 0.15s, color 0.15s;
+    }
+    .mode-btn + .mode-btn { border-left: 1px solid var(--line); }
+    .mode-btn.active {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .mode-btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+    }
+    .mode-desc {
+      margin: -6px 0 14px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.55;
+    }
+
+    /* 价格项 */
+    .price-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fafbfc;
+    }
+    .price-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .price-item input { margin: 0; }
+
+    /* 箱型 */
+    .ctn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .ctn-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .ctn-chip:has(input:checked) {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+    .ctn-chip input { margin: 0; }
+
+    /* 上传 */
+    .upload-tip {
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+    .upload-paste {
+      border: 1px dashed #cbd5e1;
+      border-radius: 4px;
+      padding: 8px 12px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 8px;
+      background: #fafafa;
+    }
+    .upload-zone {
+      border: 1px dashed #cbd5e1;
+      border-radius: 4px;
+      padding: 28px 16px;
+      text-align: center;
+      background: #fafafa;
+      cursor: pointer;
+    }
+    .upload-zone .folder {
+      font-size: 36px;
+      color: var(--orange);
+      margin-bottom: 8px;
+    }
+    .upload-zone p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .file-list {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
+    }
+    .file-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--primary);
+    }
+    .file-item .rm {
+      color: var(--sub);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 14px;
+      padding: 0 2px;
+    }
+
+    .dim-panel { display: none; }
+    .dim-panel.active { display: contents; }
+
+    .footer-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.96);
+      border-top: 1px solid var(--line);
+      padding: 10px 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      backdrop-filter: blur(6px);
+    }
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 8px 18px;
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #1d4ed8; }
+
+    .prd-note {
+      margin-top: 4px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.65;
+    }
+    .prd-note strong { color: #334155; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-hd">
+      <h1>ESS询价编辑</h1>
+      <span class="count">8 of 15</span>
+    </header>
+
+    <!-- 询价信息 -->
+    <section class="panel">
+      <h2 class="sec-title">询价信息</h2>
+      <div class="sec-body">
+        <div class="form-grid">
+          <div class="field">
+            <label for="customer">委托客户</label>
+            <div class="input-wrap">
+              <input id="customer" type="text" placeholder="客户名称" />
+              <span class="icon" aria-hidden="true">🔍</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="product">销售产品</label>
+            <div class="input-wrap">
+              <input id="product" type="text" placeholder="销售产品（多选）" />
+              <span class="icon" aria-hidden="true">🔍</span>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="quoter">报价人</label>
+            <input id="quoter" type="text" placeholder="报价人（默认）" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 基本信息 -->
+    <section class="panel">
+      <h2 class="sec-title">基本信息</h2>
+      <div class="sec-body">
+        <div class="mode-switch" role="radiogroup" aria-label="询价维度">
+          <button type="button" class="mode-btn active" data-mode="lcl" aria-checked="true">散货（LCL）</button>
+          <button type="button" class="mode-btn" data-mode="fcl" aria-checked="false">整柜（FCL）</button>
+        </div>
+        <p class="mode-desc" id="modeDesc">散货维度：按交货仓、邮编、体积重量询价。</p>
+
+        <div class="form-grid">
+          <!-- ===== 散货字段 ===== -->
+          <div id="lclFields" class="dim-panel active">
+            <div class="field">
+              <label for="warehouse">交货仓<span class="req">*</span></label>
+              <div class="input-wrap">
+                <input id="warehouse" type="text" placeholder="选择仓库" />
+                <span class="icon" aria-hidden="true">🔍</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="zipcode">邮编<span class="req">*</span></label>
+              <input id="zipcode" type="text" placeholder="邮编" />
+            </div>
+            <div class="field">
+              <label for="destCountry">目的国<span class="req">*</span></label>
+              <input id="destCountry" type="text" placeholder="目的国" />
+            </div>
+            <div class="field">
+              <label for="totalVolume">总体积<span class="req">*</span></label>
+              <div class="unit-wrap">
+                <input id="totalVolume" type="text" placeholder="体积" />
+                <span class="unit">CBM</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="totalWeight">总重量<span class="req">*</span></label>
+              <div class="unit-wrap">
+                <input id="totalWeight" type="text" placeholder="重量" />
+                <span class="unit">KG</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="chargeWeight">计费重</label>
+              <input id="chargeWeight" type="text" placeholder="自动计算" readonly />
+            </div>
+          </div>
+
+          <!-- ===== 整柜字段 ===== -->
+          <div id="fclFields" class="dim-panel">
+            <div class="field">
+              <label for="pol">起运港<span class="req">*</span></label>
+              <div class="input-wrap">
+                <input id="pol" type="text" placeholder="起运港" />
+                <span class="icon" aria-hidden="true">🔍</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="pod">目的港<span class="req">*</span></label>
+              <div class="input-wrap">
+                <input id="pod" type="text" placeholder="目的港" />
+                <span class="icon" aria-hidden="true">🔍</span>
+              </div>
+            </div>
+            <div class="field full">
+              <label for="deliveryAddr">收货地址<span class="req">*</span></label>
+              <input id="deliveryAddr" type="text" placeholder="收货详细地址" />
+              <p class="hint warn">需确认好邮编，便于国外拖车费核算。</p>
+            </div>
+            <div class="field full">
+              <label for="loadingAddr">装柜地址</label>
+              <input id="loadingAddr" type="text" placeholder="装柜详细地址" />
+              <p class="hint warn">询国内拖车费时必填装柜详细地址。</p>
+            </div>
+            <div class="field">
+              <label for="carrier">喜好船司</label>
+              <input id="carrier" type="text" placeholder="如 COSCO / EMC / ONE" list="carrierList" />
+              <datalist id="carrierList">
+                <option value="COSCO"></option>
+                <option value="EMC"></option>
+                <option value="ONE"></option>
+                <option value="MSC"></option>
+                <option value="CMA"></option>
+              </datalist>
+            </div>
+            <div class="field">
+              <label>箱型<span class="req">*</span></label>
+              <div class="ctn-group" role="group" aria-label="箱型">
+                <label class="ctn-chip"><input type="checkbox" name="ctnType" value="20GP" />20GP</label>
+                <label class="ctn-chip"><input type="checkbox" name="ctnType" value="40GP" />40GP</label>
+                <label class="ctn-chip"><input type="checkbox" name="ctnType" value="40HQ" />40HQ</label>
+                <label class="ctn-chip"><input type="checkbox" name="ctnType" value="45HQ" />45HQ</label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="cargoReady">货好时间</label>
+              <input id="cargoReady" type="date" />
+              <p class="hint">要船期时需填写具体货好时间；仅询价可不填。</p>
+            </div>
+            <div class="field">
+              <label for="grossWeight">货物毛重<span class="req">*</span></label>
+              <div class="unit-wrap">
+                <input id="grossWeight" type="text" placeholder="毛重" />
+                <span class="unit">KG</span>
+              </div>
+            </div>
+            <div class="field full">
+              <label>询价价格项</label>
+              <div class="price-group" role="group" aria-label="询价价格项">
+                <label class="price-item"><input type="checkbox" name="priceItem" value="ocean" checked />海运费</label>
+                <label class="price-item"><input type="checkbox" name="priceItem" value="foreignTruck" />国外拖车费</label>
+                <label class="price-item"><input type="checkbox" name="priceItem" value="domesticTruck" />国内拖车费</label>
+              </div>
+              <p class="hint">勾选需要报价的费用项；不勾选时默认仅询<strong>海运费</strong>。勾选国内拖车费请填写装柜地址。</p>
+            </div>
+          </div>
+
+          <!-- 共用字段 -->
+          <div class="field full">
+            <label for="productInfo">产品信息</label>
+            <input id="productInfo" type="text" placeholder="产品信息" />
+          </div>
+          <div class="field full">
+            <label for="inquiryDetail">询价详情</label>
+            <textarea id="inquiryDetail" placeholder="询价详情"></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 上传附件 -->
+    <section class="panel">
+      <h2 class="sec-title">上传附件</h2>
+      <div class="sec-body">
+        <p class="upload-tip">支持扩展名：.rar .zip .doc .docx .xls .xlsx .pdf .jpg .png，单个文件不超过 100M，最多 20 个文件。</p>
+        <div class="upload-paste">按 Ctrl+V 将文件粘贴至此处上传</div>
+        <div class="upload-zone" tabindex="0" role="button" aria-label="上传附件">
+          <div class="folder" aria-hidden="true">📁</div>
+          <p>点击或将文件拖拽到这里上传</p>
+        </div>
+        <div class="file-list">
+          <span class="file-item">文档.docx <button type="button" class="rm" aria-label="删除">×</button></span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="prd-note">
+      <strong>PRD · 整柜维度说明</strong><br />
+      ① 基本信息区顶部切换「散货 / 整柜」，字段互斥展示。<br />
+      ② 整柜必填：起运港、目的港、收货地址（含邮编）、箱型、货物毛重。<br />
+      ③ 货好时间：要船期时必填；纯询价可不填。<br />
+      ④ 询价价格项：海运费 / 国外拖车费 / 国内拖车费可多选；未选时后端默认仅询海运费。<br />
+      ⑤ 勾选国内拖车费时，装柜地址为必填校验项。
+    </footer>
+  </div>
+
+  <div class="footer-bar">
+    <button type="button" class="btn">取消</button>
+    <button type="button" class="btn btn-primary" id="btnSave">保存</button>
+  </div>
+
+  <script>
+    (function () {
+      var modeBtns = document.querySelectorAll(".mode-btn");
+      var lclFields = document.getElementById("lclFields");
+      var fclFields = document.getElementById("fclFields");
+      var modeDesc = document.getElementById("modeDesc");
+      var priceItems = document.querySelectorAll('input[name="priceItem"]');
+      var domesticTruck = document.querySelector('input[name="priceItem"][value="domesticTruck"]');
+      var loadingAddr = document.getElementById("loadingAddr");
+      var currentMode = "lcl";
+
+      var modeText = {
+        lcl: "散货维度：按交货仓、邮编、体积重量询价。",
+        fcl: "整柜维度：按起运港/目的港、箱型及所需价格项询价；不选价格项默认海运费。"
+      };
+
+      function setMode(mode) {
+        currentMode = mode;
+        modeBtns.forEach(function (btn) {
+          var active = btn.getAttribute("data-mode") === mode;
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-checked", active ? "true" : "false");
+        });
+        lclFields.classList.toggle("active", mode === "lcl");
+        fclFields.classList.toggle("active", mode === "fcl");
+        modeDesc.textContent = modeText[mode];
+      }
+
+      modeBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setMode(btn.getAttribute("data-mode"));
+        });
+      });
+
+      function getSelectedPrices() {
+        var selected = [];
+        priceItems.forEach(function (cb) {
+          if (cb.checked) selected.push(cb.value);
+        });
+        if (!selected.length) selected = ["ocean"];
+        return selected;
+      }
+
+      function syncDomesticRequired() {
+        if (currentMode !== "fcl") return;
+        var need = domesticTruck && domesticTruck.checked;
+        loadingAddr.placeholder = need ? "装柜详细地址（必填）" : "装柜详细地址";
+      }
+
+      priceItems.forEach(function (cb) {
+        cb.addEventListener("change", syncDomesticRequired);
+      });
+
+      document.getElementById("btnSave").addEventListener("click", function () {
+        var prices = getSelectedPrices();
+        var labels = { ocean: "海运费", foreignTruck: "国外拖车费", domesticTruck: "国内拖车费" };
+        var priceLabel = prices.map(function (p) { return labels[p] || p; }).join("、");
+        var dim = currentMode === "lcl" ? "散货" : "整柜";
+        alert("【MVP演示】保存 " + dim + " 询价\n询价价格项：" + priceLabel);
+      });
+
+      if (location.hash === "#fcl") setMode("fcl");
+      else setMode("lcl");
+    })();
+  </script>
+  <link rel="stylesheet" href="ess-prototype-nav.css" />
+  <script src="ess-prototype-nav.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>我的报价（业务员）· 列表 MVP</title>
+  <style>
+    :root {
+      --sidebar: #001529;
+      --sidebar-hover: #1890ff;
+      --header: #1890ff;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0,0,0,.85);
+      --sub: rgba(0,0,0,.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --red: #ff4d4f;
+      --orange: #fa8c16;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    .layout { min-height: 100vh; display: flex; flex-direction: column; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .page-tabs {
+      background: #fff; border-bottom: 1px solid var(--line);
+      padding: 0 12px; display: flex; gap: 0; overflow-x: auto;
+    }
+    .page-tab {
+      padding: 10px 16px; border: none; background: none;
+      font: inherit; font-size: 13px; color: var(--sub);
+      cursor: pointer; white-space: nowrap;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .page-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .page-body { padding: 12px; flex: 1; }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 2px; margin-bottom: 10px;
+    }
+
+    /* 筛选区 */
+    .filter-bd { padding: 14px 16px 10px; }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px 16px;
+    }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 760px) { .filter-grid { grid-template-columns: 1fr 1fr; } }
+    .filter-item label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px;
+    }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .filter-actions {
+      padding: 0 16px 14px;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .btn {
+      height: 32px; padding: 0 14px; border-radius: 2px;
+      border: 1px solid #d9d9d9; background: #fff;
+      font: inherit; font-size: 13px; cursor: pointer;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-primary:hover { background: #40a9ff; border-color: #40a9ff; }
+    .btn-add { background: #13c2c2; border-color: #13c2c2; color: #fff; }
+    .btn-add:hover { background: #36cfc9; border-color: #36cfc9; }
+
+    /* 维度 + 状态 Tab */
+    .tab-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
+      padding: 0 16px; border-bottom: 1px solid var(--line);
+      background: #fafafa;
+    }
+    .dim-tabs, .status-tabs { display: flex; flex-wrap: wrap; }
+    .dim-tab, .status-tab {
+      padding: 10px 14px; border: none; background: none;
+      font: inherit; font-size: 13px; color: var(--sub);
+      cursor: pointer; position: relative;
+    }
+    .dim-tab.active { color: var(--blue); font-weight: 600; }
+    .dim-tab.active::after {
+      content: ""; position: absolute; left: 14px; right: 14px; bottom: 0;
+      height: 2px; background: var(--blue);
+    }
+    .status-tab.active { color: var(--blue); }
+    .status-tab .cnt { color: var(--sub); font-size: 12px; margin-left: 2px; }
+
+    /* 表格 */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%; border-collapse: collapse; min-width: 1400px;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 10px 8px; border-bottom: 1px solid #f0f0f0;
+      text-align: left; white-space: nowrap;
+    }
+    th {
+      background: #fafafa; color: var(--sub); font-weight: 500;
+      position: sticky; top: 0; z-index: 1;
+    }
+    tr:hover td { background: #fafafa; }
+    .col-check { width: 36px; text-align: center; }
+    .col-ops {
+      position: sticky; right: 0; background: #fff;
+      box-shadow: -4px 0 8px rgba(0,0,0,.04);
+      min-width: 160px;
+    }
+    tr:hover .col-ops { background: #fafafa; }
+    th.col-ops { background: #fafafa; z-index: 2; }
+    .link { color: var(--blue); text-decoration: none; cursor: pointer; }
+    .link:hover { text-decoration: underline; }
+    .ops { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag {
+      display: inline-block; padding: 1px 6px; border-radius: 2px;
+      font-size: 11px; line-height: 18px;
+    }
+    .tag-green { background: #f6ffed; color: var(--green); border: 1px solid #b7eb8f; }
+    .tag-blue { background: #e6f7ff; color: var(--blue); border: 1px solid #91d5ff; }
+    .tag-orange { background: #fff7e6; color: var(--orange); border: 1px solid #ffd591; }
+    .tag-gray { background: #fafafa; color: var(--sub); border: 1px solid #d9d9d9; }
+    .tag-fcl { background: #fff7e6; color: #d48806; border: 1px solid #ffe58f; font-size: 10px; margin-left: 4px; }
+    .num-red { color: var(--red); font-weight: 600; }
+    .ellipsis { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+
+    .table-panel { display: none; }
+    .table-panel.active { display: block; }
+    .filter-panel { display: none; }
+    .filter-panel.active { display: contents; }
+
+    /* 分页 */
+    .pager {
+      display: flex; justify-content: flex-end; align-items: center;
+      gap: 8px; padding: 12px 16px; flex-wrap: wrap;
+      font-size: 12px; color: var(--sub);
+    }
+    .pager select, .pager input {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px;
+    }
+    .pager-btns { display: flex; gap: 4px; }
+    .pager-btns button {
+      min-width: 28px; height: 28px; border: 1px solid #d9d9d9;
+      background: #fff; border-radius: 2px; cursor: pointer; font-size: 12px;
+    }
+    .pager-btns button.active { border-color: var(--blue); color: var(--blue); }
+
+    .prd-note {
+      margin-top: 10px; padding: 10px 12px;
+      background: #fff; border: 1px dashed #d9d9d9; border-radius: 2px;
+      font-size: 12px; color: var(--sub); line-height: 1.65;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="main">
+      <div class="page-tabs">
+        <button type="button" class="page-tab">控制台</button>
+        <button type="button" class="page-tab">运单管理</button>
+        <button type="button" class="page-tab active">我的报价（业务员）</button>
+      </div>
+
+      <div class="page-body">
+        <!-- 筛选 -->
+        <div class="panel">
+          <div class="filter-bd">
+            <div class="filter-grid" id="filterGrid">
+              <!-- 散货筛选 -->
+              <div class="filter-panel active" data-dim="lcl">
+                <div class="filter-item">
+                  <label>创建时间</label>
+                  <input type="date" value="2026-01-01" />
+                </div>
+                <div class="filter-item">
+                  <label>邮编</label>
+                  <input type="text" placeholder="目的邮编" />
+                </div>
+                <div class="filter-item">
+                  <label>报价单号</label>
+                  <input type="text" placeholder="XJ…" />
+                </div>
+                <div class="filter-item">
+                  <label>委托人</label>
+                  <input type="text" placeholder="委托客户" />
+                </div>
+                <div class="filter-item">
+                  <label>货代人</label>
+                  <input type="text" placeholder="询价人" />
+                </div>
+              </div>
+              <!-- 整柜筛选 -->
+              <div class="filter-panel" data-dim="fcl">
+                <div class="filter-item">
+                  <label>创建时间</label>
+                  <input type="date" value="2026-01-01" />
+                </div>
+                <div class="filter-item">
+                  <label>起运港</label>
+                  <input type="text" placeholder="如 盐田" />
+                </div>
+                <div class="filter-item">
+                  <label>目的港</label>
+                  <input type="text" placeholder="如 洛杉矶" />
+                </div>
+                <div class="filter-item">
+                  <label>箱型</label>
+                  <select>
+                    <option value="">全部</option>
+                    <option>20GP</option>
+                    <option>40GP</option>
+                    <option>40HQ</option>
+                    <option>45HQ</option>
+                  </select>
+                </div>
+                <div class="filter-item">
+                  <label>报价单号 / 委托人</label>
+                  <input type="text" placeholder="单号或客户" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn btn-primary">查询数据</button>
+            <button type="button" class="btn btn-primary">刷新数据</button>
+            <button type="button" class="btn btn-add" id="btnNew">+ 新增报价</button>
+            <button type="button" class="btn btn-primary">关联运单</button>
+          </div>
+        </div>
+
+        <!-- 列表 -->
+        <div class="panel">
+          <div class="tab-bar">
+            <div class="dim-tabs" role="tablist" aria-label="货物维度">
+              <button type="button" class="dim-tab active" data-dim="lcl">散货（LCL）</button>
+              <button type="button" class="dim-tab" data-dim="fcl">整柜（FCL）</button>
+            </div>
+            <div class="status-tabs">
+              <button type="button" class="status-tab active">全部<span class="cnt">(11631)</span></button>
+              <button type="button" class="status-tab">草稿<span class="cnt">(33)</span></button>
+              <button type="button" class="status-tab">已提交<span class="cnt">(238)</span></button>
+              <button type="button" class="status-tab">报价中<span class="cnt">(5935)</span></button>
+              <button type="button" class="status-tab">已完成<span class="cnt">(4693)</span></button>
+            </div>
+          </div>
+
+          <!-- 散货表格 -->
+          <div class="table-panel active" id="tableLcl">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="col-check"><input type="checkbox" aria-label="全选" /></th>
+                    <th>序号</th>
+                    <th>询价单号</th>
+                    <th>报价单号</th>
+                    <th>出发仓</th>
+                    <th>总方数(CBM)</th>
+                    <th>计费重(KG)</th>
+                    <th>邮编</th>
+                    <th>委托客户</th>
+                    <th>产品名称</th>
+                    <th>报价人</th>
+                    <th>报价状态</th>
+                    <th>备注</th>
+                    <th>货好时间</th>
+                    <th>询价人</th>
+                    <th>状态</th>
+                    <th>运单号</th>
+                    <th>报价时间</th>
+                    <th>是否复制</th>
+                    <th class="col-ops">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="col-check"><input type="checkbox" /></td>
+                    <td>1</td>
+                    <td><a class="link" href="ESS询价编辑-MVP.html">XJ1779516168576</a></td>
+                    <td><a class="link" href="询价复制报价.html">BJ1779516170615</a></td>
+                    <td>义乌总仓</td>
+                    <td class="num-red">2.50</td>
+                    <td>625</td>
+                    <td>61604</td>
+                    <td class="ellipsis" title="华南某贸易">华南某贸易</td>
+                    <td class="ellipsis">美西私人卡派</td>
+                    <td>王报价</td>
+                    <td><span class="tag tag-green">AI 已报价</span></td>
+                    <td class="ellipsis" title="优先 2.2 天时效">优先 2.2 天时效</td>
+                    <td>2026-05-20</td>
+                    <td>张立明</td>
+                    <td><span class="tag tag-blue">已提交</span></td>
+                    <td>—</td>
+                    <td>2026-05-20 15:42</td>
+                    <td>否</td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="#">复制</a>
+                        <a class="link" href="询价复制报价.html">复制报价</a>
+                        <a class="link" href="ESS询价编辑-MVP.html">编辑</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="col-check"><input type="checkbox" /></td>
+                    <td>2</td>
+                    <td><a class="link" href="ESS询价编辑-MVP.html">XJ1778226168576</a></td>
+                    <td>—</td>
+                    <td>宁波仓</td>
+                    <td>8.00</td>
+                    <td>1200</td>
+                    <td>92374</td>
+                    <td class="ellipsis">深圳某某科技</td>
+                    <td class="ellipsis">美西卡派专线</td>
+                    <td>—</td>
+                    <td><span class="tag tag-orange">待报价</span></td>
+                    <td>—</td>
+                    <td>2026-05-22</td>
+                    <td>李芳</td>
+                    <td><span class="tag tag-blue">报价中</span></td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>否</td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="#">复制</a>
+                        <a class="link" href="#">复制报价</a>
+                        <a class="link" href="ESS询价编辑-MVP.html">编辑</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="col-check"><input type="checkbox" /></td>
+                    <td>3</td>
+                    <td><a class="link" href="ESS询价编辑-MVP.html">XJ1777001234567</a></td>
+                    <td><a class="link" href="询价复制报价.html">BJ1777001234999</a></td>
+                    <td>福永仓</td>
+                    <td>1.20</td>
+                    <td>87</td>
+                    <td>92374</td>
+                    <td class="ellipsis">广州某电商</td>
+                    <td class="ellipsis">T25</td>
+                    <td>王报价</td>
+                    <td><span class="tag tag-green">人工已报价</span></td>
+                    <td>—</td>
+                    <td>2026-05-18</td>
+                    <td>王浩</td>
+                    <td><span class="tag tag-gray">已完成</span></td>
+                    <td>YD20260518001</td>
+                    <td>2026-05-19 09:30</td>
+                    <td>是</td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="#">复制</a>
+                        <a class="link" href="询价复制报价.html">复制报价</a>
+                        <a class="link" href="ESS询价编辑-MVP.html">编辑</a>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pager">
+              <span>共 11631 条</span>
+              <select><option>500 条/页</option><option>100 条/页</option></select>
+              <div class="pager-btns">
+                <button type="button">‹</button>
+                <button type="button" class="active">1</button>
+                <button type="button">2</button>
+                <button type="button">3</button>
+                <button type="button">›</button>
+              </div>
+              <span>跳至 <input type="text" value="1" style="width:40px" /> 页</span>
+            </div>
+          </div>
+
+          <!-- 整柜表格 -->
+          <div class="table-panel" id="tableFcl">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="col-check"><input type="checkbox" aria-label="全选" /></th>
+                    <th>序号</th>
+                    <th>询价单号</th>
+                    <th>报价单号</th>
+                    <th>起运港</th>
+                    <th>目的港</th>
+                    <th>箱型</th>
+                    <th>货物毛重(KG)</th>
+                    <th>喜好船司</th>
+                    <th>询价项</th>
+                    <th>收货邮编</th>
+                    <th>委托客户</th>
+                    <th>产品名称</th>
+                    <th>报价人</th>
+                    <th>报价状态</th>
+                    <th>货好时间</th>
+                    <th>询价人</th>
+                    <th>状态</th>
+                    <th>报价时间</th>
+                    <th>是否复制</th>
+                    <th class="col-ops">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="col-check"><input type="checkbox" /></td>
+                    <td>1</td>
+                    <td><a class="link" href="ESS整柜询价详情-MVP.html">XJ202605230018</a><span class="tag-fcl">FCL</span></td>
+                    <td><a class="link" href="ESS整柜报价详情-MVP.html">BJ202605230018</a></td>
+                    <td>盐田</td>
+                    <td>洛杉矶</td>
+                    <td>40HQ</td>
+                    <td>18,500</td>
+                    <td>COSCO/EMC</td>
+                    <td class="ellipsis" title="海运费+国外拖车+国内拖车">海+外拖+内拖</td>
+                    <td>92374</td>
+                    <td class="ellipsis">深圳某某贸易</td>
+                    <td class="ellipsis">美西整柜专线</td>
+                    <td>王报价</td>
+                    <td><span class="tag tag-green">人工已报价</span></td>
+                    <td>2026-06-08</td>
+                    <td>张立明</td>
+                    <td><span class="tag tag-blue">报价中</span></td>
+                    <td>2026-05-23 10:18</td>
+                    <td>否</td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="#">复制</a>
+                        <a class="link" href="ESS整柜询价详情-MVP.html">复制报价</a>
+                        <a class="link" href="ESS整柜询价详情-MVP.html">详情</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="col-check"><input type="checkbox" /></td>
+                    <td>2</td>
+                    <td><a class="link" href="ESS询价编辑-MVP.html">XJ202605220056</a><span class="tag-fcl">FCL</span></td>
+                    <td>—</td>
+                    <td>宁波</td>
+                    <td>长滩</td>
+                    <td>40GP</td>
+                    <td>22,000</td>
+                    <td>ONE</td>
+                    <td class="ellipsis">海运费</td>
+                    <td>90802</td>
+                    <td class="ellipsis">义乌某家具</td>
+                    <td class="ellipsis">美西整柜</td>
+                    <td>—</td>
+                    <td><span class="tag tag-orange">待报价</span></td>
+                    <td>—</td>
+                    <td>李芳</td>
+                    <td><span class="tag tag-blue">已提交</span></td>
+                    <td>—</td>
+                    <td>否</td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="#">复制</a>
+                        <a class="link" href="#">复制报价</a>
+                        <a class="link" href="ESS询价编辑-MVP.html">编辑</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="col-check"><input type="checkbox" /></td>
+                    <td>3</td>
+                    <td><a class="link" href="ESS询价编辑-MVP.html">XJ202605180088</a><span class="tag-fcl">FCL</span></td>
+                    <td><a class="link" href="ESS整柜报价编辑-MVP.html">BJ202605180088</a></td>
+                    <td>上海</td>
+                    <td>纽约</td>
+                    <td>20GP</td>
+                    <td>12,800</td>
+                    <td>MSC</td>
+                    <td class="ellipsis">海+外拖</td>
+                    <td>10001</td>
+                    <td class="ellipsis">上海某进出口</td>
+                    <td class="ellipsis">美东整柜</td>
+                    <td>王报价</td>
+                    <td><span class="tag tag-green">AI 已报价</span></td>
+                    <td>2026-06-15</td>
+                    <td>王浩</td>
+                    <td><span class="tag tag-gray">已完成</span></td>
+                    <td>2026-05-19 14:22</td>
+                    <td>是</td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="#">复制</a>
+                        <a class="link" href="ESS整柜询价详情-MVP.html">复制报价</a>
+                        <a class="link" href="ESS整柜询价详情-MVP.html">详情</a>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pager">
+              <span>共 286 条</span>
+              <select><option>500 条/页</option></select>
+              <div class="pager-btns">
+                <button type="button" class="active">1</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prd-note">
+          <strong>PRD · 列表维度</strong>：顶部 Tab 切换「散货 / 整柜」，筛选条件与列字段联动变化。本页为<strong>业务员视图</strong>；报价员工作台见 <a class="link" href="ESS询价报价-报价员列表-MVP.html">询价报价（报价员）</a>。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var currentDim = "lcl";
+      var dimTabs = document.querySelectorAll(".dim-tab");
+      var filterPanels = document.querySelectorAll(".filter-panel");
+      var tableLcl = document.getElementById("tableLcl");
+      var tableFcl = document.getElementById("tableFcl");
+      var btnNew = document.getElementById("btnNew");
+
+      var links = {
+        lcl: { new: "ESS询价编辑-MVP.html", edit: "ESS询价编辑-MVP.html" },
+        fcl: { new: "ESS询价编辑-MVP.html#fcl", edit: "ESS整柜报价编辑-MVP.html" }
+      };
+
+      function setDim(dim) {
+        currentDim = dim;
+        dimTabs.forEach(function (t) {
+          t.classList.toggle("active", t.getAttribute("data-dim") === dim);
+        });
+        filterPanels.forEach(function (p) {
+          p.classList.toggle("active", p.getAttribute("data-dim") === dim);
+        });
+        tableLcl.classList.toggle("active", dim === "lcl");
+        tableFcl.classList.toggle("active", dim === "fcl");
+      }
+
+      dimTabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          setDim(tab.getAttribute("data-dim"));
+        });
+      });
+
+      btnNew.addEventListener("click", function () {
+        location.href = links[currentDim].new;
+      });
+
+      document.querySelectorAll(".status-tab").forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
+          tab.classList.add("active");
+        });
+      });
+
+      if (location.hash === "#fcl") setDim("fcl");
+    })();
+  </script>
+  <link rel="stylesheet" href="ess-prototype-nav.css" />
+  <script src="ess-prototype-nav.js" defer></script>
+</body>
+</html>
