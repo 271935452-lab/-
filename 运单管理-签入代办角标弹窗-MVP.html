@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>运单管理 · 签入代办角标与弹窗 MVP</title>
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --sidebar-hover: #112240;
+      --sidebar-active: #1890ff;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --red: #ff4d4f;
+      --badge-bg: #ff4d4f;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+
+    /* ── 原型演示条 ── */
+    .demo-bar {
+      background: #fffbe6; border-bottom: 1px solid #ffe58f;
+      padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center;
+      font-size: 12px; color: #ad6800; z-index: 200;
+    }
+    .demo-bar strong { color: #874d00; }
+    .demo-bar .btn-demo {
+      height: 28px; padding: 0 12px; border-radius: 2px;
+      border: 1px solid #ffd591; background: #fff; color: #d46b08; cursor: pointer;
+    }
+    .demo-bar .btn-demo:hover { background: #fff7e6; }
+    .demo-bar .hint { color: #8c8c8c; margin-left: auto; }
+
+    /* ── 顶栏 ── */
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs {
+      display: flex; align-items: stretch; overflow-x: auto; flex: 1;
+    }
+    .nav-tab {
+      position: relative;
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab:hover { color: #fff; background: #1a3a62; }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .nav-tab .close-x {
+      font-size: 11px; opacity: .5; margin-left: 2px;
+    }
+    .header-right {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 14px; flex-shrink: 0;
+    }
+    .header-search {
+      width: 140px; height: 28px; border-radius: 2px;
+      border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.08);
+      color: #fff; padding: 0 8px; font-size: 12px;
+    }
+    .header-search::placeholder { color: rgba(255,255,255,.45); }
+    .header-user { font-size: 12px; color: rgba(255,255,255,.85); white-space: nowrap; }
+    .header-user-wrap {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .header-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,255,255,.2); flex-shrink: 0;
+    }
+
+    /* ── 消息铃铛 ── */
+    .msg-bell-wrap { position: relative; flex-shrink: 0; overflow: visible; }
+    .msg-bell-btn {
+      position: relative; width: 36px; height: 36px;
+      border: none; background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; color: #fff; overflow: visible;
+    }
+    .msg-bell-btn:hover { background: rgba(255,255,255,.08); border-radius: 4px; }
+    .msg-bell-btn svg { width: 20px; height: 20px; display: block; }
+    .bell-badge {
+      position: absolute; top: -2px; right: -6px; z-index: 2;
+      min-width: 18px; height: 18px; padding: 0 5px;
+      border-radius: 10px; background: var(--badge-bg); color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+      border: 1.5px solid #fff; box-sizing: border-box;
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+      transform: scale(0); opacity: 0;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+      pointer-events: none;
+    }
+    .bell-badge.show { transform: scale(1); opacity: 1; }
+    .bell-badge.pulse { animation: badgePulse .6s ease; }
+    .msg-dropdown {
+      position: absolute; top: calc(100% + 6px); right: 0;
+      width: 176px; background: #fff; border-radius: 4px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15), 0 0 0 1px rgba(0,0,0,.06);
+      padding: 4px 0; z-index: 200;
+      opacity: 0; visibility: hidden; transform: translateY(-6px);
+      transition: opacity .2s, transform .2s, visibility .2s;
+    }
+    .msg-dropdown.show {
+      opacity: 1; visibility: visible; transform: translateY(0);
+    }
+    .msg-dropdown-item {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; padding: 10px 14px; border: none; background: none;
+      font: inherit; font-size: 13px; color: rgba(0,0,0,.85);
+      cursor: pointer; text-align: left;
+    }
+    .msg-dropdown-item:hover { background: #f5f5f5; color: var(--blue); }
+    .item-badge {
+      min-width: 18px; height: 18px; padding: 0 5px; border-radius: 10px;
+      background: var(--badge-bg); color: #fff; font-size: 10px; font-weight: 700;
+      line-height: 18px; text-align: center;
+    }
+    .item-badge.empty {
+      background: transparent; color: var(--sub); font-weight: 400; min-width: auto;
+    }
+
+    /* ── 角标 ── */
+    .badge-dot {
+      position: absolute;
+      top: 6px; right: 6px;
+      min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: 999px;
+      background: var(--badge-bg); color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+      box-shadow: 0 0 0 1px var(--header-tab);
+      transform: scale(0); opacity: 0;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+      pointer-events: none;
+    }
+    .nav-tab.active .badge-dot { box-shadow: 0 0 0 1px var(--bg); }
+    .badge-dot.show { transform: scale(1); opacity: 1; }
+    .badge-dot.pulse { animation: badgePulse .6s ease; }
+    @keyframes badgePulse {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+
+    /* ── 主体布局 ── */
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 56px; flex-shrink: 0;
+      background: var(--sidebar); color: rgba(255,255,255,.65);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8px 0; gap: 2px;
+    }
+    .side-item {
+      position: relative;
+      width: 48px; padding: 8px 4px 6px;
+      border: none; background: none; color: inherit;
+      cursor: pointer; border-radius: 4px;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      font-size: 10px; line-height: 1.2;
+    }
+    .side-item:hover { background: var(--sidebar-hover); color: #fff; }
+    .side-item.active { color: var(--sidebar-active); }
+    .side-item .ico {
+      width: 20px; height: 20px; border-radius: 4px;
+      background: rgba(255,255,255,.12); display: block;
+    }
+    .side-item.active .ico { background: rgba(24,144,255,.25); }
+    .side-item .badge-dot {
+      top: 2px; right: 2px;
+      box-shadow: 0 0 0 1px var(--sidebar);
+    }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    /* ── 筛选区 ── */
+    .filter-panel {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 12px 14px 8px;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px 12px;
+    }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .filter-item label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px;
+    }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px;
+    }
+    .toolbar {
+      padding: 8px 14px; background: var(--card);
+      border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .tool-btn {
+      height: 28px; padding: 0 10px; border-radius: 2px;
+      border: 1px solid var(--blue); background: var(--blue); color: #fff;
+      cursor: pointer; font-size: 12px; white-space: nowrap;
+    }
+    .tool-btn.outline { background: #fff; color: var(--blue); }
+    .tool-btn.warn { background: #fa8c16; border-color: #fa8c16; }
+
+    /* ── 状态 Tab ── */
+    .status-bar {
+      background: #fafafa; border-bottom: 1px solid var(--line);
+      padding: 0 14px; display: flex; flex-wrap: wrap;
+    }
+    .status-tab {
+      padding: 10px 12px; border: none; background: none;
+      font-size: 13px; color: var(--sub); cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .status-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+    /* ── 表格 ── */
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      border: 1px solid var(--line); padding: 8px 10px;
+      text-align: left; white-space: nowrap;
+    }
+    th { background: #fafafa; font-weight: 600; color: var(--sub); }
+    tr:hover td { background: #e6f7ff; }
+    tr.waybill-has-todo td { background: #fff7e6; }
+    tr.waybill-has-todo:hover td { background: #ffe7ba; }
+    tr.waybill-has-todo td:first-child { box-shadow: inset 3px 0 0 #fa8c16; }
+    .col-index { width: 52px; text-align: center; vertical-align: middle; }
+    .cell-index-head {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--sub); font-weight: 600;
+    }
+    .cell-index-stack {
+      position: relative; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      min-height: 36px; padding-top: 2px;
+    }
+    .cell-index-num { font-size: 12px; line-height: 1; color: var(--text); }
+    .cell-index-wrap {
+      position: relative; display: inline-block;
+    }
+    .waybill-todo-badge {
+      position: absolute; top: -6px; right: -8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: 999px; background: var(--badge-bg); color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 1;
+      box-shadow: 0 0 0 1px #fff;
+      transform: scale(0); opacity: 0;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+      flex-shrink: 0;
+    }
+    .waybill-todo-badge.show { transform: scale(1); opacity: 1; }
+    .waybill-todo-badge.pulse { animation: badgePulse .6s ease; }
+    .waybill-no { color: var(--blue); cursor: pointer; }
+    .waybill-no:hover { text-decoration: underline; }
+    .pager {
+      padding: 10px 14px; background: var(--card);
+      border-top: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+      font-size: 12px; color: var(--sub);
+    }
+
+    /* ── 右下角代办弹窗 ── */
+    .todo-toast-stack {
+      position: fixed; right: 20px; bottom: 20px;
+      z-index: 1000; display: flex; flex-direction: column-reverse; gap: 10px;
+      pointer-events: none; max-width: min(420px, calc(100vw - 40px));
+    }
+    .todo-toast {
+      pointer-events: auto;
+      background: #fff; border-radius: 4px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.15), 0 0 0 1px rgba(0,0,0,.04);
+      padding: 14px 16px 12px 44px;
+      position: relative;
+      transform: translateX(calc(100% + 40px)); opacity: 0;
+      transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .3s;
+    }
+    .todo-toast.show { transform: translateX(0); opacity: 1; }
+    .todo-toast.hide { transform: translateX(calc(100% + 40px)); opacity: 0; }
+    .todo-toast .toast-ico {
+      position: absolute; left: 14px; top: 14px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #fff7e6; color: #fa8c16;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+    }
+    .todo-toast .toast-title {
+      font-size: 14px; font-weight: 600; color: var(--text); margin: 0 0 6px;
+      line-height: 1.45;
+    }
+    .todo-toast .toast-title em {
+      font-style: normal; color: var(--blue);
+    }
+    .todo-toast .toast-meta {
+      font-size: 12px; color: var(--sub); margin: 0 0 10px; line-height: 1.5;
+    }
+    .todo-toast .toast-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .todo-toast .toast-btn {
+      height: 26px; padding: 0 12px; border-radius: 2px;
+      border: 1px solid #d9d9d9; background: #fff; cursor: pointer; font-size: 12px;
+    }
+    .todo-toast .toast-btn.primary {
+      background: var(--blue); border-color: var(--blue); color: #fff;
+    }
+    .todo-toast .toast-close {
+      position: absolute; top: 8px; right: 8px;
+      width: 22px; height: 22px; border: none; background: none;
+      color: var(--sub); cursor: pointer; font-size: 16px; line-height: 1;
+      border-radius: 2px;
+    }
+    .todo-toast .toast-close:hover { background: #f5f5f5; color: var(--text); }
+
+    /* ── PRD 说明 ── */
+    .prd-note {
+      margin: 10px 14px 14px; padding: 12px 14px;
+      background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px;
+      font-size: 12px; line-height: 1.65; color: #135200;
+    }
+    .prd-note strong { color: #389e0d; }
+    .prd-note ul { margin: 6px 0 0; padding-left: 18px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="demo-bar" role="note">
+      <strong>原型演示</strong>
+      <button type="button" class="btn-demo" id="btnSimCheckin">模拟签入（未上传报关资料）</button>
+      <button type="button" class="btn-demo" id="btnSimPush">模拟服务端推送（无需刷新）</button>
+      <button type="button" class="btn-demo" id="btnClearTodo">清空代办</button>
+      <span class="hint">签入后若报关资料未上传 → 序号列/菜单/铃铛角标 +1 · 铃铛下拉：我的消息/我的代办/我的审批</span>
+    </div>
+
+    <header class="top-header">
+      <div class="logo" title="LOGO">LOGO</div>
+      <nav class="nav-tabs" aria-label="顶部页签">
+        <button type="button" class="nav-tab">控制台</button>
+        <button type="button" class="nav-tab active" id="tabWaybillMgmt">
+          运单管理 <span class="close-x">×</span>
+          <span class="badge-dot" id="badgeTabWaybillMgmt" aria-label="运单管理未读数">0</span>
+        </button>
+        <button type="button" class="nav-tab">收款管理 <span class="close-x">×</span></button>
+        <button type="button" class="nav-tab">银行凭证 <span class="close-x">×</span></button>
+        <button type="button" class="nav-tab">员工管理 <span class="close-x">×</span></button>
+        <button type="button" class="nav-tab">客户管理 <span class="close-x">×</span></button>
+        <button type="button" class="nav-tab">流程节点 <span class="close-x">×</span></button>
+        <button type="button" class="nav-tab" id="tabTodoFlow">
+          待办流程 <span class="close-x">×</span>
+        </button>
+        <button type="button" class="nav-tab" id="tabMyTodo">
+          我的待办 <span class="close-x">×</span>
+          <span class="badge-dot" id="badgeTabMyTodo" aria-label="我的待办未读数">0</span>
+        </button>
+      </nav>
+      <div class="header-right">
+        <input type="text" class="header-search" placeholder="菜单搜索" />
+        <div class="header-user-wrap">
+          <span class="header-avatar" aria-hidden="true"></span>
+          <span class="header-user">IT(BT0022)</span>
+        </div>
+        <div class="msg-bell-wrap" id="msgBellWrap">
+          <button type="button" class="msg-bell-btn" id="btnMsgBell" aria-label="消息通知" aria-expanded="false" aria-haspopup="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+            </svg>
+            <span class="bell-badge" id="badgeBell" aria-label="未读消息总数">0</span>
+          </button>
+          <div class="msg-dropdown" id="msgDropdown" role="menu" aria-label="消息分类">
+            <button type="button" class="msg-dropdown-item" role="menuitem" data-type="message">
+              我的消息
+              <span class="item-badge empty" id="badgeMsgItem">0</span>
+            </button>
+            <button type="button" class="msg-dropdown-item" role="menuitem" data-type="todo">
+              我的代办
+              <span class="item-badge empty" id="badgeTodoItem">0</span>
+            </button>
+            <button type="button" class="msg-dropdown-item" role="menuitem" data-type="approval">
+              我的审批
+              <span class="item-badge empty" id="badgeApprovalItem">0</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar" aria-label="左侧菜单">
+        <button type="button" class="side-item"><span class="ico"></span>收藏</button>
+        <button type="button" class="side-item"><span class="ico"></span>企业</button>
+        <button type="button" class="side-item active" id="sideWaybill">
+          <span class="ico"></span>运单
+          <span class="badge-dot" id="badgeSideWaybill" aria-label="运单模块未读数">0</span>
+        </button>
+        <button type="button" class="side-item"><span class="ico"></span>客服</button>
+        <button type="button" class="side-item"><span class="ico"></span>操作</button>
+        <button type="button" class="side-item"><span class="ico"></span>产品</button>
+        <button type="button" class="side-item"><span class="ico"></span>海外</button>
+        <button type="button" class="side-item"><span class="ico"></span>财务</button>
+        <button type="button" class="side-item"><span class="ico"></span>仓库</button>
+        <button type="button" class="side-item" id="sideTodo"><span class="ico"></span>待办</button>
+        <button type="button" class="side-item"><span class="ico"></span>权限</button>
+        <button type="button" class="side-item"><span class="ico"></span>报表</button>
+      </aside>
+
+      <main class="main">
+        <section class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>到货时间</label><input type="text" value="2026-05-01 ~ 2026-05-23" /></div>
+            <div class="filter-item"><label>运单号</label><input type="text" value="FBA19DFXK542" /></div>
+            <div class="filter-item"><label>客户名称</label><input type="text" placeholder="请输入" /></div>
+            <div class="filter-item"><label>国家CN</label><select><option>全部</option><option>US</option></select></div>
+            <div class="filter-item"><label>客户</label><input type="text" placeholder="请输入" /></div>
+            <div class="filter-item"><label>扣件类型</label><select><option>全部</option></select></div>
+          </div>
+        </section>
+
+        <div class="toolbar">
+          <button type="button" class="tool-btn">查询数据</button>
+          <button type="button" class="tool-btn outline">查看详情</button>
+          <button type="button" class="tool-btn outline">轨迹</button>
+          <button type="button" class="tool-btn outline">批量修改备注</button>
+          <button type="button" class="tool-btn outline">导出</button>
+          <button type="button" class="tool-btn warn" id="btnCheckin">签入</button>
+          <button type="button" class="tool-btn outline" id="btnUploadCustoms">上传报关资料</button>
+        </div>
+
+        <div class="status-bar">
+          <button type="button" class="status-tab active">全部(1)</button>
+          <button type="button" class="status-tab">待提仓到(1)</button>
+          <button type="button" class="status-tab">待出库(0)</button>
+          <button type="button" class="status-tab">已出库(0)</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-index">
+                  <div class="cell-index-head">
+                    <input type="checkbox" checked aria-label="全选" />
+                    <span>序号</span>
+                  </div>
+                </th>
+                <th>客户简称</th>
+                <th>new 约仓时间</th>
+                <th>客户单号</th>
+                <th>客户类型</th>
+                <th>运输方式</th>
+                <th>报关资料</th>
+                <th>签入状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="rowWaybill">
+                <td class="col-index" id="cellIndex">
+                  <span class="cell-index-wrap">
+                    <div class="cell-index-stack">
+                      <input type="checkbox" checked aria-label="选择第 1 行" />
+                      <span class="cell-index-num">1</span>
+                    </div>
+                    <span class="waybill-todo-badge" id="waybillTodoBadge" title="签入后上传报关资料">1</span>
+                  </span>
+                </td>
+                <td>大功成商</td>
+                <td>2026-05-20</td>
+                <td><a class="waybill-no" href="#">FBA19DFXK542</a></td>
+                <td>直客</td>
+                <td id="cellTransport">海运</td>
+                <td id="cellCustomsDoc"><span style="color:#ff4d4f">未上传</span></td>
+                <td id="cellCheckin">未签入</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pager">
+          <span>共 1 条</span>
+          <span>500 条/页</span>
+          <button type="button" class="tool-btn outline" style="height:24px;padding:0 8px;font-size:12px">1</button>
+        </div>
+
+        <div class="prd-note">
+          <strong>PRD · 签入后报关资料代办（3 / 3.1 / 3.2）</strong>
+          <ul>
+            <li><strong>触发条件：</strong>运单已签入，且<strong>报关资料未上传</strong> → 在对应<strong>业务员</strong>、<strong>客服</strong>的待办列表各生成一条代办。</li>
+            <li><strong>3.1 弹窗：</strong>右下角弹出「您有一件代办事项，请及时处理：<em>流程名称</em>」（如：签入后上传报关资料）。</li>
+            <li><strong>3.2 角标：</strong>「运单管理」「我的待办」顶栏 Tab、左侧「运单」模块菜单、<strong>列表运单行（序号列）</strong>展示未读角标；<strong>服务端推送/WebSocket 或轮询</strong>更新，<strong>无需手动刷新</strong>页面。</li>
+            <li><strong>运单行角标：</strong>该运单存在未处理代办（如签入后报关资料未上传）时，<strong>序号列（复选框+序号合并列）</strong>右上角显示红色角标「1」，整行浅橙底色提示；上传报关资料或处理完成后清除。</li>
+            <li><strong>消息铃铛：</strong>右上角铃铛角标展示三类未读总和（与 Tab/侧栏同步）；点击下拉：<strong>我的消息</strong>、<strong>我的代办</strong>、<strong>我的审批</strong>，各分类独立角标。</li>
+          </ul>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="todo-toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
+
+  <script>
+    (function () {
+      var FLOW_NAME = "签入后上传报关资料";
+      var POLL_MS = 8000;
+
+      var state = {
+        todoCount: 0,
+        msgCount: 0,
+        approvalCount: 0,
+        checkedIn: false,
+        customsUploaded: false,
+        waybillHasTodo: false
+      };
+
+      var badges = {
+        tabWaybillMgmt: document.getElementById("badgeTabWaybillMgmt"),
+        tabMyTodo: document.getElementById("badgeTabMyTodo"),
+        sideWaybill: document.getElementById("badgeSideWaybill"),
+        bell: document.getElementById("badgeBell")
+      };
+      var badgeMsgItem = document.getElementById("badgeMsgItem");
+      var badgeTodoItem = document.getElementById("badgeTodoItem");
+      var badgeApprovalItem = document.getElementById("badgeApprovalItem");
+      var msgBellWrap = document.getElementById("msgBellWrap");
+      var msgDropdown = document.getElementById("msgDropdown");
+      var btnMsgBell = document.getElementById("btnMsgBell");
+
+      var cellCheckin = document.getElementById("cellCheckin");
+      var cellCustomsDoc = document.getElementById("cellCustomsDoc");
+      var rowWaybill = document.getElementById("rowWaybill");
+      var waybillTodoBadge = document.getElementById("waybillTodoBadge");
+      var toastStack = document.getElementById("toastStack");
+
+      function formatBadge(n) {
+        if (n <= 0) return "0";
+        if (n > 99) return "99+";
+        return String(n);
+      }
+
+      function renderWaybillBadge(pulse) {
+        if (waybillTodoBadge) {
+          waybillTodoBadge.classList.toggle("show", state.waybillHasTodo);
+          if (pulse && state.waybillHasTodo) {
+            waybillTodoBadge.classList.remove("pulse");
+            void waybillTodoBadge.offsetWidth;
+            waybillTodoBadge.classList.add("pulse");
+          }
+        }
+        if (rowWaybill) {
+          rowWaybill.classList.toggle("waybill-has-todo", state.waybillHasTodo);
+        }
+      }
+
+      function totalNotifyCount() {
+        return state.todoCount + state.msgCount + state.approvalCount;
+      }
+
+      function renderItemBadge(el, n) {
+        if (!el) return;
+        el.textContent = formatBadge(n);
+        el.classList.toggle("empty", n <= 0);
+      }
+
+      function renderBellBadges(pulse) {
+        /* 铃铛角标 = 我的消息 + 我的代办 + 我的审批 未读总和 */
+        var total = totalNotifyCount();
+        var bell = badges.bell;
+        if (bell) {
+          bell.textContent = formatBadge(total);
+          bell.classList.toggle("show", total > 0);
+          bell.setAttribute("aria-label", "未读消息总数 " + total);
+          if (pulse && total > 0) {
+            bell.classList.remove("pulse");
+            void bell.offsetWidth;
+            bell.classList.add("pulse");
+          }
+        }
+        renderItemBadge(badgeMsgItem, state.msgCount);
+        renderItemBadge(badgeTodoItem, state.todoCount);
+        renderItemBadge(badgeApprovalItem, state.approvalCount);
+      }
+
+      function renderBadges(pulse) {
+        Object.keys(badges).forEach(function (key) {
+          if (key === "bell") return;
+          var el = badges[key];
+          if (!el) return;
+          var n = state.todoCount;
+          el.textContent = formatBadge(n);
+          el.classList.toggle("show", n > 0);
+          if (pulse && n > 0) {
+            el.classList.remove("pulse");
+            void el.offsetWidth;
+            el.classList.add("pulse");
+          }
+        });
+        renderWaybillBadge(pulse);
+        renderBellBadges(pulse);
+      }
+
+      function toggleMsgDropdown(force) {
+        var open = typeof force === "boolean" ? force : !msgDropdown.classList.contains("show");
+        msgDropdown.classList.toggle("show", open);
+        btnMsgBell.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+
+      function createToast(payload) {
+        var toast = document.createElement("div");
+        toast.className = "todo-toast";
+        toast.innerHTML =
+          '<button type="button" class="toast-close" aria-label="关闭">×</button>' +
+          '<div class="toast-ico">!</div>' +
+          '<p class="toast-title">您有一件代办事项，请及时处理：<em>' + payload.flowName + "</em></p>" +
+          '<p class="toast-meta">运单 ' + payload.waybillNo + " · " + payload.role + " · " + payload.time + "</p>" +
+          '<div class="toast-actions">' +
+          '<button type="button" class="toast-btn">稍后处理</button>' +
+          '<button type="button" class="toast-btn primary">去处理</button>' +
+          "</div>";
+
+        toastStack.appendChild(toast);
+        requestAnimationFrame(function () { toast.classList.add("show"); });
+
+        var autoTimer = setTimeout(function () { dismissToast(toast); }, 8000);
+
+        function dismissToast(node) {
+          clearTimeout(autoTimer);
+          node.classList.remove("show");
+          node.classList.add("hide");
+          setTimeout(function () { node.remove(); }, 350);
+        }
+
+        toast.querySelector(".toast-close").addEventListener("click", function () {
+          dismissToast(toast);
+        });
+        toast.querySelector(".toast-btn").addEventListener("click", function () {
+          dismissToast(toast);
+        });
+        toast.querySelector(".toast-btn.primary").addEventListener("click", function () {
+          dismissToast(toast);
+          document.getElementById("tabMyTodo").click();
+        });
+      }
+
+      function shouldCreateTodo() {
+        return state.checkedIn && !state.customsUploaded;
+      }
+
+      function markWaybillTodo() {
+        state.waybillHasTodo = true;
+      }
+
+      function pushTodoEvent(options) {
+        if (!shouldCreateTodo()) return false;
+
+        state.todoCount += 1;
+        markWaybillTodo();
+        renderBadges(true);
+
+        createToast({
+          flowName: options.flowName || FLOW_NAME,
+          waybillNo: options.waybillNo || "FBA19DFXK542",
+          role: options.role || "业务员 / 客服",
+          time: new Date().toLocaleString("zh-CN", { hour12: false })
+        });
+        return true;
+      }
+
+      function doCheckin() {
+        if (state.checkedIn) return;
+        state.checkedIn = true;
+        cellCheckin.textContent = "已签入";
+        cellCheckin.style.color = "#52c41a";
+
+        /* 后端：业务员、客服各生成一条待办；前端当前登录用户只收到并展示一条 */
+        if (!state.customsUploaded) {
+          pushTodoEvent({ role: "当前用户（业务员/客服）" });
+        }
+      }
+
+      function simulateServerPush() {
+        if (!shouldCreateTodo()) {
+          alert("当前无待触发代办（需：已签入 + 报关资料未上传）");
+          return;
+        }
+        pushTodoEvent({
+          role: "服务端推送",
+          flowName: FLOW_NAME
+        });
+      }
+
+      function clearTodos() {
+        state.todoCount = 0;
+        state.msgCount = 0;
+        state.approvalCount = 0;
+        state.checkedIn = false;
+        state.customsUploaded = false;
+        state.waybillHasTodo = false;
+        cellCheckin.textContent = "未签入";
+        cellCheckin.style.color = "";
+        cellCustomsDoc.innerHTML = '<span style="color:#ff4d4f">未上传</span>';
+        renderBadges(false);
+        toggleMsgDropdown(false);
+        while (toastStack.firstChild) toastStack.removeChild(toastStack.firstChild);
+      }
+
+      document.getElementById("btnUploadCustoms").addEventListener("click", function () {
+        if (!state.checkedIn) {
+          alert("请先签入运单");
+          return;
+        }
+        state.customsUploaded = true;
+        state.waybillHasTodo = false;
+        cellCustomsDoc.innerHTML = '<span style="color:#52c41a">已上传</span>';
+        renderWaybillBadge(false);
+        alert("报关资料已上传，运单行角标已清除（菜单角标需进入待办处理后再清）");
+      });
+
+      document.getElementById("btnCheckin").addEventListener("click", doCheckin);
+      document.getElementById("btnSimCheckin").addEventListener("click", doCheckin);
+      document.getElementById("btnSimPush").addEventListener("click", simulateServerPush);
+      document.getElementById("btnClearTodo").addEventListener("click", clearTodos);
+
+      document.getElementById("tabMyTodo").addEventListener("click", function () {
+        alert("跳转「我的待办」列表（原型示意）\n当前未读：" + state.todoCount);
+      });
+      document.getElementById("sideWaybill").addEventListener("click", function () {
+        alert("打开左侧「运单」模块（原型示意）\n当前未读：" + state.todoCount);
+      });
+
+      btnMsgBell.addEventListener("click", function (e) {
+        e.stopPropagation();
+        toggleMsgDropdown();
+      });
+
+      msgDropdown.querySelectorAll(".msg-dropdown-item").forEach(function (item) {
+        item.addEventListener("click", function () {
+          var type = item.getAttribute("data-type");
+          var labels = { message: "我的消息", todo: "我的代办", approval: "我的审批" };
+          var counts = {
+            message: state.msgCount,
+            todo: state.todoCount,
+            approval: state.approvalCount
+          };
+          toggleMsgDropdown(false);
+          if (type === "todo") {
+            document.getElementById("tabMyTodo").click();
+            return;
+          }
+          alert("跳转「" + labels[type] + "」列表（原型示意）\n当前未读：" + counts[type]);
+        });
+      });
+
+      document.addEventListener("click", function (e) {
+        if (!msgBellWrap.contains(e.target)) toggleMsgDropdown(false);
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") toggleMsgDropdown(false);
+      });
+
+      /* 模拟无需刷新的服务端推送：轮询检测（正式环境可换 WebSocket） */
+      var lastPollCount = 0;
+      setInterval(function () {
+        if (state.todoCount !== lastPollCount) {
+          lastPollCount = state.todoCount;
+          renderBadges(false);
+        }
+      }, POLL_MS);
+
+      renderBadges(false);
+    })();
+  </script>
+</body>
+</html>

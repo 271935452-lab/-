@@ -15,7 +15,7 @@
     {
       label: "列表",
       links: [
-        { file: "ESS我的报价-列表-MVP.html", label: "我的报价（业务员）" },
+        { file: "ESS我的报价-列表-MVP.html", label: "我的询价（业务员）" },
         { file: "ESS询价报价-报价员列表-MVP.html", label: "询价报价（报价员）" },
       ],
     },
