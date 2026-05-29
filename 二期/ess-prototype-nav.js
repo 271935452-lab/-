@@ -17,25 +17,29 @@
       links: [
         { file: "ESS我的报价-列表-MVP.html", label: "我的询价（业务员）" },
         { file: "ESS询价报价-报价员列表-MVP.html", label: "询价报价（报价员）" },
+        { file: "ESS询价报价-APP-列表-MVP.html", label: "询价报价 · APP 列表" },
       ],
     },
     {
       label: "询价",
       links: [
         { file: "ESS询价编辑-MVP.html", label: "询价编辑（散货 / 整柜）" },
+        { file: "ESS询价编辑-APP-散货-MVP.html", label: "询价编辑 · APP 散货" },
+        { file: "ESS询价编辑-APP-整柜-MVP.html", label: "询价编辑 · APP 整柜" },
       ],
     },
     {
       label: "详情",
       links: [
         { file: "ESS整柜询价详情-MVP.html", label: "整柜 · 询价方案详情" },
-        { file: "ESS整柜报价详情-MVP.html", label: "整柜 · 报价详情" },
+        { file: "ESS整柜询价详情-APP-MVP.html", label: "整柜 · 询价详情 · APP" },
+        { file: "ESS整柜报价详情-分段-MVP.html", label: "整柜 · 报价详情（仅分段）" },
       ],
     },
     {
       label: "报价",
       links: [
-        { file: "ESS整柜报价编辑-MVP.html", label: "整柜 · 报价编辑" },
+        { file: "ESS整柜报价编辑-MVP.html", label: "整柜 · 报价编辑（分段）" },
       ],
     },
     {
@@ -100,7 +104,9 @@
   }
 
   function mount() {
+    if (document.documentElement.getAttribute("data-ess-app") === "mobile") return;
     if (document.body && document.body.getAttribute("data-ess-nav") === "off") return;
+    if (/-APP-/i.test(currentFile())) return;
     if (document.querySelector(".ess-nav-sidenav")) return;
 
     var active = currentFile();

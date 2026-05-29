@@ -74,6 +74,7 @@
     }
     .field { min-width: 0; }
     .field.full { grid-column: 1 / -1; }
+    .field.hidden { display: none; }
     .field label {
       display: block;
       font-size: 13px;
@@ -143,6 +144,31 @@
       line-height: 1.5;
     }
     .hint.warn { color: #b45309; }
+
+    .ai-parse-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-ai {
+      border: none;
+      border-radius: 4px;
+      padding: 6px 14px;
+      font: inherit;
+      font-size: 13px;
+      color: #fff;
+      background: var(--primary);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-ai:hover { background: #1d4ed8; }
+    .ai-parse-hint {
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
 
     /* 散货 / 整柜切换 */
     .mode-switch {
@@ -283,8 +309,79 @@
       padding: 0 2px;
     }
 
-    .dim-panel { display: none; }
-    .dim-panel.active { display: contents; }
+    .dim-panel {
+      display: none;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 24px;
+    }
+    .dim-panel.active { display: grid; }
+    @media (max-width: 720px) {
+      .dim-panel.active { grid-template-columns: 1fr; }
+    }
+
+    /* 询价类型（整柜） */
+    .inquiry-type {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .type-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .type-chip:has(input:checked) {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .type-chip input { margin: 0; }
+    .price-group.is-disabled {
+      opacity: 0.55;
+      pointer-events: none;
+      background: #f3f4f6;
+    }
+    .field.hidden { display: none; }
+
+    /* 一口价面板 */
+    .all-in-panel {
+      padding: 14px;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #fffbeb, #fff);
+    }
+    .all-in-callout {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; margin-bottom: 12px;
+      border-radius: 6px; background: #fef3c7;
+      border: 1px solid #fde68a;
+      font-size: 13px; line-height: 1.6; color: #92400e;
+    }
+    .all-in-callout .ico { font-size: 18px; flex-shrink: 0; }
+    .all-in-scope {
+      display: flex; flex-wrap: wrap; gap: 8px 12px;
+      padding: 10px 12px; margin-bottom: 12px;
+      border: 1px dashed #fde68a; border-radius: 6px; background: #fff;
+    }
+    .scope-item {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; cursor: pointer; user-select: none;
+      padding: 6px 10px; border-radius: 6px;
+      border: 1px solid #e5e7eb; background: #fafafa;
+    }
+    .scope-item:has(input:checked) {
+      border-color: #f59e0b; background: #fff7ed; color: #b45309;
+    }
+    .scope-item input { margin: 0; }
 
     .footer-bar {
       position: fixed;
@@ -314,18 +411,6 @@
       color: #fff;
     }
     .btn-primary:hover { background: #1d4ed8; }
-
-    .prd-note {
-      margin-top: 4px;
-      padding: 12px 14px;
-      border-radius: 8px;
-      background: #f8fafc;
-      border: 1px solid var(--line);
-      font-size: 12px;
-      color: #64748b;
-      line-height: 1.65;
-    }
-    .prd-note strong { color: #334155; }
   </style>
 </head>
 <body>
@@ -347,16 +432,16 @@
               <span class="icon" aria-hidden="true">🔍</span>
             </div>
           </div>
-          <div class="field">
+          <div class="field field-lcl-only" id="fieldSalesProduct">
             <label for="product">销售产品</label>
             <div class="input-wrap">
               <input id="product" type="text" placeholder="销售产品（多选）" />
               <span class="icon" aria-hidden="true">🔍</span>
             </div>
           </div>
-          <div class="field full">
-            <label for="quoter">报价人</label>
-            <input id="quoter" type="text" placeholder="报价人（默认）" />
+          <div class="field full" id="fieldQuoter">
+            <label for="quoter">委托业务员</label>
+            <input id="quoter" type="text" placeholder="委托业务员（默认）" />
           </div>
         </div>
       </div>
@@ -426,9 +511,15 @@
                 <span class="icon" aria-hidden="true">🔍</span>
               </div>
             </div>
-            <div class="field full">
+            <div class="field">
               <label for="deliveryAddr">收货地址<span class="req">*</span></label>
               <input id="deliveryAddr" type="text" placeholder="收货详细地址" />
+            </div>
+            <div class="field">
+              <label for="deliveryZip">邮编<span class="req">*</span></label>
+              <input id="deliveryZip" type="text" placeholder="目的邮编" />
+            </div>
+            <div class="field full">
               <p class="hint warn">需确认好邮编，便于国外拖车费核算。</p>
             </div>
             <div class="field full">
@@ -437,15 +528,15 @@
               <p class="hint warn">询国内拖车费时必填装柜详细地址。</p>
             </div>
             <div class="field">
-              <label for="carrier">喜好船司</label>
-              <input id="carrier" type="text" placeholder="如 COSCO / EMC / ONE" list="carrierList" />
-              <datalist id="carrierList">
-                <option value="COSCO"></option>
-                <option value="EMC"></option>
-                <option value="ONE"></option>
-                <option value="MSC"></option>
-                <option value="CMA"></option>
-              </datalist>
+              <label>喜好船司</label>
+              <div class="ctn-group" role="group" aria-label="喜好船司">
+                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="COSCO" checked />COSCO</label>
+                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="EMC" checked />EMC</label>
+                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="ONE" />ONE</label>
+                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="MSC" />MSC</label>
+                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="CMA" />CMA</label>
+              </div>
+              <p class="hint">可多选；与箱型组合决定报价端必报方案数（箱型数 × 船司数）。</p>
             </div>
             <div class="field">
               <label>箱型<span class="req">*</span></label>
@@ -469,13 +560,22 @@
               </div>
             </div>
             <div class="field full">
-              <label>询价价格项</label>
-              <div class="price-group" role="group" aria-label="询价价格项">
-                <label class="price-item"><input type="checkbox" name="priceItem" value="ocean" checked />海运费</label>
-                <label class="price-item"><input type="checkbox" name="priceItem" value="foreignTruck" />国外拖车费</label>
-                <label class="price-item"><input type="checkbox" name="priceItem" value="domesticTruck" />国内拖车费</label>
+              <label>询价类型<span class="req">*</span></label>
+              <div class="inquiry-type" role="radiogroup" aria-label="询价类型">
+                <label class="type-chip">
+                  <input type="radio" name="inquiryType" value="terminalPickup" checked />码头自提
+                </label>
+                <label class="type-chip">
+                  <input type="radio" name="inquiryType" value="terminalDirect" />整柜海外仓自提
+                </label>
+                <label class="type-chip">
+                  <input type="radio" name="inquiryType" value="fclDirect" />整柜直送
+                </label>
+                <label class="type-chip">
+                  <input type="radio" name="inquiryType" value="fclDelivery" />整柜拆送
+                </label>
               </div>
-              <p class="hint">勾选需要报价的费用项；不勾选时默认仅询<strong>海运费</strong>。勾选国内拖车费请填写装柜地址。</p>
+              <p class="hint" id="inquiryTypeHint">选择整柜服务类型，便于报价员匹配拖派方案。</p>
             </div>
           </div>
 
@@ -487,6 +587,10 @@
           <div class="field full">
             <label for="inquiryDetail">询价详情</label>
             <textarea id="inquiryDetail" placeholder="询价详情"></textarea>
+            <div class="ai-parse-row">
+              <button type="button" class="btn-ai" id="btnAiParse">AI 识别</button>
+              <span class="ai-parse-hint" id="aiParseHint">提示：邮编 515135，总重量 10，总体积 10，产品品类：货物备注</span>
+            </div>
           </div>
         </div>
       </div>
@@ -508,14 +612,43 @@
       </div>
     </section>
 
-    <footer class="prd-note">
-      <strong>PRD · 整柜维度说明</strong><br />
-      ① 基本信息区顶部切换「散货 / 整柜」，字段互斥展示。<br />
-      ② 整柜必填：起运港、目的港、收货地址（含邮编）、箱型、货物毛重。<br />
-      ③ 货好时间：要船期时必填；纯询价可不填。<br />
-      ④ 询价价格项：海运费 / 国外拖车费 / 国内拖车费可多选；未选时后端默认仅询海运费。<br />
-      ⑤ 勾选国内拖车费时，装柜地址为必填校验项。
-    </footer>
+    <div class="ess-prd-source" hidden aria-hidden="true">
+      <span class="ess-prd-chip">PRD · 询价编辑</span>
+      <h3>询价编辑</h3>
+      <h4>维度切换</h4>
+      <ul>
+        <li>顶部切换<strong>散货 / 整柜</strong>，字段互斥；<strong>销售产品</strong>仅散货展示，整柜不显示。</li>
+      </ul>
+      <h4>整柜 · 地址</h4>
+      <ul>
+        <li><strong>收货地址</strong>与<strong>邮编</strong>分列展示，均为必填；邮编用于国外拖车费核算与地址校验。</li>
+      </ul>
+      <h4>整柜 · 港口</h4>
+      <ul>
+        <li><strong>起运港</strong>、<strong>目的港</strong>为搜索选择，数据源为<strong>数据字典 · 港口</strong>；不支持自由文本落库。</li>
+        <li><strong>起运港</strong>：仅展示标签为<strong>国内港口</strong>的字典项；支持按港口代码 / 中文名 / 英文名检索。</li>
+        <li><strong>目的港</strong>：仅展示标签为<strong>国外港口</strong>的字典项；支持按港口代码 / 中文名 / 英文名检索。</li>
+        <li>选中后保存字典主键及标准港口代码；列表、详情、报价摘要均展示字典标准名称。</li>
+      </ul>
+      <h4>整柜 · 询价类型</h4>
+      <ul>
+        <li>枚举：<strong>码头自提、整柜海外仓自提、整柜直送、整柜拆送</strong>（单选必填）。</li>
+      </ul>
+      <h4>AI 识别</h4>
+      <ul>
+        <li>在<strong>询价详情</strong>下方点击「AI 识别」，从文本中解析并回填字段；散货 / 整柜各自匹配对应字段。</li>
+        <li>散货示例：邮编、总重量、总体积、产品品类；整柜示例：起运港、目的港、箱型、毛重、邮编、船司等。</li>
+      </ul>
+      <h4>箱型</h4>
+      <ul>
+        <li>整柜<strong>箱型多选</strong>（20GP / 40GP / 40HQ / 45HQ 等）；所选箱型写入询价摘要，驱动报价端「每箱型至少一条方案」或「箱型×船司」组合校验。</li>
+      </ul>
+      <h4>喜好船司</h4>
+      <ul>
+        <li>选填，<strong>多选</strong>（COSCO / EMC / ONE 等芯片勾选）；与询价箱型共同构成报价端必报组合（见模块 PRD · 箱型 × 喜好船司）。</li>
+      </ul>
+      <p>必填项与路由见 <a href="ESS原型导航-询价模块.html">模块 PRD</a>。</p>
+    </div>
   </div>
 
   <div class="footer-bar">
@@ -525,21 +658,179 @@
 
   <script>
     (function () {
+      var STORAGE_KEY = "ess-inquiry-mode";
       var modeBtns = document.querySelectorAll(".mode-btn");
       var lclFields = document.getElementById("lclFields");
       var fclFields = document.getElementById("fclFields");
       var modeDesc = document.getElementById("modeDesc");
-      var priceItems = document.querySelectorAll('input[name="priceItem"]');
-      var domesticTruck = document.querySelector('input[name="priceItem"][value="domesticTruck"]');
-      var loadingAddr = document.getElementById("loadingAddr");
+      var inquiryTypeHint = document.getElementById("inquiryTypeHint");
+      var inquiryTypes = document.querySelectorAll('input[name="inquiryType"]');
+      var TYPE_STORAGE_KEY = "ess-inquiry-type";
       var currentMode = "lcl";
+      var inquiryTypeLabels = {
+        terminalPickup: "码头自提",
+        terminalDirect: "整柜海外仓自提",
+        fclDirect: "整柜直送",
+        fclDelivery: "整柜拆送"
+      };
+      var validInquiryTypes = Object.keys(inquiryTypeLabels);
 
       var modeText = {
         lcl: "散货维度：按交货仓、邮编、体积重量询价。",
-        fcl: "整柜维度：按起运港/目的港、箱型及所需价格项询价；不选价格项默认海运费。"
+        fcl: "整柜维度：按起运港/目的港、箱型询价；选择服务类型。"
       };
+      var aiHintText = {
+        lcl: "提示：邮编 515135，总重量 10，总体积 10，产品品类：货物备注",
+        fcl: "提示：起运港 盐田，目的港 洛杉矶，箱型 40HQ，毛重 18500，邮编 92374，船司 COSCO"
+      };
+      var aiParseHint = document.getElementById("aiParseHint");
+      var inquiryDetailEl = document.getElementById("inquiryDetail");
+      var fieldSalesProduct = document.getElementById("fieldSalesProduct");
+      var fieldQuoter = document.getElementById("fieldQuoter");
 
-      function setMode(mode) {
+      function pick(text, patterns) {
+        for (var i = 0; i < patterns.length; i++) {
+          var m = text.match(patterns[i]);
+          if (m && m[1]) return String(m[1]).trim();
+        }
+        return "";
+      }
+
+      function setInput(id, value) {
+        if (!value) return false;
+        var el = document.getElementById(id);
+        if (!el) return false;
+        el.value = value;
+        el.style.background = "#fef9c3";
+        window.setTimeout(function () { el.style.background = ""; }, 1200);
+        return true;
+      }
+
+      function updateChargeWeight() {
+        var vol = parseFloat(document.getElementById("totalVolume").value);
+        var wt = parseFloat(document.getElementById("totalWeight").value);
+        if (isNaN(vol) || isNaN(wt)) return;
+        var charge = Math.max(wt, vol * 167);
+        document.getElementById("chargeWeight").value = String(Math.round(charge * 100) / 100);
+      }
+
+      function applyCtnType(value) {
+        if (!value) return false;
+        var hit = false;
+        document.querySelectorAll('input[name="ctnType"]').forEach(function (cb) {
+          var on = value.toUpperCase().indexOf(cb.value) >= 0;
+          cb.checked = on;
+          if (on) hit = true;
+        });
+        return hit;
+      }
+
+      function applyPreferredCarriers(text) {
+        if (!text) return false;
+        var upper = text.toUpperCase();
+        var hit = false;
+        document.querySelectorAll('input[name="preferredCarrier"]').forEach(function (cb) {
+          var on = upper.indexOf(cb.value.toUpperCase()) >= 0;
+          cb.checked = on;
+          if (on) hit = true;
+        });
+        return hit;
+      }
+
+      function applyInquiryTypeByText(text) {
+        var rules = [
+          { key: "terminalPickup", words: ["码头自提"] },
+          { key: "terminalDirect", words: ["整柜海外仓自提", "海外仓自提"] },
+          { key: "fclDirect", words: ["整柜直送"] },
+          { key: "fclDelivery", words: ["整柜拆送"] }
+        ];
+        for (var i = 0; i < rules.length; i++) {
+          for (var j = 0; j < rules[i].words.length; j++) {
+            if (text.indexOf(rules[i].words[j]) >= 0) {
+              applyInquiryType(rules[i].key);
+              syncFclFields();
+              return rules[i].words[j];
+            }
+          }
+        }
+        return "";
+      }
+
+      function parseLcl(text) {
+        var filled = [];
+        if (setInput("zipcode", pick(text, [/邮编[：:\s]*([A-Za-z0-9\-]+)/i]))) filled.push("邮编");
+        if (setInput("totalWeight", pick(text, [/总重量[：:\s]*([\d.]+)/i, /重量[：:\s]*([\d.]+)\s*KG/i]))) filled.push("总重量");
+        if (setInput("totalVolume", pick(text, [/总体积[：:\s]*([\d.]+)/i, /体积[：:\s]*([\d.]+)\s*CBM/i]))) filled.push("总体积");
+        if (setInput("destCountry", pick(text, [/目的国[：:\s]*([^\n,，;；]+)/]))) filled.push("目的国");
+        if (setInput("warehouse", pick(text, [/交货仓[：:\s]*([^\n,，;；]+)/]))) filled.push("交货仓");
+        var product = pick(text, [/产品品类[：:\s]*([^\n]+)/, /产品信息[：:\s]*([^\n]+)/]);
+        if (setInput("productInfo", product)) filled.push("产品信息");
+        updateChargeWeight();
+        return filled;
+      }
+
+      function parseFcl(text) {
+        var filled = [];
+        if (setInput("pol", pick(text, [/起运港[：:\s]*([^\n,，;；]+)/]))) filled.push("起运港");
+        if (setInput("pod", pick(text, [/目的港[：:\s]*([^\n,，;；]+)/]))) filled.push("目的港");
+        if (setInput("deliveryAddr", pick(text, [/收货地址[：:\s]*([^\n]+)/, /地址[：:\s]*([^\n]+)/]))) filled.push("收货地址");
+        if (setInput("deliveryZip", pick(text, [/邮编[：:\s]*([A-Za-z0-9\-]+)/i]))) filled.push("邮编");
+        if (setInput("loadingAddr", pick(text, [/装柜地址[：:\s]*([^\n]+)/]))) filled.push("装柜地址");
+        if (setInput("grossWeight", pick(text, [/货物毛重[：:\s]*([\d.]+)/i, /毛重[：:\s]*([\d.]+)/i, /总重量[：:\s]*([\d.]+)/i]))) filled.push("货物毛重");
+        var carrierText = pick(text, [/喜好船司[：:\s]*([A-Za-z0-9/\s、,，]+)/, /船司[：:\s]*([A-Za-z0-9/\s、,，]+)/]);
+        if (applyPreferredCarriers(carrierText || text)) filled.push("喜好船司");
+        var ctn = pick(text, [/箱型[：:\s]*((?:20GP|40GP|40HQ|45HQ(?:\s*[×x]\s*\d+)?)+)/i]);
+        if (applyCtnType(ctn || text)) filled.push("箱型");
+        var ready = pick(text, [/货好时间[：:\s]*(\d{4}[-/年]\d{1,2}[-/月]\d{1,2})/]);
+        if (ready) {
+          ready = ready.replace(/[年月]/g, "-").replace(/[日号]/g, "").replace(/\//g, "-");
+          if (setInput("cargoReady", ready)) filled.push("货好时间");
+        }
+        var product = pick(text, [/产品品类[：:\s]*([^\n]+)/, /产品信息[：:\s]*([^\n]+)/]);
+        if (setInput("productInfo", product)) filled.push("产品信息");
+        var typeLabel = applyInquiryTypeByText(text);
+        if (typeLabel) filled.push("询价类型：" + typeLabel);
+        return filled;
+      }
+
+      function syncAiHint() {
+        aiParseHint.textContent = aiHintText[currentMode];
+      }
+
+      function runAiParse() {
+        var text = (inquiryDetailEl.value || "").trim();
+        if (!text) {
+          alert("请先在询价详情中粘贴或输入待识别文本");
+          inquiryDetailEl.focus();
+          return;
+        }
+        var filled = currentMode === "lcl" ? parseLcl(text) : parseFcl(text);
+        if (!filled.length) {
+          alert("未识别到可回填字段，请按提示格式补充关键词后重试");
+          return;
+        }
+        alert("【MVP演示】AI 识别完成，已回填：" + filled.join("、"));
+      }
+
+      function readInitialMode() {
+        if (location.hash === "#fcl") return "fcl";
+        try {
+          var saved = sessionStorage.getItem(STORAGE_KEY);
+          if (saved === "fcl" || saved === "lcl") return saved;
+        } catch (_) {}
+        return "lcl";
+      }
+
+      function persistMode(mode) {
+        try { sessionStorage.setItem(STORAGE_KEY, mode); } catch (_) {}
+        var nextHash = mode === "fcl" ? "#fcl" : "#lcl";
+        if (location.hash !== nextHash) {
+          history.replaceState(null, "", location.pathname + location.search + nextHash);
+        }
+      }
+
+      function setMode(mode, skipPersist) {
+        if (mode !== "lcl" && mode !== "fcl") mode = "lcl";
         currentMode = mode;
         modeBtns.forEach(function (btn) {
           var active = btn.getAttribute("data-mode") === mode;
@@ -548,46 +839,74 @@
         });
         lclFields.classList.toggle("active", mode === "lcl");
         fclFields.classList.toggle("active", mode === "fcl");
+        if (fieldSalesProduct) fieldSalesProduct.classList.toggle("hidden", mode === "fcl");
+        if (fieldQuoter) fieldQuoter.classList.toggle("full", mode === "lcl");
         modeDesc.textContent = modeText[mode];
+        syncAiHint();
+        if (!skipPersist) persistMode(mode);
+        if (mode === "fcl") syncFclFields();
+      }
+
+      function getInquiryType() {
+        var checked = document.querySelector('input[name="inquiryType"]:checked');
+        return checked ? checked.value : "terminalPickup";
+      }
+
+      function persistInquiryType(type) {
+        try { sessionStorage.setItem(TYPE_STORAGE_KEY, type); } catch (_) {}
+      }
+
+      function readInitialInquiryType() {
+        try {
+          var saved = sessionStorage.getItem(TYPE_STORAGE_KEY);
+          if (validInquiryTypes.indexOf(saved) >= 0) return saved;
+        } catch (_) {}
+        return "terminalPickup";
+      }
+
+      function applyInquiryType(type) {
+        inquiryTypes.forEach(function (radio) {
+          radio.checked = radio.value === type;
+        });
+      }
+
+      function syncFclFields() {
+        if (currentMode !== "fcl") return;
+        persistInquiryType(getInquiryType());
       }
 
       modeBtns.forEach(function (btn) {
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (e) {
+          e.preventDefault();
           setMode(btn.getAttribute("data-mode"));
         });
       });
 
-      function getSelectedPrices() {
-        var selected = [];
-        priceItems.forEach(function (cb) {
-          if (cb.checked) selected.push(cb.value);
-        });
-        if (!selected.length) selected = ["ocean"];
-        return selected;
-      }
+      inquiryTypes.forEach(function (radio) {
+        radio.addEventListener("change", syncFclFields);
+      });
 
-      function syncDomesticRequired() {
-        if (currentMode !== "fcl") return;
-        var need = domesticTruck && domesticTruck.checked;
-        loadingAddr.placeholder = need ? "装柜详细地址（必填）" : "装柜详细地址";
-      }
-
-      priceItems.forEach(function (cb) {
-        cb.addEventListener("change", syncDomesticRequired);
+      window.addEventListener("hashchange", function () {
+        setMode(location.hash === "#fcl" ? "fcl" : "lcl", true);
       });
 
       document.getElementById("btnSave").addEventListener("click", function () {
-        var prices = getSelectedPrices();
-        var labels = { ocean: "海运费", foreignTruck: "国外拖车费", domesticTruck: "国内拖车费" };
-        var priceLabel = prices.map(function (p) { return labels[p] || p; }).join("、");
         var dim = currentMode === "lcl" ? "散货" : "整柜";
-        alert("【MVP演示】保存 " + dim + " 询价\n询价价格项：" + priceLabel);
+        var typeLabel = currentMode === "fcl"
+          ? "\n询价类型：" + inquiryTypeLabels[getInquiryType()]
+          : "";
+        alert("【MVP演示】保存 " + dim + " 询价" + typeLabel);
       });
 
-      if (location.hash === "#fcl") setMode("fcl");
-      else setMode("lcl");
+      document.getElementById("btnAiParse").addEventListener("click", runAiParse);
+
+      applyInquiryType(readInitialInquiryType());
+      setMode(readInitialMode(), true);
+      syncFclFields();
     })();
   </script>
+  <link rel="stylesheet" href="ess-prototype-prd.css" />
+  <script src="ess-prototype-prd.js" defer></script>
   <link rel="stylesheet" href="ess-prototype-nav.css" />
   <script src="ess-prototype-nav.js" defer></script>
 </body>
