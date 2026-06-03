@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>柜子编辑 · 绑定进口商（MVP）</title>
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --warn: #faad14;
+      --warn-bg: #fffbe6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .top-header {
+      background: var(--header);
+      color: #fff;
+      padding: 0 16px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .top-header .title { font-size: 14px; font-weight: 600; }
+    .top-header .crumb { font-size: 12px; color: rgba(255,255,255,.65); }
+    .shell { min-height: 100vh; display: flex; flex-direction: column; }
+    .page { flex: 1; max-width: 960px; width: 100%; margin: 0 auto; padding: 16px 40px 40px 16px; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      margin-bottom: 12px;
+    }
+    .panel-hd {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel-hd .badge {
+      font-size: 11px;
+      font-weight: 500;
+      color: #d46b08;
+      background: #fff7e6;
+      border: 1px solid #ffd591;
+      padding: 2px 8px;
+      border-radius: 2px;
+    }
+    .panel-bd { padding: 16px; }
+    .form-row {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      min-height: 32px;
+    }
+    .form-row:last-child { margin-bottom: 0; }
+    .form-label {
+      width: 120px;
+      flex-shrink: 0;
+      text-align: right;
+      padding-right: 12px;
+      color: var(--sub);
+      line-height: 32px;
+    }
+    .form-label .req { color: #ff4d4f; margin-right: 2px; }
+    .form-control { flex: 1; min-width: 0; }
+    .form-control input, .form-control select {
+      width: 100%;
+      max-width: 420px;
+      height: 32px;
+      border: 1px solid #d9d9d9;
+      border-radius: 2px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+    .form-control input:focus, .form-control select:focus {
+      border-color: var(--blue);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+    .importer-picker {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .importer-picker select { flex: 1; min-width: 280px; max-width: 420px; }
+    .btn {
+      height: 32px;
+      padding: 0 14px;
+      border: 1px solid #d9d9d9;
+      border-radius: 2px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-link { border: none; background: none; color: var(--blue); padding: 0 4px; cursor: pointer; }
+    .importer-card {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #fafafa;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      max-width: 520px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .importer-card[hidden] { display: none !important; }
+    .importer-card strong { color: var(--text); }
+    .tag-status {
+      display: inline-block;
+      padding: 0 6px;
+      border-radius: 2px;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .tag-ok { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+    .tag-warn { background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; }
+    .tag-inactive { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+    .tag-bond { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .tag-stop { background: #f5f5f5; color: #8c8c8c; border: 1px solid #d9d9d9; }
+    .alert-warn {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: #fff2e8;
+      border: 1px solid #ffbb96;
+      border-radius: 2px;
+      font-size: 12px;
+      color: #d4380d;
+      max-width: 520px;
+    }
+    .alert-warn[hidden] { display: none !important; }
+    .sticky-ft {
+      position: sticky;
+      bottom: 0;
+      background: var(--card);
+      border-top: 1px solid var(--line);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+      box-shadow: 0 -2px 8px rgba(0,0,0,.06);
+    }
+    .importer-card, .alert-warn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 520px; }
+    html.embed-mode .top-header { display: none; }
+    html.embed-mode .page { padding: 12px 14px 16px; max-width: none; }
+    html.embed-mode .shell { min-height: auto; }
+    html.embed-mode .ess-prd-fab,
+    html.embed-mode .ess-prd-side,
+    html.embed-mode .ess-prd-backdrop { display: none !important; }
+    html.embed-mode body.ess-prd-page { padding-right: 0 !important; }
+  </style>
+  <script>
+    (function () {
+      if (new URLSearchParams(location.search).get('embed') === '1' || window.self !== window.top) {
+        document.documentElement.classList.add('embed-mode');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div class="shell">
+  <header class="top-header">
+    <span class="title">编辑柜子</span>
+    <span class="crumb">头程 / 柜子管理 / CONT-2025-08821</span>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-hd">柜子基本信息</div>
+      <div class="panel-bd">
+        <div class="form-row">
+          <div class="form-label">柜子号</div>
+          <div class="form-control"><input type="text" value="CONT-2025-08821" readonly style="background:#f5f5f5" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">提单号</div>
+          <div class="form-control"><input type="text" value="ONEY1234567890" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">箱型</div>
+          <div class="form-control">
+            <select><option selected>40HQ</option><option>20GP</option><option>40GP</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">目的港</div>
+          <div class="form-control"><input type="text" value="洛杉矶（USLAX）" /></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hd">
+        清关 / 进口商
+      </div>
+      <div class="panel-bd">
+        <div class="form-row">
+          <div class="form-label"><span class="req">*</span>进口商</div>
+          <div class="form-control">
+            <div class="importer-picker">
+              <select id="importerSelect" aria-label="选择进口商">
+                <option value="">请选择进口商</option>
+                <option value="IMP-US-2024-018" data-status="active">IMP-US-2024-018 · Pacific Trade Logistics LLC</option>
+                <option value="IMP-US-2023-006" data-status="watch">IMP-US-2023-006 · East Coast Import Co.（停用待观察）</option>
+                <option value="IMP-US-2025-003" data-status="inactive" disabled>IMP-US-2025-003 · Sunrise Global LLC（未启用）</option>
+                <option value="IMP-US-2022-001" data-status="disabled" disabled>IMP-US-2022-001 · Legacy Harbor Inc.（已停用）</option>
+              </select>
+              <button type="button" class="btn">搜索</button>
+              <a class="btn-link" href="进口商管理-MVP.html" target="_blank">维护进口商</a>
+            </div>
+            <div class="importer-card" id="importerPreview" hidden>
+              <div><strong id="previewName">—</strong><span class="tag-status tag-ok" id="previewTag">已启用</span></div>
+              <div>额度：<span id="previewLimit">—</span> · Bond：<span id="previewBond">—</span></div>
+              <div>POA：<span id="previewPoa">—</span> · 抬头：<span id="previewHeader">—</span></div>
+              <div>法人：<span id="previewLegal">—</span> · 在途未清关：<span id="previewTransit">—</span> 柜</div>
+            </div>
+            <div class="alert-warn" id="watchAlert" hidden>
+              该进口商处于<strong>停用待观察</strong>，近 30 天查验率 12.8%，绑定前请确认业务风险。
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">清关状态</div>
+          <div class="form-control">
+            <select>
+              <option selected>在途 · 待清关</option>
+              <option>在途 · 未到港</option>
+              <option>清关中</option>
+              <option>已清关</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">是否查验</div>
+          <div class="form-control">
+            <select disabled style="background:#f5f5f5">
+              <option>—（清关完成后填写）</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sticky-ft">
+      <button type="button" class="btn">取消</button>
+      <button type="button" class="btn btn-primary" id="btnSave">保存柜子</button>
+    </div>
+
+  </main>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 柜子绑定进口商</span>
+    <h3>柜子编辑 · 绑定进口商</h3>
+    <p>进口商在<strong>柜子新增/编辑</strong>维护绑定（非订单）。主数据在<a href="进口商管理-MVP.html">进口商管理</a>维护。</p>
+    <h4>进口商选择</h4>
+    <ul>
+      <li>下拉仅展示「已启用」「停用待观察」；<strong>未启用</strong>、<strong>已停用</strong>不可新绑定。</li>
+      <li>保存后写入柜子主档，用于在途统计与查验率汇总。</li>
+      <li>选中后展示额度、POA、发货人抬头、Bond 类型与保险代码、法人、在途柜数摘要。</li>
+      <li>「停用待观察」或 Bond 临期时展示风险提示条（交互演示）。</li>
+    </ul>
+    <h4>清关字段</h4>
+    <ul>
+      <li>清关状态：在途/清关中/已清关等。</li>
+      <li>是否查验：清关完成后填写（在途时禁用）。</li>
+    </ul>
+    <h4>产品约定（5/27）</h4>
+    <ul>
+      <li>进口商管理独立板块（信息 + 使用）。</li>
+      <li>关联维度为<strong>柜子</strong>，非订单。</li>
+      <li>在途柜数、查验率按柜子聚合。</li>
+      <li>订单侧进口商由柜子绑定<strong>带出</strong>（只读）。</li>
+    </ul>
+  </div>
+  </div>
+
+  <script>
+    (function () {
+      var meta = {
+        'IMP-US-2024-018': {
+          name: 'Pacific Trade Logistics LLC',
+          status: 'active',
+          limit: 'USD 500,000',
+          poa: '已授权',
+          header: 'Pacific Trade Logistics Inc.',
+          bond: '收货人 · 054',
+          legal: 'Michael Chen / 美国',
+          transit: 5
+        },
+        'IMP-US-2023-006': {
+          name: 'East Coast Import Co.',
+          status: 'watch',
+          limit: 'USD 200,000',
+          poa: '已授权',
+          header: 'East Coast Logistics LLC',
+          bond: '发货人 · 856（临期）',
+          legal: 'Lisa Wang / 中国',
+          transit: 12
+        }
+      };
+      var sel = document.getElementById('importerSelect');
+      var preview = document.getElementById('importerPreview');
+      var watchAlert = document.getElementById('watchAlert');
+      var tagMap = {
+        active: { text: '已启用', cls: 'tag-ok' },
+        watch: { text: '停用待观察', cls: 'tag-warn' },
+        inactive: { text: '未启用', cls: 'tag-inactive' },
+        disabled: { text: '已停用', cls: 'tag-stop' },
+        soon: { text: '临期', cls: 'tag-bond' }
+      };
+
+      sel.addEventListener('change', function () {
+        var code = sel.value;
+        if (!code || !meta[code]) {
+          preview.hidden = true;
+          watchAlert.hidden = true;
+          return;
+        }
+        var m = meta[code];
+        var t = tagMap[m.status] || tagMap.active;
+        preview.hidden = false;
+        document.getElementById('previewName').textContent = code + ' · ' + m.name;
+        var tagEl = document.getElementById('previewTag');
+        tagEl.textContent = t.text;
+        tagEl.className = 'tag-status ' + t.cls;
+        document.getElementById('previewLimit').textContent = m.limit;
+        document.getElementById('previewPoa').textContent = m.poa || '—';
+        document.getElementById('previewHeader').textContent = m.header || '—';
+        document.getElementById('previewBond').textContent = m.bond;
+        document.getElementById('previewLegal').textContent = m.legal;
+        document.getElementById('previewTransit').textContent = m.transit;
+        watchAlert.hidden = m.status !== 'watch';
+      });
+
+      sel.value = 'IMP-US-2024-018';
+      sel.dispatchEvent(new Event('change'));
+
+      document.getElementById('btnSave').addEventListener('click', function () {
+        if (!sel.value) {
+          alert('请选择进口商');
+          return;
+        }
+        alert('原型演示：柜子已保存，进口商绑定为 ' + sel.value);
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="imp-prototype-nav.css" />
+  <script src="imp-prototype-nav.js" defer></script>
+  <link rel="stylesheet" href="二期/ess-prototype-prd.css" />
+  <script src="二期/ess-prototype-prd.js" defer></script>
+</body>
+</html>

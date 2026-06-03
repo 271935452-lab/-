@@ -7,10 +7,8 @@
 
   var APP_LINKS = [
     { file: "ESS询价报价-APP-列表-MVP.html", label: "列表" },
-    { file: "ESS询价编辑-APP-散货-MVP.html", label: "散货编辑" },
     { file: "ESS询价编辑-APP-整柜-MVP.html", label: "整柜编辑" },
     { file: "ESS整柜询价详情-APP-MVP.html", label: "整柜详情" },
-    { file: "ESS原型导航-询价模块.html", label: "模块导航" },
   ];
 
   function currentFile() {

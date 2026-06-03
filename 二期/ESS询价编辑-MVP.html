@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ESS询价编辑（MVP）</title>
+  <link rel="stylesheet" href="ess-fcl-carriers.css" />
   <style>
     :root {
       --bg: #f4f6fa;
@@ -529,23 +530,13 @@
             </div>
             <div class="field">
               <label>喜好船司</label>
-              <div class="ctn-group" role="group" aria-label="喜好船司">
-                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="COSCO" checked />COSCO</label>
-                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="EMC" checked />EMC</label>
-                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="ONE" />ONE</label>
-                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="MSC" />MSC</label>
-                <label class="ctn-chip"><input type="checkbox" name="preferredCarrier" value="CMA" />CMA</label>
-              </div>
-              <p class="hint">可多选；与箱型组合决定报价端必报方案数（箱型数 × 船司数）。</p>
+              <div id="preferredCarrierMs"></div>
+              <p class="hint">下拉多选，<strong>最多 2 项</strong>；选项来自数据字典（海运船司）；与箱型组合决定报价端必报方案数。</p>
             </div>
             <div class="field">
               <label>箱型<span class="req">*</span></label>
-              <div class="ctn-group" role="group" aria-label="箱型">
-                <label class="ctn-chip"><input type="checkbox" name="ctnType" value="20GP" />20GP</label>
-                <label class="ctn-chip"><input type="checkbox" name="ctnType" value="40GP" />40GP</label>
-                <label class="ctn-chip"><input type="checkbox" name="ctnType" value="40HQ" />40HQ</label>
-                <label class="ctn-chip"><input type="checkbox" name="ctnType" value="45HQ" />45HQ</label>
-              </div>
+              <div id="ctnTypeMs"></div>
+              <p class="hint">下拉多选，<strong>最多 2 项</strong>；选项来自数据字典箱型（启用项）；与喜好船司组合决定报价端必报方案数。</p>
             </div>
             <div class="field">
               <label for="cargoReady">货好时间</label>
@@ -641,11 +632,11 @@
       </ul>
       <h4>箱型</h4>
       <ul>
-        <li>整柜<strong>箱型多选</strong>（20GP / 40GP / 40HQ / 45HQ 等）；所选箱型写入询价摘要，驱动报价端「每箱型至少一条方案」或「箱型×船司」组合校验。</li>
+        <li>整柜<strong>箱型下拉多选</strong>，<strong>最多 2 项</strong>；选项与数据字典箱型一致（12 项启用）；所选箱型写入询价摘要，驱动报价端「箱型×船司」组合校验。</li>
       </ul>
       <h4>喜好船司</h4>
       <ul>
-        <li>选填，<strong>多选</strong>（COSCO / EMC / ONE 等芯片勾选）；与询价箱型共同构成报价端必报组合（见模块 PRD · 箱型 × 喜好船司）。</li>
+        <li>选填，<strong>下拉多选</strong>，<strong>最多 2 项</strong>；选项与数据字典「海运船司」一致（18 项）；与询价箱型共同构成报价端必报组合（见模块 PRD · 箱型 × 喜好船司）。</li>
       </ul>
       <p>必填项与路由见 <a href="ESS原型导航-询价模块.html">模块 PRD</a>。</p>
     </div>
@@ -656,8 +647,13 @@
     <button type="button" class="btn btn-primary" id="btnSave">保存</button>
   </div>
 
+  <script src="ess-fcl-multiselect.js"></script>
+  <script src="ess-fcl-carriers.js"></script>
+  <script src="ess-fcl-container-types.js"></script>
   <script>
     (function () {
+      var carrierMs = null;
+      var ctnTypeMs = null;
       var STORAGE_KEY = "ess-inquiry-mode";
       var modeBtns = document.querySelectorAll(".mode-btn");
       var lclFields = document.getElementById("lclFields");
@@ -716,25 +712,18 @@
 
       function applyCtnType(value) {
         if (!value) return false;
-        var hit = false;
-        document.querySelectorAll('input[name="ctnType"]').forEach(function (cb) {
-          var on = value.toUpperCase().indexOf(cb.value) >= 0;
-          cb.checked = on;
-          if (on) hit = true;
-        });
-        return hit;
+        var codes = window.essFclContainersFromText ? essFclContainersFromText(value) : [];
+        if (!codes.length) return false;
+        if (ctnTypeMs) ctnTypeMs.setSelected(codes);
+        return true;
       }
 
       function applyPreferredCarriers(text) {
         if (!text) return false;
-        var upper = text.toUpperCase();
-        var hit = false;
-        document.querySelectorAll('input[name="preferredCarrier"]').forEach(function (cb) {
-          var on = upper.indexOf(cb.value.toUpperCase()) >= 0;
-          cb.checked = on;
-          if (on) hit = true;
-        });
-        return hit;
+        var codes = window.essFclCarriersFromText ? essFclCarriersFromText(text) : [];
+        if (!codes.length) return false;
+        if (carrierMs) carrierMs.setSelected(codes);
+        return true;
       }
 
       function applyInquiryTypeByText(text) {
@@ -779,7 +768,7 @@
         if (setInput("grossWeight", pick(text, [/货物毛重[：:\s]*([\d.]+)/i, /毛重[：:\s]*([\d.]+)/i, /总重量[：:\s]*([\d.]+)/i]))) filled.push("货物毛重");
         var carrierText = pick(text, [/喜好船司[：:\s]*([A-Za-z0-9/\s、,，]+)/, /船司[：:\s]*([A-Za-z0-9/\s、,，]+)/]);
         if (applyPreferredCarriers(carrierText || text)) filled.push("喜好船司");
-        var ctn = pick(text, [/箱型[：:\s]*((?:20GP|40GP|40HQ|45HQ(?:\s*[×x]\s*\d+)?)+)/i]);
+        var ctn = pick(text, [/箱型[：:\s]*([A-Za-z0-9,\s、/×x]+)/i]);
         if (applyCtnType(ctn || text)) filled.push("箱型");
         var ready = pick(text, [/货好时间[：:\s]*(\d{4}[-/年]\d{1,2}[-/月]\d{1,2})/]);
         if (ready) {
@@ -903,6 +892,19 @@
       applyInquiryType(readInitialInquiryType());
       setMode(readInitialMode(), true);
       syncFclFields();
+
+      if (window.essFclCarrierMultiselect) {
+        carrierMs = essFclCarrierMultiselect.mount(document.getElementById("preferredCarrierMs"), {
+          defaultSelected: ["COSCO", "EMC"],
+          limitTip: "喜好船司最多选择 2 项"
+        });
+      }
+      if (window.essFclContainerMultiselect) {
+        ctnTypeMs = essFclContainerMultiselect.mount(document.getElementById("ctnTypeMs"), {
+          defaultSelected: ["40HQ"],
+          limitTip: "箱型最多选择 2 项"
+        });
+      }
     })();
   </script>
   <link rel="stylesheet" href="ess-prototype-prd.css" />

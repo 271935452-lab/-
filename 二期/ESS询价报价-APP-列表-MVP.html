@@ -515,8 +515,8 @@
       <button type="button" class="filter-btn" id="btnFilter">筛选</button>
     </div>
     <div class="dim-tabs" role="tablist" aria-label="货物维度">
-      <button type="button" class="dim-tab active" data-dim="lcl" role="tab" title="草稿 + 报价中">散货(LCL)<span class="dim-badge" id="badgeLcl">0</span></button>
-      <button type="button" class="dim-tab" data-dim="fcl" role="tab" title="草稿 + 报价中">整柜(FCL)<span class="dim-badge" id="badgeFcl">0</span></button>
+      <button type="button" class="dim-tab" data-dim="lcl" role="tab" title="草稿 + 报价中">散货(LCL)<span class="dim-badge" id="badgeLcl">0</span></button>
+      <button type="button" class="dim-tab active" data-dim="fcl" role="tab" title="草稿 + 报价中">整柜(FCL)<span class="dim-badge" id="badgeFcl">0</span></button>
     </div>
     <div class="status-tabs" id="statusTabs" role="tablist" aria-label="报价状态">
       <button type="button" class="status-tab active" data-status="all">全部<span class="cnt">(0)</span></button>
@@ -529,14 +529,6 @@
 
   <main class="list" id="cardList" aria-label="询价列表"></main>
   <div class="empty hidden" id="emptyTip">暂无符合条件的询价</div>
-
-  <div class="add-menu" id="addMenu" aria-hidden="true">
-    <div class="add-sheet">
-      <button type="button" data-href="ESS询价编辑-APP-散货-MVP.html">新建散货询价</button>
-      <button type="button" data-href="ESS询价编辑-APP-整柜-MVP.html">新建整柜询价</button>
-      <button type="button" id="btnAddCancel">取消</button>
-    </div>
-  </div>
 
   <div class="msg-mask" id="msgMask" aria-hidden="true"></div>
   <div class="msg-sheet" id="msgSheet" role="dialog" aria-modal="true" aria-labelledby="msgTitle">
@@ -554,11 +546,12 @@
     <span class="ess-prd-chip">PRD · APP 询价列表</span>
     <h3>询价报价 · APP 列表</h3>
     <ul>
-      <li>顶部切换<strong>散货 / 整柜</strong>，卡片字段随维度变化；散货展示邮编/仓/KG·CBM，整柜展示起运港→目的港/箱型/询价类型。</li>
+      <li><strong>本期默认整柜</strong>：列表默认展示整柜维度（Tab 顺序固定为散货左 / 整柜右）；「+」直接进入整柜询价编辑。</li>
+      <li>顶部可切换<strong>散货 / 整柜</strong>，卡片字段随维度变化；散货展示邮编/仓/KG·CBM，整柜展示起运港→目的港/箱型/询价类型。</li>
       <li>卡片展示<strong>询价员</strong>（报价端跟进人，对应 PC 列表「报价人」）；已报价时在报价行同步展示完成时间与询价员姓名。</li>
-      <li>散货 / 整柜 Tab 角标：与 PC 业务员列表一致，统计<strong>草稿 + 报价中</strong>（APP 对应 draft + pending）；当前维度激活时隐藏角标；<strong>有角标者排在 Tab 栏最前</strong>。</li>
+      <li>散货 / 整柜 Tab 角标：与 PC 业务员列表一致，统计<strong>草稿 + 报价中</strong>；Tab 顺序固定<strong>散货在左、整柜在右</strong>，当前维度激活时隐藏角标。</li>
       <li>状态 Tab 括号数量为当前维度下各状态条数；已报价 = 人工已报价 + AI已报价。</li>
-      <li><strong>角标置顶</strong>：散货/整柜 Tab、状态 Tab、列表卡片凡展示未读角标者，均在各自区域内<strong>排在最前</strong>（状态 Tab 中「全部」始终第一位）；清除角标后恢复默认顺序。</li>
+      <li><strong>角标置顶</strong>：状态 Tab、列表卡片凡展示未读角标者<strong>排在最前</strong>（状态 Tab 中「全部」始终第一位）；维度 Tab 顺序不变。</li>
       <li><strong>收到报价 / 打回询价</strong>：服务端推送后，对应状态 Tab 角标、列表卡片角标 +1 并置顶；底部弹窗「您有一件代办事项…」；无需手动刷新。</li>
       <li><strong>代办弹窗操作</strong>：<strong>稍后处理</strong> — 关闭弹窗，<strong>留在当前页</strong>，角标保留；<strong>去处理</strong> — 关闭弹窗并<strong>跳转至询价报价 · APP 列表</strong>，定位至对应带角标询价卡片。</li>
     </ul>
@@ -709,29 +702,22 @@
         fcl: "询价编号/起运港/目的港"
       };
 
-      var currentDim = "lcl";
+      var currentDim = "fcl";
       var currentStatus = "all";
       var searchKeyword = "";
 
       var cardList = document.getElementById("cardList");
       var emptyTip = document.getElementById("emptyTip");
       var searchInput = document.getElementById("searchInput");
-      var addMenu = document.getElementById("addMenu");
       var notifyState = { count: 0, cardNotify: false, lastType: "quote" };
       var FLOW_NAMES = { quote: "收到报价", reject: "打回询价" };
       var DEMO_QUOTE_NO = "BJ1778226168599";
       var LIST_PAGE = "ESS询价报价-APP-列表-MVP.html";
       var STATUS_TAB_ORDER = ["all", "quoted", "reject", "pending", "done"];
-      var DIM_TAB_ORDER = ["lcl", "fcl"];
 
       function tabHasNotifyBadge(tab) {
         var badge = tab.querySelector(".tab-notify");
         return !!(badge && badge.classList.contains("show"));
-      }
-
-      function tabHasDimBadge(tab) {
-        var badge = tab.querySelector(".dim-badge");
-        return !!(badge && badge.getAttribute("data-zero") !== "1");
       }
 
       function reorderTabs(containerSelector, tabSelector, pinKey, defaultOrder, hasBadgeFn, keyAttr) {
@@ -756,10 +742,6 @@
 
         if (pinned) container.appendChild(pinned);
         rest.forEach(function (tab) { container.appendChild(tab); });
-      }
-
-      function reorderDimTabs() {
-        reorderTabs(".dim-tabs", ".dim-tab", null, DIM_TAB_ORDER, tabHasDimBadge, "data-dim");
       }
 
       function reorderStatusTabs() {
@@ -895,7 +877,6 @@
           var cnt = tab.querySelector(".cnt");
           if (cnt) cnt.textContent = "(" + countByDimStatus(currentDim, key) + ")";
         });
-        reorderDimTabs();
         reorderStatusTabs();
       }
 
@@ -1018,26 +999,7 @@
       });
 
       document.getElementById("btnAdd").addEventListener("click", function () {
-        addMenu.classList.add("open");
-        addMenu.setAttribute("aria-hidden", "false");
-      });
-
-      document.getElementById("btnAddCancel").addEventListener("click", function () {
-        addMenu.classList.remove("open");
-        addMenu.setAttribute("aria-hidden", "true");
-      });
-
-      addMenu.addEventListener("click", function (e) {
-        if (e.target === addMenu) {
-          addMenu.classList.remove("open");
-          addMenu.setAttribute("aria-hidden", "true");
-        }
-      });
-
-      addMenu.querySelectorAll("button[data-href]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          location.href = btn.getAttribute("data-href");
-        });
+        location.href = "ESS询价编辑-APP-整柜-MVP.html";
       });
 
       document.getElementById("btnFilter").addEventListener("click", function () {
@@ -1093,7 +1055,7 @@
           delete demo.quoteClerk;
           delete demo.remark;
         }
-        setDim("lcl");
+        setDim("fcl");
         setStatus("all");
         updateBadges();
         renderCards();
@@ -1107,17 +1069,14 @@
       document.getElementById("msgMask").addEventListener("click", closeMsgSheet);
 
       renderNotifyBadges(false);
-      if (location.hash === "#fcl") setDim("fcl");
+      if (location.hash === "#lcl") setDim("lcl");
       else if (location.hash === "#handle") {
         history.replaceState(null, "", location.pathname + location.search);
-        updateBadges();
-        renderCards();
+        setDim("fcl");
         setTimeout(flashDemoCard, 120);
       } else {
-        updateBadges();
-        renderCards();
+        setDim("fcl");
       }
-      reorderDimTabs();
       reorderStatusTabs();
     })();
   </script>
