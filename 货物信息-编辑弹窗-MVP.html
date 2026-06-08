@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>收货材积 · 列表编辑（MVP）</title>
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --table-hd: #fafafa;
+      --accent: #cf1322;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .shell { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header);
+      color: #fff;
+      padding: 0 16px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .top-header a { color: rgba(255,255,255,.85); text-decoration: none; font-size: 12px; }
+    .top-header a:hover { color: #fff; }
+    .top-header .title { font-size: 14px; font-weight: 600; }
+    .page { flex: 1; max-width: 1100px; width: 100%; margin: 0 auto; padding: 16px 16px 40px; }
+    .page-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+    .summary-bar {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 32px;
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .summary-bar span label {
+      font-weight: 500;
+      color: rgba(0,0,0,.65);
+      margin-right: 4px;
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+    }
+    .table-wrap { overflow-x: auto; }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .data-table th,
+    .data-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid #f5f5f5;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .data-table th {
+      background: var(--table-hd);
+      color: var(--sub);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .data-table tbody tr:hover td { background: #fafafa; }
+    .data-table td.num { text-align: right; }
+    .data-table td.readonly {
+      color: rgba(0,0,0,.85);
+      font-variant-numeric: tabular-nums;
+    }
+    .cell-input {
+      width: 100%;
+      min-width: 72px;
+      height: 28px;
+      border: 1px solid #d9d9d9;
+      border-radius: 2px;
+      padding: 0 8px;
+      font-size: 13px;
+      text-align: inherit;
+    }
+    .cell-input.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .cell-input:focus {
+      border-color: var(--blue);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+    .cell-input.text { min-width: 100px; }
+    .proto-note {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fff;
+      border: 1px dashed #d9d9d9;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top-header">
+      <span class="title">收货材积</span>
+      <span style="opacity:.5">|</span>
+      <a href="index.html">原型首页</a>
+    </header>
+
+    <main class="page">
+      <h1 class="page-title">收货材积 — RC266501</h1>
+
+      <div class="summary-bar" id="summaryBar" aria-live="polite"></div>
+
+      <div class="panel">
+        <div class="table-wrap">
+          <table class="data-table" aria-label="收货材积明细">
+            <thead>
+              <tr>
+                <th>子单号码</th>
+                <th class="num">毛重小计(KG)</th>
+                <th class="num">体积小计</th>
+                <th class="num">件数</th>
+                <th>柜号</th>
+                <th>SO号</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCargo"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <p class="proto-note">
+        <strong>原型说明：</strong>在列表内直接编辑<strong>毛重小计、体积小计、件数</strong>；<strong>子单号码、柜号、SO号</strong>只读。修改后顶部汇总（收货件数 / 总毛重小计 / 总体积小计）即时刷新。正式环境失焦或点保存时提交接口。
+      </p>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var rows = [
+        {
+          id: "1",
+          subNo: "ICBU000011120620001",
+          actualWeight: 12.02,
+          volume: 0.031694,
+          pieces: 1,
+          containerNo: "",
+          soNo: "",
+        },
+        {
+          id: "2",
+          subNo: "ICBU000011120620002",
+          actualWeight: 21.35,
+          volume: 0.046827,
+          pieces: 1,
+          containerNo: "",
+          soNo: "",
+        },
+      ];
+
+      var tbody = document.getElementById("tbodyCargo");
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function fmtNum(n, dec) {
+        dec = dec == null ? 3 : dec;
+        var x = Number(n);
+        if (isNaN(x)) return "0";
+        return x.toLocaleString("zh-CN", {
+          minimumFractionDigits: dec,
+          maximumFractionDigits: dec,
+        });
+      }
+
+      function aggregate() {
+        var pieces = 0;
+        var actual = 0;
+        var cbm = 0;
+        rows.forEach(function (r) {
+          var p = Number(r.pieces) || 1;
+          pieces += p;
+          actual += (Number(r.actualWeight) || 0) * p;
+          cbm += (Number(r.volume) || 0) * p;
+        });
+        return { pieces: pieces, actual: actual, cbm: cbm };
+      }
+
+      function renderSummary() {
+        var a = aggregate();
+        document.getElementById("summaryBar").innerHTML =
+          "<span><label>收货件数</label>" + a.pieces + "</span>" +
+          "<span><label>总毛重小计</label>" + fmtNum(a.actual, 2) + "</span>" +
+          "<span><label>总体积小计</label>" + fmtNum(a.cbm, 6) + "</span>";
+      }
+
+      function syncRowFromTr(tr) {
+        var id = tr.getAttribute("data-id");
+        var row = rows.find(function (r) { return r.id === id; });
+        if (!row) return;
+        var aw = tr.querySelector('[data-field="actualWeight"]');
+        var vol = tr.querySelector('[data-field="volume"]');
+        var pc = tr.querySelector('[data-field="pieces"]');
+        row.actualWeight = parseFloat(aw && aw.value) || 0;
+        row.volume = parseFloat(vol && vol.value) || 0;
+        row.pieces = Math.max(1, parseInt(pc && pc.value, 10) || 1);
+        if (pc) pc.value = String(row.pieces);
+      }
+
+      function renderTable() {
+        tbody.innerHTML = rows
+          .map(function (r) {
+            return (
+              '<tr data-id="' + escapeHtml(r.id) + '">' +
+              '<td class="readonly">' + escapeHtml(r.subNo) + "</td>" +
+              '<td class="num"><input type="number" class="cell-input num" data-field="actualWeight" min="0" step="0.01" value="' +
+              escapeHtml(r.actualWeight) +
+              '" aria-label="毛重小计" /></td>' +
+              '<td class="num"><input type="number" class="cell-input num" data-field="volume" min="0" step="0.000001" value="' +
+              escapeHtml(r.volume) +
+              '" aria-label="体积小计" /></td>' +
+              '<td class="num"><input type="number" class="cell-input num" data-field="pieces" min="1" step="1" value="' +
+              escapeHtml(r.pieces != null ? r.pieces : 1) +
+              '" aria-label="件数" /></td>' +
+              '<td class="readonly">' + escapeHtml(r.containerNo || "—") + "</td>" +
+              '<td class="readonly">' + escapeHtml(r.soNo || "—") + "</td>" +
+              "</tr>"
+            );
+          })
+          .join("");
+        renderSummary();
+      }
+
+      tbody.addEventListener("input", function (e) {
+        var input = e.target.closest(".cell-input");
+        if (!input) return;
+        var tr = input.closest("tr");
+        if (!tr) return;
+        syncRowFromTr(tr);
+        renderSummary();
+      });
+
+      tbody.addEventListener("change", function (e) {
+        var input = e.target.closest(".cell-input");
+        if (!input) return;
+        var tr = input.closest("tr");
+        if (!tr) return;
+        if (input.getAttribute("data-field") === "pieces") {
+          var v = parseInt(input.value, 10);
+          if (!v || v < 1) {
+            input.value = "1";
+          }
+        }
+        syncRowFromTr(tr);
+        renderSummary();
+      });
+
+      renderTable();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>凭证详情 · 现金流量</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent-bar: #1890ff;
+      --box-bg: #f7f8fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      min-height: 100vh;
+    }
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px 16px 28px;
+    }
+    .page-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .page-top a { color: var(--primary); text-decoration: none; }
+    .page-top a:hover { text-decoration: underline; }
+
+    .detail-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .detail-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .detail-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-bar);
+    }
+    .detail-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      border-radius: 2px;
+      background: var(--accent-bar);
+      flex-shrink: 0;
+    }
+    .btn-close {
+      border: none;
+      background: none;
+      font-size: 22px;
+      line-height: 1;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .btn-close:hover { background: #f1f5f9; color: #64748b; }
+
+    .summary-wrap {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 0.9fr 0.9fr;
+      gap: 14px;
+    }
+    @media (max-width: 1100px) {
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+    .summary-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 20px;
+    }
+    .kv { min-width: 0; }
+    .kv dt {
+      margin: 0;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.4;
+    }
+    .kv dd {
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .kv dd.num {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+    .kv dd.link a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .kv dd.link a:hover { text-decoration: underline; }
+    .status-tag {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      background: #ecfdf3;
+      color: #027a48;
+    }
+    .status-tag.pending { background: #fffbeb; color: #b45309; }
+    .status-tag.void { background: #f1f5f9; color: #64748b; }
+
+    .account-box {
+      background: var(--box-bg);
+      border: 1px solid #eef0f3;
+      border-radius: 8px;
+      padding: 12px 14px;
+      height: 100%;
+    }
+    .account-box h3 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+    }
+    .account-box .kv + .kv { margin-top: 8px; }
+
+    .detail-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    .detail-tab {
+      border: none;
+      background: none;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--sub);
+      cursor: pointer;
+      position: relative;
+      margin-bottom: -1px;
+    }
+    .detail-tab:hover { color: var(--primary); }
+    .detail-tab.active {
+      color: var(--accent-bar);
+      font-weight: 600;
+    }
+    .detail-tab.active::after {
+      content: "";
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 0;
+      height: 2px;
+      background: var(--accent-bar);
+      border-radius: 2px 2px 0 0;
+    }
+
+    .tab-panel { display: none; padding: 0 18px 16px; }
+    .tab-panel.active { display: block; }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 12px;
+      background: #fff;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 960px;
+    }
+    .data-table th,
+    .data-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid #f3f4f6;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .data-table th {
+      background: #fafafa;
+      color: var(--sub);
+      font-weight: 600;
+    }
+    .data-table tr.filter-row td {
+      background: #fcfcfd;
+      padding: 6px 8px;
+    }
+    .data-table tr.filter-row input,
+    .data-table tr.filter-row select {
+      width: 100%;
+      height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0 6px;
+      font-size: 12px;
+      min-width: 0;
+    }
+    .data-table tbody tr:hover td { background: #f8fafc; }
+    .data-table td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .data-table .col-check { width: 36px; text-align: center; }
+    .data-table a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .data-table a:hover { text-decoration: underline; }
+
+    .empty-panel {
+      padding: 32px 0;
+      text-align: center;
+      color: var(--sub);
+      font-size: 13px;
+    }
+    .attach-list {
+      list-style: none;
+      margin: 12px 0 0;
+      padding: 0;
+    }
+    .attach-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .attach-list .name { flex: 1; color: var(--primary); cursor: pointer; }
+    .attach-list .meta { font-size: 12px; color: var(--sub); }
+
+    .log-timeline {
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .log-timeline li {
+      display: grid;
+      grid-template-columns: 140px 100px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--line);
+      font-size: 13px;
+    }
+    .log-timeline .time { color: var(--sub); font-size: 12px; }
+    .log-timeline .actor { font-weight: 600; }
+
+    .detail-foot {
+      padding: 12px 18px;
+      border-top: 1px solid var(--line);
+      text-align: right;
+      background: #fafbfc;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      height: 36px;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .prd-note {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #1e40af;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-top">
+      <span>
+        <a href="银行流水认领-明细工作台-左侧页签布局.html">← 返回认领明细</a>
+        · <a href="../index.html">原型首页</a>
+      </span>
+      <span id="pageMeta" style="color:var(--sub)"></span>
+    </div>
+
+    <div class="detail-card" id="detailCard">
+      <div class="detail-head">
+        <div class="detail-title">凭证详情</div>
+        <button type="button" class="btn-close" id="btnClose" title="关闭" aria-label="关闭">×</button>
+      </div>
+
+      <div class="summary-wrap" id="summaryWrap"></div>
+
+      <div class="detail-tabs" role="tablist">
+        <button type="button" class="detail-tab active" data-tab="writeoff" role="tab" aria-selected="true">核销明细</button>
+        <button type="button" class="detail-tab" data-tab="attach" role="tab">附件信息</button>
+        <button type="button" class="detail-tab" data-tab="log" role="tab">操作记录</button>
+        <button type="button" class="detail-tab" data-tab="hedge" role="tab">对冲明细</button>
+      </div>
+
+      <div id="panelWriteoff" class="tab-panel active" role="tabpanel">
+        <div class="table-wrap">
+          <table class="data-table" aria-label="核销明细">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" aria-label="全选" /></th>
+                <th>序号</th>
+                <th>凭证编号</th>
+                <th>核销费用编号</th>
+                <th>核销金额</th>
+                <th>核销时间</th>
+                <th>核销人</th>
+                <th>备注</th>
+                <th>数据来源</th>
+              </tr>
+              <tr class="filter-row">
+                <td></td>
+                <td><input type="text" placeholder="" /></td>
+                <td><input type="text" placeholder="" /></td>
+                <td><input type="text" placeholder="" /></td>
+                <td><input type="text" placeholder="" /></td>
+                <td><input type="text" placeholder="" /></td>
+                <td><input type="text" placeholder="" /></td>
+                <td><input type="text" placeholder="" /></td>
+                <td><select><option value="">全部</option><option>系统</option><option>手工</option></select></td>
+              </tr>
+            </thead>
+            <tbody id="tbodyWriteoff"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="panelAttach" class="tab-panel" role="tabpanel">
+        <ul class="attach-list" id="attachList"></ul>
+      </div>
+
+      <div id="panelLog" class="tab-panel" role="tabpanel">
+        <ul class="log-timeline" id="logList"></ul>
+      </div>
+
+      <div id="panelHedge" class="tab-panel" role="tabpanel">
+        <div id="hedgeContent"></div>
+      </div>
+
+      <div class="detail-foot">
+        <button type="button" class="btn" id="btnFootClose">关闭</button>
+      </div>
+    </div>
+
+    <p class="prd-note">
+      <strong>原型说明：</strong>布局对齐财务系统「凭证详情」弹窗（摘要三栏 + 页签 + 表头筛选行）。
+      从认领明细「查看详情」或矩阵行穿透打开；正式环境由凭证 ID 拉取全字段、核销分录、附件与审计日志。
+    </p>
+  </div>
+
+  <script>
+    (function () {
+      var DEMO_VOUCHERS = {
+        "2605004364": {
+          voucherNo: "2605004364",
+          claimType: "客户",
+          voucherAmount: 2812,
+          currency: "CNY",
+          serial: "2026051234705C330800202012345678901234567890",
+          voucherStatus: "待抵扣",
+          claimAccName: "云能纵深",
+          usedAmount: "",
+          slipRate: 1,
+          claimRate: 1,
+          fxLoss: 0,
+          payTime: "2026-05-12 09:55:37",
+          claimTime: "",
+          cashflowType: "现金流入 · 收入",
+          customerName: "杭州云德纵深科技有限公司",
+          serviceProviderName: "",
+          dataSource: "泰隆银行抓取",
+          finSummary: "普通汇兑",
+          remark: "【摘要】普通汇兑【用途】运输费",
+          ourAccName: "泰隆银行(人民币)-776",
+          ourAccNo: "33080020201000045776",
+          ourBank: "浙江泰隆商业银行",
+          cpAccName: "杭州云德纵深科技有限公司",
+          cpAccNo: "3301041060004131201",
+          cpBank: "杭州联合银行",
+          writeoffs: [
+            { feeNo: "FY20260512001", amount: 1200, time: "2026-05-12 11:20:08", user: "张三", remark: "运费核销", source: "系统" },
+            { feeNo: "FY20260512002", amount: 1612, time: "2026-05-12 14:05:33", user: "李四", remark: "", source: "系统" },
+          ],
+          attachments: [
+            { name: "银行回单_20260512.pdf", size: "128 KB", time: "2026-05-12 09:56:00" },
+            { name: "认领截图.png", size: "45 KB", time: "2026-05-12 10:01:12" },
+          ],
+          logs: [
+            { time: "2026-05-12 09:55:37", actor: "系统", action: "泰隆银行抓取入账，生成待认领凭证" },
+            { time: "2026-05-12 10:15:01", actor: "王财务", action: "确认认领至「现金流入 · 收入」" },
+            { time: "2026-05-12 11:20:08", actor: "张三", action: "核销费用 FY20260512001，金额 ¥1,200.00" },
+          ],
+          hedges: [],
+        },
+        "2605004363": {
+          voucherNo: "2605004363",
+          claimType: "客户",
+          voucherAmount: 34158.67,
+          currency: "CNY",
+          serial: "2026051234705C330800202098765432109876543210",
+          voucherStatus: "全部抵扣",
+          claimAccName: "丰宇国际",
+          usedAmount: 34158.67,
+          slipRate: 1,
+          claimRate: 1,
+          fxLoss: 0,
+          payTime: "2026-05-12 10:02:18",
+          claimTime: "2026-05-12 10:15:01",
+          cashflowType: "现金流入 · 收入",
+          customerName: "义乌市丰丰国际货运代理有限公司",
+          serviceProviderName: "",
+          dataSource: "泰隆银行抓取",
+          finSummary: "",
+          remark: "【用途】运费",
+          ourAccName: "泰隆银行(人民币)-776",
+          ourAccNo: "33080020201000045776",
+          ourBank: "浙江泰隆商业银行",
+          cpAccName: "义乌市丰丰国际货运代理有限公司",
+          cpAccNo: "33050167625700001301",
+          cpBank: "中国建设银行",
+          writeoffs: [
+            { feeNo: "FY20260512088", amount: 34158.67, time: "2026-05-12 10:30:00", user: "王财务", remark: "全额核销", source: "系统" },
+          ],
+          attachments: [{ name: "电子回单.pdf", size: "96 KB", time: "2026-05-12 10:02:30" }],
+          logs: [
+            { time: "2026-05-12 10:02:18", actor: "系统", action: "招商银行抓取入账" },
+            { time: "2026-05-12 10:15:01", actor: "王财务", action: "认领至收入；认领账户：丰宇国际" },
+            { time: "2026-05-12 10:30:00", actor: "王财务", action: "全部抵扣完成" },
+          ],
+          hedges: [],
+        },
+        "2605004201": {
+          voucherNo: "2605004201",
+          claimType: "服务商",
+          voucherAmount: 10000,
+          currency: "USD",
+          serial: "2026010312005C3308002020USD10000PAY001",
+          voucherStatus: "待抵扣",
+          claimAccName: "操作中心",
+          usedAmount: "",
+          slipRate: 7.182,
+          claimRate: 7.2,
+          fxLoss: 1320.8,
+          payTime: "2026-01-03 14:22:10",
+          claimTime: "2026-01-03 15:01:00",
+          cashflowType: "现金流出 · 代理",
+          customerName: "",
+          serviceProviderName: "清关服务商 A",
+          dataSource: "泰隆银行抓取",
+          finSummary: "付汇",
+          remark: "海运费（外币）；汇损=月初汇率-实时汇率",
+          ourAccName: "深圳运通招商人民币0021",
+          ourAccNo: "7559000000000021",
+          ourBank: "招商银行深圳分行",
+          cpAccName: "MAERSK LINE LIMITED",
+          cpAccNo: "US1234567890",
+          cpBank: "CITIBANK N.A.",
+          writeoffs: [
+            { feeNo: "AG20260103001", amount: 64800, time: "2026-01-03 15:30:00", user: "赵会计", remark: "美海-海运费本金", source: "系统" },
+            { feeNo: "FE20260103002", amount: 1320.8, time: "2026-01-03 15:30:01", user: "系统", remark: "汇损归费用", source: "系统" },
+          ],
+          attachments: [
+            { name: "付汇水单_USD10000.pdf", size: "210 KB", time: "2026-01-03 14:25:00" },
+          ],
+          logs: [
+            { time: "2026-01-03 14:22:10", actor: "系统", action: "外币付汇流水抓取" },
+            { time: "2026-01-03 15:01:00", actor: "赵会计", action: "认领；环节拆分：代理 + 费用（汇损）" },
+          ],
+          hedges: [],
+        },
+      };
+
+      function dash(v) {
+        return v == null || v === "" ? "—" : String(v);
+      }
+      function fmtNum(n) {
+        if (n == null || n === "") return "—";
+        var x = Number(n);
+        if (isNaN(x)) return String(n);
+        return x.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function statusClass(status) {
+        if (!status) return "";
+        if (status.indexOf("待") >= 0) return "pending";
+        if (status.indexOf("废") >= 0) return "void";
+        return "";
+      }
+
+      function kv(label, value, opts) {
+        opts = opts || {};
+        var cls = opts.num ? " num" : opts.link ? " link" : "";
+        var inner = opts.html
+          ? value
+          : opts.link
+            ? '<a href="#">' + escapeHtml(value) + "</a>"
+            : escapeHtml(dash(value));
+        return (
+          '<div class="kv"><dt>' +
+          escapeHtml(label) +
+          '</dt><dd class="' +
+          cls.trim() +
+          '">' +
+          inner +
+          "</dd></div>"
+        );
+      }
+
+      function renderSummary(v) {
+        var statusHtml =
+          '<span class="status-tag ' +
+          statusClass(v.voucherStatus) +
+          '">' +
+          escapeHtml(v.voucherStatus) +
+          "</span>";
+        var left =
+          kv("凭证编号", v.voucherNo, { link: true }) +
+          kv("认领类型", v.claimType) +
+          kv("凭证金额", fmtNum(v.voucherAmount), { num: true }) +
+          kv("币别", v.currency) +
+          kv("交易流水号", v.serial) +
+          kv("凭证状态", statusHtml, { html: true }) +
+          kv("认领账户名称", v.claimAccName) +
+          kv("已使用金额", v.usedAmount === "" ? "—" : fmtNum(v.usedAmount), { num: true }) +
+          kv("水单汇率", v.slipRate) +
+          kv("认领汇率", v.claimRate) +
+          kv("汇损", fmtNum(v.fxLoss), { num: true }) +
+          kv("付款时间", v.payTime) +
+          kv("认领时间", v.claimTime) +
+          kv("现金流量分类", v.cashflowType) +
+          kv("客户名称", v.customerName) +
+          kv("服务商名称", v.serviceProviderName) +
+          kv("数据来源", v.dataSource) +
+          kv("财务摘要", v.finSummary) +
+          kv("备注", v.remark);
+
+        var ourBox =
+          '<div class="account-box"><h3>我方账户信息</h3>' +
+          kv("账户名称", v.ourAccName) +
+          kv("账号", v.ourAccNo) +
+          kv("开户行", v.ourBank) +
+          "</div>";
+        var cpBox =
+          '<div class="account-box"><h3>对方账户信息</h3>' +
+          kv("账户名称", v.cpAccName) +
+          kv("账号", v.cpAccNo) +
+          kv("开户行", v.cpBank) +
+          "</div>";
+
+        document.getElementById("summaryWrap").innerHTML =
+          '<div class="summary-grid">' +
+          '<div class="summary-fields">' +
+          left +
+          "</div>" +
+          ourBox +
+          cpBox +
+          "</div>";
+      }
+
+      function renderWriteoffs(v) {
+        var rows = v.writeoffs || [];
+        var html = "";
+        rows.forEach(function (r, i) {
+          html +=
+            "<tr>" +
+            '<td class="col-check"><input type="checkbox" aria-label="选择" /></td>' +
+            "<td>" +
+            (i + 1) +
+            "</td>" +
+            '<td><a href="#">' +
+            escapeHtml(v.voucherNo) +
+            "</a></td>" +
+            "<td>" +
+            escapeHtml(r.feeNo) +
+            "</td>" +
+            '<td class="num">' +
+            fmtNum(r.amount) +
+            "</td>" +
+            "<td>" +
+            escapeHtml(r.time) +
+            "</td>" +
+            "<td>" +
+            escapeHtml(r.user) +
+            "</td>" +
+            "<td>" +
+            escapeHtml(dash(r.remark)) +
+            "</td>" +
+            "<td>" +
+            escapeHtml(r.source) +
+            "</td>" +
+            "</tr>";
+        });
+        if (!rows.length) {
+          html = '<tr><td colspan="9" style="text-align:center;color:var(--sub);padding:24px;">暂无核销明细</td></tr>';
+        }
+        document.getElementById("tbodyWriteoff").innerHTML = html;
+      }
+
+      function renderAttachments(v) {
+        var list = v.attachments || [];
+        if (!list.length) {
+          document.getElementById("attachList").innerHTML =
+            '<li class="empty-panel" style="border:none;justify-content:center;">暂无附件</li>';
+          return;
+        }
+        document.getElementById("attachList").innerHTML = list
+          .map(function (a) {
+            return (
+              "<li><span class=\"name\">" +
+              escapeHtml(a.name) +
+              '</span><span class="meta">' +
+              escapeHtml(a.size) +
+              " · " +
+              escapeHtml(a.time) +
+              "</span></li>"
+            );
+          })
+          .join("");
+      }
+
+      function renderLogs(v) {
+        var list = v.logs || [];
+        document.getElementById("logList").innerHTML = list
+          .map(function (l) {
+            return (
+              "<li><span class=\"time\">" +
+              escapeHtml(l.time) +
+              '</span><span class="actor">' +
+              escapeHtml(l.actor) +
+              "</span><span>" +
+              escapeHtml(l.action) +
+              "</span></li>"
+            );
+          })
+          .join("");
+      }
+
+      function renderHedge(v) {
+        var hedges = v.hedges || [];
+        if (!hedges.length) {
+          document.getElementById("hedgeContent").innerHTML =
+            '<div class="empty-panel">暂无对冲明细（二期能力，见认领明细 PRD）</div>';
+          return;
+        }
+      }
+
+      function loadVoucher(no) {
+        var v = DEMO_VOUCHERS[no] || DEMO_VOUCHERS["2605004364"];
+        document.title = "凭证详情 · " + v.voucherNo;
+        document.getElementById("pageMeta").textContent = "凭证 " + v.voucherNo + " · 示意数据";
+        renderSummary(v);
+        renderWriteoffs(v);
+        renderAttachments(v);
+        renderLogs(v);
+        renderHedge(v);
+      }
+
+      function getQuery(name) {
+        var m = new RegExp("[?&]" + name + "=([^&]*)").exec(location.search);
+        return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
+      }
+
+      document.querySelectorAll(".detail-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var tab = btn.getAttribute("data-tab");
+          document.querySelectorAll(".detail-tab").forEach(function (b) {
+            b.classList.toggle("active", b === btn);
+            b.setAttribute("aria-selected", b === btn ? "true" : "false");
+          });
+          var map = {
+            writeoff: "panelWriteoff",
+            attach: "panelAttach",
+            log: "panelLog",
+            hedge: "panelHedge",
+          };
+          Object.keys(map).forEach(function (k) {
+            var el = document.getElementById(map[k]);
+            if (el) el.classList.toggle("active", k === tab);
+          });
+        });
+      });
+
+      function closePage() {
+        if (history.length > 1) history.back();
+        else location.href = "银行流水认领-明细工作台-左侧页签布局.html";
+      }
+      document.getElementById("btnClose").addEventListener("click", closePage);
+      document.getElementById("btnFootClose").addEventListener("click", closePage);
+
+      loadVoucher(getQuery("voucherNo") || "2605004364");
+    })();
+  </script>
+</body>
+</html>
