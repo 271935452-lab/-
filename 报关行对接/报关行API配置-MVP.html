@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报关行 API 配置（MVP）</title>
+  <link rel="stylesheet" href="customs-broker-review.css" />
+  <link rel="stylesheet" href="customs-broker-prototype-nav.css" />
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --orange: #fa8c16;
+      --red: #ff4d4f;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right { padding: 0 14px; display: flex; align-items: center; font-size: 12px; }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 48px; flex-shrink: 0; background: var(--sidebar);
+      display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px;
+    }
+    .side-ico {
+      width: 36px; height: 36px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,.65); font-size: 11px;
+    }
+    .side-ico.on { background: var(--blue); color: #fff; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .proto-link { font-size: 12px; color: var(--sub); padding: 8px 14px 0; }
+
+    .filter-panel {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 10px 12px 6px;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+      gap: 6px 10px; align-items: end;
+    }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; font-size: 12px;
+    }
+
+    .toolbar {
+      padding: 6px 12px; background: var(--card);
+      border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 4px;
+    }
+    .tool-btn {
+      height: 26px; padding: 0 10px; border-radius: 2px;
+      border: 1px solid var(--blue); background: var(--blue); color: #fff;
+      cursor: pointer; font-size: 12px;
+    }
+    .tool-btn.outline { background: #fff; color: var(--blue); }
+    .tool-btn.ok { background: var(--green); border-color: var(--green); }
+    .tool-btn.danger { background: #fff; border-color: #ffa39e; color: var(--red); }
+
+    .table-wrap {
+      flex: 1; overflow: auto; margin: 10px 12px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid #f0f0f0; padding: 8px 10px; text-align: left; vertical-align: middle; }
+    th { background: #fafafa; color: var(--sub); font-weight: 500; position: sticky; top: 0; z-index: 1; }
+    tr:hover td { background: #fafcff; }
+    tr.selected td { background: #e6f7ff; }
+    .tag {
+      display: inline-block; padding: 0 7px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; border: 1px solid;
+    }
+    .tag.on { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.off { color: var(--sub); background: #fafafa; border-color: #d9d9d9; }
+    .tag.warn { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .cap-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+    .cap-chip {
+      font-size: 10px; padding: 0 5px; height: 18px; line-height: 16px;
+      border-radius: 2px; border: 1px solid #91d5ff; color: #096dd9; background: #e6f7ff;
+    }
+    .cap-chip.off { border-color: #d9d9d9; color: var(--sub); background: #fafafa; }
+
+    /* Modal */
+    .modal-mask {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.45); align-items: flex-start; justify-content: center;
+      padding: 24px 16px; overflow-y: auto;
+    }
+    .modal-mask.open { display: flex; }
+    .modal {
+      width: min(1080px, 100%); background: var(--card);
+      border-radius: 4px; box-shadow: 0 8px 28px rgba(0,0,0,.18);
+      margin: auto 0;
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-hd h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .modal-close {
+      border: none; background: none; font-size: 18px; color: var(--sub);
+      cursor: pointer; line-height: 1;
+    }
+    .modal-bd { padding: 14px 16px 0; }
+    .modal-ft {
+      padding: 12px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .btn {
+      height: 30px; padding: 0 14px; border-radius: 2px; cursor: pointer;
+      border: 1px solid #d9d9d9; background: #fff; font-size: 12px;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-ghost { color: var(--sub); }
+
+    .form-section-title {
+      font-size: 13px; font-weight: 600; margin: 0 0 10px;
+      padding-left: 8px; border-left: 3px solid var(--blue);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px 16px; margin-bottom: 14px;
+    }
+    @media (max-width: 900px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+    .form-field label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px;
+    }
+    .form-field label.req::before { content: "* "; color: var(--red); }
+    .form-field input, .form-field select, .form-field textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+      font-size: 12px; height: 30px;
+    }
+    .form-field textarea { height: 56px; padding: 6px 8px; resize: vertical; }
+    .form-field.span-2 { grid-column: span 2; }
+    .form-field.span-3 { grid-column: 1 / -1; }
+    .form-field.err input, .form-field.err select {
+      border-color: var(--red); box-shadow: 0 0 0 2px rgba(255,77,79,.12);
+    }
+    .field-err { font-size: 11px; color: var(--red); margin-top: 3px; }
+
+    .config-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 12px;
+    }
+    .config-tab {
+      padding: 8px 18px; border: none; background: none; cursor: pointer;
+      font-size: 13px; color: var(--sub); border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .config-tab.active {
+      color: var(--orange); border-bottom-color: var(--orange); font-weight: 600;
+    }
+    .config-panel { display: none; padding-bottom: 14px; }
+    .config-panel.active { display: block; }
+
+    .api-provider-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .api-provider-row label { font-size: 12px; color: var(--sub); white-space: nowrap; }
+    .api-provider-row select {
+      width: 280px; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .api-provider-row .hint { font-size: 11px; color: var(--sub); }
+
+    .inner-table { border: 1px solid var(--line); border-radius: 2px; overflow: hidden; }
+    .inner-table table { font-size: 12px; }
+    .inner-table th { background: #fafafa; }
+    .inner-table td input, .inner-table td select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px;
+    }
+    .inner-table .col-no { width: 48px; text-align: center; color: var(--sub); }
+    .inner-table .col-field { width: 180px; }
+    .inner-table .col-act { width: 56px; text-align: center; }
+    .empty-tip {
+      padding: 28px; text-align: center; color: var(--sub); font-size: 12px;
+      border: 1px dashed var(--line); border-radius: 2px;
+    }
+    .table-actions { margin-top: 8px; display: flex; gap: 6px; }
+    .link-btn {
+      border: none; background: none; color: var(--blue); cursor: pointer;
+      font-size: 12px; padding: 0;
+    }
+    .link-btn.danger { color: var(--red); }
+
+    .cap-table td { vertical-align: top; }
+    .cap-name { font-weight: 500; }
+    .cap-desc { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .switch {
+      position: relative; width: 36px; height: 20px; display: inline-block;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider {
+      position: absolute; inset: 0; background: #d9d9d9; border-radius: 10px; cursor: pointer;
+      transition: .2s;
+    }
+    .switch .slider::before {
+      content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px;
+      background: #fff; border-radius: 50%; transition: .2s;
+    }
+    .switch input:checked + .slider { background: var(--blue); }
+    .switch input:checked + .slider::before { transform: translateX(16px); }
+    .switch input:disabled + .slider { opacity: .5; cursor: not-allowed; }
+
+    .webhook-url {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 10px;
+    }
+    .webhook-url input {
+      flex: 1; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+      background: #fafafa; color: var(--sub);
+    }
+    .note-box {
+      margin-top: 10px; padding: 8px 10px; background: #f6ffed;
+      border: 1px solid #b7eb8f; border-radius: 2px; font-size: 11px; color: #389e0d;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">LOGO</div>
+      <nav class="nav-tabs">
+        <button type="button" class="nav-tab">控制台</button>
+        <button type="button" class="nav-tab">运单管理</button>
+        <button type="button" class="nav-tab active">报关行 API 配置</button>
+      </nav>
+      <div class="header-right">IT(BT0022)</div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar" aria-hidden="true">
+        <div class="side-ico">首</div>
+        <div class="side-ico">运</div>
+        <div class="side-ico on">报</div>
+        <div class="side-ico">设</div>
+      </aside>
+
+      <main class="main">
+        <div class="proto-link">
+          <a href="报关管理-列表-MVP.html">报关管理列表</a> ·
+          <a href="报关管理-流程图-MVP.html">业务流程图</a> ·
+          <a href="../index.html">返回导航</a>
+        </div>
+
+        <section class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>报关行名称</label><input type="text" placeholder="青岛港兴" /></div>
+            <div class="filter-item"><label>报关行编码</label><input type="text" placeholder="BROKER-QD-HX" /></div>
+            <div class="filter-item"><label>API 服务商</label><select><option value="">全部</option><option>港兴开放平台</option><option>云报关适配器</option><option>华商报关 V2</option></select></div>
+            <div class="filter-item"><label>对接状态</label><select><option value="">全部</option><option>启用</option><option>停用</option></select></div>
+            <button type="button" class="tool-btn">查询</button>
+          </div>
+        </section>
+
+        <div class="toolbar">
+          <button type="button" class="tool-btn" id="btnAdd">+ 新增报关行</button>
+          <button type="button" class="tool-btn outline">编辑</button>
+          <button type="button" class="tool-btn ok">启用</button>
+          <button type="button" class="tool-btn danger">停用</button>
+          <button type="button" class="tool-btn outline">连通性测试</button>
+          <button type="button" class="tool-btn outline">复制配置</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:32px"><input type="checkbox" aria-label="全选" /></th>
+                <th>报关行编码</th>
+                <th>报关行名称</th>
+                <th>API 服务商</th>
+                <th>对接状态</th>
+                <th>本期对接能力</th>
+                <th>最近连通</th>
+                <th>更新人</th>
+                <th>更新时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="selected" data-id="1">
+                <td><input type="checkbox" checked /></td>
+                <td>BROKER-QD-HX</td>
+                <td>青岛港兴报关行</td>
+                <td>港兴开放平台</td>
+                <td><span class="tag on">启用</span></td>
+                <td>
+                  <div class="cap-chips">
+                    <span class="cap-chip">01</span><span class="cap-chip">04</span>
+                    <span class="cap-chip">09</span><span class="cap-chip">10</span><span class="cap-chip">12</span>
+                    <span class="cap-chip off">11</span>
+                  </div>
+                </td>
+                <td><span class="tag on">成功 06-02 10:15</span></td>
+                <td>王丽</td>
+                <td>2026-06-01 16:40</td>
+                <td><button type="button" class="link-btn btn-edit" data-id="1">编辑</button></td>
+              </tr>
+              <tr data-id="2">
+                <td><input type="checkbox" /></td>
+                <td>BROKER-NB-YB</td>
+                <td>宁波云报关</td>
+                <td>云报关适配器</td>
+                <td><span class="tag on">启用</span></td>
+                <td>
+                  <div class="cap-chips">
+                    <span class="cap-chip">01</span><span class="cap-chip">04</span>
+                    <span class="cap-chip">09</span><span class="cap-chip">10</span>
+                    <span class="cap-chip off">12</span>
+                  </div>
+                </td>
+                <td><span class="tag on">成功 06-02 09:02</span></td>
+                <td>李敏</td>
+                <td>2026-05-28 11:20</td>
+                <td><button type="button" class="link-btn btn-edit" data-id="2">编辑</button></td>
+              </tr>
+              <tr data-id="3">
+                <td><input type="checkbox" /></td>
+                <td>BROKER-SZ-HS</td>
+                <td>深圳华商报关</td>
+                <td>华商报关 V2</td>
+                <td><span class="tag off">停用</span></td>
+                <td>
+                  <div class="cap-chips">
+                    <span class="cap-chip off">01</span><span class="cap-chip off">04</span>
+                  </div>
+                </td>
+                <td><span class="tag warn">失败 05-30</span></td>
+                <td>陈芳</td>
+                <td>2026-05-20 09:08</td>
+                <td><button type="button" class="link-btn btn-edit" data-id="3">编辑</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 新增 / 编辑弹窗 -->
+  <div class="modal-mask" id="modalMask" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="modalTitle">
+      <div class="modal-hd">
+        <h2 id="modalTitle">编辑报关行 · 青岛港兴报关行</h2>
+        <button type="button" class="modal-close" id="btnModalClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <h3 class="form-section-title">基本信息</h3>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="req">报关行</label>
+            <select id="fBroker">
+              <option value="">请选择</option>
+              <option selected>青岛港兴报关行</option>
+              <option>宁波云报关</option>
+              <option>深圳华商报关</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="req">报关行编码</label>
+            <input type="text" value="BROKER-QD-HX" placeholder="系统唯一编码" />
+          </div>
+          <div class="form-field">
+            <label>报关行英文名称</label>
+            <input type="text" value="Qingdao Gangxing Customs Broker" />
+          </div>
+          <div class="form-field">
+            <label class="req">对接状态</label>
+            <select>
+              <option selected>启用</option>
+              <option>停用</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>默认报关客服</label>
+            <input type="text" value="王丽" placeholder="列表默认展示" />
+          </div>
+          <div class="form-field span-3">
+            <label>备注</label>
+            <textarea placeholder="对接说明、特殊约定等">本期对接 #01 #04 #09 #10 #12；#11 查验手动维护。</textarea>
+          </div>
+        </div>
+
+        <div class="config-tabs" role="tablist">
+          <button type="button" class="config-tab active" data-panel="api">API 配置</button>
+          <button type="button" class="config-tab" data-panel="cap">对接能力</button>
+          <button type="button" class="config-tab" data-panel="webhook">Webhook 回调</button>
+        </div>
+
+        <div class="config-panel active" id="panelApi">
+          <div class="api-provider-row">
+            <label>API 服务商</label>
+            <select id="apiProvider">
+              <option value="">请选择</option>
+              <option selected>港兴开放平台</option>
+              <option>云报关适配器</option>
+              <option>华商报关 V2</option>
+              <option>自定义适配器</option>
+            </select>
+            <span class="hint">切换服务商将加载对应字段模板</span>
+          </div>
+          <div class="inner-table">
+            <table id="apiFieldTable">
+              <thead>
+                <tr>
+                  <th class="col-no">序号</th>
+                  <th class="col-field">字段</th>
+                  <th>字段值 <span style="color:var(--red)">*</span></th>
+                  <th>备注</th>
+                  <th class="col-act">操作</th>
+                </tr>
+              </thead>
+              <tbody id="apiFieldBody">
+                <tr>
+                  <td class="col-no">1</td>
+                  <td><select><option selected>API 基础地址</option><option>AppKey</option><option>AppSecret</option><option>企业海关十位编码</option><option>报关行备案号</option><option>环境</option><option>Token 刷新间隔(分钟)</option></select></td>
+                  <td><input type="text" value="https://openapi.gangxing-customs.com/v1" /></td>
+                  <td><input type="text" placeholder="备注" /></td>
+                  <td><button type="button" class="link-btn danger btn-del-row">删除</button></td>
+                </tr>
+                <tr>
+                  <td class="col-no">2</td>
+                  <td><select><option>API 基础地址</option><option selected>AppKey</option><option>AppSecret</option><option>企业海关十位编码</option><option>报关行备案号</option><option>环境</option><option>Token 刷新间隔(分钟)</option></select></td>
+                  <td><input type="text" value="ESS_QD_2026" /></td>
+                  <td><input type="text" /></td>
+                  <td><button type="button" class="link-btn danger btn-del-row">删除</button></td>
+                </tr>
+                <tr>
+                  <td class="col-no">3</td>
+                  <td><select><option>API 基础地址</option><option>AppKey</option><option selected>AppSecret</option><option>企业海关十位编码</option><option>报关行备案号</option><option>环境</option><option>Token 刷新间隔(分钟)</option></select></td>
+                  <td><input type="password" value="********" /></td>
+                  <td><input type="text" value="加密存储" /></td>
+                  <td><button type="button" class="link-btn danger btn-del-row">删除</button></td>
+                </tr>
+                <tr>
+                  <td class="col-no">4</td>
+                  <td><select><option>API 基础地址</option><option>AppKey</option><option>AppSecret</option><option selected>企业海关十位编码</option><option>报关行备案号</option><option>环境</option><option>Token 刷新间隔(分钟)</option></select></td>
+                  <td><input type="text" value="3702980001" /></td>
+                  <td><input type="text" /></td>
+                  <td><button type="button" class="link-btn danger btn-del-row">删除</button></td>
+                </tr>
+                <tr>
+                  <td class="col-no">5</td>
+                  <td><select><option>API 基础地址</option><option>AppKey</option><option>AppSecret</option><option>企业海关十位编码</option><option selected>环境</option><option>Token 刷新间隔(分钟)</option></select></td>
+                  <td><select><option>沙箱</option><option selected>生产</option></select></td>
+                  <td><input type="text" /></td>
+                  <td><button type="button" class="link-btn danger btn-del-row">删除</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-actions">
+            <button type="button" class="btn outline" id="btnAddField">+ 新增字段</button>
+            <button type="button" class="btn outline" id="btnLoadTemplate">加载服务商模板</button>
+          </div>
+        </div>
+
+        <div class="config-panel" id="panelCap">
+          <div class="inner-table">
+            <table class="cap-table">
+              <thead>
+                <tr>
+                  <th style="width:56px">编号</th>
+                  <th>能力项</th>
+                  <th style="width:80px">本期</th>
+                  <th style="width:72px">启用</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="rv rv-yes">01</span></td>
+                  <td><div class="cap-name">推送报关资料附件</div><div class="cap-desc">传附件 + 分单号</div></td>
+                  <td>对接</td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>待推送阶段：绑定分单号、上传资料后推送</td>
+                </tr>
+                <tr>
+                  <td><span class="rv rv-no">02</span></td>
+                  <td><div class="cap-name">推送报关资料信息</div><div class="cap-desc">结构化字段推送</div></td>
+                  <td>不做</td>
+                  <td><label class="switch"><input type="checkbox" disabled /><span class="slider"></span></label></td>
+                  <td>评审结论：不处理</td>
+                </tr>
+                <tr>
+                  <td>03</td>
+                  <td><div class="cap-name">报关资料修改重推</div></td>
+                  <td>—</td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>修改分单号/附件后触发再次推送，无独立按钮</td>
+                </tr>
+                <tr>
+                  <td><span class="rv rv-yes">04</span></td>
+                  <td><div class="cap-name">预录单附件回传</div></td>
+                  <td>对接</td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>报关行处理中 → 预录待复审</td>
+                </tr>
+                <tr>
+                  <td><span class="rv rv-mix">08</span></td>
+                  <td><div class="cap-name">正式件回传</div><div class="cap-desc">收取 / 确认正式件</div></td>
+                  <td>对接</td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>预录待复审 → 列表「收取正式件」或 webhook 自动确认 → 待放行</td>
+                </tr>
+                <tr>
+                  <td><span class="rv rv-no">05</span></td>
+                  <td><div class="cap-name">预录单信息回传</div></td>
+                  <td>不做</td>
+                  <td><label class="switch"><input type="checkbox" disabled /><span class="slider"></span></label></td>
+                  <td>字段对比示意保留，不对接</td>
+                </tr>
+                <tr>
+                  <td><span class="rv rv-yes">09</span></td>
+                  <td><div class="cap-name">报关单号回传</div></td>
+                  <td>对接</td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>申报受理后写入报关单号列</td>
+                </tr>
+                <tr>
+                  <td><span class="rv rv-yes">10</span></td>
+                  <td><div class="cap-name">放行资料回传</div></td>
+                  <td>对接</td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>抓取齐全后自动进入报关放行</td>
+                </tr>
+                <tr>
+                  <td><span class="rv rv-offline">11</span></td>
+                  <td><div class="cap-name">报关查验回传</div></td>
+                  <td>手动</td>
+                  <td><label class="switch"><input type="checkbox" disabled /><span class="slider"></span></label></td>
+                  <td>本期不对接 API，业务手动维护</td>
+                </tr>
+                <tr>
+                  <td><span class="rv rv-new">12</span></td>
+                  <td><div class="cap-name">电子委托状态查询</div></td>
+                  <td>对接</td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>子表「电子委托」「委托内容」列展示</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="config-panel" id="panelWebhook">
+          <div class="webhook-url">
+            <label style="font-size:12px;color:var(--sub);white-space:nowrap">系统回调地址</label>
+            <input type="text" readonly value="https://ess.example.com/api/customs/webhook/BROKER-QD-HX" />
+            <button type="button" class="btn outline" id="btnCopyWebhook">复制</button>
+          </div>
+          <div class="inner-table">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:48px">序号</th>
+                  <th>回调事件</th>
+                  <th style="width:72px">订阅</th>
+                  <th>触发后系统动作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>预录单附件回传 <span class="rv rv-yes">04</span></td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>更新预录单号、附件；状态 → 预录待复审</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>正式件回传 <span class="rv rv-mix">08</span></td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>自动确认收到正式件；状态 → 待放行</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>报关单号回传 <span class="rv rv-new">09</span></td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>写入报关单号列</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>放行资料就绪 <span class="rv rv-yes">10</span></td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>触发抓取任务；齐全后 → 报关放行</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>电子委托状态变更 <span class="rv rv-new">12</span></td>
+                  <td><label class="switch"><input type="checkbox" checked /><span class="slider"></span></label></td>
+                  <td>更新子表电子委托、委托内容</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="note-box">Webhook 验签密钥在「API 配置」中维护；报关查验（#11）本期不订阅回调。</div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-primary" id="btnSave">确定</button>
+        <button type="button" class="btn" id="btnReset">重置</button>
+        <button type="button" class="btn btn-ghost" id="btnClose">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 报关行 API 配置</span>
+    <h3>报关行 API 配置</h3>
+    <p>参考服务商渠道「新增数据」弹窗布局：上方<strong>基本信息</strong> + 下方 Tab（API 配置 / 对接能力 / Webhook 回调）。为<a href="报关管理-列表-MVP.html">报关管理列表</a>多报关行对接提供主数据与适配参数。</p>
+    <h4>列表</h4>
+    <ul>
+      <li>按报关行、API 服务商、对接状态筛选；支持新增、编辑、启用/停用、连通性测试。</li>
+      <li>「本期对接能力」展示评审编号芯片（#01 #04 #08 #09 #10 #12 等）。</li>
+    </ul>
+    <h4>基本信息</h4>
+    <ul>
+      <li>关联已有报关行主数据；编码系统唯一。</li>
+      <li>停用后该报关行新单不走 API，历史单只读。</li>
+    </ul>
+    <h4>API 配置（参考渠道 API 配置 Tab）</h4>
+    <ul>
+      <li><strong>API 服务商</strong>：选择适配器（港兴 / 云报关 / 华商 / 自定义），切换时加载字段模板。</li>
+      <li><strong>字段映射表</strong>：序号、字段、字段值（必填）、备注；支持增删行。常见字段：基础地址、AppKey、AppSecret、海关编码、环境、Token 刷新间隔等。</li>
+      <li>密钥类字段加密存储；保存前可做连通性测试。</li>
+    </ul>
+    <h4>对接能力</h4>
+    <ul>
+      <li>按评审结论 #01–#12 列出能力项；「本期」列标识对接 / 不做 / 手动。</li>
+      <li>仅「本期对接」项可启用开关；#02 #05 #11 等默认禁用。</li>
+      <li>启用项与<a href="报关管理-流程图-MVP.html">业务流程图</a>节点、列表工具栏能力一致。</li>
+    </ul>
+    <h4>Webhook 回调</h4>
+    <ul>
+      <li>系统生成每报关行唯一回调 URL，供报关行配置出站推送。</li>
+      <li>可订阅：预录单附件回传（#04）、正式件回传、报关单号（#09）、放行资料就绪（#10）、电子委托（#12）。</li>
+      <li>正式件回传 → 自动确认收到正式件 → <strong>待放行</strong>；放行资料齐全 → 自动 <strong>报关放行</strong>。</li>
+    </ul>
+    <h4>与业务联动</h4>
+    <ul>
+      <li>列表「报关供应商」命中本配置后，按启用能力调用对应接口。</li>
+      <li>未配置或停用的报关行走线下流程（待放行 / 手动放行）。</li>
+    </ul>
+  </div>
+
+  <script src="customs-broker-prototype-nav.js"></script>
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var mask = document.getElementById("modalMask");
+      var title = document.getElementById("modalTitle");
+
+      function openModal(mode, name) {
+        title.textContent = (mode === "add" ? "新增报关行" : "编辑报关行 · " + (name || ""));
+        mask.classList.add("open");
+        mask.setAttribute("aria-hidden", "false");
+      }
+      function closeModal() {
+        mask.classList.remove("open");
+        mask.setAttribute("aria-hidden", "true");
+      }
+
+      document.getElementById("btnAdd").addEventListener("click", function () {
+        openModal("add");
+      });
+      document.querySelectorAll(".btn-edit").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var row = btn.closest("tr");
+          openModal("edit", row.children[2].textContent);
+        });
+      });
+      ["btnModalClose", "btnClose"].forEach(function (id) {
+        document.getElementById(id).addEventListener("click", closeModal);
+      });
+      mask.addEventListener("click", function (e) {
+        if (e.target === mask) closeModal();
+      });
+
+      document.querySelectorAll(".config-tab").forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          var panel = tab.getAttribute("data-panel");
+          document.querySelectorAll(".config-tab").forEach(function (t) {
+            t.classList.toggle("active", t === tab);
+          });
+          document.querySelectorAll(".config-panel").forEach(function (p) {
+            p.classList.toggle("active", p.id === "panel" + panel.charAt(0).toUpperCase() + panel.slice(1));
+          });
+        });
+      });
+
+      var fieldOptions = [
+        "API 基础地址", "AppKey", "AppSecret", "企业海关十位编码",
+        "报关行备案号", "Webhook 验签密钥", "环境", "Token 刷新间隔(分钟)"
+      ];
+      function buildFieldSelect() {
+        return "<select>" + fieldOptions.map(function (o) {
+          return "<option>" + o + "</option>";
+        }).join("") + "</select>";
+      }
+      function renumberRows() {
+        document.querySelectorAll("#apiFieldBody tr").forEach(function (tr, i) {
+          tr.querySelector(".col-no").textContent = i + 1;
+        });
+      }
+      document.getElementById("btnAddField").addEventListener("click", function () {
+        var tbody = document.getElementById("apiFieldBody");
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td class="col-no"></td>' +
+          "<td>" + buildFieldSelect() + "</td>" +
+          '<td><input type="text" placeholder="必填" /></td>' +
+          '<td><input type="text" placeholder="备注" /></td>' +
+          '<td><button type="button" class="link-btn danger btn-del-row">删除</button></td>';
+        tbody.appendChild(tr);
+        renumberRows();
+      });
+      document.getElementById("apiFieldBody").addEventListener("click", function (e) {
+        if (!e.target.classList.contains("btn-del-row")) return;
+        var rows = document.querySelectorAll("#apiFieldBody tr");
+        if (rows.length <= 1) {
+          alert("至少保留一行配置（示意）");
+          return;
+        }
+        e.target.closest("tr").remove();
+        renumberRows();
+      });
+      document.getElementById("btnLoadTemplate").addEventListener("click", function () {
+        alert("已加载「港兴开放平台」默认字段模板（示意）");
+      });
+      document.getElementById("btnCopyWebhook").addEventListener("click", function () {
+        alert("回调地址已复制（示意）");
+      });
+      document.getElementById("btnSave").addEventListener("click", function () {
+        alert("配置已保存（示意）");
+        closeModal();
+      });
+      document.getElementById("btnReset").addEventListener("click", function () {
+        if (window.confirm("确认重置表单？（示意）")) location.reload();
+      });
+    })();
+  </script>
+</body>
+</html>

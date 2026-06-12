@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报关管理 · 预录单审核详情（MVP）</title>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0,0,0,.85);
+      --sub: rgba(0,0,0,.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --orange: #fa8c16;
+      --red: #ff4d4f;
+      --diff: #fff1f0;
+      --diff-border: #ffa39e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+
+    .page { max-width: 1440px; margin: 0 auto; padding: 12px 14px 40px; }
+    .crumb { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+    .crumb a { color: var(--blue); }
+
+    .hero {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 2px; padding: 14px 16px; margin-bottom: 10px;
+    }
+    .hero-top { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+    .hero h1 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+    .meta-grid {
+      display: flex; flex-wrap: wrap; gap: 6px 20px;
+      font-size: 12px; color: var(--sub);
+    }
+    .meta-grid strong { color: var(--text); font-weight: 500; }
+    .tag {
+      display: inline-block; padding: 0 8px; height: 22px; line-height: 20px;
+      border-radius: 2px; font-size: 12px; border: 1px solid;
+    }
+    .tag.review { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+    .btn {
+      height: 28px; padding: 0 12px; border-radius: 2px; cursor: pointer;
+      border: 1px solid #d9d9d9; background: #fff; font-size: 12px;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-ok { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn-warn { background: #fff; border-color: #ffd591; color: #d46b08; }
+    .btn-danger { background: #fff; border-color: #ffa39e; color: var(--red); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 10px;
+      align-items: start;
+    }
+    @media (max-width: 1100px) { .workspace { grid-template-columns: 1fr; } }
+
+    .main-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .panel {
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+    }
+    .panel-hd {
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      background: #fafafa;
+    }
+    .panel-hd h2 { margin: 0; font-size: 14px; font-weight: 600; }
+    .view-tabs { display: flex; gap: 4px; margin-left: auto; }
+    .view-tab {
+      height: 26px; padding: 0 10px; border: 1px solid #d9d9d9;
+      background: #fff; border-radius: 2px; cursor: pointer; font-size: 12px;
+    }
+    .view-tab.active { border-color: var(--blue); color: var(--blue); background: #e6f7ff; }
+
+    .compare-banner {
+      padding: 8px 14px; background: #fffbe6; border-bottom: 1px solid #ffe58f;
+      font-size: 12px; color: #ad6800;
+    }
+    .compare-banner strong { color: #874d00; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      font-size: 12px;
+    }
+    @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
+    .field {
+      border-bottom: 1px solid #f5f5f5;
+      border-right: 1px solid #f5f5f5;
+      padding: 6px 10px;
+      min-height: 52px;
+    }
+    .field.diff { background: var(--diff); box-shadow: inset 0 0 0 1px var(--diff-border); }
+    .field label {
+      display: block; font-size: 11px; color: var(--sub); margin-bottom: 2px;
+    }
+    .field .val { font-weight: 500; word-break: break-all; }
+    .field .src { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .field .src em { color: var(--red); font-style: normal; }
+
+    .goods-table-wrap { overflow-x: auto; padding: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+    th { background: #fafafa; color: var(--sub); font-weight: 500; }
+    tr.diff-row td { background: var(--diff); }
+    .attach-list { padding: 10px 14px; }
+    .attach-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 0; border-bottom: 1px dashed #f0f0f0; font-size: 12px;
+    }
+    .attach-item:last-child { border-bottom: none; }
+
+    /* 沟通侧栏 */
+    .side-col { position: sticky; top: 12px; }
+    .chat-panel { display: flex; flex-direction: column; max-height: calc(100vh - 24px); }
+    .chat-hd {
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+      background: #fafafa; font-weight: 600; font-size: 13px;
+    }
+    .chat-thread {
+      flex: 1; overflow-y: auto; padding: 10px 12px;
+      min-height: 280px; max-height: 420px;
+      background: #fafafa;
+    }
+    .msg {
+      margin-bottom: 12px; font-size: 12px; line-height: 1.55;
+    }
+    .msg .who { font-weight: 600; margin-bottom: 2px; }
+    .msg .time { color: var(--sub); font-size: 11px; font-weight: 400; margin-left: 6px; }
+    .msg .bubble {
+      margin-top: 4px; padding: 8px 10px; border-radius: 4px;
+      background: #fff; border: 1px solid var(--line);
+    }
+    .msg.sys .bubble { background: #f0f5ff; border-color: #adc6ff; }
+    .msg.broker .bubble { background: #f6ffed; border-color: #b7eb8f; }
+    .msg.mine .bubble { background: #e6f7ff; border-color: #91d5ff; }
+    .msg .attach-tag {
+      display: inline-block; margin-top: 4px; padding: 2px 6px;
+      background: #f5f5f5; border-radius: 2px; font-size: 11px; color: var(--blue);
+    }
+    .chat-compose {
+      border-top: 1px solid var(--line); padding: 10px 12px; background: #fff;
+    }
+    .chat-compose select {
+      width: 100%; height: 28px; margin-bottom: 6px;
+      border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .chat-compose textarea {
+      width: 100%; height: 72px; resize: vertical;
+      border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px;
+    }
+    .chat-compose .actions {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 6px; gap: 6px;
+    }
+
+    .timeline-mini {
+      padding: 10px 12px; border-top: 1px solid var(--line);
+      font-size: 11px; color: var(--sub); line-height: 1.6;
+    }
+    .timeline-mini strong { color: var(--text); }
+
+    .hidden { display: none !important; }
+  </style>
+  <link rel="stylesheet" href="customs-broker-review.css" />
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <link rel="stylesheet" href="customs-broker-prototype-nav.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="crumb">
+      <a href="报关管理-列表-MVP.html">报关管理</a>
+      / 审核详情 · COSU6502971850
+    </div>
+
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>预录单审核 · 107179404 <span class="tag review">待复审</span></h1>
+          <div class="meta-grid">
+            <span>终配舱单号 <strong>260609-青岛T25-1</strong></span>
+            <span>柜号 <strong>OOCU9737915</strong></span>
+            <span>分单号 <strong>FD-20260609-001</strong></span>
+            <span>报关行 <strong>青岛港兴报关行</strong></span>
+            <span>预录回传 <strong>2026-06-08 14:35</strong></span>
+            <span>报关客服 <strong>王丽</strong></span>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button type="button" class="btn btn-ok" id="btnApprove">复审通过 · 允许报关</button>
+          <button type="button" class="btn btn-danger" id="btnReject">退回修改</button>
+          <button type="button" class="btn btn-warn">标记需沟通</button>
+          <button type="button" class="btn">打开报关行系统</button>
+          <button type="button" class="btn">导出对比报告</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <div class="main-col">
+        <section class="panel">
+          <div class="panel-hd">
+            <h2>单证与字段核对</h2>
+            <div class="view-tabs" role="tablist">
+              <button type="button" class="view-tab active" data-view="compare">字段对比</button>
+              <button type="button" class="view-tab" data-view="preentry">预录单全文<span class="rv rv-yes" title="#04 保存附件、审附件">04</span></button>
+              <button type="button" class="view-tab" data-view="customer">客户原始资料</button>
+              <button type="button" class="view-tab" data-view="goods">商品明细</button>
+            </div>
+          </div>
+          <div id="viewCompare">
+            <div class="form-grid">
+              <div class="field">
+                <label>提运单号</label>
+                <div class="val">COSU6502971850</div>
+                <div class="src">客户 / 预录一致</div>
+              </div>
+              <div class="field diff">
+                <label>境内收发货人</label>
+                <div class="val">青岛某某贸易有限公司</div>
+                <div class="src">客户：<em>青岛XX贸易有限公司</em></div>
+              </div>
+              <div class="field">
+                <label>境外收发货人</label>
+                <div class="val">ABC TRADING LLC</div>
+                <div class="src">一致</div>
+              </div>
+              <div class="field">
+                <label>申报海关</label>
+                <div class="val">青岛海关</div>
+                <div class="src">一致</div>
+              </div>
+              <div class="field">
+                <label>运输方式</label>
+                <div class="val">水路运输</div>
+                <div class="src">一致</div>
+              </div>
+              <div class="field diff">
+                <label>成交方式</label>
+                <div class="val">C&amp;F</div>
+                <div class="src">客户：<em>FOB</em></div>
+              </div>
+              <div class="field">
+                <label>件数</label>
+                <div class="val">13</div>
+                <div class="src">一致</div>
+              </div>
+              <div class="field">
+                <label>毛重 (KG)</label>
+                <div class="val">274.91</div>
+                <div class="src">一致</div>
+              </div>
+              <div class="field">
+                <label>净重 (KG)</label>
+                <div class="val">152.13</div>
+                <div class="src">一致</div>
+              </div>
+              <div class="field">
+                <label>运抵国</label>
+                <div class="val">美国</div>
+                <div class="src">一致</div>
+              </div>
+              <div class="field">
+                <label>监管方式</label>
+                <div class="val">一般贸易</div>
+                <div class="src">一致</div>
+              </div>
+              <div class="field">
+                <label>征免性质</label>
+                <div class="val">一般征税</div>
+                <div class="src">一致</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="viewGoods" class="hidden">
+            <div class="goods-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>项号</th>
+                    <th>商品编码</th>
+                    <th>商品名称</th>
+                    <th>规格型号</th>
+                    <th>数量</th>
+                    <th>单价</th>
+                    <th>总价</th>
+                    <th>原产国</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1</td>
+                    <td>3926300000</td>
+                    <td>*五金配件*塑料把手</td>
+                    <td>USD</td>
+                    <td>500 个</td>
+                    <td>1.20</td>
+                    <td>600.00</td>
+                    <td>中国</td>
+                  </tr>
+                  <tr class="diff-row">
+                    <td>2</td>
+                    <td>7326909000</td>
+                    <td>*铁制品*支架</td>
+                    <td>预录：40×20mm / 客户：40*20mm</td>
+                    <td>200 千克</td>
+                    <td>3.50</td>
+                    <td>700.00</td>
+                    <td>中国</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="viewCustomer" class="hidden">
+            <div class="attach-list">
+              <div class="attach-item">📄 报关发票.pdf <a href="#">预览</a> · 上传 2026-06-07 18:22</div>
+              <div class="attach-item">📄 报关箱单.xlsx <a href="#">预览</a></div>
+              <div class="attach-item">📄 报关合同.pdf <a href="#">预览</a></div>
+              <div class="attach-item">📄 申报要素表.docx <a href="#">预览</a></div>
+            </div>
+          </div>
+
+          <div id="viewPreentry" class="hidden">
+            <div class="attach-list">
+              <div class="attach-item">📄 预录单_107179404.pdf <a href="#">预览</a> · 回传 2026-06-08 14:35</div>
+              <div class="attach-item">📄 预录单附件快照.zip <a href="#">下载</a></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="side-col">
+        <section class="panel chat-panel">
+          <div class="chat-hd">沟通记录 · 青岛港兴报关行</div>
+          <div class="chat-thread" id="chatThread">
+            <div class="msg sys">
+              <div class="who">系统 <span class="time">2026-06-08 09:12</span></div>
+              <div class="bubble">已推送资料包至报关行（分单号 FD-20260609-001），含 4 份附件。</div>
+            </div>
+            <div class="msg broker">
+              <div class="who">报关行 · 张客服 <span class="time">2026-06-08 14:35</span></div>
+              <div class="bubble">预录单 107179404 已生成，请复审。成交方式按提单显示为 C&amp;F，请确认。</div>
+              <span class="attach-tag">预录单快照.json</span>
+            </div>
+            <div class="msg mine">
+              <div class="who">我方 · 王丽 <span class="time">2026-06-08 15:02</span></div>
+              <div class="bubble">收到。境内收发货人全称请与客户资料保持一致；第 2 项规格型号括号格式也请对齐。</div>
+            </div>
+            <div class="msg broker">
+              <div class="who">报关行 · 张客服 <span class="time">2026-06-08 15:18</span></div>
+              <div class="bubble">成交方式 C&amp;F 为提单信息，如需改 FOB 请确认后我们改单重传。</div>
+            </div>
+          </div>
+          <div class="chat-compose">
+            <select id="msgType">
+              <option value="question">咨询确认</option>
+              <option value="modify">要求改单</option>
+              <option value="supplement">补充资料</option>
+              <option value="urgent">加急</option>
+            </select>
+            <textarea id="msgInput" placeholder="输入沟通内容…"></textarea>
+            <div class="actions">
+              <button type="button" class="btn">上传附件</button>
+              <button type="button" class="btn btn-primary" id="btnSend">发送</button>
+            </div>
+          </div>
+          <div class="timeline-mini">
+            <strong>节点</strong><br />
+            06-07 初审通过 · 06-08 09:12 推送 · 14:35 预录回传 · 15:02 我方异议 · 待报关行回复或改单
+          </div>
+        </section>
+      </aside>
+    </div>
+
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 预录单审核详情</span>
+    <h3>预录单审核详情（对比 + 沟通）</h3>
+    <p>从<a href="报关管理-列表-MVP.html">报关管理列表</a>「预录审核」进入；本页负责申报前核对与多方沟通。</p>
+    <h4>评审结论（本页）</h4>
+    <ul>
+      <li><strong>#04</strong> 预录单附件回传 → 保存附件、审附件（「预录单全文」Tab 标记）。</li>
+      <li>字段对比、沟通侧栏为原型示意，本期无对接标记。</li>
+    </ul>
+    <h4>字段对比（示意）</h4>
+    <ul>
+      <li>字段对比 Tab 为原型示意，本期不对接结构化 diff（#05 不处理）。</li>
+      <li>实际审核以<strong>预录单附件</strong>为准，见「预录单全文」Tab（#04）。</li>
+    </ul>
+    <h4>沟通通道</h4>
+    <ul>
+      <li>本期结论为线下沟通，不对接线上消息通道。</li>
+    </ul>
+    <h4>退回与通过</h4>
+    <ul>
+      <li><strong>退回修改：</strong>须选择退回原因 + 说明，状态改为「已退回」，通知报关行；改单后预录单号可不变，版本号 +1。</li>
+      <li><strong>复审通过：</strong>调用报关行「允许申报」接口；本单进入<a href="报关管理-列表-MVP.html?tab=wait">报关管理列表 · 待放行</a>跟踪。</li>
+    </ul>
+    <h4>多报关行</h4>
+    <ul>
+      <li>对比字段集按报关行配置映射；「打开报关行系统」跳转 SSO 或外链。</li>
+    </ul>
+  </div>
+
+  <script src="customs-broker-prototype-nav.js"></script>
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll(".view-tab");
+      var views = {
+        compare: document.getElementById("viewCompare"),
+        goods: document.getElementById("viewGoods"),
+        customer: document.getElementById("viewCustomer"),
+        preentry: document.getElementById("viewPreentry")
+      };
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          var v = tab.getAttribute("data-view");
+          tabs.forEach(function (t) { t.classList.toggle("active", t === tab); });
+          Object.keys(views).forEach(function (k) {
+            views[k].classList.toggle("hidden", k !== v);
+          });
+        });
+      });
+
+      document.getElementById("btnSend").addEventListener("click", function () {
+        var text = document.getElementById("msgInput").value.trim();
+        if (!text) return;
+        var thread = document.getElementById("chatThread");
+        var div = document.createElement("div");
+        div.className = "msg mine";
+        div.innerHTML =
+          '<div class="who">我方 · 王丽 <span class="time">刚刚</span></div>' +
+          '<div class="bubble">' + text.replace(/</g, "&lt;") + "</div>";
+        thread.appendChild(div);
+        thread.scrollTop = thread.scrollHeight;
+        document.getElementById("msgInput").value = "";
+      });
+
+      document.getElementById("btnApprove").addEventListener("click", function () {
+        if (window.confirm("确认复审通过并向报关行下发「允许申报」？（示意）")) {
+          window.location.href = "报关管理-列表-MVP.html?tab=wait";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
