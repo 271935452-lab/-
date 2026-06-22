@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>销售产品编辑 · 港后客服分配方式（MVP）</title>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --orange: #fa8c16;
+      --green: #52c41a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+
+    .page { min-height: 100vh; padding: 20px 16px 40px; }
+    .demo-bar {
+      max-width: 1180px; margin: 0 auto 12px;
+      background: #fffbe6; border: 1px solid #ffe58f;
+      padding: 8px 12px; font-size: 12px; color: #ad6800;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .demo-bar button {
+      height: 28px; padding: 0 10px; border: 1px solid #ffd591;
+      background: #fff; border-radius: 2px; cursor: pointer; color: #d46b08;
+    }
+
+    .mask {
+      max-width: 1180px; margin: 0 auto;
+      background: rgba(0,0,0,.45); border-radius: 2px; padding: 24px 16px;
+    }
+    .modal {
+      background: var(--card);
+      border-radius: 2px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.15);
+      max-width: 1120px; margin: 0 auto;
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-hd h1 { margin: 0; font-size: 15px; font-weight: 600; }
+    .modal-close { border: none; background: none; font-size: 18px; color: var(--sub); cursor: pointer; }
+
+    .modal-bd { padding: 14px 16px 8px; max-height: calc(100vh - 180px); overflow-y: auto; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px 16px;
+    }
+    @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
+    .field label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px;
+    }
+    .field label .req { color: #ff4d4f; margin-right: 2px; }
+    .field input, .field select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; background: #fff;
+    }
+    .field input:disabled, .field select:disabled {
+      background: #f5f5f5; color: rgba(0,0,0,.35); cursor: not-allowed;
+    }
+    .field.span-2 { grid-column: span 2; }
+    .field.span-4 { grid-column: 1 / -1; }
+
+    .section-title {
+      grid-column: 1 / -1;
+      margin: 4px 0 0; padding: 8px 0 4px;
+      border-top: 1px dashed #f0f0f0;
+      font-size: 12px; font-weight: 600; color: rgba(0,0,0,.65);
+    }
+    .section-title:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+    .mode-switch-wrap {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+      min-height: 30px;
+    }
+    .mode-segment {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 4px;
+      background: #f5f5f5;
+      border: 1px solid #e8e8e8;
+      gap: 2px;
+    }
+    .mode-segment label {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 108px;
+      height: 26px;
+      padding: 0 14px;
+      margin: 0;
+      border-radius: 3px;
+      font-size: 12px;
+      color: rgba(0,0,0,.55);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color .2s, background .2s, box-shadow .2s;
+      user-select: none;
+    }
+    .mode-segment label input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+    .mode-segment label.is-on,
+    .mode-segment label:has(input:checked) {
+      background: #fff;
+      color: var(--blue);
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    .mode-segment label:has(input:focus-visible) {
+      outline: 2px solid rgba(24,144,255,.35);
+      outline-offset: 1px;
+    }
+    .hint-inline {
+      font-size: 11px; color: var(--sub); font-weight: 400; line-height: 1.4;
+    }
+
+    .cs-block {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px 16px;
+      padding: 10px 12px;
+      border-radius: 2px;
+      border: 1px solid #e6f7ff;
+      background: #fafcff;
+    }
+    .cs-block.branch { border-color: #ffe7ba; background: #fffbf0; }
+    .cs-block .block-label {
+      grid-column: 1 / -1;
+      font-size: 12px; color: #096dd9; margin-bottom: -2px;
+    }
+    .cs-block.branch .block-label { color: #d46b08; }
+
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .btn {
+      height: 30px; padding: 0 14px; border-radius: 2px; cursor: pointer;
+      border: 1px solid #d9d9d9; background: #fff;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    .preview {
+      max-width: 1180px; margin: 12px auto 0;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 2px; padding: 12px 16px;
+    }
+    .preview h2 { margin: 0 0 8px; font-size: 14px; }
+    .preview table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .preview th, .preview td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+    .preview th { background: #fafafa; color: var(--sub); }
+    .tag { color: var(--blue); }
+
+    .prd-note {
+      max-width: 1180px; margin: 12px auto 0;
+      padding: 12px 14px; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 4px; font-size: 12px; line-height: 1.65; color: #135200;
+    }
+    .prd-note strong { color: #389e0d; }
+    .prd-note ul { margin: 6px 0 0; padding-left: 18px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="demo-bar">
+      <strong>原型演示</strong>
+      <button type="button" id="btnFba">切换为 FBA 散货产品（默认按客户类型）</button>
+      <button type="button" id="btnFcl">切换为整柜产品（默认按分公司）</button>
+      <span id="demoHint">当前：FBA 海卡 · 按客户类型</span>
+    </div>
+
+    <div class="mask">
+      <div class="modal" role="dialog" aria-labelledby="modalTitle">
+        <div class="modal-hd">
+          <h1 id="modalTitle">编辑数据</h1>
+          <button type="button" class="modal-close" aria-label="关闭">×</button>
+        </div>
+        <div class="modal-bd">
+          <div class="form-grid">
+            <div class="section-title">基本信息</div>
+            <div class="field">
+              <label><span class="req">*</span>产品代码</label>
+              <input type="text" id="productCode" value="PK2535" readonly />
+            </div>
+            <div class="field span-2">
+              <label><span class="req">*</span>产品名称</label>
+              <input type="text" id="productName" value="(T25) FBA海运海卡" />
+            </div>
+            <div class="field">
+              <label>产品组</label>
+              <select id="productGroup"><option>海运 (HYCP)</option><option>整柜 (FCL)</option></select>
+            </div>
+            <div class="field">
+              <label>业务类型</label>
+              <select><option>自营(非打单) (HYCM)</option></select>
+            </div>
+            <div class="field">
+              <label>派送方式</label>
+              <select><option>卡车派送 (FBA派)</option><option>整柜直送</option></select>
+            </div>
+            <div class="field">
+              <label>港前客服</label>
+              <select><option>Olaf(青)</option></select>
+            </div>
+
+            <div class="section-title">港后客服分配</div>
+            <div class="field span-4">
+              <label>港后客服分配方式</label>
+              <div class="mode-switch-wrap">
+                <div class="mode-segment" role="radiogroup" aria-label="港后客服分配方式">
+                  <label>
+                    <input type="radio" name="csMode" value="customerType" checked />
+                    按客户类型
+                  </label>
+                  <label>
+                    <input type="radio" name="csMode" value="branch" />
+                    按分公司
+                  </label>
+                </div>
+                <span class="hint-inline" id="modeHint">直客 / 同行各指定一名港后客服</span>
+              </div>
+            </div>
+
+            <div class="cs-block" id="blockCustomerType">
+              <div class="block-label">按客户类型 · 联动字段（现有）</div>
+              <div class="field">
+                <label><span class="req">*</span>港后直客客服</label>
+                <select id="csDirect">
+                  <option value="Candy(FX)">Candy(FX)</option>
+                  <option value="Amy(深)">Amy(深)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label><span class="req">*</span>港后同行客服</label>
+                <select id="csPeer">
+                  <option value="Yumiko(博)">Yumiko(博)</option>
+                  <option value="Linda(厦)">Linda(厦)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="cs-block branch hidden" id="blockBranch">
+              <div class="block-label">按分公司分组 · 整柜不分直客/同行</div>
+              <div class="field">
+                <label><span class="req">*</span>整柜苏青客服</label>
+                <select id="csSuQing">
+                  <option value="">请选择</option>
+                  <option value="张三(苏)">张三(苏)</option>
+                  <option value="李四(青)">李四(青)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label><span class="req">*</span>整柜其他客服</label>
+                <select id="csOther">
+                  <option value="">请选择</option>
+                  <option value="王五(深)">王五(深)</option>
+                  <option value="赵六(广)">赵六(广)</option>
+                </select>
+              </div>
+              <div class="field span-2" style="grid-column:span 2">
+                <label>分组说明</label>
+                <input type="text" value="苏青组 = 苏州 + 青岛；其他组 = 其余分公司" disabled />
+              </div>
+            </div>
+
+            <div class="section-title">其他字段（示意）</div>
+            <div class="field"><label>时效</label><input type="text" value="25 - 32" /></div>
+            <div class="field"><label>干线服务级别</label><select><option>普船</option></select></div>
+            <div class="field"><label>产品渠道分类</label><input type="text" value="T25" /></div>
+            <div class="field"><label>备注</label><input type="text" /></div>
+          </div>
+        </div>
+        <div class="modal-ft">
+          <button type="button" class="btn">取消</button>
+          <button type="button" class="btn btn-primary" id="btnSave">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="preview">
+      <h2>运单落标预览（示意）</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>分配方式</th>
+            <th>业务员分公司</th>
+            <th>客户类型</th>
+            <th>解析结果 · 港后客服标签</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </section>
+
+    <div class="prd-note">
+      <strong>PRD · 港后客服分配方式</strong>
+      <ul>
+        <li><strong>按客户类型：</strong>沿用现有「港后直客客服 / 港后同行客服」；运单按客户类型二选一，不看分公司。</li>
+        <li><strong>按分公司分组：</strong>展示「整柜苏青客服 / 整柜其他客服」；苏州、青岛 → 苏青客服，其余分公司 → 其他客服；<strong>不分直客/同行</strong>。</li>
+        <li><strong>联动显隐：</strong>未选中方式的字段隐藏且不参与校验；保存时只持久化当前模式相关字段。</li>
+        <li><strong>默认值：</strong>整柜类产品新建时默认「按分公司分组」；FBA 等散货默认「按客户类型」。</li>
+        <li><strong>运单解析时机：</strong>建单或改销售产品时重算；已交接运单不自动变更（以实现为准）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var radios = document.querySelectorAll('input[name="csMode"]');
+      var blockType = document.getElementById("blockCustomerType");
+      var blockBranch = document.getElementById("blockBranch");
+      var modeHint = document.getElementById("modeHint");
+      var previewBody = document.getElementById("previewBody");
+
+      function getMode() {
+        var checked = document.querySelector('input[name="csMode"]:checked');
+        return checked ? checked.value : "customerType";
+      }
+
+      function syncSegmentStyle() {
+        radios.forEach(function (r) {
+          var lbl = r.closest("label");
+          if (lbl) lbl.classList.toggle("is-on", r.checked);
+        });
+      }
+
+      function syncVisibility() {
+        var mode = getMode();
+        var isBranch = mode === "branch";
+        blockType.classList.toggle("hidden", isBranch);
+        blockBranch.classList.toggle("hidden", !isBranch);
+        modeHint.textContent = isBranch
+          ? "苏州、青岛共用一名；其余分公司共用一名，不区分直客/同行"
+          : "直客 / 同行各指定一名港后客服";
+        syncSegmentStyle();
+        renderPreview();
+      }
+
+      function renderPreview() {
+        var mode = getMode();
+        var direct = document.getElementById("csDirect").value;
+        var peer = document.getElementById("csPeer").value;
+        var suqing = document.getElementById("csSuQing").value || "（未配置）";
+        var other = document.getElementById("csOther").value || "（未配置）";
+        var rows = [];
+
+        if (mode === "customerType") {
+          rows.push(["按客户类型", "深圳", "直客", '<span class="tag">兰西-直客客服-' + direct + "</span>"]);
+          rows.push(["按客户类型", "青岛", "同行", '<span class="tag">兰西-同行FBA客服-' + peer + "</span>"]);
+        } else {
+          rows.push(["按分公司", "苏州", "直客/同行", '<span class="tag">苏青组-港后客服-' + suqing + "</span>"]);
+          rows.push(["按分公司", "青岛", "直客/同行", '<span class="tag">苏青组-港后客服-' + suqing + "</span>"]);
+          rows.push(["按分公司", "深圳", "直客/同行", '<span class="tag">其他-港后客服-' + other + "</span>"]);
+        }
+        previewBody.innerHTML = rows.map(function (r) {
+          return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td><td>" + r[2] + "</td><td>" + r[3] + "</td></tr>";
+        }).join("");
+      }
+
+      radios.forEach(function (r) {
+        r.addEventListener("change", syncVisibility);
+      });
+      ["csDirect", "csPeer", "csSuQing", "csOther"].forEach(function (id) {
+        document.getElementById(id).addEventListener("change", renderPreview);
+      });
+
+      document.getElementById("btnFba").addEventListener("click", function () {
+        document.getElementById("productCode").value = "PK2535";
+        document.getElementById("productName").value = "(T25) FBA海运海卡";
+        document.getElementById("productGroup").value = "海运 (HYCP)";
+        document.querySelector('input[name="csMode"][value="customerType"]').checked = true;
+        document.getElementById("demoHint").textContent = "当前：FBA 海卡 · 按客户类型";
+        syncVisibility();
+      });
+
+      document.getElementById("btnFcl").addEventListener("click", function () {
+        document.getElementById("productCode").value = "FCL-TX01";
+        document.getElementById("productName").value = "(TX) 整柜海运";
+        document.getElementById("productGroup").selectedIndex = 1;
+        document.querySelector('input[name="csMode"][value="branch"]').checked = true;
+        document.getElementById("csSuQing").value = "张三(苏)";
+        document.getElementById("csOther").value = "王五(深)";
+        document.getElementById("demoHint").textContent = "当前：整柜 · 按分公司分组";
+        syncVisibility();
+      });
+
+      document.getElementById("btnSave").addEventListener("click", function () {
+        var mode = getMode();
+        if (mode === "branch") {
+          if (!document.getElementById("csSuQing").value || !document.getElementById("csOther").value) {
+            alert("按分公司分组时，请填写「整柜苏青客服」和「整柜其他客服」");
+            return;
+          }
+        }
+        alert("保存成功（示意）· 分配方式：" + (mode === "branch" ? "按分公司分组" : "按客户类型"));
+      });
+
+      syncVisibility();
+    })();
+  </script>
+</body>
+</html>

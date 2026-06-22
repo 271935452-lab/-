@@ -26,6 +26,7 @@
       label: "配置",
       links: [
         { file: "报关行API配置-MVP.html", label: "报关行 API 配置" },
+        { file: "服务商模版匹配-系统模版-MVP.html", label: "服务商模版 ↔ 系统模版匹配" },
       ],
     },
     {

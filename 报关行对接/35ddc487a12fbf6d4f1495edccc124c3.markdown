@@ -1,0 +1,309 @@
+
+
+# 报关系统开放接口文档
+
+## 1. 概述
+
+本文档描述了报关系统对外提供的开放接口，包括接口鉴权方式、公共请求头、接口列表及请求响应说明。
+
+- **基础地址**：`http://www.mindcustoms.com/api/hgWaitReceiveOrderOpenAPI`
+- **数据格式**：JSON
+- **字符编码**：UTF-8
+
+---
+
+## 2. 接口鉴权
+
+### 2.1 签名算法
+
+所有接口请求需要在 HTTP Header 中携带签名参数，签名生成规则如下：
+
+1. 拼接字符串：`appid + secret + timestamp`
+2. 使用 **SHA-1** 对拼接后的字符串进行加密
+3. 将加密结果转换为 **大写十六进制字符串**
+
+> 签名的有效期为 **10 分钟**（基于时间戳校验）
+
+#### 示例
+
+```java
+String appid = "LYAPI001";
+String secret = "8d63f7c2-4bda-42a0-a22e-b8fc8aadbee3";
+String timestamp = String.valueOf(System.currentTimeMillis());
+
+String sign = generateSign(appid, secret, timestamp);
+// 结果示例：403095FE7E16EE309D27B630DADFC0A968F5AEE1
+```
+
+### 2.2 公共请求头（Header）
+
+所有接口必须包含以下 Header 参数：
+
+| 参数名       | 类型     | 必填  | 说明          |
+| --------- | ------ | --- | ----------- |
+| appid     | string | 是   | 分配给调用方的应用ID |
+| timeStamp | string | 是   | 当前毫秒级时间戳    |
+| sign      | string | 是   | 按上述规则生成的签名  |
+
+### 2.3 签名生成代码参考（Java）
+
+```java
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+public class SignUtil {
+
+    public static String addSign(String appid, String secret, String timestamp) {
+        try {
+            String str = appid + secret + timestamp;
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            byte[] digest = md.digest(str.getBytes());
+            return byteToHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static String byteToHex(byte[] bytes) {
+        StringBuilder hexStr = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(b & 0xFF);
+            if (hex.length() < 2) {
+                hexStr.append(0);
+            }
+            hexStr.append(hex.toUpperCase());
+        }
+        return hexStr.toString();
+    }
+}
+```
+
+---
+
+## 3. 通用响应格式
+
+所有接口响应均采用以下统一结构：
+
+| 字段名     | 类型     | 说明                     |
+| ------- | ------ | ---------------------- |
+| code    | int    | 状态码，`200` 表示成功，其他值表示失败 |
+| data    | object | 成功时返回的数据体（具体结构见各接口定义）  |
+| message | string | 失败时的错误描述               |
+
+> 示例（成功）：
+> 
+> ```json
+> {
+>   "code": 200,
+>   "data": {},
+>   "message": null
+> }
+> ```
+
+---
+
+## 4. 接口列表
+
+### 4.1 接收预录单（报关接收）
+
+用于接收客户预录单数据，支持批量提交。
+
+- **URL**：`/receiveTYWaitReceiveOrder`
+- **Method**：`POST`
+- **Content-Type**：`application/json`
+
+#### 请求参数（Body）
+
+| 字段名                      | 类型            | 必填  | 说明              |
+| ------------------------ | ------------- | --- | --------------- |
+| taskData                 | object        | 是   | 预录单数据对象         |
+| ∟ refNo                  | string        | 是   | 客户单号（客户提单号）     |
+| ∟ uniqueNo               | string        | 是   | 唯一号，用于与报关系统关联   |
+| ∟ remark                 | string        | 否   | 备注              |
+| ∟ fileList               | array[object] | 是   | 附件文件列表          |
+| &nbsp;&nbsp;∟ attachName | string        | 是   | 文件名             |
+| &nbsp;&nbsp;∟ url        | string        | 是   | 文件的可下载地址（OSS地址） |
+
+#### 请求示例
+
+```json
+{
+  "taskData": {
+    "refNo": "TEST-20240101-001",
+    "uniqueNo": "US2606010001",
+    "remark": "预录单备注",
+    "fileList": [
+      {
+        "attachName": "WTF88752510015 报关.pdf",
+        "url": "http://oss.example.com/xxx.pdf"
+      }
+    ]
+  }
+}
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "data": null,
+  "message": "预录单资料接收成功"
+}
+{
+  "code": 400,
+  "data": null,
+  "message": "接收信息成功，保存预录单资料信息失败"
+}
+```
+
+---
+
+### 4.2 接收沟通内容（报关接收）
+
+用于向报关系统提交沟通记录及相关的图片附件。
+
+- **URL**：`/receiveTYCommunication`
+- **Method**：`POST`
+- **Content-Type**：`application/json`
+
+#### 请求参数（Body）
+
+| 字段名                      | 类型            | 必填  | 说明                |
+| ------------------------ | ------------- | --- | ----------------- |
+| taskData                 | object        | 是   | 沟通内容数据对象          |
+| ∟ uniqueNo               | string        | 是   | 唯一号，关联报关系统        |
+| ∟ communication          | string        | 是   | 沟通文本内容            |
+| ∟ pngList                | array[object] | 是   | 图片附件列表（仅允许图片格式）   |
+| &nbsp;&nbsp;∟ attachName | string        | 否   | 图片文件名             |
+| &nbsp;&nbsp;∟ pngUrl     | string        | 是   | 图片的可下载地址（仅支持图片格式） |
+
+#### 请求示例
+
+```json
+{
+  "taskData": {
+    "uniqueNo": "US2606010001",
+    "communication": "沟通内容aaaaa",
+    "pngList": [
+      {
+        "attachName": "WTF88752510015.png",
+        "pngUrl": "http://oss.example.com/xxx.png"
+      }
+    ]
+  }
+}
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "data": null,
+  "message": "沟通内容接收成功"
+}
+{
+  "code": 400,
+  "data": null,
+  "message": "接收信息成功，保存沟通内容失败"
+}
+```
+
+---
+
+### 4.3 电子委托查询（报关接收）
+
+用于向报关系统查询电子委托情况。
+
+- **URL**：`/searchTYDZWT`
+- **Method**：`POST`
+- **Content-Type**：`application/json`
+
+#### 请求参数（Body）
+
+| 字段名                      | 类型            | 必填  | 说明                |
+| ------------------------ | ------------- | --- | ----------------- |
+| companyName              | string        | 是   | 待查询公司名称（名称和代码二选一）          |
+| companyCode              | string        | 是   | 待查询公司10位海关代码（名称和代码二选一）        |
+| agentCode                | string        | 是   | 对应报关行10位海关代码            |
+| agentName                | string        | 是   | 对应报关行名称      |
+
+
+#### 请求示例
+
+```json
+{
+  "companyName": "义乌市冀宁贸易有限公司",
+  "companyCode": "",
+  "agentCode": "3109980A1K",
+  "agentName": "上海易豹达报关有限公司"
+}
+```
+
+#### 响应示例
+
+```json
+{
+    "code": 200,
+    "message": "操作成功",
+    "data": {
+        "trSocialCreCode": "91330782MA7H21KQ9J",
+        "tradeCode": "3318960VQK",
+        "tradeName": "义乌市冀宁贸易有限公司",
+        "consignCorpEr": "张琨",
+        "autoAffirm": "已开启自动确认",
+        "expireMonths": "12个月",
+        "consignType": "长期",
+        "consignNoL": "262243101472387",
+        "beginDate": "2026-05-27",
+        "endDate": "2027-05-26",
+        "agreementIndex": "2",
+        "stepId": "填单申报|辅助查验|",
+        "status": "确认",
+        "agentName": "上海易豹达报关有限公司",
+        "agSocialCreCode": "91310109MAEK0M0E5K",
+        "agentCode": "3109980A1K"
+    }
+}
+{
+  "code": 400,
+  "data": null,
+  "message": "请检查参数格式"
+}
+```
+
+
+---
+
+## 5. 错误码说明
+
+| 状态码 | 含义           |
+| --- | ------------ |
+| 200 | 请求成功         |
+| 400 | 请求参数错误       |
+| 401 | 签名验证失败或时间戳无效 |
+| 500 | 服务器内部错误      |
+
+> 更多业务错误码请以实际返回 `message` 字段内容为准。
+
+---
+
+## 6. 附录：签名生成完整示例
+
+```java
+public class Demo {
+    public static void main(String[] args) {
+        String appid = "LYAPI001";
+        String secret = "8d63f7c2-4bda-42a0-a22e-b8fc8aadbee3";
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String sign = SignUtil.addSign(appid, secret, timestamp);
+
+        System.out.println("timestamp: " + timestamp);
+        System.out.println("sign: " + sign);
+    }
+}
+```
+
+---
