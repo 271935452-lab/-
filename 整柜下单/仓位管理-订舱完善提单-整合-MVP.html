@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>仓位管理 · 订舱登记与完善提单（整合 MVP）</title>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --req: #cf1322;
+      --warn: #fa8c16;
+      --ok: #389e0d;
+      --drawer-w: 780px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff; min-height: 48px;
+      display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    }
+    .logo { font-size: 14px; font-weight: 600; }
+    .nav-tab {
+      margin-left: 16px; padding: 0 12px; height: 48px; line-height: 48px;
+      background: var(--bg); color: var(--text); font-weight: 600;
+    }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 200px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.75);
+      padding: 8px 0; overflow-y: auto;
+    }
+    .side-item {
+      display: block; width: 100%; text-align: left; border: none; background: none;
+      color: inherit; padding: 10px 16px; cursor: pointer; font-size: 13px;
+    }
+    .side-item:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .side-item.active { background: var(--blue); color: #fff; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+    .filter-panel {
+      background: var(--card); border-bottom: 1px solid var(--line); padding: 12px 14px;
+    }
+    .filter-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 14px;
+    }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .filter-actions { margin-top: 10px; display: flex; gap: 8px; }
+
+    .toolbar {
+      padding: 8px 14px; background: var(--card); border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .btn {
+      height: 32px; padding: 0 14px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; cursor: pointer;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-danger { background: #ff4d4f; border-color: #ff4d4f; color: #fff; }
+    .btn-ghost { border-color: var(--blue); color: var(--blue); }
+
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; white-space: nowrap; }
+    th { background: #fafafa; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+    tr:hover td { background: #e6f7ff; }
+    tr.selected td { background: #bae7ff; }
+    tr.row-danger td { background: #fff1f0; }
+    tr.row-danger:hover td { background: #ffccc7; }
+    tr.row-warn td { background: #fff7e6; }
+    tr.row-warn:hover td { background: #ffe7ba; }
+    td.cell-danger { color: var(--req); font-weight: 600; }
+    td.cell-warn { color: #d46b08; font-weight: 600; }
+    .link { color: var(--blue); cursor: pointer; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; line-height: 18px;
+    }
+    .tag-ok { background: #f6ffed; color: var(--ok); border: 1px solid #b7eb8f; }
+    .tag-warn { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .tag-no { background: #fff1f0; color: var(--req); border: 1px solid #ffa39e; }
+    .tag-tail { background: #e6f4ff; color: #0958d9; border: 1px solid #91caff; font-size: 10px; margin-left: 4px; }
+    .flow-tip {
+      margin-top: 8px; padding: 8px 10px; border-radius: 4px;
+      background: #e6f4ff; border: 1px solid #91caff; color: #0958d9; font-size: 12px; line-height: 1.5;
+    }
+    .flow-tip[hidden] { display: none !important; }
+
+    /* drawer */
+    .drawer-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 800;
+      opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s;
+    }
+    .drawer-mask.open { opacity: 1; visibility: visible; }
+    .drawer {
+      position: fixed; top: 0; right: 0; width: min(var(--drawer-w), 100vw); height: 100vh;
+      background: var(--card); z-index: 810; display: flex; flex-direction: column;
+      transform: translateX(100%); transition: transform .25s ease;
+      box-shadow: -8px 0 24px rgba(0,0,0,.12);
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-hd {
+      padding: 14px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .drawer-hd h2 { margin: 0; font-size: 16px; font-weight: 600; }
+    .drawer-hd .sub { font-size: 12px; color: var(--sub); font-weight: 400; margin-top: 2px; }
+    .drawer-close {
+      border: none; background: none; font-size: 22px; color: var(--sub); cursor: pointer; line-height: 1;
+    }
+    .drawer-bd { flex: 1; overflow: auto; padding: 0 16px 16px; }
+
+    .sec {
+      margin-top: 14px; border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+    }
+    .sec-hd {
+      padding: 8px 12px; background: #fafafa; font-weight: 600; font-size: 13px;
+      border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between;
+    }
+    .sec-hd .hint { font-weight: 400; font-size: 11px; color: var(--sub); }
+    .sec-bd { padding: 12px; }
+    .form-grid {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px;
+    }
+    .form-grid.cols3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { display: block; font-size: 12px; margin-bottom: 4px; }
+    .req { color: var(--req); margin-left: 2px; }
+    .field input, .field select, .field textarea {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .field textarea { height: auto; min-height: 64px; padding: 6px 8px; resize: vertical; }
+    .field input[readonly], .field .readonly {
+      background: #fafafa; color: var(--sub);
+    }
+    .check-inline { display: flex; align-items: center; gap: 16px; min-height: 32px; }
+    .check-inline label { display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; }
+    .transit-inline {
+      display: flex; align-items: center; gap: 12px; min-height: 32px;
+    }
+    .transit-inline .transit-port-input {
+      flex: 1; min-width: 0; max-width: 360px;
+    }
+
+    .slot-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .slot-table th, .slot-table td { border: 1px solid var(--line); padding: 6px 8px; }
+    .slot-table th { background: #fafafa; }
+    .slot-table input, .slot-table select { width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; }
+    .btn-link { border: none; background: none; color: var(--blue); cursor: pointer; padding: 0; }
+    .btn-link.danger { color: var(--req); }
+
+    .upload-box {
+      border: 1px dashed #d9d9d9; border-radius: 2px; padding: 20px; text-align: center;
+      color: var(--sub); background: #fafafa; font-size: 12px; line-height: 1.6;
+    }
+    .radio-row { display: flex; gap: 16px; min-height: 32px; align-items: center; }
+    .radio-row label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line); display: flex;
+      justify-content: flex-end; gap: 8px; flex-shrink: 0; background: #fff;
+    }
+
+    body.ess-prd-page:not(.ess-prd-collapsed) .drawer.open { right: 360px; }
+    @media (max-width: 1679px) { body.ess-prd-page .drawer.open { right: 0; } }
+
+    .removed-note {
+      margin: 12px 14px; padding: 8px 10px; background: #f5f5f5; border-radius: 2px;
+      font-size: 11px; color: var(--sub); line-height: 1.55;
+    }
+
+    .status-bar {
+      background: #fafafa; border-bottom: 1px solid var(--line);
+      padding: 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+    }
+    .status-tab {
+      padding: 10px 12px; border: none; background: none; font-size: 13px;
+      color: var(--sub); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .status-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .status-tab .cnt { color: var(--req); margin-left: 2px; }
+
+    .legend-bar {
+      padding: 8px 14px; background: var(--card); border-bottom: 1px solid var(--line);
+      font-size: 11px; color: var(--sub); display: flex; flex-wrap: wrap; gap: 12px 16px;
+    }
+    .legend-bar i {
+      display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px;
+      vertical-align: -1px;
+    }
+    .legend-bar .lg-danger { background: #ffccc7; border: 1px solid #ffa39e; }
+    .legend-bar .lg-warn { background: #ffe7ba; border: 1px solid #ffd591; }
+    .table-foot {
+      padding: 8px 14px; background: #fafafa; border-top: 1px solid var(--line);
+      font-size: 12px; color: var(--sub); display: flex; justify-content: space-between;
+    }
+    .bind-hint {
+      margin: 8px 0 0; font-size: 11px; color: var(--sub); line-height: 1.55;
+    }
+    .bind-hint.warn {
+      padding: 8px 10px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 2px; color: #ad6800;
+    }
+    .field-ro-link { color: var(--blue); cursor: pointer; }
+    .leg2-hint {
+      grid-column: 1 / -1; margin: 0 0 4px; padding: 6px 10px;
+      font-size: 11px; color: #ad6800; background: #fffbe6; border: 1px solid #ffe58f;
+      border-radius: 2px; line-height: 1.5;
+    }
+    .field.opt label .opt-tag { font-weight: 400; color: var(--sub); font-size: 11px; }
+    .demo-bar {
+      background: #fffbe6; border-bottom: 1px solid #ffe58f;
+      padding: 6px 14px; font-size: 12px; color: #ad6800; line-height: 1.55;
+    }
+    .demo-bar a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="demo-bar">
+      <strong>本次更新 2026-07-03</strong> · 移除「未放舱导出」· 改由「批量导出」+ 筛选/页签 · 流程四订舱放舱 · 二程/进港代码 · 海运费有效期×装柜签出校验 · 移除分摊录单 ·
+      <a href="整柜本次更新-MVP.html">完整变更说明</a>
+    </div>
+    <header class="top-header">
+      <div class="logo">腾信物流</div>
+      <div class="nav-tab">仓位管理</div>
+    </header>
+
+    <div class="body-wrap">
+      <nav class="sidebar">
+        <button type="button" class="side-item">产品</button>
+        <button type="button" class="side-item active">仓位管理</button>
+        <button type="button" class="side-item">运单管理</button>
+        <button type="button" class="side-item">整柜下单</button>
+        <button type="button" class="side-item">财务管理</button>
+      </nav>
+
+      <main class="main">
+        <section class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item">
+              <label>航次/船名/SO/提单号</label>
+              <input type="text" placeholder="模糊搜索" />
+            </div>
+            <div class="filter-item">
+              <label>订舱代理</label>
+              <select><option>全部</option><option>深圳XX货代</option></select>
+            </div>
+            <div class="filter-item">
+              <label>放舱状态</label>
+              <select><option>全部</option><option>未放舱</option><option>已放舱</option></select>
+            </div>
+            <div class="filter-item">
+              <label>海运费状态</label>
+              <select><option>全部</option><option>正常</option><option>即将过期</option><option>已过期</option></select>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn btn-primary">查询</button>
+            <button type="button" class="btn">重置</button>
+          </div>
+        </section>
+
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnAdd">新增订舱登记</button>
+          <button type="button" class="btn btn-ghost" id="btnEdit">完善提单 / 编辑舱位</button>
+          <button type="button" class="btn">导出放舱 BC</button>
+          <button type="button" class="btn" id="btnExportRolloverBc" title="甩柜/舱位变更后导出更新后的 BC">甩柜BC导出</button>
+          <button type="button" class="btn">导出预报模板</button>
+          <button type="button" class="btn" id="btnBatchExport" title="按当前筛选区 + 状态页签（如「未放舱」）条件导出">批量导出</button>
+          <button type="button" class="btn">编辑备注</button>
+          <button type="button" class="btn btn-danger">批量删除</button>
+        </div>
+
+        <div class="removed-note">
+          流程 7.2 · <strong>四、报价 &amp; 订舱</strong>：询价/报价绑定运单 → 放舱（签入）录入舱位；列表支持导出预报模板、按筛选条件批量导出（含「未放舱」页签/放舱状态筛选，<strong>已移除「未放舱导出」</strong>）。<strong>柜号/铅封号</strong>在签出环节维护。
+        </div>
+
+        <div class="status-bar">
+          <button type="button" class="status-tab active">全部(15)</button>
+          <button type="button" class="status-tab">未放舱<span class="cnt">(3)</span></button>
+          <button type="button" class="status-tab">海运费异常<span class="cnt">(2)</span></button>
+          <button type="button" class="status-tab">截单/截关临近(1)</button>
+          <button type="button" class="status-tab">已放舱(11)</button>
+        </div>
+
+        <div class="legend-bar">
+          <span><i class="lg-danger"></i>红底行：未放舱 / 海运费已过期 / 装柜完成不在有效期内 / 必填缺失</span>
+          <span><i class="lg-warn"></i>橙底行：海运费即将过期 / 截关·截单 48h 内 / 船期待确认</span>
+          <span>红字单元格：海运费金额/有效期异常等</span>
+        </div>
+
+        <div class="table-wrap">
+          <table aria-label="舱位列表">
+            <thead>
+              <tr>
+                <th><input type="checkbox" aria-label="全选" /></th>
+                <th>序号</th>
+                <th>航次/船名</th>
+                <th>提单号</th>
+                <th>业务员</th>
+                <th>关联报价</th>
+                <th>订舱代理</th>
+                <th>SO No</th>
+                <th>起运港</th>
+                <th>目的港</th>
+                <th>箱型</th>
+                <th>20GP</th>
+                <th>40HQ</th>
+                <th>截关时间</th>
+                <th>截单(SI)</th>
+                <th>ETD</th>
+                <th>ETA</th>
+                <th>带车架</th>
+                <th>放舱</th>
+                <th>海运费</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="selected">
+                <td><input type="checkbox" checked /></td>
+                <td>1</td>
+                <td>COSCO AQUARIUS / 2518W</td>
+                <td><span class="link" data-open-drawer>TXZG00000000043</span></td>
+                <td>任杰</td>
+                <td><a class="link" href="ESS整柜报价详情-MVP.html">BJ202605230018</a></td>
+                <td>深圳XX货代</td>
+                <td>S0561</td>
+                <td>CNNGB 宁波</td>
+                <td>USLAX 洛杉矶</td>
+                <td>40HQ</td>
+                <td>0</td>
+                <td>1</td>
+                <td>2026-07-22</td>
+                <td>2026-07-20 17:00</td>
+                <td>2026-07-03 12:00</td>
+                <td>2026-08-03 00:00</td>
+                <td>否</td>
+                <td><span class="tag tag-ok">已放舱</span></td>
+                <td><span class="tag tag-ok">正常</span></td>
+                <td>—</td>
+              </tr>
+              <tr class="row-danger">
+                <td><input type="checkbox" /></td>
+                <td>2</td>
+                <td>EMC EVER GOLD / 120E</td>
+                <td class="cell-danger"><span class="link" data-open-drawer>—</span></td>
+                <td>王敏</td>
+                <td class="cell-danger">—</td>
+                <td>宁波YY代理</td>
+                <td>S0892,S0893</td>
+                <td>CNSHA 上海</td>
+                <td>DEHAM 汉堡</td>
+                <td>40HQ+20GP</td>
+                <td>1</td>
+                <td>1</td>
+                <td class="cell-warn">2026-06-18</td>
+                <td class="cell-warn">2026-06-17 17:00</td>
+                <td>2026-06-28 08:00</td>
+                <td>2026-07-28 00:00</td>
+                <td>是<span class="tag tag-tail">尾端</span></td>
+                <td><span class="tag tag-no">未放舱</span></td>
+                <td><span class="tag tag-no">已过期</span></td>
+                <td>未放舱待导出BC</td>
+              </tr>
+              <tr class="row-warn" data-transit="1">
+                <td><input type="checkbox" /></td>
+                <td>3</td>
+                <td>MSC OSCAR / 045W</td>
+                <td><span class="link" data-open-drawer>TXZG00000000051</span></td>
+                <td>白冰</td>
+                <td><a class="link" href="ESS整柜报价详情-分段-MVP.html">BJ202605230051</a></td>
+                <td>上海ZZ代理</td>
+                <td>14545115546</td>
+                <td>CNSHA 上海</td>
+                <td>USNYC 纽约</td>
+                <td>40HQ</td>
+                <td>0</td>
+                <td>2</td>
+                <td>2026-06-20</td>
+                <td>2026-06-19 12:00</td>
+                <td>2026-06-25 10:00</td>
+                <td>2026-07-25 00:00</td>
+                <td>否</td>
+                <td><span class="tag tag-ok">已放舱</span></td>
+                <td><span class="tag tag-warn">即将过期</span></td>
+                <td>进港前需更新海运费</td>
+              </tr>
+              <tr class="row-warn">
+                <td><input type="checkbox" /></td>
+                <td>4</td>
+                <td>CMA CGM MARCO POLO / 089E</td>
+                <td><span class="link" data-open-drawer>TXZG00000000052</span></td>
+                <td>周斌</td>
+                <td><a class="link" href="ESS整柜报价详情-MVP.html">BJ202605230052</a></td>
+                <td>青岛AA代理</td>
+                <td>987554321</td>
+                <td>CNTAO 青岛</td>
+                <td>USLAX 洛杉矶</td>
+                <td>40HQ</td>
+                <td>0</td>
+                <td>1</td>
+                <td>2026-06-19</td>
+                <td>2026-06-18 17:00</td>
+                <td class="cell-warn">2026-06-20 06:00</td>
+                <td>2026-07-20 00:00</td>
+                <td>否</td>
+                <td><span class="tag tag-ok">已放舱</span></td>
+                <td><span class="tag tag-ok">正常</span></td>
+                <td>船期变更待订舱确认</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          <span>合计：20GP <strong>1</strong> · 40HQ <strong>5</strong></span>
+          <span>共 15 条 · 50 条/页</span>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 整合侧栏：订舱登记 + 完善提单 -->
+  <div class="drawer-mask" id="drawerMask"></div>
+  <aside class="drawer" id="drawer" aria-label="订舱登记与完善提单">
+    <div class="drawer-hd">
+      <div>
+        <h2 id="drawerTitle">订舱登记 · 完善提单</h2>
+        <div class="sub">流程 7.2 · 四.2 放舱（签入）；保存后列表与提单草稿同步，变更留痕</div>
+      </div>
+      <button type="button" class="drawer-close" id="drawerClose" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-bd">
+      <!-- 1 基础信息只读 -->
+      <section class="sec">
+        <div class="sec-hd">基础信息 <span class="hint">来自运单/订单，只读</span></div>
+        <div class="sec-bd">
+          <div class="form-grid cols3">
+            <div class="field">
+              <label>关联运单号</label>
+              <input type="text" readonly value="RC266501" />
+            </div>
+            <div class="field">
+              <label>客户代码</label>
+              <input type="text" readonly value="CUST-FCL-001" />
+            </div>
+            <div class="field">
+              <label>目的港派送方式</label>
+              <input type="text" readonly value="PK2551 · 整柜直送" />
+            </div>
+            <div class="field">
+              <label>柜量类型</label>
+              <input type="text" readonly value="一票一柜" />
+            </div>
+            <div class="field">
+              <label>货好时间</label>
+              <input type="text" readonly value="2026-06-20" />
+            </div>
+            <div class="field">
+              <label>收货人</label>
+              <input type="text" readonly value="ABC Trading Inc.（装柜后补全地址）" />
+            </div>
+            <div class="field full">
+              <label>下单车架备注</label>
+              <input type="text" readonly value="需带车架提柜，目的港直送" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 1b 询价与报价绑定 -->
+      <section class="sec">
+        <div class="sec-hd">询价与报价绑定 <span class="hint">四.1 → 运单 → 四.2 放舱</span></div>
+        <div class="sec-bd">
+          <div class="form-grid cols3">
+            <div class="field">
+              <label>询价来源</label>
+              <input type="text" readonly class="readonly" value="合作代理询价" />
+            </div>
+            <div class="field">
+              <label>关联询价单</label>
+              <input type="text" readonly class="readonly field-ro-link" value="XJ202605230018" title="跳转询价详情" />
+            </div>
+            <div class="field">
+              <label>关联报价单</label>
+              <input type="text" readonly class="readonly field-ro-link" value="BJ202605230018" title="跳转报价详情" />
+            </div>
+            <div class="field">
+              <label>是否锁价</label>
+              <input type="text" readonly class="readonly" value="是（报价单带入）" />
+            </div>
+            <div class="field">
+              <label>是否保舱</label>
+              <input type="text" readonly class="readonly" value="否" />
+            </div>
+            <div class="field">
+              <label>绑定运单号</label>
+              <input type="text" readonly class="readonly" value="RC266501" />
+            </div>
+          </div>
+          <p class="bind-hint">询价报价线上化：报价完成后绑定运单，海运费/合约有效期等带入本页；关联提单及后续订舱操作。</p>
+        </div>
+      </section>
+
+      <!-- 2 航线港口 -->
+      <section class="sec">
+        <div class="sec-hd">航线与港口</div>
+        <div class="sec-bd">
+          <div class="form-grid">
+            <div class="field">
+              <label>起运港<span class="req">*</span></label>
+              <select><option selected>CNYTN · 盐田</option></select>
+            </div>
+            <div class="field">
+              <label>目的港<span class="req">*</span></label>
+              <select><option selected>USLAX · 洛杉矶</option></select>
+            </div>
+            <div class="field full">
+              <label>中转</label>
+              <div class="transit-inline">
+                <div class="check-inline">
+                  <label><input type="checkbox" id="chkDirect" checked /> 直航</label>
+                </div>
+                <input type="text" id="transitPort" class="transit-port-input" placeholder="中转港（非直航时必填）" hidden />
+              </div>
+            </div>
+            <div class="field opt">
+              <label>进港代码（船司按需填写）<span class="opt-tag">非必填</span></label>
+              <input type="text" id="entryCode" placeholder="如船司进港代码" />
+            </div>
+            <div class="field">
+              <label>场站/堆场信息</label>
+              <input type="text" placeholder="堆场、提柜点等" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 订舱放舱 -->
+      <section class="sec">
+        <div class="sec-hd">订舱与船期</div>
+        <div class="sec-bd">
+          <div class="form-grid">
+            <div class="field">
+              <label>订舱代理<span class="req">*</span></label>
+              <select><option>深圳XX货代 / 张经理 / 138****1234</option></select>
+            </div>
+            <div class="field">
+              <label>货物来源</label>
+              <select><option selected>内约</option><option>外配</option></select>
+            </div>
+            <div class="field">
+              <label>提单号<span class="req">*</span></label>
+              <input type="text" value="TXZG00000000043" />
+            </div>
+            <div class="field">
+              <label>船名航次<span class="req">*</span></label>
+              <input type="text" value="COSCO AQUARIUS / 2518W" />
+            </div>
+            <div class="field">
+              <label>截关时间<span class="req">*</span></label>
+              <input type="datetime-local" value="2026-06-30T12:00" />
+            </div>
+            <div class="field">
+              <label>截单截止时间(SI)<span class="req">*</span></label>
+              <input type="datetime-local" value="2026-06-29T17:00" />
+            </div>
+            <div class="field">
+              <label>ETD / 一程开船<span class="req">*</span></label>
+              <input type="datetime-local" value="2026-07-03T12:00" />
+            </div>
+            <div class="field">
+              <label>一程到港时间<span class="req">*</span></label>
+              <input type="datetime-local" id="leg1Eta" value="2026-08-03T00:00" />
+            </div>
+            <div class="leg2-hint leg2-only" hidden>有中转港时<strong>二程必填</strong>；可按变更原因修改 · 甩柜后在列表使用「甩柜BC导出」</div>
+            <div class="field leg2-only" hidden>
+              <label>二程船名航次<span class="req">*</span></label>
+              <input type="text" id="leg2Vessel" placeholder="二程船名 / 航次" />
+            </div>
+            <div class="field leg2-only" hidden>
+              <label>二程开船时间<span class="req">*</span></label>
+              <input type="datetime-local" id="leg2Etd" />
+            </div>
+            <div class="field leg2-only" hidden>
+              <label>二程到港时间<span class="req">*</span></label>
+              <input type="datetime-local" id="leg2Eta" />
+            </div>
+            <div class="field">
+              <label>目的港预计到港<span class="req">*</span></label>
+              <input type="datetime-local" value="2026-08-05T00:00" />
+            </div>
+            <div class="field">
+              <label>开舱时间</label>
+              <input type="datetime-local" />
+            </div>
+            <div class="field">
+              <label>开港时间</label>
+              <input type="datetime-local" />
+            </div>
+            <div class="field">
+              <label>截港时间</label>
+              <input type="datetime-local" />
+            </div>
+            <div class="field">
+              <label>免箱使用期限(天)</label>
+              <input type="number" placeholder="起运港/目的港免用箱" value="14" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 仓位录入 -->
+      <section class="sec">
+        <div class="sec-hd">
+          仓位录入
+          <button type="button" class="btn-link" id="btnAddSlotRow">+ 添加一行</button>
+        </div>
+        <div class="sec-bd">
+          <table class="slot-table" id="slotTable">
+            <thead>
+              <tr>
+                <th>箱型<span class="req">*</span></th>
+                <th>数量<span class="req">*</span></th>
+                <th>SO No<span class="req">*</span></th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><select><option>20GP</option><option selected>40HQ</option></select></td>
+                <td><input type="number" value="1" min="1" /></td>
+                <td><input type="text" value="S0561" placeholder="数量&gt;1 时逗号分隔" /></td>
+                <td><button type="button" class="btn-link danger btn-del-row">删除</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6 海运费 -->
+      <section class="sec">
+        <div class="sec-hd">海运费 <span class="hint">绑定仓位必填 · 签出校验装柜完成时间；合约有效期内未登记进港时间则仓位信息标红</span></div>
+        <div class="sec-bd">
+          <div class="form-grid">
+            <div class="field">
+              <label>合约有效期起<span class="req">*</span></label>
+              <input type="date" value="2026-06-01" />
+            </div>
+            <div class="field">
+              <label>合约有效期止<span class="req">*</span></label>
+              <input type="date" value="2026-06-30" />
+            </div>
+            <div class="field">
+              <label>合约期内固定海运费(USD)<span class="req">*</span></label>
+              <input type="number" value="3200" step="0.01" />
+            </div>
+            <div class="field">
+              <label>超出有效期调价金额</label>
+              <input type="number" placeholder="进港/装柜超有效期时开航前须补录" step="0.01" />
+            </div>
+            <div class="field">
+              <label>是否锁价</label>
+              <input type="text" readonly class="readonly" value="是 · 随关联报价单" />
+            </div>
+            <div class="field">
+              <label>是否保舱</label>
+              <select><option selected>否</option><option>是</option></select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7 完善提单 · 业务分配 -->
+      <section class="sec">
+        <div class="sec-hd">完善提单 · 业务分配</div>
+        <div class="sec-bd">
+          <div class="form-grid">
+            <div class="field">
+              <label>分公司<span class="req">*</span></label>
+              <select><option>深圳分公司</option></select>
+            </div>
+            <div class="field">
+              <label>拖车供应商</label>
+              <select><option>请选择</option><option>福永XX拖车</option></select>
+            </div>
+            <div class="field">
+              <label>报关代理<span class="opt-tag">非必填</span></label>
+              <select><option>上海易豹达 / 李关务 / 021-****</option></select>
+            </div>
+            <div class="field">
+              <label>装柜地址</label>
+              <input type="text" value="广东省深圳市宝安区福永街道某某物流园" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8 放舱 -->
+      <section class="sec">
+        <div class="sec-hd">放舱确认</div>
+        <div class="sec-bd">
+          <div class="form-grid">
+            <div class="field">
+              <label>是否放舱<span class="req">*</span></label>
+              <div class="radio-row">
+                <label><input type="radio" name="released" value="yes" checked /> 是</label>
+                <label><input type="radio" name="released" value="no" /> 否</label>
+              </div>
+            </div>
+            <div class="field">
+              <label>是否带车架<span class="opt-tag">非必填</span></label>
+              <div class="radio-row">
+                <label><input type="radio" name="chassis" value="yes" id="chassisYes" /> 是</label>
+                <label><input type="radio" name="chassis" value="no" id="chassisNo" checked /> 否</label>
+              </div>
+            </div>
+            <div class="field full">
+              <div class="flow-tip" id="chassisFlowTip" hidden>
+                已勾选<strong>带车架</strong>：保存放舱后将<strong>流转至尾端操作岗</strong>，尾端可登记车架使用费等附加费。
+              </div>
+            </div>
+            <div class="field full">
+              <label class="check-inline">
+                <input type="checkbox" id="rolloverNotify" /> 甩柜通知（勾选后系统自动通知并记录轨迹）
+              </label>
+            </div>
+            <div class="field full">
+              <p class="bind-hint warn">舱位变更：原放舱记录作废，须由<strong>不同操作人员</strong>重新录入新舱位；亏舱单号取消时注意亏舱费。列表支持批量复制/修改。</p>
+            </div>
+            <div class="field full">
+              <label>备注</label>
+              <textarea maxlength="200" placeholder="SOC、ONE WAY 箱、指定提箱点等特殊说明（0/200）"></textarea>
+            </div>
+            <div class="field full">
+              <label>放舱资料</label>
+              <div class="upload-box">拖拽或点击上传 · pdf/doc/xls/jpg/png/zip · 单文件≤20MB · 最多10个</div>
+            </div>
+            <div class="field full">
+              <label>EIR / 设备单 / 箱单等</label>
+              <div class="upload-box">非必填 · 可二次修改 · 方便尾端核实还柜</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <footer class="drawer-ft">
+      <button type="button" class="btn" id="drawerCancel">关闭</button>
+      <button type="button" class="btn btn-primary">保存</button>
+    </footer>
+  </aside>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 仓位管理</span>
+    <h3>订舱登记 + 完善提单 · 整合页</h3>
+    <h4>本次更新（2026-07-03）</h4>
+    <ul>
+      <li><strong>移除「未放舱导出」</strong>：与「批量导出」功能重复；需导出未放舱列表时，切换「未放舱」页签或使用「放舱状态=未放舱」筛选后点「批量导出」。</li>
+      <li><strong>移除状态页签「船期变更待确认」</strong>：异常态仍通过筛选区或列表橙底行识别，确认后回到已放舱等正常态。</li>
+      <li>列表新增 <strong>甩柜BC导出</strong>；新增/编辑侧栏去掉 BC 导出按钮，仅保留关闭与保存。</li>
+      <li>同步流程 7.2 · 四：询价报价绑定、放舱侧栏、导出放舱 BC / 甩柜BC导出、导出预报模板/按筛选批量导出。</li>
+      <li>二程船期并入订舱与船期；进港代码（船司按需填写）；中转港与直航同一行；<strong>是否带车架</strong>、<strong>报关代理</strong>均为非必填。</li>
+      <li>PRD 明确：放舱=仓位信息·绑定仓位；绑定须填海运费+有效期；装柜完成签出超有效期跳红；进港时间×合约有效期标红规则。</li>
+      <li>移除「分摊录单」。完整清单见 <a href="整柜本次更新-MVP.html">整柜本次更新说明</a> · 运单侧见 <a href="传统订单管理-MVP.html">传统订单管理 PRD</a>。</li>
+    </ul>
+    <h4>已移除功能</h4>
+    <ul>
+      <li><strong>未放舱导出</strong>：原独立按钮已去掉；统一走「批量导出」，按筛选区 + 状态页签（如未放舱）导出 Excel。</li>
+      <li><strong>分摊录单</strong>：流程文档无定义，待业务确认后再做。</li>
+    </ul>
+    <h4>整合原则</h4>
+    <ul>
+      <li>原「订舱登记」抽屉与「完善提单」弹窗合并为<strong>同一侧栏</strong>，保存同步列表与提单草稿。</li>
+      <li>字段修改留操作日志（操作人、时间、变更明细）。</li>
+    </ul>
+    <h4>已移除字段</h4>
+    <ul>
+      <li><strong>柜号、铅封号</strong>：改至签出环节录入（流程文档）。</li>
+      <li><strong>换单日期、国内/国外费用明细、提单附加费</strong>：非放舱核心字段，费用走海运费登记与额外服务。</li>
+      <li><strong>重复船名+航次</strong>：合并为「船名航次」单字段。</li>
+    </ul>
+    <h4>放舱 = 仓位信息 · 绑定仓位</h4>
+    <ul>
+      <li>业务上<strong>「放舱」</strong>即流程 7.2 中的<strong>签入</strong>，对应系统<strong>仓位信息页面</strong>（本页列表 + 侧栏），与泳道图步骤 ③<strong>运单绑定舱位</strong>为同一环节。</li>
+      <li><strong>绑定仓位</strong>时须录入<strong>海运费金额</strong>（合约期内固定价）与<strong>合约有效期起止时间</strong>（必填）；报价绑定后可带入，订舱岗可据实调整。</li>
+      <li>侧栏「海运费」区块即绑定仓位时的必填登记项；保存后写入仓位信息，供后续签出校验与列表标红。</li>
+    </ul>
+    <h4>进港时间 × 合约有效期（仓位信息标红）</h4>
+    <ul>
+      <li><strong>进港时间</strong>：客服在运单<strong>签出</strong>时登记柜子实际进港时间（流程 7.2 · 「签出时一并登记进港时间，反推海运费」）；订舱侧栏「开港时间」为船期计划参考，<strong>以签出登记的实际进港时间</strong>作为校验依据。</li>
+      <li><strong>标红条件</strong>：已绑定仓位且录入合约有效期后，若<strong>合约有效期 [起, 止] 内尚未登记进港时间</strong>（或进港时间不在有效期内且未补录调价），则<strong>仓位信息列表对应行 / 海运费相关列标红</strong>，提示订舱岗或客服处理。</li>
+      <li><strong>恢复正常</strong>：补录<strong>进港时间</strong>且时间在合约有效期内 → 标红消除；若进港时间<strong>超出合约有效期</strong>，须补录「<strong>超出有效期调价金额</strong>」（或更新合约有效期/海运费，开航前完成）→ 补录保存后标红消除（原型标注「填完正常」）。</li>
+      <li>与「海运费异常」页签联动；与装柜完成签出校验并行，任一异常均触发标红直至补录完成。</li>
+    </ul>
+    <h4>海运费有效期 × 装柜完成时间（签出校验）</h4>
+    <ul>
+      <li><strong>装柜完成时间</strong>：货物<strong>装柜完成</strong>后，运单执行<strong>签出</strong>时由系统记录该时间戳（签出前置节点时间）。</li>
+      <li><strong>比对规则</strong>：签出时将<strong>装柜完成时间</strong>与绑定仓位时录入的<strong>海运费合约有效期 [起, 止]</strong>自动比对。</li>
+      <li><strong>不在有效期内</strong>：系统弹出提示；<strong>仓位信息列表对应行 / 海运费列跳红</strong>；推送订舱岗处理（补录「超出有效期调价金额」或更新合约有效期，开航前须完成，见流程 7.2）。</li>
+      <li>本规则与列表「海运费异常」页签联动；原「进港超有效期跳红」以<strong>装柜完成时间</strong>作为签出环节的触发校验时点。</li>
+    </ul>
+    <h4>列表标红规则</h4>
+    <ul>
+      <li><strong>红底行</strong>：未放舱；海运费合约已过期；<strong>合约有效期内未登记进港时间</strong>；装柜完成时间不在合约有效期内；提单号/SO 等 P0 必填缺失。</li>
+      <li><strong>橙底行</strong>：海运费 7 天内过期；截关/截单 48h 内；船期变更待订舱确认。</li>
+      <li><strong>红字单元格</strong>：该行中具体异常字段（如缺失提单号、海运费金额/有效期、临近截关时间）。</li>
+      <li>装柜完成签出时超出海运费有效期 → <strong>海运费列标红</strong>；合约有效期内缺进港时间或超有效期未补录调价 → 同上，补录进港时间或「超出有效期调价金额」后恢复正常。</li>
+    </ul>
+    <h4>列表列调整</h4>
+    <ul>
+      <li>保留截图列：航次/船名、提单号、业务员、订舱代理、SO、起运港/目的港、箱型、截关、截单、ETD、ETA、带车架、备注。</li>
+      <li>新增：20GP/40HQ 汇总、放舱状态、海运费状态；供应商改名为订舱代理。</li>
+      <li>页签快捷筛：未放舱、海运费异常、截单临近、已放舱。</li>
+    </ul>
+    <h4>完善提单 · 业务分配</h4>
+    <ul>
+      <li>分公司为必填；拖车供应商、<strong>报关代理</strong>、装柜地址均为<strong>非必填</strong>，按实际港前配套服务勾选/填写。</li>
+    </ul>
+    <h4>带车架 · 下单与放舱</h4>
+    <ul>
+      <li><strong>下单</strong>：客服在运单录入页填写「车架备注」（是否带车架及说明），只读带入订舱侧栏。</li>
+      <li><strong>放舱</strong>：订舱岗在「放舱确认」可选填是否带车架（<strong>非必填</strong>）；列表「带车架」列展示结果。</li>
+      <li><strong>带车架=是</strong>：保存后任务流转<strong>尾端操作岗</strong>（派送预约、POD、尾端附加费如车架使用费等）。</li>
+    </ul>
+    <h4>流程 7.2 · 四、报价 &amp; 订舱</h4>
+    <h5>4.1 询价阶段</h5>
+    <ul>
+      <li>询价来源：合作代理询价 / 直客询价；报价员生成<strong>标准化对外报价单</strong>并留存报价台账（模板）。</li>
+      <li>询价/报价录入页支持<strong>导出对外报价单</strong>；仓位<strong>列表</strong>支持<strong>导出放舱 BC</strong>、<strong>甩柜BC导出</strong>（勾选或按筛选）、<strong>导出预报模板</strong>、<strong>批量导出</strong>（含未放舱：切换页签或筛选后导出；<strong>不提供「未放舱导出」</strong>）；新增/编辑侧栏仅「关闭」「保存」，<strong>不提供 BC 导出</strong>。</li>
+      <li>报价完成后：<strong>运单绑定报价</strong> → 关联询价/报价单号带入订舱侧栏 → 关联提单及后续放舱。</li>
+    </ul>
+    <h5>4.2 放舱（业务定义：签入 = 仓位信息 · 绑定仓位）</h5>
+    <ul>
+      <li>即<strong>仓位信息页面</strong>绑定仓位：须填<strong>海运费金额 + 合约有效期</strong>；订舱代理、<strong>是否锁价/是否保舱</strong>报价单有则带入。</li>
+      <li>放舱核心：提单号、船名航次、一程/二程船期（有中转港时二程必填）、目的港 ETA、截单 SI、截关/截港/开舱/开港、<strong>进港代码（非必填）</strong>；甩柜可勾选通知+轨迹，BC 导出在列表操作。</li>
+      <li>放舱 BC 系统生成可导出；EIR/箱单等附件可上传；舱位变更原记录作废、异人重录。</li>
+      <li><strong>签出校验</strong>：装柜完成 → 运单签出时比对装柜完成时间与海运费有效期；超期则仓位信息页跳红。签出时登记<strong>进港时间</strong>：合约有效期内未登记或超期未调价 → 仓位信息标红，补录后恢复。</li>
+      <li>列表标红：未放舱、海运费过期、<strong>缺进港时间/超有效期未调价</strong>、装柜完成超有效期、必填缺失；船期变更推送订舱/操作/尾端对应人员。</li>
+    </ul>
+  </div>
+
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var mask = document.getElementById("drawerMask");
+      var drawer = document.getElementById("drawer");
+      var chkDirect = document.getElementById("chkDirect");
+      var leg2Only = document.querySelectorAll(".leg2-only");
+      var transitPort = document.getElementById("transitPort");
+      var leg2Vessel = document.getElementById("leg2Vessel");
+      var leg2Etd = document.getElementById("leg2Etd");
+      var leg2Eta = document.getElementById("leg2Eta");
+      var slotTbody = document.querySelector("#slotTable tbody");
+
+      function applyTransitDemo(isTransit) {
+        chkDirect.checked = !isTransit;
+        if (isTransit) {
+          transitPort.value = "SGSIN · 新加坡";
+          leg2Vessel.value = "MSC ANNA / 088E";
+          leg2Etd.value = "2026-07-02T08:00";
+          leg2Eta.value = "2026-07-18T00:00";
+        } else {
+          transitPort.value = "";
+          leg2Vessel.value = "";
+          leg2Etd.value = "";
+          leg2Eta.value = "";
+        }
+        syncTransit();
+      }
+
+      function openDrawer(title) {
+        if (title) document.getElementById("drawerTitle").textContent = title;
+        mask.classList.add("open");
+        drawer.classList.add("open");
+      }
+      function closeDrawer() {
+        mask.classList.remove("open");
+        drawer.classList.remove("open");
+      }
+
+      document.getElementById("btnAdd").addEventListener("click", function () {
+        applyTransitDemo(false);
+        openDrawer("新增 · 订舱登记");
+      });
+      document.getElementById("btnEdit").addEventListener("click", function () {
+        applyTransitDemo(false);
+        openDrawer("完善提单 · TXZG00000000043");
+      });
+      document.querySelectorAll("[data-open-drawer]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          var row = el.closest("tr");
+          applyTransitDemo(row && row.dataset.transit === "1");
+          openDrawer("完善提单 · " + el.textContent.trim());
+        });
+      });
+      document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+      document.getElementById("drawerCancel").addEventListener("click", closeDrawer);
+      mask.addEventListener("click", closeDrawer);
+
+      function syncTransit() {
+        var direct = chkDirect.checked;
+        transitPort.hidden = direct;
+        leg2Only.forEach(function (el) {
+          el.hidden = direct;
+        });
+      }
+      chkDirect.addEventListener("change", syncTransit);
+      syncTransit();
+
+      document.getElementById("btnAddSlotRow").addEventListener("click", function () {
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td><select><option>20GP</option><option>40HQ</option></select></td>' +
+          '<td><input type="number" value="1" min="1" /></td>' +
+          '<td><input type="text" placeholder="数量&gt;1 时逗号分隔" /></td>' +
+          '<td><button type="button" class="btn-link danger btn-del-row">删除</button></td>';
+        slotTbody.appendChild(tr);
+      });
+      slotTbody.addEventListener("click", function (e) {
+        if (e.target.classList.contains("btn-del-row") && slotTbody.rows.length > 1) {
+          e.target.closest("tr").remove();
+        }
+      });
+
+      var chassisFlowTip = document.getElementById("chassisFlowTip");
+      document.querySelectorAll('input[name="chassis"]').forEach(function (r) {
+        r.addEventListener("change", function () {
+          chassisFlowTip.hidden = !document.getElementById("chassisYes").checked;
+        });
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
+  <script src="fcl-booking-prototype-nav.js" defer></script>
+</body>
+</html>

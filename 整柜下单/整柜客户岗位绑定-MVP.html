@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜客户岗位绑定 · 子表 MVP</title>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --sidebar: #001529; --bg: #f0f2f5; --card: #fff;
+      --line: #e8e8e8; --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --req: #cf1322;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px; color: var(--text); background: var(--bg); }
+    button, input, select { font: inherit; }
+
+    .demo-bar {
+      background: #e6f7ff; border-bottom: 1px solid #91d5ff;
+      padding: 8px 14px; font-size: 12px; color: #0050b3; line-height: 1.55;
+    }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header { background: var(--header); color: #fff; padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 12px; }
+    .top-header .tab { background: var(--bg); color: var(--text); padding: 0 12px; height: 48px; line-height: 48px; font-weight: 600; }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar { width: 200px; background: var(--sidebar); color: rgba(255,255,255,.75); padding: 8px 0; flex-shrink: 0; }
+    .side-item { display: block; width: 100%; text-align: left; border: none; background: none; color: inherit; padding: 10px 16px; cursor: pointer; }
+    .side-item.active { background: var(--blue); color: #fff; }
+    .side-item.sub { padding-left: 28px; font-size: 12px; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .page-hd { padding: 12px 14px 0; }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+    .page-hd p { margin: 0 0 10px; font-size: 12px; color: var(--sub); line-height: 1.55; }
+
+    .filter-panel { background: var(--card); border-bottom: 1px solid var(--line); padding: 12px 14px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 14px; }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .filter-item input, .filter-item select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; }
+    .filter-actions { margin-top: 10px; display: flex; gap: 8px; }
+
+    .toolbar { padding: 8px 14px; background: var(--card); border-bottom: 1px solid var(--line); display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn { height: 32px; padding: 0 14px; border-radius: 2px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; white-space: nowrap; }
+    th { background: #fafafa; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+    tr:hover td { background: #e6f7ff; }
+    .role-cell { min-width: 100px; white-space: normal; line-height: 1.45; }
+    .role-cell .name { display: block; }
+    .role-cell .sub { font-size: 11px; color: var(--sub); }
+    .role-cell.empty { color: var(--sub); }
+    th.col-role { text-align: center; background: #f0f9ff; color: #096dd9; min-width: 96px; }
+    td.col-role { text-align: center; vertical-align: middle; }
+    .tag-main { display: inline-block; padding: 0 4px; border-radius: 2px; font-size: 10px; background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; margin-left: 2px; }
+    .tag-default { display: inline-block; padding: 0 4px; border-radius: 2px; font-size: 10px; background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag-custom { display: inline-block; padding: 0 4px; border-radius: 2px; font-size: 10px; background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .role-field.modified select { border-color: #ffa940; background: #fffbe6; }
+    .role-field .restore { display: block; font-size: 10px; color: var(--blue); cursor: pointer; text-align: center; margin-top: 4px; border: none; background: none; padding: 0; width: 100%; }
+    .role-field .restore:hover { text-decoration: underline; }
+    .role-field .restore.hidden { display: none; }
+    .btn-link { border: none; background: none; color: var(--blue); cursor: pointer; padding: 0; }
+
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 900;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-mask.open { display: flex; }
+    .modal {
+      width: min(920px, 100%); background: var(--card); border-radius: 2px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.15);
+    }
+    .modal-hd { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+    .modal-hd h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .modal-close { border: none; background: none; font-size: 20px; color: var(--sub); cursor: pointer; }
+    .modal-bd { padding: 14px 16px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; margin-bottom: 4px; }
+    .req { color: var(--req); }
+    .field input, .field select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; }
+    .field input[readonly] { background: #fafafa; color: var(--sub); }
+    .field-hint { font-size: 11px; color: var(--sub); margin-top: 4px; line-height: 1.45; }
+    .role-grid {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;
+      margin-top: 4px;
+    }
+    @media (max-width: 800px) { .role-grid { grid-template-columns: repeat(2, 1fr); } }
+    .role-field label { display: block; font-size: 12px; font-weight: 600; color: #096dd9; margin-bottom: 6px; text-align: center; }
+    .role-field label .src-tag { font-weight: 400; margin-left: 2px; vertical-align: middle; }
+    .role-field select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font-size: 12px; }
+    .role-field .sub-hint { font-size: 10px; color: var(--sub); text-align: center; margin-top: 4px; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-ft { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="demo-bar">
+      <strong>客户绑业务员 → 默认继承业务员岗位团队</strong>；客户可单向修改；<strong>运单权限读客户最终配置</strong>。
+    </div>
+    <header class="top-header">
+      <span style="font-weight:600">腾信物流</span>
+      <span class="tab">整柜客户岗位绑定</span>
+    </header>
+    <div class="body-wrap">
+      <nav class="sidebar">
+        <button type="button" class="side-item">客户管理</button>
+        <button type="button" class="side-item active">整柜客户岗位绑定</button>
+        <button type="button" class="side-item sub">绑定列表</button>
+        <button type="button" class="side-item">整柜下单</button>
+        <button type="button" class="side-item">仓位管理</button>
+      </nav>
+      <main class="main">
+        <div class="page-hd">
+          <h1>整柜客户岗位绑定</h1>
+          <p>一行一个客户。默认岗位来自<strong>绑定业务员</strong>的团队配置；可改；运单/舱位权限以本表为准。</p>
+        </div>
+        <section class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item">
+              <label>客户代码</label>
+              <input type="text" placeholder="精确/模糊" />
+            </div>
+            <div class="filter-item">
+              <label>客户简称</label>
+              <input type="text" placeholder="模糊" />
+            </div>
+            <div class="filter-item">
+              <label>岗位角色</label>
+              <select>
+                <option>全部</option>
+                <option>报价员</option>
+                <option>客服</option>
+                <option>订舱员</option>
+                <option>关务员</option>
+                <option>尾端操作员</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>绑定员工</label>
+              <input type="text" placeholder="昵称/工号" />
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn btn-primary">查询</button>
+            <button type="button" class="btn">重置</button>
+          </div>
+        </section>
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnAdd">新增绑定</button>
+          <button type="button" class="btn" id="btnPullDefault">从业务员团队带入</button>
+          <button type="button" class="btn">批量导入</button>
+          <button type="button" class="btn">导出</button>
+        </div>
+        <div class="table-wrap">
+          <table aria-label="整柜客户岗位绑定">
+            <thead>
+              <tr>
+                <th><input type="checkbox" aria-label="全选" /></th>
+                <th>客户代码</th>
+                <th>客户简称</th>
+                <th>绑定业务员</th>
+                <th class="col-role">报价员</th>
+                <th class="col-role">客服</th>
+                <th class="col-role">订舱员</th>
+                <th class="col-role">关务员</th>
+                <th class="col-role">尾端操作员</th>
+                <th>生效开始</th>
+                <th>生效结束</th>
+                <th>更新人</th>
+                <th>更新时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>CUST-NB-001</td>
+                <td>宁波乐生</td>
+                <td>任杰 <span class="sub" style="font-size:11px;color:var(--sub)">BT9001</span></td>
+                <td class="col-role role-cell">
+                  <span class="name">张报价</span>
+                  <span class="sub">BT1001 <span class="tag-default">默认</span></span>
+                </td>
+                <td class="col-role role-cell">
+                  <span class="name">Olaf(青)</span>
+                  <span class="sub">BT2020 <span class="tag-custom">已改</span></span>
+                </td>
+                <td class="col-role role-cell">
+                  <span class="name">王订舱</span>
+                  <span class="sub">BT3012</span>
+                </td>
+                <td class="col-role role-cell empty">—</td>
+                <td class="col-role role-cell empty">—</td>
+                <td>2026-01-01</td>
+                <td>—</td>
+                <td>芦荟蘅</td>
+                <td>2026-06-10 14:22</td>
+                <td><button type="button" class="btn-link js-edit">编辑</button> · <button type="button" class="btn-link" style="color:#cf1322">删除</button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td>CUST-SZ-088</td>
+                <td>深圳海拓</td>
+                <td>王敏 <span class="sub" style="font-size:11px;color:var(--sub)">BT9002</span></td>
+                <td class="col-role role-cell">
+                  <span class="name">李询价</span>
+                  <span class="sub">BT1008</span>
+                </td>
+                <td class="col-role role-cell">
+                  <span class="name">Olaf(青)</span>
+                  <span class="sub">BT2020</span>
+                </td>
+                <td class="col-role role-cell">
+                  <span class="name">赵订舱</span>
+                  <span class="sub">BT3018</span>
+                </td>
+                <td class="col-role role-cell">
+                  <span class="name">吴慧俊</span>
+                  <span class="sub">BT4018</span>
+                </td>
+                <td class="col-role role-cell">
+                  <span class="name">陈尾端</span>
+                  <span class="sub">BT5022</span>
+                </td>
+                <td>2026-03-01</td>
+                <td>—</td>
+                <td>IT</td>
+                <td>2026-05-18 09:10</td>
+                <td><button type="button" class="btn-link js-edit">编辑</button> · <button type="button" class="btn-link" style="color:#cf1322">删除</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modalMask">
+    <div class="modal" role="dialog" aria-labelledby="modalTitle">
+      <div class="modal-hd">
+        <h2 id="modalTitle">新增岗位绑定</h2>
+        <button type="button" class="modal-close" id="modalClose">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="field">
+          <label>客户代码<span class="req">*</span></label>
+          <select id="selCustomer">
+            <option value="">请选择（仅代码+简称）</option>
+            <option value="CUST-NB-001" data-name="宁波乐生">CUST-NB-001 · 宁波乐生</option>
+            <option value="CUST-SZ-088" data-name="深圳海拓">CUST-SZ-088 · 深圳海拓</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>客户简称</label>
+          <input type="text" id="custName" readonly placeholder="随客户代码自动带出" />
+        </div>
+        <div class="field">
+          <label>绑定业务员</label>
+          <input type="text" id="salesperson" readonly value="任杰（BT9001）· 来自客户主档" />
+        </div>
+        <div class="field">
+          <label>岗位绑定<span class="req">*</span>（横向 · 默认跟业务员）</label>
+          <p class="field-hint">默认继承<strong>绑定业务员</strong>在员工管理配置的岗位团队；修改后标「已改」，不回写业务员；<strong>运单权限以本客户最终配置为准</strong>。</p>
+          <div class="role-grid" id="roleGrid">
+            <div class="role-field" data-role="quoter">
+              <label>报价员 <span class="src-tag tag-default" data-src-tag>默认</span></label>
+              <select class="js-role-sel"><option value="">—</option><option value="BT1001" selected>张报价</option><option value="BT1008">李询价</option></select>
+              <div class="sub-hint js-sub-hint">BT1001</div>
+              <button type="button" class="restore hidden js-restore">恢复默认</button>
+            </div>
+            <div class="role-field" data-role="cs">
+              <label>客服 <span class="src-tag tag-default" data-src-tag>默认</span></label>
+              <select class="js-role-sel"><option value="">—</option><option value="BT2015" selected>芦荟蘅</option><option value="BT2020">Olaf(青)</option></select>
+              <div class="sub-hint js-sub-hint">BT2015</div>
+              <button type="button" class="restore hidden js-restore">恢复默认</button>
+            </div>
+            <div class="role-field" data-role="booking">
+              <label>订舱员 <span class="src-tag tag-default" data-src-tag>默认</span></label>
+              <select class="js-role-sel"><option value="">—</option><option value="BT3012" selected>王订舱</option><option value="BT3018">赵订舱</option></select>
+              <div class="sub-hint js-sub-hint">BT3012</div>
+              <button type="button" class="restore hidden js-restore">恢复默认</button>
+            </div>
+            <div class="role-field" data-role="customs">
+              <label>关务员 <span class="src-tag tag-default" data-src-tag>默认</span></label>
+              <select class="js-role-sel"><option value="" selected>—</option><option value="BT4018">吴慧俊</option></select>
+              <div class="sub-hint js-sub-hint">—</div>
+              <button type="button" class="restore hidden js-restore">恢复默认</button>
+            </div>
+            <div class="role-field" data-role="tail">
+              <label>尾端操作员 <span class="src-tag tag-default" data-src-tag>默认</span></label>
+              <select class="js-role-sel"><option value="" selected>—</option><option value="BT5022">陈尾端</option></select>
+              <div class="sub-hint js-sub-hint">—</div>
+              <button type="button" class="restore hidden js-restore">恢复默认</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row-2" style="margin-top:12px">
+          <div class="field" style="margin:0">
+            <label>生效开始<span class="req">*</span></label>
+            <input type="date" value="2026-06-16" />
+          </div>
+          <div class="field" style="margin:0">
+            <label>生效结束</label>
+            <input type="date" placeholder="空=长期" />
+          </div>
+        </div>
+      </div>
+      <footer class="modal-ft">
+        <button type="button" class="btn" id="modalCancel">取消</button>
+        <button type="button" class="btn btn-primary">确定</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 整柜权限</span>
+    <h3>整柜客户岗位绑定（独立子表）</h3>
+    <h4>为何与客户主档分离</h4>
+    <ul>
+      <li>客户表含电话、地址、信用额度、银行账号等<strong>高隐私</strong>字段，权限面应小于客户管理。</li>
+      <li>整柜岗位绑定由产品/操作维护，不应强制开通「客户管理」菜单。</li>
+      <li>子表仅引用 <strong>customer_code + customer_short_name</strong>（简称只读同步，不可在子表修改客户档案）。</li>
+    </ul>
+    <h4>列表与表单布局</h4>
+    <ul>
+      <li><strong>列表</strong>：一行一个客户；含<strong>绑定业务员</strong>（只读）；岗位横向为列（报价员、客服、订舱员、关务员、尾端操作员）。</li>
+      <li><strong>编辑弹窗</strong>：五个岗位横向排列，一次维护全岗位主责人员。</li>
+      <li>存储仍为明细表（客户+岗位+员工）；列表/表单为 pivot 展示。</li>
+    </ul>
+    <h4>关系模型</h4>
+    <ul>
+      <li><strong>客户主档</strong>绑定业务员（已有字段）。</li>
+      <li><strong>业务员</strong>在员工管理维护「整柜岗位团队」（横向五岗）。</li>
+      <li><strong>本表</strong>：客户默认继承业务员团队；支持单向修改（default/custom）。</li>
+      <li><strong>运单/舱位/提单</strong>：权限与待办路由读<strong>客户最终配置</strong>，不直接读业务员团队。</li>
+    </ul>
+    <h4>与业务员团队联动（单向）</h4>
+    <ul>
+      <li>选客户 / 「从业务员团队带入」：读客户绑定业务员 → 带入其岗位团队。</li>
+      <li>客户修改岗位人员 → 仅写本表 <code>bind_source=custom</code>，不回写员工管理。</li>
+      <li>「恢复默认」：重新读当前绑定业务员的团队配置。</li>
+      <li>客户更换业务员：提示重新带入；仅覆盖 default 格。</li>
+    </ul>
+    <h4>数据模型</h4>
+    <ul>
+      <li>表名示意：<code>fcl_customer_role_binding</code></li>
+      <li>粒度：客户代码 + 岗位角色 + 员工工号 + 生效区间</li>
+      <li>列表展示：按客户 pivot 成横向五列；未配置显示「—」</li>
+      <li>字段 <code>bind_source</code>：<code>default</code> | <code>custom</code></li>
+    </ul>
+    <h4>与客户管理联动</h4>
+    <ul>
+      <li>客户管理列表可增加操作「配置整柜岗位」→ 跳转本子表并带 customer_code 筛选（不嵌表单）。</li>
+      <li>散货仍用客户主档业务员/客服；整柜运单读本子表。</li>
+    </ul>
+    <h4>菜单权限建议</h4>
+    <ul>
+      <li>客户管理：销售/财务/admin</li>
+      <li>整柜客户岗位绑定：产品、订舱主管、admin</li>
+    </ul>
+  </div>
+
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var mask = document.getElementById("modalMask");
+      var sel = document.getElementById("selCustomer");
+      var custName = document.getElementById("custName");
+
+      /* 业务员 → 岗位团队（员工管理维护） */
+      var salespersonTeams = {
+        BT9001: { quoter: "BT1001", cs: "BT2015", booking: "BT3012", customs: "", tail: "" },
+        BT9002: { quoter: "BT1008", cs: "BT2020", booking: "BT3018", customs: "BT4018", tail: "BT5022" },
+      };
+      /* 客户 → 绑定业务员（客户主档） */
+      var customerMeta = {
+        "CUST-NB-001": { name: "宁波乐生", salesperson: "BT9001", salespersonLabel: "任杰（BT9001）" },
+        "CUST-SZ-088": { name: "深圳海拓", salesperson: "BT9002", salespersonLabel: "王敏（BT9002）" },
+      };
+
+      var salespersonEl = document.getElementById("salesperson");
+
+      function openModal(title) {
+        document.getElementById("modalTitle").textContent = title;
+        mask.classList.add("open");
+      }
+      function closeModal() { mask.classList.remove("open"); }
+
+      function setFieldSource(field, source) {
+        var tag = field.querySelector("[data-src-tag]");
+        var restore = field.querySelector(".js-restore");
+        field.classList.toggle("modified", source === "custom");
+        if (tag) {
+          tag.textContent = source === "custom" ? "已改" : "默认";
+          tag.className = "src-tag " + (source === "custom" ? "tag-custom" : "tag-default");
+        }
+        if (restore) restore.classList.toggle("hidden", source !== "custom");
+        field.dataset.source = source;
+      }
+
+      function applyDefaults(custCode, onlyDefaultCells) {
+        var meta = customerMeta[custCode];
+        if (!meta) return;
+        salespersonEl.value = meta.salespersonLabel + " · 来自客户主档";
+        var defs = salespersonTeams[meta.salesperson];
+        if (!defs) return;
+        document.querySelectorAll("#roleGrid .role-field").forEach(function (field) {
+          if (onlyDefaultCells && field.dataset.source === "custom") return;
+          var role = field.dataset.role;
+          var empId = defs[role] || "";
+          var select = field.querySelector(".js-role-sel");
+          var hint = field.querySelector(".js-sub-hint");
+          select.value = empId;
+          hint.textContent = empId || "—";
+          setFieldSource(field, "default");
+        });
+      }
+
+      document.querySelectorAll("#roleGrid .role-field").forEach(function (field) {
+        var select = field.querySelector(".js-role-sel");
+        var hint = field.querySelector(".js-sub-hint");
+        var defaultVal = select.value;
+        field.dataset.defaultVal = defaultVal;
+        setFieldSource(field, "default");
+
+        select.addEventListener("change", function () {
+          hint.textContent = select.value || "—";
+          setFieldSource(field, select.value === field.dataset.defaultVal ? "default" : "custom");
+        });
+
+        field.querySelector(".js-restore").addEventListener("click", function () {
+          select.value = field.dataset.defaultVal || "";
+          hint.textContent = select.value || "—";
+          setFieldSource(field, "default");
+        });
+      });
+
+      document.getElementById("btnAdd").addEventListener("click", function () { openModal("新增岗位绑定"); });
+      document.querySelectorAll(".js-edit").forEach(function (b) {
+        b.addEventListener("click", function () { openModal("编辑岗位绑定"); });
+      });
+      document.getElementById("btnPullDefault").addEventListener("click", function () {
+        var code = sel.value;
+        if (!code) { alert("请先选择客户代码"); return; }
+        applyDefaults(code, true);
+        alert("已从绑定业务员「" + customerMeta[code].salespersonLabel + "」的团队配置带入（未覆盖「已改」格子）");
+      });
+      document.getElementById("modalClose").addEventListener("click", closeModal);
+      document.getElementById("modalCancel").addEventListener("click", closeModal);
+      mask.addEventListener("click", function (e) { if (e.target === mask) closeModal(); });
+
+      sel.addEventListener("change", function () {
+        var opt = sel.options[sel.selectedIndex];
+        custName.value = opt.getAttribute("data-name") || "";
+        if (sel.value) applyDefaults(sel.value, false);
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
+  <script src="fcl-booking-prototype-nav.js" defer></script>
+</body>
+</html>

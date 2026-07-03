@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报价员配置 · MVP</title>
+  <link rel="stylesheet" href="ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --sidebar: #001529; --bg: #f0f2f5; --card: #fff;
+      --line: #e8e8e8; --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --req: #ff4d4f;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px; color: var(--text); background: var(--bg); }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header { background: var(--header); color: #fff; padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 12px; }
+    .top-header .tab { background: var(--bg); color: var(--text); padding: 0 12px; height: 48px; line-height: 48px; font-weight: 600; }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar { width: 200px; background: var(--sidebar); color: rgba(255,255,255,.75); padding: 8px 0; flex-shrink: 0; }
+    .side-item { display: block; width: 100%; text-align: left; border: none; background: none; color: inherit; padding: 10px 16px; cursor: pointer; }
+    .side-item.active { background: var(--blue); color: #fff; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .page-tabs { display: flex; gap: 0; background: var(--card); border-bottom: 1px solid var(--line); padding: 0 14px; }
+    .page-tab { padding: 10px 14px; border: none; background: none; cursor: pointer; font-size: 13px; color: var(--sub); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .page-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+    .filter-panel { background: var(--card); border-bottom: 1px solid var(--line); padding: 12px 14px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 14px; }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .filter-item input, .filter-item select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; }
+    .filter-actions { margin-top: 10px; display: flex; gap: 8px; }
+
+    .toolbar { padding: 8px 14px; background: var(--card); border-bottom: 1px solid var(--line); display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn { height: 32px; padding: 0 14px; border-radius: 2px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-danger { color: #cf1322; border-color: #ffa39e; }
+    .btn-link { border: none; background: none; color: var(--blue); cursor: pointer; padding: 0; }
+
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle; }
+    th { background: #fafafa; font-weight: 600; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+    tr:hover td { background: #e6f7ff; }
+    .tag { display: inline-block; padding: 0 6px; height: 20px; line-height: 18px; border-radius: 2px; font-size: 11px; border: 1px solid; margin: 1px 2px 1px 0; }
+    .tag-lcl { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .tag-fcl { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag-all { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .prod-cell { max-width: 220px; white-space: normal; line-height: 1.45; }
+
+    .drawer-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 900;
+      display: none; justify-content: flex-end;
+    }
+    .drawer-mask.open { display: flex; }
+    .drawer {
+      width: min(520px, 100%); height: 100%; background: var(--card);
+      display: flex; flex-direction: column; box-shadow: -4px 0 24px rgba(0,0,0,.12);
+    }
+    .drawer-hd { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+    .drawer-hd h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .drawer-close { border: none; background: none; font-size: 20px; color: var(--sub); cursor: pointer; line-height: 1; }
+    .drawer-bd { flex: 1; overflow: auto; padding: 16px; }
+    .drawer-ft { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; margin-bottom: 4px; }
+    .req { color: var(--req); margin-right: 2px; }
+    .field input, .field select, .field textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .field input, .field select { height: 32px; }
+    .field textarea { min-height: 72px; padding: 6px 8px; resize: vertical; }
+    .field-hint { font-size: 11px; color: var(--sub); margin-top: 4px; line-height: 1.5; }
+    .field-error { font-size: 11px; color: #cf1322; margin-top: 4px; line-height: 1.5; display: none; }
+    .field.has-error input, .field.has-error select, .field.has-error .prod-picker { border-color: #ff4d4f; }
+    .field.has-error .field-error { display: block; }
+
+    .radio-group { display: flex; flex-wrap: wrap; gap: 16px; padding: 6px 0; }
+    .radio-group label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; margin: 0; }
+    .radio-group input { width: auto; height: auto; margin: 0; }
+
+    .prod-picker { border: 1px solid #d9d9d9; border-radius: 2px; padding: 8px; background: #fafafa; }
+    .prod-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 24px; }
+    .prod-tags:empty::before { content: "未选择产品（散货将视为覆盖该范围内全部销售产品）"; color: var(--sub); font-size: 11px; }
+    .prod-tag { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; height: 22px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; font-size: 11px; color: #096dd9; }
+    .prod-tag button { border: none; background: none; color: #096dd9; cursor: pointer; padding: 0; font-size: 14px; line-height: 1; }
+    .prod-options { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; max-height: 140px; overflow: auto; }
+    .prod-options label { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; margin: 0; }
+    .prod-options input { width: auto; height: auto; }
+
+    .overlap-box {
+      margin-top: 12px; padding: 10px 12px; background: #fffbe6; border: 1px solid #ffe58f;
+      border-radius: 2px; font-size: 11px; color: #614700; line-height: 1.55;
+    }
+    .overlap-box strong { color: #874d00; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <span style="font-weight:600">腾信物流</span>
+      <span class="tab">报价员配置</span>
+    </header>
+    <div class="body-wrap">
+      <nav class="sidebar">
+        <button type="button" class="side-item">系统管理</button>
+        <button type="button" class="side-item active">报价员配置</button>
+        <button type="button" class="side-item">员工管理</button>
+      </nav>
+      <main class="main">
+        <div class="page-tabs">
+          <button type="button" class="page-tab active">报价员配置</button>
+        </div>
+        <section class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>报价员</label><input type="text" placeholder="昵称/工号" /></div>
+            <div class="filter-item"><label>所属部门</label><select><option>全部</option><option>业务二部</option><option>业务三部</option></select></div>
+            <div class="filter-item"><label>所属小组</label><select><option>全部</option><option>业务二部四组</option><option>业务二部五组</option></select></div>
+            <div class="filter-item"><label>业务员</label><input type="text" placeholder="昵称/工号" /></div>
+            <div class="filter-item"><label>询价类型</label><select><option>全部</option><option>散货</option><option>整柜</option></select></div>
+            <div class="filter-item"><label>销售产品</label><input type="text" placeholder="产品名称" /></div>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn btn-primary">查询</button>
+            <button type="button" class="btn">重置</button>
+          </div>
+        </section>
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnAdd">新增</button>
+          <button type="button" class="btn">导出</button>
+          <button type="button" class="btn btn-danger">批量删除</button>
+        </div>
+        <div class="table-wrap">
+          <table aria-label="报价员配置列表">
+            <thead>
+              <tr>
+                <th style="width:32px"><input type="checkbox" aria-label="全选" /></th>
+                <th style="width:40px">序号</th>
+                <th>业务员</th>
+                <th>所属部门</th>
+                <th>所属小组</th>
+                <th>询价类型</th>
+                <th>销售产品</th>
+                <th>报价员</th>
+                <th>报价员编号</th>
+                <th>创建人</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="listBody"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="drawer-mask" id="drawerMask" aria-hidden="true">
+    <div class="drawer" role="dialog" aria-labelledby="drawerTitle">
+      <div class="drawer-hd">
+        <h2 id="drawerTitle">新增</h2>
+        <button type="button" class="drawer-close" id="drawerClose" aria-label="关闭">×</button>
+      </div>
+      <div class="drawer-bd">
+        <div class="form-row-2">
+          <div class="field">
+            <label>业务员</label>
+            <select id="fSales">
+              <option value="">请选择业务员（空=部门/小组级）</option>
+              <option value="王帅">王帅</option>
+              <option value="任杰">任杰</option>
+              <option value="张业务">张业务</option>
+            </select>
+            <div class="field-hint">指定业务员时，规则仅对该人生效，优先级高于部门/小组级规则。</div>
+          </div>
+          <div class="field" id="fieldQuoter">
+            <label><span class="req">*</span>报价员</label>
+            <select id="fQuoter">
+              <option value="">请选择报价员</option>
+              <option value="BT1001|张报价">张报价（BT1001）</option>
+              <option value="BT1002|李报价">李报价（BT1002）</option>
+              <option value="BT1003|赵报价">赵报价（BT1003）</option>
+            </select>
+            <div class="field-error">请选择报价员</div>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="field" id="fieldDept">
+            <label><span class="req">*</span>部门</label>
+            <select id="fDept">
+              <option value="">请选择部门</option>
+              <option value="业务二部">业务二部</option>
+              <option value="业务三部">业务三部</option>
+            </select>
+            <div class="field-error">请选择部门</div>
+          </div>
+          <div class="field">
+            <label>小组</label>
+            <select id="fGroup">
+              <option value="">请选择小组（空=部门级）</option>
+              <option value="业务二部四组">业务二部四组</option>
+              <option value="业务二部五组">业务二部五组</option>
+              <option value="业务三部一组">业务三部一组</option>
+            </select>
+            <div class="field-hint">不选小组表示该部门下所有小组共用（除非有更细的小组/业务员规则）。</div>
+          </div>
+        </div>
+
+        <div class="field" id="fieldInquiryType">
+          <label><span class="req">*</span>询价类型</label>
+          <div class="radio-group" id="inquiryTypeGroup">
+            <label><input type="radio" name="inquiryType" value="LCL" checked /> 散货</label>
+            <label><input type="radio" name="inquiryType" value="FCL" /> 整柜</label>
+            <label><input type="radio" name="inquiryType" value="ALL" /> 全部</label>
+          </div>
+          <div class="field-hint">单选。整柜按部门/小组/业务员维度分配报价员；散货可细化到销售产品。</div>
+          <div class="field-error">请选择询价类型</div>
+        </div>
+
+        <div class="field" id="fieldProducts">
+          <label>销售产品</label>
+          <div class="prod-picker" id="prodPicker">
+            <div class="prod-tags" id="prodTags"></div>
+            <div class="prod-options" id="prodOptions"></div>
+          </div>
+          <div class="field-hint">多选。仅作用于<strong>散货</strong>维度（「全部」类型下整柜仍由本条规则覆盖）。不选 = 该范围内全部散货产品。</div>
+          <div class="field-error" id="prodError">配置重叠，请调整询价类型或销售产品</div>
+        </div>
+
+        <div class="field">
+          <label>备注</label>
+          <textarea id="fRemark" placeholder="请输入备注"></textarea>
+        </div>
+
+        <div class="overlap-box">
+          <strong>不重叠配置规则（保存时校验）</strong><br />
+          ① 同一范围（部门 + 小组 + 业务员）下，「全部」与任何其他规则互斥。<br />
+          ② 「整柜」在同一范围内只能有一条规则。<br />
+          ③ 「散货」按销售产品互斥：已配置的产品不可再配给其他报价员；未指定产品视为占用「全部散货产品」。<br />
+          ④ 匹配优先级：业务员 &gt; 小组 &gt; 部门（细粒度覆盖粗粒度，但不改变互斥校验范围）。
+        </div>
+      </div>
+      <div class="drawer-ft">
+        <button type="button" class="btn btn-primary" id="btnSave">确定</button>
+        <button type="button" class="btn" id="btnCancel">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 报价员配置</span>
+    <h3>报价员路由配置</h3>
+    <p>按部门/小组/业务员 + 询价类型（+ 散货销售产品）分配默认报价员，供询价单创建时自动带出。</p>
+    <h4>字段</h4>
+    <ul>
+      <li><strong>询价类型</strong>：散货 / 整柜 / 全部，单选。</li>
+      <li><strong>销售产品</strong>：询价类型为散货或全部时展示，多选；整柜隐藏。</li>
+      <li>业务员为空 = 部门或小组级规则；小组为空 = 部门级规则。</li>
+    </ul>
+    <h4>不重叠（保存校验）</h4>
+    <ul>
+      <li>互斥维度：<code>部门 + 小组 + 业务员 + 询价类型 + 销售产品</code>（整柜无产品维度）。</li>
+      <li>「全部」占用该范围内所有类型与产品，不得共存其他规则。</li>
+      <li>散货未选产品 = wildcard，与任意散货产品规则冲突。</li>
+      <li>冲突时拒绝保存并提示已占用规则及报价员。</li>
+    </ul>
+    <h4>运行时匹配优先级</h4>
+    <ul>
+      <li>业务员专属 &gt; 小组 &gt; 部门；同层级按产品精确匹配 &gt; 散货 wildcard。</li>
+    </ul>
+  </div>
+
+  <script src="ess-prototype-prd.js"></script>
+  <script src="ess-prototype-nav.js"></script>
+  <script>
+    (function () {
+      var PRODUCTS = [
+        { id: "P001", name: "海运散货·美线" },
+        { id: "P002", name: "海运散货·欧线" },
+        { id: "P003", name: "海运散货·东南亚" },
+        { id: "P004", name: "空运散货·国际" },
+        { id: "P005", name: "铁路散货·中欧" },
+        { id: "P006", name: "快递·国际小包" }
+      ];
+
+      var TYPE_LABEL = { LCL: "散货", FCL: "整柜", ALL: "全部" };
+      var TYPE_CLASS = { LCL: "tag-lcl", FCL: "tag-fcl", ALL: "tag-all" };
+
+      var rules = [
+        { id: 1, sales: "王帅", dept: "业务二部", group: "业务二部四组", type: "FCL", products: [], quoterId: "BT1001", quoterName: "张报价", creator: "芦荟蘅", time: "2025-12-01 10:22:11", remark: "" },
+        { id: 2, sales: "", dept: "业务二部", group: "业务二部四组", type: "LCL", products: ["P001", "P002"], quoterId: "BT1002", quoterName: "李报价", creator: "芦荟蘅", time: "2025-12-02 09:15:00", remark: "美欧线" },
+        { id: 3, sales: "", dept: "业务二部", group: "", type: "LCL", products: ["P003"], quoterId: "BT1001", quoterName: "张报价", creator: "系统", time: "2025-11-20 14:00:00", remark: "" },
+        { id: 4, sales: "任杰", dept: "业务三部", group: "业务三部一组", type: "ALL", products: [], quoterId: "BT1003", quoterName: "赵报价", creator: "管理员", time: "2025-10-08 16:30:00", remark: "任杰专属" }
+      ];
+
+      var editingId = null;
+      var selectedProducts = [];
+
+      var drawerMask = document.getElementById("drawerMask");
+      var listBody = document.getElementById("listBody");
+      var fieldProducts = document.getElementById("fieldProducts");
+      var prodOptions = document.getElementById("prodOptions");
+      var prodTags = document.getElementById("prodTags");
+
+      function productName(id) {
+        var p = PRODUCTS.find(function (x) { return x.id === id; });
+        return p ? p.name : id;
+      }
+
+      function renderProductsCell(products, type) {
+        if (type === "FCL") return "—";
+        if (type === "ALL" && products && products.length) {
+          return "<span class=\"tag tag-all\">整柜+所选散货</span> " + products.map(function (id) {
+            return "<span class=\"tag tag-lcl\">" + productName(id) + "</span>";
+          }).join("");
+        }
+        if (!products || !products.length) return "<span style=\"color:var(--sub)\">全部散货产品</span>";
+        return products.map(function (id) {
+          return "<span class=\"tag tag-lcl\">" + productName(id) + "</span>";
+        }).join("");
+      }
+
+      function renderList() {
+        listBody.innerHTML = rules.map(function (r, i) {
+          return "<tr>" +
+            "<td><input type=\"checkbox\" /></td>" +
+            "<td>" + (i + 1) + "</td>" +
+            "<td>" + (r.sales || "—") + "</td>" +
+            "<td>" + r.dept + "</td>" +
+            "<td>" + (r.group || "—") + "</td>" +
+            "<td><span class=\"tag " + TYPE_CLASS[r.type] + "\">" + TYPE_LABEL[r.type] + "</span></td>" +
+            "<td class=\"prod-cell\">" + renderProductsCell(r.products, r.type) + "</td>" +
+            "<td>" + r.quoterName + "</td>" +
+            "<td>" + r.quoterId + "</td>" +
+            "<td>" + r.creator + "</td>" +
+            "<td>" + r.time + "</td>" +
+            "<td><button type=\"button\" class=\"btn-link btn-edit\" data-id=\"" + r.id + "\">编辑</button></td>" +
+            "</tr>";
+        }).join("");
+        listBody.querySelectorAll(".btn-edit").forEach(function (btn) {
+          btn.addEventListener("click", function () { openDrawer(Number(btn.getAttribute("data-id"))); });
+        });
+      }
+
+      function scopeKey(r) {
+        return [r.dept, r.group || "", r.sales || ""].join("|");
+      }
+
+      function expandCoverage(type, products) {
+        var cov = [];
+        if (type === "FCL") cov.push({ kind: "FCL", product: "*" });
+        if (type === "LCL") {
+          if (!products.length) {
+            cov.push({ kind: "LCL", product: "*" });
+          } else {
+            products.forEach(function (p) { cov.push({ kind: "LCL", product: p }); });
+          }
+        }
+        if (type === "ALL") {
+          cov.push({ kind: "FCL", product: "*" });
+          if (!products.length) {
+            cov.push({ kind: "LCL", product: "*" });
+          } else {
+            products.forEach(function (p) { cov.push({ kind: "LCL", product: p }); });
+          }
+        }
+        return cov;
+      }
+
+      function coverageOverlap(a, b) {
+        return a.some(function (x) {
+          return b.some(function (y) {
+            if (x.kind !== y.kind) return false;
+            if (x.product === "*" || y.product === "*") return true;
+            return x.product === y.product;
+          });
+        });
+      }
+
+      function findConflicts(candidate, excludeId) {
+        var conflicts = [];
+        var cScope = scopeKey(candidate);
+        var cCov = expandCoverage(candidate.type, candidate.products);
+        rules.forEach(function (r) {
+          if (excludeId != null && r.id === excludeId) return;
+          if (scopeKey(r) !== cScope) return;
+          var rCov = expandCoverage(r.type, r.products);
+          if (coverageOverlap(cCov, rCov)) {
+            conflicts.push(r);
+          }
+        });
+        return conflicts;
+      }
+
+      function buildProdOptions() {
+        prodOptions.innerHTML = PRODUCTS.map(function (p) {
+          var checked = selectedProducts.indexOf(p.id) >= 0 ? " checked" : "";
+          return "<label><input type=\"checkbox\" value=\"" + p.id + "\"" + checked + " /> " + p.name + "</label>";
+        }).join("");
+        prodOptions.querySelectorAll("input").forEach(function (cb) {
+          cb.addEventListener("change", syncSelectedProducts);
+        });
+        renderProdTags();
+      }
+
+      function syncSelectedProducts() {
+        selectedProducts = Array.prototype.slice.call(prodOptions.querySelectorAll("input:checked")).map(function (cb) {
+          return cb.value;
+        });
+        renderProdTags();
+      }
+
+      function renderProdTags() {
+        prodTags.innerHTML = selectedProducts.map(function (id) {
+          return "<span class=\"prod-tag\">" + productName(id) +
+            "<button type=\"button\" data-id=\"" + id + "\" aria-label=\"移除\">×</button></span>";
+        }).join("");
+        prodTags.querySelectorAll("button").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.getAttribute("data-id");
+            selectedProducts = selectedProducts.filter(function (x) { return x !== id; });
+            var cb = prodOptions.querySelector("input[value=\"" + id + "\"]");
+            if (cb) cb.checked = false;
+            renderProdTags();
+          });
+        });
+      }
+
+      function getInquiryType() {
+        var el = document.querySelector("input[name=\"inquiryType\"]:checked");
+        return el ? el.value : "";
+      }
+
+      function toggleProductField() {
+        var type = getInquiryType();
+        var show = type === "LCL" || type === "ALL";
+        fieldProducts.style.display = show ? "" : "none";
+      }
+
+      function clearErrors() {
+        document.querySelectorAll(".field.has-error").forEach(function (f) { f.classList.remove("has-error"); });
+      }
+
+      function setError(fieldId, msg) {
+        var field = document.getElementById(fieldId);
+        if (!field) return;
+        field.classList.add("has-error");
+        var err = field.querySelector(".field-error");
+        if (err && msg) err.textContent = msg;
+      }
+
+      function openDrawer(id) {
+        editingId = id || null;
+        clearErrors();
+        document.getElementById("drawerTitle").textContent = id ? "编辑" : "新增";
+        var r = id ? rules.find(function (x) { return x.id === id; }) : null;
+        document.getElementById("fSales").value = r ? r.sales : "";
+        document.getElementById("fDept").value = r ? r.dept : "";
+        document.getElementById("fGroup").value = r ? r.group : "";
+        document.getElementById("fQuoter").value = r ? r.quoterId + "|" + r.quoterName : "";
+        document.getElementById("fRemark").value = r ? r.remark : "";
+        var type = r ? r.type : "LCL";
+        document.querySelectorAll("input[name=\"inquiryType\"]").forEach(function (radio) {
+          radio.checked = radio.value === type;
+        });
+        selectedProducts = r && r.products ? r.products.slice() : [];
+        buildProdOptions();
+        toggleProductField();
+        drawerMask.classList.add("open");
+        drawerMask.setAttribute("aria-hidden", "false");
+      }
+
+      function closeDrawer() {
+        drawerMask.classList.remove("open");
+        drawerMask.setAttribute("aria-hidden", "true");
+        editingId = null;
+      }
+
+      function validateAndSave() {
+        clearErrors();
+        var sales = document.getElementById("fSales").value.trim();
+        var dept = document.getElementById("fDept").value;
+        var group = document.getElementById("fGroup").value;
+        var quoterVal = document.getElementById("fQuoter").value;
+        var type = getInquiryType();
+        var remark = document.getElementById("fRemark").value.trim();
+        var ok = true;
+
+        if (!dept) { setError("fieldDept"); ok = false; }
+        if (!quoterVal) { setError("fieldQuoter"); ok = false; }
+        if (!type) { setError("fieldInquiryType"); ok = false; }
+
+        var parts = quoterVal.split("|");
+        var candidate = {
+          sales: sales,
+          dept: dept,
+          group: group,
+          type: type,
+          products: (type === "LCL" || type === "ALL") ? selectedProducts.slice() : [],
+          quoterId: parts[0] || "",
+          quoterName: parts[1] || "",
+          remark: remark
+        };
+
+        var conflicts = findConflicts(candidate, editingId);
+        if (conflicts.length) {
+          var msg = conflicts.map(function (c) {
+            var prodText = c.type === "FCL" ? "—" : (c.products.length ? c.products.map(productName).join("、") : "全部散货产品");
+            return "与规则#" + c.id + "冲突（" + TYPE_LABEL[c.type] + " · " + prodText + " → " + c.quoterName + "）";
+          }).join("；");
+          setError("fieldProducts", "配置重叠：" + msg);
+          if (type === "FCL") setError("fieldInquiryType", "配置重叠：" + msg);
+          ok = false;
+        }
+
+        if (!ok) return;
+
+        if (editingId) {
+          var idx = rules.findIndex(function (x) { return x.id === editingId; });
+          if (idx >= 0) {
+            candidate.id = editingId;
+            candidate.creator = rules[idx].creator;
+            candidate.time = rules[idx].time;
+            rules[idx] = candidate;
+          }
+        } else {
+          candidate.id = rules.length ? Math.max.apply(null, rules.map(function (x) { return x.id; })) + 1 : 1;
+          candidate.creator = "当前用户";
+          candidate.time = new Date().toISOString().slice(0, 19).replace("T", " ");
+          rules.push(candidate);
+        }
+        renderList();
+        closeDrawer();
+        alert("保存成功");
+      }
+
+      document.getElementById("btnAdd").addEventListener("click", function () { openDrawer(null); });
+      document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+      document.getElementById("btnCancel").addEventListener("click", closeDrawer);
+      document.getElementById("btnSave").addEventListener("click", validateAndSave);
+      drawerMask.addEventListener("click", function (e) { if (e.target === drawerMask) closeDrawer(); });
+      document.getElementById("inquiryTypeGroup").addEventListener("change", toggleProductField);
+
+      buildProdOptions();
+      toggleProductField();
+      renderList();
+    })();
+  </script>
+</body>
+</html>

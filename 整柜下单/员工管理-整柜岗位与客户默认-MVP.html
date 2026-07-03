@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>员工管理 · 编辑（含整柜岗位团队 MVP）</title>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --sidebar: #001529; --bg: #f0f2f5; --card: #fff;
+      --line: #e8e8e8; --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --req: #cf1322;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px; color: var(--text); background: var(--bg); }
+
+    .demo-bar { background: #fff7e6; border-bottom: 1px solid #ffd591; padding: 8px 14px; font-size: 12px; color: #ad6800; line-height: 1.55; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header { background: var(--header); color: #fff; padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 12px; }
+    .top-header .tab { background: var(--bg); color: var(--text); padding: 0 12px; height: 48px; line-height: 48px; font-weight: 600; }
+    .body-wrap { flex: 1; display: flex; }
+    .sidebar { width: 200px; background: var(--sidebar); color: rgba(255,255,255,.75); padding: 8px 0; }
+    .side-item { display: block; width: 100%; text-align: left; border: none; background: none; color: inherit; padding: 10px 16px; cursor: pointer; }
+    .side-item.active { background: var(--blue); color: #fff; }
+
+    .main { flex: 1; padding: 16px; overflow: auto; }
+    .mask { max-width: 980px; margin: 0 auto; background: rgba(0,0,0,.45); border-radius: 2px; padding: 20px 12px; }
+    .modal { background: var(--card); border-radius: 2px; box-shadow: 0 4px 24px rgba(0,0,0,.15); max-width: 940px; margin: 0 auto; }
+    .modal-hd { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+    .modal-hd h1 { margin: 0; font-size: 15px; font-weight: 600; }
+    .modal-bd { padding: 14px 16px 16px; max-height: calc(100vh - 160px); overflow: auto; }
+    .modal-ft { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 14px; }
+    .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .req { color: var(--req); }
+    .field input, .field select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; }
+    .field.span-2 { grid-column: span 2; }
+    .field.span-4 { grid-column: 1 / -1; }
+    .section-title { grid-column: 1 / -1; margin: 8px 0 0; padding-top: 10px; border-top: 1px dashed #f0f0f0; font-size: 13px; font-weight: 600; }
+    .section-title:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+    .team-block {
+      grid-column: 1 / -1; border: 1px solid #d6e4ff; background: #fafcff; border-radius: 2px; padding: 12px;
+    }
+    .team-block .hint { font-size: 12px; color: #096dd9; margin: 0 0 10px; line-height: 1.55; }
+    .role-team-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 800px) { .role-team-grid { grid-template-columns: repeat(2, 1fr); } }
+    .role-team-col label { display: block; font-size: 12px; font-weight: 600; color: #096dd9; text-align: center; margin-bottom: 6px; }
+    .role-team-col select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font-size: 12px; }
+    .role-team-col .sub { font-size: 10px; color: var(--sub); text-align: center; margin-top: 4px; }
+
+    .btn { height: 32px; padding: 0 14px; border-radius: 2px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .flow-note {
+      max-width: 980px; margin: 12px auto 0; padding: 10px 12px; background: #f6ffed;
+      border: 1px solid #b7eb8f; border-radius: 2px; font-size: 12px; color: #135200; line-height: 1.6;
+    }
+    .flow-diagram {
+      max-width: 980px; margin: 10px auto 0; padding: 10px 12px; background: #fff;
+      border: 1px solid var(--line); border-radius: 2px; font-size: 12px; color: var(--sub); text-align: center;
+    }
+    .flow-diagram strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="demo-bar">
+      <strong>关系链：</strong>客户主档绑<strong>业务员</strong> → 业务员在员工管理维护<strong>整柜岗位团队</strong> → 客户岗位默认跟业务员 → 客户可改 → <strong>运单权限跟客户最终配置</strong>。
+    </div>
+    <header class="top-header">
+      <span style="font-weight:600">腾信物流</span>
+      <span class="tab">员工管理 · 编辑</span>
+    </header>
+    <div class="body-wrap">
+      <nav class="sidebar">
+        <button type="button" class="side-item active">员工管理</button>
+        <button type="button" class="side-item">整柜客户岗位绑定</button>
+      </nav>
+      <main class="main">
+        <div class="flow-diagram">
+          客户 <strong>绑定业务员</strong> → 业务员配置 <strong>岗位团队</strong> → 客户默认继承（可改）→ 单/运单 <strong>权限读客户</strong>
+        </div>
+        <div class="mask">
+          <div class="modal">
+            <div class="modal-hd">
+              <h1>编辑数据 · 任杰（业务员）</h1>
+              <button type="button" class="btn" style="border:none;font-size:18px">×</button>
+            </div>
+            <div class="modal-bd">
+              <div class="form-grid">
+                <div class="section-title">基本信息（现有字段）</div>
+                <div class="field">
+                  <label>工号</label>
+                  <input type="text" readonly value="BT9001" />
+                </div>
+                <div class="field">
+                  <label>员工昵称</label>
+                  <input type="text" value="任杰" />
+                </div>
+                <div class="field">
+                  <label>员工姓名</label>
+                  <input type="text" value="任某某" />
+                </div>
+                <div class="field">
+                  <label>所属部门</label>
+                  <select><option selected>营销一部</option></select>
+                </div>
+                <div class="field">
+                  <label>员工类型</label>
+                  <select id="empType"><option selected>业务员</option><option>客服</option><option>操作</option></select>
+                </div>
+                <div class="field">
+                  <label>岗位</label>
+                  <input type="text" readonly value="销售业务员" />
+                </div>
+
+                <div class="section-title" id="fclTeamTitle">整柜 · 岗位团队（新增 · 仅业务员维护）</div>
+                <div class="team-block" id="fclTeamBlock">
+                  <p class="hint">
+                    配置<strong>该业务员名下整柜运单</strong>默认服务的岗位人员（横向）。绑定该业务员的客户，在「整柜客户岗位绑定」中<strong>默认继承</strong>此团队；客户可单向修改，<strong>不回写</strong>本页；实际运单权限以<strong>客户最终配置</strong>为准。
+                  </p>
+                  <div class="role-team-grid">
+                    <div class="role-team-col">
+                      <label>报价员</label>
+                      <select><option value="">—</option><option value="BT1001" selected>张报价</option><option value="BT1008">李询价</option></select>
+                      <div class="sub">BT1001</div>
+                    </div>
+                    <div class="role-team-col">
+                      <label>客服</label>
+                      <select><option value="">—</option><option value="BT2015" selected>芦荟蘅</option><option value="BT2020">Olaf(青)</option></select>
+                      <div class="sub">BT2015</div>
+                    </div>
+                    <div class="role-team-col">
+                      <label>订舱员</label>
+                      <select><option value="">—</option><option value="BT3012" selected>王订舱</option><option value="BT3018">赵订舱</option></select>
+                      <div class="sub">BT3012</div>
+                    </div>
+                    <div class="role-team-col">
+                      <label>关务员</label>
+                      <select><option value="" selected>—</option><option value="BT4018">吴慧俊</option></select>
+                      <div class="sub">—</div>
+                    </div>
+                    <div class="role-team-col">
+                      <label>尾端操作员</label>
+                      <select><option value="" selected>—</option><option value="BT5022">陈尾端</option></select>
+                      <div class="sub">—</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <footer class="modal-ft">
+              <button type="button" class="btn">取消</button>
+              <button type="button" class="btn btn-primary">确定</button>
+            </footer>
+          </div>
+        </div>
+        <div class="flow-note">
+          <strong>说明：</strong>非业务员员工不展示「整柜岗位团队」区块。客户主档「业务员」字段变更时，可提示是否刷新该客户在岗位绑定子表的默认项（仅 <code>source=default</code> 格）。
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 员工整柜团队</span>
+    <h3>员工管理 · 整柜岗位团队（业务员）</h3>
+    <h4>关系模型</h4>
+    <ul>
+      <li><strong>客户 → 业务员</strong>：客户主档系统信息中的「业务员」字段（已有）。</li>
+      <li><strong>业务员 → 岗位团队</strong>：本页新增，横向五岗，配置该业务员整柜单默认服务团队。</li>
+      <li><strong>客户 → 岗位默认</strong>：继承绑定业务员的团队；客户子表可单向覆盖。</li>
+      <li><strong>运单 → 权限</strong>：读取<strong>客户最终岗位配置</strong>（含客户侧修改），不直接读业务员团队。</li>
+    </ul>
+    <h4>表结构示意</h4>
+    <ul>
+      <li><code>fcl_salesperson_role_team</code>：salesperson_emp_no + role + bind_emp_no</li>
+      <li><code>fcl_customer_role_binding</code>：customer_code + role + bind_emp_no + bind_source(default/custom)</li>
+    </ul>
+    <h4>变更传播</h4>
+    <ul>
+      <li>业务员团队变更 → 不自动覆盖客户 <code>custom</code> 格；可选批量刷新 <code>default</code> 格。</li>
+      <li>客户换业务员 → 提示重新「从业务员团队带入」。</li>
+    </ul>
+  </div>
+
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var empType = document.getElementById("empType");
+      var block = document.getElementById("fclTeamBlock");
+      var title = document.getElementById("fclTeamTitle");
+      function sync() {
+        var isSales = empType.value === "业务员" || empType.options[empType.selectedIndex].text === "业务员";
+        block.style.display = isSales ? "block" : "none";
+        title.style.display = isSales ? "block" : "none";
+      }
+      empType.addEventListener("change", sync);
+      sync();
+    })();
+  </script>
+</body>
+</html>

@@ -14,6 +14,15 @@
       label: "报关管理",
       links: [
         { file: "报关管理-列表-MVP.html", label: "报关管理列表" },
+        { file: "报关管理-供应商上传审核-MVP.html", label: "供应商上传审核" },
+      ],
+    },
+    {
+      label: "报关行链接协作",
+      links: [
+        { file: "报关供应商-上传任务列表-MVP.html?token=ws-demo-qdgx-7d&scope=workspace", label: "待办任务（工作台链接）" },
+        { file: "报关供应商-资料上传-MVP.html?token=tk-1-material&scope=task&task=material&taskId=1", label: "资料上传（任务链接）" },
+        { file: "报关供应商-链接失效-MVP.html", label: "链接失效（示意）" },
       ],
     },
     {

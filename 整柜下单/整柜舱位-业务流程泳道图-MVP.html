@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜舱位 · 业务流程泳道图（MVP）</title>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --product: #722ed1;
+      --product-bg: #f9f0ff;
+      --product-border: #d3adf7;
+      --cs: #096dd9;
+      --cs-bg: #e6f7ff;
+      --cs-border: #91d5ff;
+      --customs: #389e0d;
+      --customs-bg: #f6ffed;
+      --customs-border: #95de64;
+      --lane-product: #faf5ff;
+      --lane-cs: #f0f9ff;
+      --lane-customs: #fafff5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page { max-width: 1280px; margin: 0 auto; padding: 14px 16px 48px; }
+    .proto-link { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+    .hero p { margin: 0; font-size: 12px; color: var(--sub); line-height: 1.6; }
+
+    .note {
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: #fffbe6;
+      border: 1px solid #ffe58f;
+      border-radius: 2px;
+      font-size: 12px;
+      color: #614700;
+      line-height: 1.65;
+    }
+    .note strong { color: #874d00; }
+
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 20px 16px 24px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      overflow-y: visible;
+    }
+    .chart-title {
+      margin: 0 0 16px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .swimlane-wrap {
+      position: relative;
+      padding: 8px 56px 8px 56px;
+      min-width: 1080px;
+    }
+
+    .swimlane {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      overflow: visible;
+    }
+
+    .swimlane-body {
+      position: relative;
+    }
+
+    .flow-svg {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .swimlane-grid {
+      display: grid;
+      grid-template-columns: 92px repeat(5, 1fr);
+    }
+
+    .steps-layer {
+      position: relative;
+      z-index: 1;
+    }
+    .swimlane-head {
+      display: grid;
+      grid-template-columns: 92px repeat(5, 1fr);
+      background: #fafafa;
+      border-bottom: 1px solid var(--line);
+    }
+    .swimlane-head span {
+      padding: 10px 6px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--sub);
+      font-weight: 600;
+      border-left: 1px solid var(--line);
+      line-height: 1.4;
+    }
+    .swimlane-head span:first-child { border-left: none; }
+    .swimlane-head .parallel-hint {
+      font-size: 10px;
+      font-weight: 400;
+      color: #8c8c8c;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .lane-label-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 118px;
+      font-size: 13px;
+      font-weight: 600;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 6px;
+      text-align: center;
+    }
+
+    .steps-layer > *:nth-last-child(-n+6) {
+      border-bottom: none;
+    }
+    .lane-product { background: var(--lane-product); color: var(--product); }
+    .lane-cs { background: var(--lane-cs); color: var(--cs); }
+    .lane-customs { background: var(--lane-customs); color: var(--customs); }
+
+    .lane-cell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 118px;
+      padding: 14px 8px;
+      border-left: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      overflow: visible;
+    }
+    .lane-cell.parallel-col {
+      background: linear-gradient(180deg, #fefefe 0%, #fafcff 100%);
+    }
+
+    .step {
+      position: relative;
+      z-index: 1;
+      min-width: 118px;
+      max-width: 178px;
+      padding: 11px 12px;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.42;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      background: #fff;
+    }
+    .step small {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      font-weight: 400;
+      opacity: 0.78;
+      line-height: 1.4;
+    }
+    .step.product {
+      color: var(--product);
+      background: var(--product-bg);
+      border: 1px solid var(--product-border);
+    }
+    .step.cs {
+      color: var(--cs);
+      background: var(--cs-bg);
+      border: 1px solid var(--cs-border);
+    }
+    .step.customs {
+      color: var(--customs);
+      background: var(--customs-bg);
+      border: 1px solid var(--customs-border);
+    }
+    .flow-terminal {
+      position: absolute;
+      z-index: 35;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 2px solid #8c8c8c;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #595959;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .terminals-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 35;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 900px) { .legend-grid { grid-template-columns: 1fr; } }
+
+    .legend-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 12px 14px;
+    }
+    .legend-card h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0 8px;
+      height: 22px;
+      line-height: 20px;
+      border-radius: 2px;
+      font-size: 11px;
+      border: 1px solid;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+    .badge.product { color: var(--product); background: var(--product-bg); border-color: var(--product-border); }
+    .badge.cs { color: var(--cs); background: var(--cs-bg); border-color: var(--cs-border); }
+    .badge.customs { color: var(--customs); background: var(--customs-bg); border-color: var(--customs-border); }
+
+    table.flow-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    table.flow-tbl th,
+    table.flow-tbl td {
+      border: 1px solid var(--line);
+      padding: 7px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.flow-tbl th { background: #fafafa; color: var(--sub); font-weight: 600; }
+
+    .mermaid-wrap {
+      margin-top: 12px;
+      padding: 16px;
+      background: #fafbfc;
+      border: 1px solid #eef2f7;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .mermaid { min-width: 900px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="proto-link">
+      关联：<a href="ESS整柜询价详情-MVP.html">整柜询价详情</a> ·
+      <a href="../报关行对接/报关管理-流程图-MVP.html">报关管理流程</a> ·
+      <a href="../报关行对接/报关管理-预录审核详情-兼容-MVP.html?tab=customs">提单详情 · 清报关</a> ·
+      <a href="../index.html">返回导航</a>
+    </div>
+
+    <div class="note" style="background:#fffbe6;border-color:#ffe58f;color:#ad6800;margin-bottom:12px;">
+      <strong>本次更新 2026-06-22：</strong>绑定仓位须填海运费+有效期；签出时装柜完成时间与有效期比对。→
+      <a href="整柜本次更新-MVP.html" style="color:#2563eb;">完整变更说明</a>
+    </div>
+
+    <section class="hero">
+      <h1>整柜舱位 · 业务流程泳道图</h1>
+      <p>
+        主流程共 5 步：① 录入舱位 → ② 下单 → ③ 运单绑定舱位 → ④ 完善提单 ∥ 关务预录单 → <strong>⑤ 签出</strong>。
+      </p>
+    </section>
+
+    <div class="note">
+      <strong>与原流程差异：</strong>绑定舱位时系统自动生成<strong>提单草稿</strong>（无需提前单独创建提单）；「产品完善提单」等同原「创建提单」，完善后分配<strong>分公司、拖车、报关行、装柜地址</strong>等信息；关务<strong>与完善提单同时进行</strong>预录单；客服签出<strong>仅需完善提单完成，不依赖关务预录单</strong>。
+    </div>
+
+    <section class="chart-card">
+      <h2 class="chart-title">泳道图（产品端 / 客服 / 关务）</h2>
+
+      <div class="swimlane-wrap">
+        <div class="swimlane" role="img" aria-label="整柜舱位至签出业务流程泳道图">
+          <div class="swimlane-head">
+            <span>角色</span>
+            <span>步骤 1</span>
+            <span>步骤 2</span>
+            <span>步骤 3</span>
+            <span>步骤 4<span class="parallel-hint">完善提单 · 关务预录单（并行）</span></span>
+            <span>步骤 5<span class="parallel-hint">签出（客服）</span></span>
+          </div>
+
+          <div class="swimlane-body">
+            <!-- 节点层 -->
+            <div class="swimlane-grid steps-layer">
+              <div class="lane-label-cell lane-product">产品端</div>
+              <div class="lane-cell">
+                <div class="step product" data-flow="录入舱位">录入舱位<small>维护船期、起运港/目的港、可用舱位</small></div>
+              </div>
+              <div class="lane-cell"></div>
+              <div class="lane-cell">
+                <div class="step product" data-flow="绑定舱位">运单绑定舱位<small>即<strong>放舱/仓位信息</strong>：须填<strong>海运费 + 有效期</strong>；绑定运单与舱位并<strong>自动生成提单草稿</strong></small></div>
+              </div>
+              <div class="lane-cell parallel-col">
+                <div class="step product" data-flow="完善提单">完善提单<small>等同原「创建提单」；完善后分配<strong>分公司、拖车、报关行、装柜地址</strong></small></div>
+              </div>
+              <div class="lane-cell"></div>
+
+              <div class="lane-label-cell lane-cs">客服</div>
+              <div class="lane-cell"></div>
+              <div class="lane-cell">
+                <div class="step cs" data-flow="下单">下单<small>在<strong>传统运单录入</strong>中创建运单/订单</small></div>
+              </div>
+              <div class="lane-cell"></div>
+              <div class="lane-cell parallel-col"></div>
+              <div class="lane-cell">
+                <div class="step cs" data-flow="签出">签出<small>步骤 5：装柜完成后签出；系统比对<strong>装柜完成时间</strong>与海运费有效期，超期则仓位信息页跳红</small></div>
+              </div>
+
+              <div class="lane-label-cell lane-customs">关务</div>
+              <div class="lane-cell"></div>
+              <div class="lane-cell"></div>
+              <div class="lane-cell"></div>
+              <div class="lane-cell parallel-col">
+                <div class="step customs" data-flow="关务预录">接收配舱信息<small>与完善提单<strong>同时进行</strong>；报关行据此<strong>做预录单</strong></small></div>
+              </div>
+              <div class="lane-cell"></div>
+            </div>
+
+            <svg class="flow-svg" aria-hidden="true"></svg>
+            <div class="terminals-layer" aria-hidden="true">
+              <div class="flow-terminal start" id="flow-start">开始</div>
+              <div class="flow-terminal end" id="flow-end">结束</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mermaid-wrap">
+        <p style="margin:0 0 10px;font-size:12px;color:var(--sub);">Mermaid 等价流程（便于复制到 PRD / 文档）</p>
+        <pre class="mermaid">
+flowchart LR
+    A["① 录入舱位<br/>(产品端)"]
+    B["② 下单<br/>(客服·传统运单录入)"]
+    C["③ 运单绑定舱位<br/>+ 生成提单草稿<br/>(产品端)"]
+    D["④ 完善提单<br/>(产品端)"]
+    F["④ 接收配舱信息 · 预录单<br/>(关务)"]
+    E["⑤ 签出<br/>(客服)"]
+
+    A --> B --> C --> D
+    C --> D
+    D -.并行.-> F
+    D --> E
+        </pre>
+      </div>
+    </section>
+
+    <div class="legend-grid">
+      <section class="legend-card">
+        <h2>
+          <span class="badge product">产品端</span>
+          <span class="badge cs">客服</span>
+          <span class="badge customs">关务</span>
+          图例
+        </h2>
+        <ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.7;color:var(--sub);">
+          <li><strong style="color:var(--text);">连线层</strong>：所有箭头与虚线绘制在<strong>最顶层</strong>（覆盖节点上方），「开始」「结束」圆形节点完整显示</li>
+          <li><strong style="color:var(--text);">绿色「并行」线</strong>：步骤 4 产品<strong>完善提单</strong>与关务<strong>接收配舱信息 · 预录单</strong>同时进行</li>
+          <li><strong style="color:var(--text);">签出条件</strong>：<strong>完善提单完成</strong>即可签出，<strong>不依赖</strong>关务预录单是否完成</li>
+          <li><strong style="color:var(--text);">提单草稿</strong>：绑定舱位时由产品侧自动生成，步骤 4 完善时补全业务信息</li>
+        </ul>
+      </section>
+
+      <section class="legend-card">
+        <h2>步骤说明</h2>
+        <table class="flow-tbl">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>步骤</th>
+              <th>角色</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>录入舱位</td>
+              <td>产品端</td>
+              <td>产品维护可用舱位（船期、港口、舱量等），供后续选舱</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>下单</td>
+              <td>客服</td>
+              <td>客服在<strong>传统运单录入</strong>界面创建运单/订单（非整柜专用入口）</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>运单绑定舱位<br/>+ 生成提单草稿</td>
+              <td>产品端</td>
+              <td>
+                产品将运单与舱位绑定（<strong>放舱 = 仓位信息页面</strong>）；须录入<strong>海运费金额 + 合约有效期</strong>；系统<strong>直接生成提单草稿</strong>。
+              </td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>完善提单<br/>+ 分配业务信息</td>
+              <td>产品端<br/><span style="color:#389e0d;">∥ 关务并行</span></td>
+              <td>产品基于草稿完善提单内容，<strong>等同原流程的「创建提单」</strong>；完善后分配<strong>分公司、拖车、报关行、装柜地址</strong>等信息；与关务预录单<strong>同时进行</strong></td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>接收配舱信息<br/>+ 预录单</td>
+              <td>关务<br/><span style="color:#389e0d;">与步骤 4 并行</span></td>
+              <td>与完善提单<strong>同时进行</strong>；关务接收配舱信息，报关行据此开展<strong>预录单</strong></td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>签出</td>
+              <td>客服</td>
+              <td>完善提单完成后即可签出，<strong>无需等待关务预录单</strong>；签出时记录<strong>装柜完成时间</strong>，若不在海运费合约有效期内则<strong>仓位信息列表跳红</strong>并推送订舱岗</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    function drawSwimlaneFlow() {
+      const body = document.querySelector(".swimlane-body");
+      const svg = document.querySelector(".flow-svg");
+      const startEl = document.getElementById("flow-start");
+      const endEl = document.getElementById("flow-end");
+      if (!body || !svg) return;
+
+      const getStep = (name) => body.querySelector('[data-flow="' + name + '"]');
+      const steps = {
+        录入舱位: getStep("录入舱位"),
+        下单: getStep("下单"),
+        绑定舱位: getStep("绑定舱位"),
+        完善提单: getStep("完善提单"),
+        关务预录: getStep("关务预录"),
+        签出: getStep("签出"),
+      };
+      if (Object.values(steps).some((el) => !el)) return;
+
+      const rect = body.getBoundingClientRect();
+      svg.setAttribute("viewBox", "0 0 " + rect.width + " " + rect.height);
+      svg.innerHTML = "";
+
+      const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+      defs.innerHTML =
+        '<marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#8c8c8c"/></marker>' +
+        '<marker id="arrow-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#52c41a"/></marker>';
+      svg.appendChild(defs);
+
+      const pt = (el, side) => {
+        const r = el.getBoundingClientRect();
+        const x = {
+          left: r.left - rect.left,
+          right: r.right - rect.left,
+          cx: r.left + r.width / 2 - rect.left,
+        };
+        const y = {
+          top: r.top - rect.top,
+          bottom: r.bottom - rect.top,
+          cy: r.top + r.height / 2 - rect.top,
+        };
+        if (side === "right") return { x: x.right, y: y.cy };
+        if (side === "left") return { x: x.left, y: y.cy };
+        if (side === "bottom") return { x: x.cx, y: y.bottom };
+        if (side === "top") return { x: x.cx, y: y.top };
+        return { x: x.cx, y: y.cy };
+      };
+
+      const line = (x1, y1, x2, y2, opts) => {
+        opts = opts || {};
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        let d;
+        if (opts.elbow) {
+          const mx = opts.elbow === "v" ? x1 : (x1 + x2) / 2;
+          const my = opts.elbow === "h" ? y1 : (y1 + y2) / 2;
+          d = opts.elbow === "v"
+            ? "M" + x1 + "," + y1 + " V" + y2 + " H" + x2
+            : "M" + x1 + "," + y1 + " H" + mx + " V" + y2 + " H" + x2;
+        } else {
+          d = "M" + x1 + "," + y1 + " L" + x2 + "," + y2;
+        }
+        path.setAttribute("d", d);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", opts.color || "#8c8c8c");
+        path.setAttribute("stroke-width", opts.width || "2");
+        path.setAttribute("marker-end", "url(#" + (opts.marker || "arrow-gray") + ")");
+        if (opts.dash) path.setAttribute("stroke-dasharray", "6 4");
+        svg.appendChild(path);
+      };
+
+      const label = (x, y, text, color) => {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        const tx = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        bg.setAttribute("x", x - 16);
+        bg.setAttribute("y", y - 9);
+        bg.setAttribute("width", 32);
+        bg.setAttribute("height", 18);
+        bg.setAttribute("rx", 2);
+        bg.setAttribute("fill", "#f6ffed");
+        bg.setAttribute("stroke", "#b7eb8f");
+        tx.setAttribute("x", x);
+        tx.setAttribute("y", y + 4);
+        tx.setAttribute("text-anchor", "middle");
+        tx.setAttribute("font-size", "10");
+        tx.setAttribute("font-weight", "700");
+        tx.setAttribute("fill", color || "#389e0d");
+        tx.textContent = text;
+        g.appendChild(bg);
+        g.appendChild(tx);
+        svg.appendChild(g);
+      };
+
+      const s1 = pt(steps["录入舱位"], "right");
+      const s2 = pt(steps["下单"], "left");
+      const s2r = pt(steps["下单"], "right");
+      const s3 = pt(steps["绑定舱位"], "left");
+      const s3r = pt(steps["绑定舱位"], "right");
+      const s4 = pt(steps["完善提单"], "left");
+      const s4r = pt(steps["完善提单"], "right");
+      const s4b = pt(steps["完善提单"], "bottom");
+      const g4 = pt(steps["关务预录"], "top");
+      const s5 = pt(steps["签出"], "left");
+      const s5r = pt(steps["签出"], "right");
+
+      const startPt = pt(steps["录入舱位"], "left");
+      startEl.style.left = (startPt.x - 28) + "px";
+      startEl.style.top = startPt.y + "px";
+      endEl.style.left = (s5r.x + 28) + "px";
+      endEl.style.top = s5r.y + "px";
+
+      line(startPt.x - 8, startPt.y, s1.x, s1.y);
+      line(s1.x, s1.y, s2.x, s2.y, { elbow: "v" });
+      line(s2r.x, s2r.y, s3.x, s3.y);
+      line(s3r.x, s3r.y, s4.x, s4.y);
+      line(s4b.x, s4b.y, g4.x, g4.y, { color: "#52c41a", marker: "arrow-green" });
+      label((s4b.x + g4.x) / 2 + 12, (s4b.y + g4.y) / 2, "并行", "#389e0d");
+      line(s4r.x, s4r.y, s5.x, s5.y, { elbow: "h" });
+      line(s5r.x, s5r.y, s5r.x + 8, s5r.y);
+    }
+
+    window.addEventListener("load", drawSwimlaneFlow);
+    window.addEventListener("resize", drawSwimlaneFlow);
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "neutral",
+      securityLevel: "loose",
+      flowchart: { curve: "basis", htmlLabels: true, padding: 16, useMaxWidth: true },
+    });
+  </script>
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 舱位泳道图</span>
+    <h3>整柜舱位业务流程</h3>
+    <h4>本次更新（2026-06-22）</h4>
+    <ul>
+      <li>步骤 ③ 绑定仓位：须填海运费+有效期；放舱=仓位信息页。</li>
+      <li>步骤 ⑤ 签出：装柜完成时间与海运费有效期比对，超期跳红。见 <a href="整柜本次更新-MVP.html">变更说明</a>。</li>
+    </ul>
+    <ul>
+      <li><strong>放舱 = 绑定仓位 = 仓位信息页面</strong>（见仓位管理整合页）：绑定须填海运费金额 + 合约有效期起止。</li>
+      <li><strong>签出校验</strong>：装柜完成 → 运单签出时，装柜完成时间与海运费有效期比对；不在有效期内 → 仓位信息页海运费列跳红 + 推送订舱岗补录调价/更新有效期。</li>
+    </ul>
+    <p>详情见 <a href="仓位管理-订舱完善提单-整合-MVP.html">仓位管理 · PRD</a>。</p>
+  </div>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <script src="../二期/ess-prototype-prd.js" defer></script>
+  <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
+  <script src="fcl-booking-prototype-nav.js" defer></script>
+</body>
+</html>

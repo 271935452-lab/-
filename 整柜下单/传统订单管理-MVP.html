@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>传统订单管理 · MVP</title>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --tab-active: #fa541c;
+      --tab-bg: #fff;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --req: #cf1322;
+      --ok: #389e0d;
+      --warn: #d46b08;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* 顶栏 Tab（参照截图橙底当前页） */
+    .tab-bar {
+      display: flex; align-items: stretch; background: #fafafa;
+      border-bottom: 1px solid var(--line); overflow-x: auto;
+    }
+    .tab-bar a, .tab-bar span {
+      padding: 0 16px; height: 36px; line-height: 36px; white-space: nowrap;
+      border-right: 1px solid var(--line); font-size: 13px; color: var(--text);
+      background: #f5f5f5; text-decoration: none;
+    }
+    .tab-bar .active {
+      background: var(--tab-active); color: #fff; font-weight: 600;
+    }
+
+    .page-hd {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 10px 14px 0;
+    }
+    .page-title { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px 12px; padding-bottom: 10px;
+    }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .filter-extra {
+      display: flex; justify-content: flex-end; gap: 8px; padding-bottom: 10px;
+    }
+    .filter-extra .btn {
+      height: 30px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; color: var(--text); cursor: pointer;
+    }
+    .filter-extra .btn-primary {
+      background: var(--blue); border-color: var(--blue); color: #fff;
+    }
+
+    .toolbar {
+      padding: 8px 14px; background: var(--card); border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; overflow-x: auto;
+    }
+    .toolbar .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 32px; padding: 0 12px; border: none; border-radius: 6px;
+      cursor: pointer; white-space: nowrap; font-size: 12px; color: #fff;
+      flex-shrink: 0; text-decoration: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+    .btn-ico { width: 14px; height: 14px; flex-shrink: 0; opacity: .95; }
+    .toolbar .btn-primary { background: #4a7eb0; }
+    .toolbar .btn-warn { background: #e8943a; }
+    .toolbar .btn-danger { background: #e8837a; }
+    .toolbar .btn-success { background: #5cb85c; }
+
+    .grid-wrap {
+      flex: 1; overflow: auto; background: var(--card); margin: 0;
+    }
+    .data-grid {
+      width: 100%; border-collapse: collapse; font-size: 12px; min-width: 4200px;
+    }
+    .data-grid th, .data-grid td {
+      border: 1px solid var(--line); padding: 6px 8px; white-space: nowrap; vertical-align: middle;
+    }
+    .data-grid th {
+      background: #fafafa; font-weight: 600; position: sticky; top: 0; z-index: 2;
+    }
+    .data-grid tbody tr:hover td { background: #e6f7ff; }
+    .data-grid tr.selected td { background: #bae7ff; }
+    .data-grid tr.row-warn td { background: #fff7e6; }
+    .data-grid tr.row-danger td { background: #fff1f0; }
+    .link { color: var(--blue); cursor: pointer; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px;
+      font-size: 11px; line-height: 18px; border: 1px solid transparent;
+    }
+    .tag-ok { background: #f6ffed; color: var(--ok); border-color: #b7eb8f; }
+    .tag-warn { background: #fff7e6; color: var(--warn); border-color: #ffd591; }
+    .tag-no { background: #fff1f0; color: var(--req); border-color: #ffa39e; }
+    .tag-blue { background: #e6f4ff; color: #0958d9; border-color: #91caff; }
+    .cell-warn { color: var(--warn); font-weight: 600; }
+    .cell-danger { color: var(--req); font-weight: 600; }
+
+    .status-bar {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px;
+    }
+    .status-tab {
+      padding: 10px 14px; border: none; background: none; font-size: 13px;
+      color: var(--sub); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .status-tab:hover { color: var(--blue); }
+    .status-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .status-tab .cnt { color: var(--req); margin-left: 2px; font-weight: 400; }
+
+    .status-legend {
+      padding: 6px 14px; background: #fafafa; border-bottom: 1px solid var(--line);
+      font-size: 12px; color: var(--sub); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+    }
+    .status-legend strong { color: var(--text); }
+    .status-legend .flow-tag {
+      display: inline-block; padding: 0 8px; border-radius: 2px;
+      background: #fff; border: 1px solid var(--line); color: var(--text);
+    }
+    .status-legend .flow-tag.ex { border-color: #ffa39e; color: var(--req); background: #fff1f0; }
+
+    .table-foot {
+      padding: 8px 14px; background: #fafafa; border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12px; color: var(--sub);
+    }
+    .pager { display: flex; align-items: center; gap: 8px; }
+    .pager select, .pager input {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px;
+    }
+    .pager .btn {
+      height: 28px; padding: 0 8px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; color: var(--text); cursor: pointer;
+    }
+
+    /* 绑定仓位抽屉 */
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 900;
+      opacity: 0; visibility: hidden; transition: .2s;
+    }
+    .mask.open { opacity: 1; visibility: visible; }
+    .drawer {
+      position: fixed; top: 0; right: 0; width: min(520px, 100vw); height: 100vh;
+      background: var(--card); z-index: 910; transform: translateX(100%);
+      transition: transform .25s; display: flex; flex-direction: column;
+      box-shadow: -8px 0 24px rgba(0,0,0,.12);
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-hd { padding: 14px 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
+    .drawer-bd { padding: 14px 16px; overflow-y: auto; flex: 1; }
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .drawer-ft .btn {
+      display: inline-flex; align-items: center; height: 32px; padding: 0 14px;
+      border: 1px solid #d9d9d9; border-radius: 2px; background: #fff;
+      color: var(--text); cursor: pointer; font-size: 12px; text-decoration: none;
+    }
+    .drawer-ft .btn-primary {
+      background: var(--blue); border-color: var(--blue); color: #fff;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { display: block; font-size: 12px; margin-bottom: 4px; }
+    .req { color: var(--req); }
+    .field input, .field select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .hint {
+      margin-top: 10px; padding: 8px 10px; background: #fff7e6;
+      border: 1px solid #ffd591; border-radius: 2px; font-size: 12px; color: #ad6800; line-height: 1.55;
+    }
+
+    /* 修改配送模式弹窗 */
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 920;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-mask.open { display: flex; }
+    .modal {
+      width: min(480px, 100%); background: var(--card); border-radius: 2px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.15);
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-hd h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .modal-close { border: none; background: none; font-size: 20px; color: var(--sub); cursor: pointer; line-height: 1; }
+    .modal-bd { padding: 14px 16px; }
+    .modal-bd .field { margin-bottom: 12px; }
+    .modal-bd .field:last-child { margin-bottom: 0; }
+    .modal-bd .field textarea {
+      width: 100%; min-height: 72px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 6px 8px; resize: vertical;
+    }
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .modal-ft .btn {
+      display: inline-flex; align-items: center; height: 32px; padding: 0 14px;
+      border: 1px solid #d9d9d9; border-radius: 2px; background: #fff;
+      color: var(--text); cursor: pointer; font-size: 12px;
+    }
+    .modal-ft .btn-primary {
+      background: var(--blue); border-color: var(--blue); color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="tab-bar" aria-label="页签">
+      <a href="#">控制台</a>
+      <span class="active">传统订单管理</span>
+      <a href="仓位管理-订舱完善提单-整合-MVP.html">仓位信息页面</a>
+      <a href="整柜下单-订单录入-MVP.html">整柜下单录入</a>
+      <a href="ESS整柜询价详情-MVP.html">报价管理(询价)</a>
+      <a href="ESS整柜报价详情-MVP.html">报价管理(业务)</a>
+    </nav>
+
+    <div class="page-hd">
+      <h1 class="page-title">传统订单管理</h1>
+      <div class="filter-grid">
+        <div class="filter-item"><label>运单号</label><input type="text" placeholder="RC266501" /></div>
+        <div class="filter-item"><label>提单号</label><input type="text" placeholder="TXZG..." /></div>
+        <div class="filter-item"><label>柜号</label><input type="text" /></div>
+        <div class="filter-item"><label>船名/航次</label><input type="text" /></div>
+        <div class="filter-item"><label>业务员</label><select><option>全部</option><option selected>任杰</option><option>王敏</option></select></div>
+        <div class="filter-item"><label>客户</label><input type="text" placeholder="客户名称/代码" /></div>
+        <div class="filter-item"><label>客户单号</label><input type="text" /></div>
+        <div class="filter-item"><label>运单状态</label><select><option>全部</option><option>已预报</option><option>已订舱</option><option>装柜完成</option><option>已签收</option><option>船期变更待确认</option></select></div>
+        <div class="filter-item"><label>配送模式</label><select><option>全部</option><option>整柜直送</option><option>整柜到港自提</option><option>整柜海外仓自提--海运</option><option>码头自提</option></select></div>
+        <div class="filter-item"><label>关联报价</label><input type="text" placeholder="BJ..." /></div>
+      </div>
+      <div class="filter-extra">
+        <button type="button" class="btn">更多筛选</button>
+        <button type="button" class="btn">数据配置</button>
+        <button type="button" class="btn btn-primary">查询</button>
+        <button type="button" class="btn">重置搜索</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 10.5h-.79l-.28-.27A5.47 5.47 0 0 0 11 6.5 5.5 5.5 0 1 0 6.5 12a5.47 5.47 0 0 0 3.73-1.57l.27.28v.79l4.25 4.25 1.25-1.25L11.5 10.5zm-5 0A4 4 0 1 1 10.5 6.5 4 4 0 0 1 6.5 10.5z"/></svg>
+        查询数据
+      </button>
+      <a class="btn btn-warn" href="整柜下单-订单录入-MVP.html" style="text-decoration:none;color:#fff;">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 2.5a5.5 5.5 0 1 0 2.15 10.68l1.06 1.06 1.06-1.06-1.06-1.06A5.5 5.5 0 0 0 8 2.5zm0 9A3.5 3.5 0 1 1 11.5 8 3.5 3.5 0 0 1 8 11.5z"/><path fill="currentColor" d="M8.75 4.5V8.5l2.5 1.5-.75 1.25L7.25 9V4.5h1.5z"/></svg>
+        提交预报
+      </a>
+      <button type="button" class="btn btn-primary" id="btnModifyDelivery">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        修改配送模式
+      </button>
+      <button type="button" class="btn btn-primary" id="btnBindSpace">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.03 9.47a3.5 3.5 0 0 1 4.95-4.95l1.06 1.06a3.5 3.5 0 0 1-4.95 4.95L6.03 9.47zm1.06-1.06l.7.7a2 2 0 1 0 2.83-2.83l-.7-.7a2 2 0 1 0-2.83 2.83z"/><path fill="currentColor" d="M4.22 11.28l.5-.5 1.5 1.5-.5.5a1 1 0 0 1-1.42 0l-.08-.08a1 1 0 0 1 0-1.42z"/></svg>
+        绑定仓位
+      </button>
+      <button type="button" class="btn btn-primary" id="btnModifyCustoms">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        修改报关方式
+      </button>
+      <button type="button" class="btn btn-danger">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5A6.51 6.51 0 0 0 8 1.5zm3.35 8.85L11.35 11 8 7.65 4.65 11 3.5 9.85 6.85 6.5 3.5 3.15 4.65 2 8 5.35 11.35 2l1.15 1.15L9.15 6.5l2.2 2.2z"/></svg>
+        取消订单
+      </button>
+      <button type="button" class="btn btn-success">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5A6.51 6.51 0 0 0 8 1.5zm2.85 4.65L7.1 10.1 5.15 8.15l1.06-1.06 1.89 1.89 3.69-3.69 1.06 1.06z"/></svg>
+        装柜完成
+      </button>
+      <button type="button" class="btn btn-primary" id="btnModifyTruck">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        修改拖车方式
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        附加服务
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        批量修改附加服务
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        发票
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        导入修改发票信息
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 1.5h8l2 2v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1zm7.5 1H4v11h8V4.5H9.5V2.5z"/><path fill="currentColor" d="M5.5 7h5v1h-5V7zm0 2h5v1h-5V9zm0 2h3.5v1H5.5v-1z"/></svg>
+        批量修改备注
+      </button>
+      <button type="button" class="btn btn-danger">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        客户要求折扣
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        客户轨迹
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        轨迹
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        运单操作日志
+      </button>
+      <button type="button" class="btn btn-primary">
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M11.5 1.5h-7A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V3a1.5 1.5 0 0 0-1.5-1.5zm0 11.5h-7V3h7v10z"/><path fill="currentColor" d="M10.25 5.5l-2.5 2.5-1.25-1.25-1.06 1.06 2.31 2.31 3.56-3.56-1.06-1.06z"/></svg>
+        修改收货体积
+      </button>
+    </div>
+
+    <div class="status-bar" role="tablist" aria-label="运单状态">
+      <button type="button" class="status-tab active" data-status="all" role="tab" aria-selected="true">全部<span class="cnt">(26)</span></button>
+      <button type="button" class="status-tab" data-status="forecast" role="tab">已预报<span class="cnt">(5)</span></button>
+      <button type="button" class="status-tab" data-status="booked" role="tab">已订舱<span class="cnt">(8)</span></button>
+      <button type="button" class="status-tab" data-status="loaded" role="tab">装柜完成<span class="cnt">(6)</span></button>
+      <button type="button" class="status-tab" data-status="signed" role="tab">已签收<span class="cnt">(4)</span></button>
+      <button type="button" class="status-tab" data-status="returned" role="tab">已退件<span class="cnt">(3)</span></button>
+    </div>
+
+    <div class="status-legend" hidden aria-hidden="true">
+      <strong>运单状态主流程：</strong>
+      <span class="flow-tag">已预报</span> →
+      <span class="flow-tag">已订舱</span> →
+      <span class="flow-tag">装柜完成</span> →
+      <span class="flow-tag">已签收</span>
+      <span class="flow-tag ex">船期变更待确认</span>（异常态 · 订舱岗确认 ETD/ETA 后恢复）
+    </div>
+
+    <div class="grid-wrap">
+      <table class="data-grid" aria-label="传统订单列表">
+        <thead>
+          <tr>
+            <th><input type="checkbox" aria-label="全选" /></th>
+            <th>运单号</th>
+            <th>客户单号</th>
+            <th>客户名称</th>
+            <th>客户代码</th>
+            <th>业务员</th>
+            <th>所属客服</th>
+            <th>运单状态</th>
+            <th>提单状态</th>
+            <th>提单号</th>
+            <th>SO</th>
+            <th>柜号</th>
+            <th>柜型</th>
+            <th>船名航次</th>
+            <th>船司</th>
+            <th>重量(KG)</th>
+            <th>体积(CBM)</th>
+            <th>起运港</th>
+            <th>中转港</th>
+            <th>目的港</th>
+            <th>目的国</th>
+            <th>运输方式</th>
+            <th>配送模式</th>
+            <th>最新轨迹内容</th>
+            <th>轨迹状态</th>
+            <th>是否上传报关资料</th>
+            <th>报关单号</th>
+            <th>客户备注</th>
+            <th>关联报价</th>
+            <th>海外代理</th>
+            <th>签收时间</th>
+            <th>创建时间</th>
+            <th>修改时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="selected">
+            <td><input type="checkbox" checked /></td>
+            <td><span class="link">RC266501</span></td>
+            <td><a class="link" href="整柜下单-订单录入-MVP.html">PO-2026-0618</a></td>
+            <td>深圳某某家具</td>
+            <td>CUST-FCL-001</td>
+            <td>任杰</td>
+            <td>Sunny</td>
+            <td><span class="tag tag-ok">已订舱</span></td>
+            <td><span class="tag tag-ok">已放舱</span></td>
+            <td>TXZG00000000043</td>
+            <td>S0892</td>
+            <td>—</td>
+            <td>40HQ</td>
+            <td>EMC EVER GOLD / 120E</td>
+            <td>EMC</td>
+            <td>12,500</td>
+            <td>68.5</td>
+            <td>盐田</td>
+            <td>直航</td>
+            <td>洛杉矶</td>
+            <td>US</td>
+            <td>HY</td>
+            <td>整柜直送</td>
+            <td>国内报关已放行，等待出发</td>
+            <td>在途</td>
+            <td><span class="tag tag-ok">已上传</span></td>
+            <td>—</td>
+            <td>—</td>
+            <td><a class="link" href="ESS整柜报价详情-MVP.html">BJ202605230018</a></td>
+            <td>—</td>
+            <td>—</td>
+            <td>2026-06-18 09:12</td>
+            <td>2026-06-20 14:35</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" /></td>
+            <td><span class="link">RC266502</span></td>
+            <td><a class="link" href="整柜下单-订单录入-MVP.html">PO-2026-0520</a></td>
+            <td>宁波YY贸易</td>
+            <td>CUST-FCL-018</td>
+            <td>王敏</td>
+            <td>Irene</td>
+            <td><span class="tag tag-blue">已预报</span></td>
+            <td><span class="tag tag-no">未放舱</span></td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>40HQ+20GP</td>
+            <td>—</td>
+            <td>—</td>
+            <td>18,200</td>
+            <td>72.0</td>
+            <td>宁波</td>
+            <td>—</td>
+            <td>汉堡</td>
+            <td>DE</td>
+            <td>HY</td>
+            <td>整柜直送</td>
+            <td>客户已下单，还未提交预报</td>
+            <td>待预报</td>
+            <td><span class="tag tag-warn">未上传</span></td>
+            <td>—</td>
+            <td>带车架 · 尾端</td>
+            <td><a class="link" href="ESS整柜报价详情-分段-MVP.html">BJ202605230051</a></td>
+            <td>—</td>
+            <td>—</td>
+            <td>2026-05-20 11:08</td>
+            <td>2026-05-20 11:08</td>
+          </tr>
+          <tr class="row-warn">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">RC266503</span></td>
+            <td><a class="link" href="整柜下单-订单录入-MVP.html">PO-2026-0512</a></td>
+            <td>上海ZZ进出口</td>
+            <td>CUST-FCL-033</td>
+            <td>白冰</td>
+            <td>Kate</td>
+            <td><span class="tag tag-ok">装柜完成</span></td>
+            <td><span class="tag tag-ok">已签出</span></td>
+            <td>TXZG00000000051</td>
+            <td>S0766</td>
+            <td>TCLU1234567</td>
+            <td>40HQ</td>
+            <td>MSC MUMBAI VIII / 120E</td>
+            <td>MSC</td>
+            <td>11,800</td>
+            <td>65.2</td>
+            <td>上海</td>
+            <td>直航</td>
+            <td>纽约</td>
+            <td>US</td>
+            <td>HY</td>
+            <td>整柜直送</td>
+            <td>装柜完成，待签出核对海运费有效期</td>
+            <td>装柜完成</td>
+            <td><span class="tag tag-ok">已上传</span></td>
+            <td>310120240051234</td>
+            <td>装柜完成超有效期 · 待订舱更新</td>
+            <td><a class="link" href="ESS整柜报价详情-分段-MVP.html">BJ202605230051</a></td>
+            <td>US NY Agent</td>
+            <td>—</td>
+            <td>2026-05-12 08:40</td>
+            <td>2026-05-28 16:22</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" /></td>
+            <td><span class="link">RC266504</span></td>
+            <td><a class="link" href="整柜下单-订单录入-MVP.html">PO-2026-0601</a></td>
+            <td>青岛AA物流</td>
+            <td>CUST-FCL-041</td>
+            <td>周斌</td>
+            <td>Wendy</td>
+            <td><span class="tag tag-ok">已签收</span></td>
+            <td><span class="tag tag-ok">已签出</span></td>
+            <td>TXZG00000000048</td>
+            <td>S0811</td>
+            <td>OOLU7654321</td>
+            <td>40HQ</td>
+            <td>CMA CGM ELBE / 045W</td>
+            <td>CMA</td>
+            <td>10,500</td>
+            <td>62.0</td>
+            <td>青岛</td>
+            <td>直航</td>
+            <td>洛杉矶</td>
+            <td>US</td>
+            <td>HY</td>
+            <td>整柜到港自提</td>
+            <td>POD 已回传，末端签收完成</td>
+            <td>已签收</td>
+            <td><span class="tag tag-ok">已上传</span></td>
+            <td>310120240048765</td>
+            <td>POD 已回传</td>
+            <td><a class="link" href="ESS整柜报价详情-MVP.html">BJ202605230040</a></td>
+            <td>LA Local Agent</td>
+            <td>2026-06-15</td>
+            <td>2026-06-01 10:05</td>
+            <td>2026-06-15 09:18</td>
+          </tr>
+          <tr class="row-danger">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">RC266505</span></td>
+            <td><a class="link" href="整柜下单-订单录入-MVP.html">PO-2026-0428</a></td>
+            <td>福永XX科技</td>
+            <td>CUST-FCL-009</td>
+            <td>任杰</td>
+            <td>Sunny</td>
+            <td><span class="tag tag-no">船期变更待确认</span></td>
+            <td><span class="tag tag-warn">已放舱</span></td>
+            <td>TXZG00000000052</td>
+            <td>S0901</td>
+            <td>—</td>
+            <td>40HQ</td>
+            <td>MAERSK LUZ / 318W</td>
+            <td>MSK</td>
+            <td>9,800</td>
+            <td>58.0</td>
+            <td>盐田</td>
+            <td>直航</td>
+            <td>长滩</td>
+            <td>US</td>
+            <td>HY</td>
+            <td>整柜直送</td>
+            <td>ETD 变更 · 订舱岗待确认</td>
+            <td>异常</td>
+            <td><span class="tag tag-ok">已上传</span></td>
+            <td>—</td>
+            <td>ETD 变更推送订舱岗</td>
+            <td><a class="link" href="ESS整柜报价详情-MVP.html">BJ202605230052</a></td>
+            <td>—</td>
+            <td>—</td>
+            <td>2026-04-28 15:30</td>
+            <td>2026-06-22 11:05</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="table-foot">
+      <span>共计 <strong>26</strong> 条（演示 5 条）</span>
+      <div class="pager">
+        <span>共 26 条</span>
+        <select><option>500 条/页</option><option>100 条/页</option></select>
+        <button type="button" class="btn" disabled>‹</button>
+        <span>1</span>
+        <button type="button" class="btn" disabled>›</button>
+        <span>前往</span>
+        <input type="number" value="1" style="width:48px" />
+        <span>页</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 绑定仓位抽屉（须填海运费 + 有效期） -->
+  <div class="mask" id="bindMask"></div>
+  <aside class="drawer" id="bindDrawer" aria-label="绑定仓位">
+    <div class="drawer-hd">绑定仓位 · RC266502</div>
+    <div class="drawer-bd">
+      <p style="margin:0 0 12px;color:var(--sub);font-size:12px;">
+        放舱 = 仓位信息 · 绑定成功后写入仓位列表；须填写海运费与合约有效期。
+      </p>
+      <div class="form-grid">
+        <div class="field">
+          <label>订舱代理<span class="req">*</span></label>
+          <select><option>宁波YY代理 / 李经理</option></select>
+        </div>
+        <div class="field">
+          <label>SO No<span class="req">*</span></label>
+          <input type="text" placeholder="S0892" />
+        </div>
+        <div class="field">
+          <label>船名航次</label>
+          <input type="text" placeholder="EMC EVER GOLD / 120E" />
+        </div>
+        <div class="field">
+          <label>提单号</label>
+          <input type="text" />
+        </div>
+        <div class="field">
+          <label>合约期内海运费(USD)<span class="req">*</span></label>
+          <input type="number" value="3200" step="0.01" />
+        </div>
+        <div class="field">
+          <label>超出有效期调价</label>
+          <input type="number" placeholder="开航前补录" step="0.01" />
+        </div>
+        <div class="field">
+          <label>合约有效期起<span class="req">*</span></label>
+          <input type="date" value="2026-06-01" />
+        </div>
+        <div class="field">
+          <label>合约有效期止<span class="req">*</span></label>
+          <input type="date" value="2026-06-30" />
+        </div>
+        <div class="field full">
+          <label>关联报价单</label>
+          <input type="text" readonly value="BJ202605230051" style="background:#fafafa;" />
+        </div>
+      </div>
+      <div class="hint">
+        装柜完成 → 运单<strong>签出</strong>时，系统将比对装柜完成时间与合约有效期；不在有效期内则<strong>仓位信息页海运费列跳红</strong>并推送订舱岗。
+      </div>
+    </div>
+    <footer class="drawer-ft">
+      <button type="button" class="btn" id="bindClose">取消</button>
+      <a class="btn" href="仓位管理-订舱完善提单-整合-MVP.html">打开仓位信息</a>
+      <button type="button" class="btn btn-primary">确认绑定</button>
+    </footer>
+  </aside>
+
+  <!-- 修改配送模式弹窗（配送方式 / 询价单 / 备注均为选填） -->
+  <div class="modal-mask" id="deliveryModalMask">
+    <div class="modal" role="dialog" aria-labelledby="deliveryModalTitle">
+      <div class="modal-hd">
+        <h2 id="deliveryModalTitle">修改配送模式</h2>
+        <button type="button" class="modal-close" id="deliveryModalClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p style="margin:0 0 12px;color:var(--sub);font-size:12px;" id="deliveryModalHint">已选 0 单 · 以下字段均为选填，留空则不修改对应项</p>
+        <div class="field">
+          <label for="deliveryModeSelect">配送方式</label>
+          <select id="deliveryModeSelect">
+            <option value="">— 不修改 —</option>
+            <option value="clearance">整柜清关</option>
+            <option value="clearanceDirect">整柜清关直送</option>
+            <option value="clearanceSplit">整柜清关拆送</option>
+            <option value="direct">整柜直送</option>
+            <option value="split">整柜拆送</option>
+            <option value="terminalPickup">整柜到港自提</option>
+            <option value="overseasWhPickup">整柜海外仓自提--海运</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="deliveryInquiryInput">询价单</label>
+          <input type="text" id="deliveryInquiryInput" placeholder="如 XJ202605230018，留空则不修改" />
+        </div>
+        <div class="field">
+          <label for="deliveryRemarkInput">备注</label>
+          <textarea id="deliveryRemarkInput" placeholder="选填，留空则不修改"></textarea>
+        </div>
+      </div>
+      <footer class="modal-ft">
+        <button type="button" class="btn" id="deliveryModalCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="deliveryModalConfirm">确认</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 修改报关方式弹窗 -->
+  <div class="modal-mask" id="customsModalMask">
+    <div class="modal" role="dialog" aria-labelledby="customsModalTitle">
+      <div class="modal-hd">
+        <h2 id="customsModalTitle">修改报关方式</h2>
+        <button type="button" class="modal-close" id="customsModalClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p style="margin:0 0 12px;color:var(--sub);font-size:12px;" id="customsModalHint">已选 0 单 · 以下字段均为选填，留空则不修改对应项</p>
+        <div class="field">
+          <label for="customsModeSelect">报关方式</label>
+          <select id="customsModeSelect">
+            <option value="">— 不修改 —</option>
+            <option value="self">自行申报</option>
+            <option value="agency">我司代理报关</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="customsRemarkInput">备注</label>
+          <textarea id="customsRemarkInput" placeholder="选填，留空则不修改"></textarea>
+        </div>
+      </div>
+      <footer class="modal-ft">
+        <button type="button" class="btn" id="customsModalCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="customsModalConfirm">确认</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 修改拖车方式弹窗 -->
+  <div class="modal-mask" id="truckModalMask">
+    <div class="modal" role="dialog" aria-labelledby="truckModalTitle">
+      <div class="modal-hd">
+        <h2 id="truckModalTitle">修改拖车方式</h2>
+        <button type="button" class="modal-close" id="truckModalClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p style="margin:0 0 12px;color:var(--sub);font-size:12px;" id="truckModalHint">已选 0 单 · 以下字段均为选填，留空则不修改对应项</p>
+        <div class="field">
+          <label for="truckModeSelect">拖车方式</label>
+          <select id="truckModeSelect">
+            <option value="">— 不修改 —</option>
+            <option value="self">客户自拖车</option>
+            <option value="company">我司统一安排拖车</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="truckRemarkInput">备注</label>
+          <textarea id="truckRemarkInput" placeholder="选填，留空则不修改"></textarea>
+        </div>
+      </div>
+      <footer class="modal-ft">
+        <button type="button" class="btn" id="truckModalCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="truckModalConfirm">确认</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 传统订单管理</span>
+    <h3>传统订单管理（整柜）</h3>
+
+    <h4>页面定位</h4>
+    <ul>
+      <li>融合原系统「传统/分摊下单管理」<strong>列表 + 工具栏 + 筛选</strong>，与 <a href="整柜下单-订单录入-MVP.html">整柜订单录入</a> 字段对齐。</li>
+      <li>整柜流程 7.2：本页为<strong>运单主视图</strong>；新建/编辑在「提交预报」→ 订单录入；放舱在「绑定仓位」→ <a href="仓位管理-订舱完善提单-整合-MVP.html">仓位信息</a>。</li>
+      <li>相对原系统移除：顶栏黄色流程说明条、筛选区「合同号」「货代商」、分摊录单及相关能力（本期不做）。</li>
+    </ul>
+
+    <h4>筛选区</h4>
+    <ul>
+      <li><strong>保留</strong>：运单号、提单号、柜号、船名/航次、业务员、客户、客户单号。</li>
+      <li><strong>整柜扩展</strong>：运单状态、配送模式、关联报价。</li>
+      <li>辅助操作：更多筛选、数据配置、查询、重置搜索。</li>
+    </ul>
+
+    <h4>工具栏（18 个 · 对齐原系统截图 + 整柜扩展）</h4>
+    <ul>
+      <li><strong>顺序与配色</strong>：查询数据（蓝）· 提交预报（橙，链至订单录入）· 修改配送模式 · 绑定仓位 · 修改报关方式 · 取消订单（红）· 装柜完成（绿）· 修改拖车方式 · 附加服务 · 批量修改附加服务 · 发票 · 导入修改发票信息 · 批量修改备注 · 客户要求折扣（红）· 客户轨迹 · 轨迹 · 运单操作日志 · 修改收货体积。</li>
+      <li><strong>查询数据</strong>：按筛选区条件刷新列表（原型演示）。</li>
+      <li><strong>提交预报</strong>：跳转 <a href="整柜下单-订单录入-MVP.html">整柜下单录入</a> 新建运单。</li>
+      <li><strong>修改配送模式</strong>：弹窗批量修改，须先勾选运单；字段均为<strong>选填</strong>，留空不覆盖原值（见下「批量修改弹窗」）。</li>
+      <li><strong>修改报关方式</strong> / <strong>修改拖车方式</strong>：同上批量规则；枚举与订单录入对齐。</li>
+      <li><strong>绑定仓位</strong>：打开侧栏抽屉，须填海运费 + 合约有效期；确认后写入仓位信息页；可跳转仓位详情。</li>
+      <li><strong>装柜完成</strong>：运单状态 → 装柜完成；签出时触发装柜时间与海运费有效期校验（超期 → 仓位信息跳红）。</li>
+      <li><strong>取消订单</strong>：已预报/已订舱等未结案态可取消；已签收不可取消（业务规则待接口）。</li>
+    </ul>
+
+    <h4>批量修改弹窗（通用规则）</h4>
+    <ul>
+      <li>适用：<strong>修改配送模式</strong>、<strong>修改报关方式</strong>、<strong>修改拖车方式</strong>。</li>
+      <li>前置：至少勾选 1 条运单，否则提示「请先勾选需要修改的运单」。</li>
+      <li>原则：弹窗内各字段均为<strong>选填</strong>；下拉选「— 不修改 —」或文本留空 → 该字段不覆盖原值。</li>
+      <li>提交后写操作日志（操作人、时间、变更明细）。</li>
+    </ul>
+    <h5>修改配送模式 · 字段</h5>
+    <ul>
+      <li><strong>配送方式</strong>（7 项，与订单录入一致）：整柜清关 · 整柜清关直送 · 整柜清关拆送 · 整柜直送 · 整柜拆送 · 整柜到港自提 · <strong>整柜海外仓自提--海运</strong>（第 7 项）。</li>
+      <li><strong>询价单</strong>：可改关联询价单号，留空不改。</li>
+      <li><strong>备注</strong>：配送相关备注，留空不改。</li>
+    </ul>
+    <h5>修改报关方式 · 字段</h5>
+    <ul>
+      <li><strong>报关方式</strong>：自行申报 · 我司代理报关。</li>
+      <li><strong>备注</strong>：留空不改。</li>
+    </ul>
+    <h5>修改拖车方式 · 字段</h5>
+    <ul>
+      <li><strong>拖车方式</strong>：客户自拖车 · 我司统一安排拖车。</li>
+      <li><strong>备注</strong>：留空不改。</li>
+    </ul>
+
+    <h4>绑定仓位抽屉</h4>
+    <ul>
+      <li>入口：工具栏「绑定仓位」；须先勾选未绑定或待更新运单（原型直接打开）。</li>
+      <li><strong>必填</strong>：订舱代理、SO No、合约期内海运费(USD)、合约有效期起止。</li>
+      <li><strong>选填</strong>：船名航次、提单号、超出有效期调价、关联报价单（报价绑定后可带入）。</li>
+      <li>保存 = 放舱签入，同步 <a href="仓位管理-订舱完善提单-整合-MVP.html">仓位信息页</a>；装柜签出时比对装柜完成时间与合约有效期。</li>
+    </ul>
+
+    <h4>列表状态页签</h4>
+    <ul>
+      <li>工具栏下方快捷筛选：<strong>全部</strong>、已预报、已订舱、装柜完成、已签收、已退件（括号内为各状态运单数量）。</li>
+      <li>与筛选区「运单状态」下拉联动；点击页签刷新列表计数。</li>
+      <li>异常态 <strong>船期变更待确认</strong> 不在页签中单独列出，通过筛选区下拉查询。</li>
+    </ul>
+
+    <h4>运单状态（主流程）</h4>
+    <ul>
+      <li><strong>已预报</strong>：提交预报 / 录入完成，尚未绑定仓位。</li>
+      <li><strong>已订舱</strong>：绑定仓位（放舱）完成；仓位信息页已写入海运费 + 有效期。</li>
+      <li><strong>装柜完成</strong>：现场装柜结束；签出时记录时间并与海运费有效期比对。</li>
+      <li><strong>已签收</strong>：末端 POD / 签收完成，运单结案。</li>
+      <li><strong>已退件</strong>：退件/取消后结案，页签单独汇总。</li>
+      <li><strong>船期变更待确认</strong>：异常态，ETD/ETA 变更待订舱岗确认后恢复已订舱等正常态。</li>
+    </ul>
+
+    <h4>列表列（融合原系统横向滚动 · 整柜裁剪）</h4>
+    <ul>
+      <li><strong>列顺序</strong>：运单号 → 客户单号 → 客户名称 → 客户代码 → 业务员 → 所属客服 → 运单状态 → 提单状态 → 提单号 → SO → 柜号 → 柜型 → 船名航次 → 船司 → 重量(KG) → 体积(CBM) → 起运港 → 中转港 → 目的港 → 目的国 → 运输方式 → 配送模式 → 最新轨迹内容 → 轨迹状态 → 是否上传报关资料 → 报关单号 → 客户备注 → 关联报价 → 海外代理 → 签收时间 → 创建时间 → 修改时间。</li>
+      <li><strong>整柜移除（不合逻辑）</strong>：序号、客户类型、件数、收件邮编、附加服务费、业务类型/参考编号、关务分区、卖家、毛利/单价/成本、收货仓/收货件数、所属账套/网点、收件人/收货地址、托盘号、主品条数、货物类型(包裹)、进仓单、主单轨迹、指令状态/交易号、创建人/修改人/最新轨迹更新人等。</li>
+      <li>海运费、合约有效期、绑定仓位状态等在「绑定仓位」抽屉及仓位信息页维护，列表不重复展示。</li>
+    </ul>
+
+    <h4>列表行样式</h4>
+    <ul>
+      <li><strong>蓝底选中行</strong>：当前勾选/聚焦行。</li>
+      <li><strong>橙底行</strong>：装柜完成时间超出海运费合约有效期等业务预警（如 RC266503）。</li>
+      <li><strong>红底行</strong>：船期变更待确认等异常态（如 RC266505）。</li>
+      <li><strong>进港时间标红</strong>（仓位信息页联动）：签出时登记进港时间；合约有效期内未登记或超有效期未补录调价 → 仓位列表标红，补录后恢复（详见 <a href="仓位管理-订舱完善提单-整合-MVP.html">仓位管理 PRD</a>）。</li>
+    </ul>
+
+    <h4>关联页面</h4>
+    <ul>
+      <li><a href="整柜下单-订单录入-MVP.html">整柜下单录入</a> · <a href="仓位管理-订舱完善提单-整合-MVP.html">仓位信息</a> · <a href="ESS整柜报价详情-MVP.html">报价详情</a> · <a href="整柜本次更新-MVP.html">整柜本次更新说明</a></li>
+    </ul>
+
+    <h4>示例数据</h4>
+    <ul>
+      <li>RC266501 已订舱 · 已放舱 · 盐田→洛杉矶。</li>
+      <li>RC266502 已预报 · 未放舱 · 待绑定仓位。</li>
+      <li>RC266503 橙底：装柜完成超出海运费有效期。</li>
+      <li>RC266504 已签收 · 整柜到港自提 · POD 已回传。</li>
+      <li>RC266505 红底：船期变更待订舱确认。</li>
+    </ul>
+  </div>
+
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var mask = document.getElementById("bindMask");
+      var drawer = document.getElementById("bindDrawer");
+      function openBind() {
+        mask.classList.add("open");
+        drawer.classList.add("open");
+      }
+      function closeBind() {
+        mask.classList.remove("open");
+        drawer.classList.remove("open");
+      }
+      document.getElementById("btnBindSpace").addEventListener("click", openBind);
+      document.getElementById("bindClose").addEventListener("click", closeBind);
+      mask.addEventListener("click", closeBind);
+
+      var deliveryMask = document.getElementById("deliveryModalMask");
+      var deliveryHint = document.getElementById("deliveryModalHint");
+      var deliveryModeSelect = document.getElementById("deliveryModeSelect");
+      var deliveryInquiryInput = document.getElementById("deliveryInquiryInput");
+      var deliveryRemarkInput = document.getElementById("deliveryRemarkInput");
+
+      function getSelectedRows() {
+        return Array.prototype.filter.call(
+          document.querySelectorAll(".data-grid tbody input[type=checkbox]"),
+          function (cb) { return cb.checked; }
+        );
+      }
+
+      function resetDeliveryForm() {
+        deliveryModeSelect.value = "";
+        deliveryInquiryInput.value = "";
+        deliveryRemarkInput.value = "";
+      }
+
+      function openDeliveryModal() {
+        var selected = getSelectedRows();
+        if (!selected.length) {
+          alert("请先勾选需要修改的运单");
+          return;
+        }
+        resetDeliveryForm();
+        deliveryHint.textContent = "已选 " + selected.length + " 单 · 以下字段均为选填，留空则不修改对应项";
+        deliveryMask.classList.add("open");
+      }
+
+      function closeDeliveryModal() {
+        deliveryMask.classList.remove("open");
+      }
+
+      function confirmDeliveryModal() {
+        closeDeliveryModal();
+        alert("配送模式修改已提交（原型演示）");
+      }
+
+      document.getElementById("btnModifyDelivery").addEventListener("click", openDeliveryModal);
+      document.getElementById("deliveryModalClose").addEventListener("click", closeDeliveryModal);
+      document.getElementById("deliveryModalCancel").addEventListener("click", closeDeliveryModal);
+      document.getElementById("deliveryModalConfirm").addEventListener("click", confirmDeliveryModal);
+      deliveryMask.addEventListener("click", function (e) {
+        if (e.target === deliveryMask) closeDeliveryModal();
+      });
+
+      function setupBatchEditModal(opts) {
+        var modalMask = document.getElementById(opts.maskId);
+        var hint = document.getElementById(opts.hintId);
+        var selectEl = document.getElementById(opts.selectId);
+        var remarkEl = document.getElementById(opts.remarkId);
+
+        function resetForm() {
+          selectEl.value = "";
+          remarkEl.value = "";
+        }
+        function openModal() {
+          var selected = getSelectedRows();
+          if (!selected.length) {
+            alert("请先勾选需要修改的运单");
+            return;
+          }
+          resetForm();
+          hint.textContent = "已选 " + selected.length + " 单 · 以下字段均为选填，留空则不修改对应项";
+          modalMask.classList.add("open");
+        }
+        function closeModal() {
+          modalMask.classList.remove("open");
+        }
+        function confirmModal() {
+          closeModal();
+          alert(opts.confirmMsg);
+        }
+
+        document.getElementById(opts.openBtnId).addEventListener("click", openModal);
+        document.getElementById(opts.closeBtnId).addEventListener("click", closeModal);
+        document.getElementById(opts.cancelBtnId).addEventListener("click", closeModal);
+        document.getElementById(opts.confirmBtnId).addEventListener("click", confirmModal);
+        modalMask.addEventListener("click", function (e) {
+          if (e.target === modalMask) closeModal();
+        });
+      }
+
+      setupBatchEditModal({
+        maskId: "customsModalMask",
+        hintId: "customsModalHint",
+        selectId: "customsModeSelect",
+        remarkId: "customsRemarkInput",
+        openBtnId: "btnModifyCustoms",
+        closeBtnId: "customsModalClose",
+        cancelBtnId: "customsModalCancel",
+        confirmBtnId: "customsModalConfirm",
+        confirmMsg: "报关方式修改已提交（原型演示）"
+      });
+      setupBatchEditModal({
+        maskId: "truckModalMask",
+        hintId: "truckModalHint",
+        selectId: "truckModeSelect",
+        remarkId: "truckRemarkInput",
+        openBtnId: "btnModifyTruck",
+        closeBtnId: "truckModalClose",
+        cancelBtnId: "truckModalCancel",
+        confirmBtnId: "truckModalConfirm",
+        confirmMsg: "拖车方式修改已提交（原型演示）"
+      });
+
+      document.querySelectorAll(".status-tab").forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (t) {
+            t.classList.remove("active");
+            t.setAttribute("aria-selected", "false");
+          });
+          tab.classList.add("active");
+          tab.setAttribute("aria-selected", "true");
+        });
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
+  <script src="fcl-booking-prototype-nav.js" defer></script>
+</body>
+</html>

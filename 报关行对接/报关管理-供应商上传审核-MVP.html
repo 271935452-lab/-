@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报关管理 · 供应商上传审核（MVP）</title>
+  <link rel="stylesheet" href="customs-broker-review.css" />
+  <link rel="stylesheet" href="customs-broker-prototype-nav.css" />
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45); --blue: #1890ff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px; color: var(--text); background: var(--bg); }
+    a { color: var(--blue); text-decoration: none; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header { background: var(--header); color: #fff; min-height: 48px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 600; }
+    .main { flex: 1; padding: 12px 16px 24px; max-width: 1280px; width: 100%; margin: 0 auto; }
+    .proto-link { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+    .note { padding: 8px 12px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; font-size: 12px; color: #003a8c; margin-bottom: 10px; line-height: 1.55; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 2px; margin-bottom: 10px; }
+    .tabs { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    .tab { padding: 5px 10px; border: 1px solid transparent; border-radius: 2px; background: transparent; font-size: 12px; color: var(--sub); cursor: pointer; }
+    .tab.active { color: var(--blue); background: #e6f7ff; border-color: #91d5ff; font-weight: 600; }
+    .filter { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 6px 10px; padding: 10px 12px; align-items: end; border-bottom: 1px solid var(--line); }
+    .filter label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter input, .filter select { width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font-size: 12px; }
+    .toolbar { padding: 6px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn { height: 26px; padding: 0 10px; border-radius: 2px; border: 1px solid var(--blue); background: var(--blue); color: #fff; cursor: pointer; font-size: 12px; }
+    .btn.outline { background: #fff; color: var(--blue); }
+    .btn.danger { background: #fff; border-color: #ffa39e; color: #cf1322; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; }
+    th, td { border-bottom: 1px solid #f0f0f0; padding: 8px 10px; text-align: left; vertical-align: middle; }
+    th { background: #fafafa; color: var(--sub); font-weight: 500; }
+    tr:hover td { background: #fafcff; }
+    .tag { display: inline-block; padding: 0 7px; height: 20px; line-height: 18px; border-radius: 2px; font-size: 11px; border: 1px solid; }
+    .tag.wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.back { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.offline { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .attach-preview { font-size: 11px; color: var(--sub); line-height: 1.5; }
+    .link-panel { margin: 0 12px 10px; padding: 10px 12px; background: #fafafa; border: 1px dashed #d9d9d9; border-radius: 2px; font-size: 12px; line-height: 1.55; }
+    .link-panel code { font-size: 11px; color: #096dd9; word-break: break-all; }
+    .link-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .link-actions .btn { font-size: 11px; height: 24px; }
+    .link-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 8px 16px; background: rgba(0,0,0,.75); color: #fff; border-radius: 4px; font-size: 12px; z-index: 9999; display: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">报关管理 · 供应商上传审核</header>
+    <main class="main">
+      <div class="proto-link">
+        关联：<a href="报关管理-列表-MVP.html">报关管理列表</a> ·
+        <a href="报关供应商-上传任务列表-MVP.html?token=ws-demo-qdgx-7d&scope=workspace">报关行协作入口（示意）</a> ·
+        <a href="报关行API配置-MVP.html">报关行 API 配置</a> ·
+        <a href="../index.html">返回导航</a>
+      </div>
+      <div class="note">
+        仅处理<strong>未对接 API</strong>报关行的链接协作提交。确认后写入提单清报关附件，并推进报关状态（资料确认 → 预录待复审 / 待放行），与 API #04、#08 口径一致。
+        报关行<strong>不登录头程 ERP</strong>，由本页生成协作链接后通过邮件/企微/短信发送。
+      </div>
+
+      <div class="link-panel" id="linkPanel">
+        <strong>协作链接 · 青岛港兴报关行</strong>（API 停用）
+        <div style="margin-top:4px;color:var(--sub);font-size:11px">
+          工作台链接供报关行查看全部待办；任务链接直达单票上传页。Token 由服务端签名，过期或 API 启用后自动失效。
+        </div>
+        <div style="margin-top:6px"><span style="color:var(--sub)">工作台：</span><code id="wsLink">—</code></div>
+        <div style="margin-top:4px"><span style="color:var(--sub)">示例任务（报关资料 · COSU6502971850）：</span><code id="taskLink">—</code></div>
+        <div class="link-actions">
+          <button type="button" class="btn outline" data-copy="ws">复制工作台链接</button>
+          <button type="button" class="btn outline" data-copy="task">复制任务链接</button>
+          <button type="button" class="btn outline" id="btnPreviewWs">预览工作台</button>
+          <button type="button" class="btn outline" id="btnPreviewTask">预览任务页</button>
+        </div>
+      </div>
+
+      <section class="card">
+        <div class="filter">
+          <div><label>提单号</label><input type="text" /></div>
+          <div><label>报关供应商</label><select><option>全部</option><option selected>青岛港兴报关行</option><option>宁波华商报关</option></select></div>
+          <div><label>上传类型</label><select><option>全部</option><option>报关资料</option><option>预录单</option><option>正式件</option></select></div>
+          <div><label>提交时间</label><input type="date" /></div>
+          <button type="button" class="btn outline">查询</button>
+        </div>
+        <div class="tabs" id="auditTabs">
+          <button type="button" class="tab active" data-tab="pending">待确认<span>(6)</span></button>
+          <button type="button" class="tab" data-tab="done">已确认<span>(42)</span></button>
+          <button type="button" class="tab" data-tab="back">已退回<span>(3)</span></button>
+        </div>
+        <div class="toolbar">
+          <button type="button" class="btn" id="btnConfirm">确认收讫</button>
+          <button type="button" class="btn outline">批量下载附件</button>
+          <button type="button" class="btn danger" id="btnReject">退回修改</button>
+          <button type="button" class="btn outline" id="btnSendLink">发送协作链接</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:32px"><input type="checkbox" /></th>
+                <th>状态</th>
+                <th>上传类型</th>
+                <th>报关供应商</th>
+                <th>终配舱单号</th>
+                <th>提单号</th>
+                <th>分单号</th>
+                <th>附件摘要</th>
+                <th>供应商备注</th>
+                <th>提交时间</th>
+                <th>确认后状态</th>
+                <th>协作链接</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="checkbox" checked /></td>
+                <td><span class="tag wait">待确认</span></td>
+                <td><span class="tag offline">报关资料</span></td>
+                <td>青岛港兴报关行</td>
+                <td>260609-青岛T25-1</td>
+                <td><a href="报关管理-预录审核详情-兼容-MVP.html?tab=customs">COSU6502971850</a></td>
+                <td>FD-20260609-001</td>
+                <td class="attach-preview">发票.pdf · 装箱单.pdf · 委托书.pdf（3 个）</td>
+                <td>单独报关，请按分单号受理</td>
+                <td>2026-06-09 10:22</td>
+                <td>→ 可推送/指派回传预录单</td>
+                <td><button type="button" class="btn outline copy-row-link" data-task="material" data-id="1" style="height:22px;font-size:11px;padding:0 6px">复制任务链</button></td>
+                <td><a href="报关供应商-资料上传-MVP.html?token=tk-1-material&scope=task&task=material&taskId=1&readonly=1">查看</a></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td><span class="tag wait">待确认</span></td>
+                <td><span class="tag offline">预录单</span></td>
+                <td>青岛港兴报关行</td>
+                <td>260608-宁波T18-2</td>
+                <td><a href="报关管理-预录审核详情-兼容-MVP.html?tab=customs">HLCU1234567890</a></td>
+                <td>FD-20260608-018</td>
+                <td class="attach-preview">预录单_107179404.pdf · 附件.zip</td>
+                <td>预录单号 107179404</td>
+                <td>2026-06-08 15:40</td>
+                <td>→ <strong>预录待复审</strong>（等同 #04）</td>
+                <td>—</td>
+                <td><a href="报关管理-列表-MVP.html?tab=review">去审核</a></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" /></td>
+                <td><span class="tag wait">待确认</span></td>
+                <td><span class="tag offline">正式件</span></td>
+                <td>宁波华商报关</td>
+                <td>260607-深圳T09-1</td>
+                <td>ONEY9876543210</td>
+                <td>FD-20260607-006</td>
+                <td class="attach-preview">正式报关件.zip</td>
+                <td>—</td>
+                <td>2026-06-08 11:05</td>
+                <td>→ <strong>待放行</strong>（等同 #08）</td>
+                <td>—</td>
+                <td><a href="报关管理-列表-MVP.html?tab=wait">去列表</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 供应商上传审核</span>
+    <h3>头程侧 · 供应商上传审核</h3>
+    <p>报关客服处理<strong>未对接 API</strong>报关行通过<a href="报关供应商-上传任务列表-MVP.html?token=ws-demo-qdgx-7d">链接协作</a>提交的资料，确认后进入与 API 相同的状态与附件归档。</p>
+    <h4>协作链接发放</h4>
+    <ul>
+      <li>指派报关行且 API 停用时，在报关列表或本页生成<strong>工作台链接</strong>（7 天）或<strong>任务链接</strong>（72h，单票）。</li>
+      <li>Token 字段示意：<code>brokerId</code>、<code>taskId</code>、<code>scope</code>、<code>exp</code>；HMAC/JWT 签名，服务端校验。</li>
+      <li>退回须生成<strong>新 token</strong>，旧链失效；报关行 API 启用后停止发链并跳转<a href="报关供应商-链接失效-MVP.html?reason=api">失效页</a>。</li>
+    </ul>
+    <h4>确认规则</h4>
+    <ul>
+      <li><strong>报关资料</strong> 确认 → 资料齐套，可继续指派供应商「回传预录单」或内部推送（线下无 #01 自动推送时由客服手动推进）。</li>
+      <li><strong>预录单</strong> 确认 → 附件写入提单「报关预录件」，状态 <strong>预录待复审</strong>（等同 #04）。</li>
+      <li><strong>正式件</strong> 确认 → 附件写入「报关正式件」，状态 <strong>待放行</strong>（等同 #08）。</li>
+    </ul>
+    <h4>退回</h4>
+    <ul>
+      <li>须填写退回原因；系统生成新任务链接，协作任务变为「已退回」，可重新上传。</li>
+    </ul>
+    <h4>与 API 配置关系</h4>
+    <ul>
+      <li><a href="报关行API配置-MVP.html">报关行 API 配置</a> 为「停用」的供应商走本模块；启用 API 的供应商不应出现待确认记录（以 API/webhook 为准）。</li>
+    </ul>
+  </div>
+
+  <div class="link-toast" id="linkToast">已复制到剪贴板</div>
+
+  <script src="customs-broker-prototype-nav.js"></script>
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var origin = location.href.replace(/[^/]*$/, "");
+      var wsUrl = origin + "报关供应商-上传任务列表-MVP.html?token=ws-demo-qdgx-7d&scope=workspace";
+      var taskUrl = origin + "报关供应商-资料上传-MVP.html?token=tk-1-material&scope=task&task=material&taskId=1";
+
+      document.getElementById("wsLink").textContent = wsUrl;
+      document.getElementById("taskLink").textContent = taskUrl;
+
+      function toast(msg) {
+        var el = document.getElementById("linkToast");
+        el.textContent = msg || "已复制到剪贴板";
+        el.style.display = "block";
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function () { el.style.display = "none"; }, 2000);
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { toast(); }).catch(function () { window.prompt("复制链接：", text); });
+        } else {
+          window.prompt("复制链接：", text);
+        }
+      }
+
+      document.querySelectorAll("[data-copy]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          copyText(btn.getAttribute("data-copy") === "ws" ? wsUrl : taskUrl);
+        });
+      });
+
+      document.getElementById("btnPreviewWs").addEventListener("click", function () { window.open(wsUrl, "_blank"); });
+      document.getElementById("btnPreviewTask").addEventListener("click", function () { window.open(taskUrl, "_blank"); });
+      document.getElementById("btnSendLink").addEventListener("click", function () {
+        copyText(taskUrl);
+        alert("任务链接已复制，可粘贴至邮件/企微发送给报关行。（示意）");
+      });
+
+      document.querySelectorAll(".copy-row-link").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-id");
+          var task = btn.getAttribute("data-task");
+          copyText(origin + "报关供应商-资料上传-MVP.html?token=tk-" + id + "-" + task + "&scope=task&task=" + task + "&taskId=" + id);
+        });
+      });
+    })();
+
+    document.getElementById("btnConfirm").addEventListener("click", function () {
+      alert("已确认收讫，附件已同步至提单详情，状态已更新。（示意）");
+    });
+    document.getElementById("btnReject").addEventListener("click", function () {
+      var reason = window.prompt("请输入退回原因：", "资料不完整，请补充发票");
+      if (reason) alert("已退回供应商并生成新任务链接：" + reason + "（示意）");
+    });
+  </script>
+</body>
+</html>

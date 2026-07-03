@@ -5,11 +5,22 @@
   if (window.__ESS_APP_MOBILE__) return;
   window.__ESS_APP_MOBILE__ = true;
 
-  var APP_LINKS = [
-    { file: "ESS询价报价-APP-列表-MVP.html", label: "列表" },
-    { file: "ESS询价编辑-APP-整柜-MVP.html", label: "整柜编辑" },
-    { file: "ESS整柜询价详情-APP-MVP.html", label: "整柜详情" },
-  ];
+  function linkBase() {
+    var path = location.pathname.replace(/\\/g, "/");
+    if (path.indexOf("/整柜下单/") !== -1) {
+      return { list: "../二期/ESS询价报价-APP-列表-MVP.html", fcl: "" };
+    }
+    return { list: "ESS询价报价-APP-列表-MVP.html", fcl: "../整柜下单/" };
+  }
+
+  function getAppLinks() {
+    var base = linkBase();
+    return [
+      { file: base.list, label: "列表" },
+      { file: base.fcl + "ESS询价编辑-APP-整柜-MVP.html", label: "整柜编辑" },
+      { file: base.fcl + "ESS整柜询价详情-APP-MVP.html", label: "整柜详情" },
+    ];
+  }
 
   function currentFile() {
     var href = location.href.split("#")[0].split("?")[0];
@@ -43,7 +54,7 @@
     var dock = document.createElement("nav");
     dock.className = "ess-app-proto-dock";
     dock.setAttribute("aria-label", "APP 原型页切换");
-    APP_LINKS.forEach(function (item) {
+    getAppLinks().forEach(function (item) {
       var a = document.createElement("a");
       a.href = item.file;
       a.textContent = item.label;
