@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜配送模式 · 结算节点配置（MVP）</title>
+  <style>
+    :root {
+      --header: #001529;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --orange: #fa541c;
+      --orange-light: #fff7e6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .top-header {
+      background: var(--header); color: #fff; min-height: 48px;
+      display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    }
+    .logo { font-size: 14px; font-weight: 600; }
+    .nav-tab {
+      margin-left: 8px; padding: 0 12px; height: 48px; line-height: 48px;
+      background: var(--bg); color: var(--text); font-weight: 600;
+    }
+    .page { padding: 0 0 40px; }
+    .proto-link {
+      font-size: 12px; color: var(--sub); padding: 8px 14px; line-height: 1.8;
+      background: var(--card); border-bottom: 1px solid var(--line);
+    }
+    .mode-tabs {
+      display: flex; flex-wrap: wrap; gap: 0;
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 0 8px;
+    }
+    .mode-tab {
+      padding: 10px 16px; border: none; background: transparent;
+      font-size: 13px; color: var(--text); cursor: pointer;
+      border-bottom: 2px solid transparent; white-space: nowrap;
+    }
+    .mode-tab:hover { color: var(--orange); }
+    .mode-tab.active {
+      color: var(--orange); font-weight: 600;
+      border-bottom-color: var(--orange); background: var(--orange-light);
+    }
+    .toolbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+      padding: 10px 14px; background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .toolbar label { font-size: 12px; color: var(--sub); margin-right: 6px; }
+    .toolbar input {
+      height: 32px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 10px; width: 200px;
+    }
+    .btn {
+      height: 32px; padding: 0 14px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; cursor: pointer; font-size: 13px;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-orange { background: var(--orange); border-color: var(--orange); color: #fff; }
+    .table-wrap {
+      margin: 10px 14px; background: var(--card); border: 1px solid var(--line); overflow: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; }
+    th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; white-space: nowrap; }
+    th { background: #fafafa; font-weight: 600; }
+    tr:hover td { background: #e6f7ff; }
+    tr.row-dir td { background: #fafafa; }
+    tr.row-dir:hover td { background: #f0f0f0; }
+    tr.selected td { background: #bae7ff !important; }
+    .col-check { width: 36px; text-align: center; }
+    .node-link { color: var(--blue); cursor: pointer; }
+    .th-filter::after { content: "▾"; margin-left: 4px; color: #bfbfbf; font-size: 10px; }
+
+    .modal-mask {
+      display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 1000;
+      align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto;
+    }
+    .modal-mask.open { display: flex; }
+    .modal {
+      width: 720px; max-width: 100%; background: var(--card);
+      border-radius: 2px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .modal-head {
+      padding: 14px 20px; border-bottom: 1px solid var(--line);
+      font-size: 15px; font-weight: 600;
+    }
+    .modal-body { padding: 18px 20px 8px; }
+    .modal-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px;
+    }
+    .form-item label {
+      display: block; font-size: 12px; color: var(--text); margin-bottom: 5px;
+    }
+    .form-item label .req { color: #ff4d4f; margin-right: 2px; }
+    .form-item input[type="text"],
+    .form-item input[type="number"],
+    .form-item select,
+    .form-item textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px;
+      font-size: 13px; font-family: inherit;
+    }
+    .form-item input[type="text"],
+    .form-item input[type="number"],
+    .form-item select { height: 32px; padding: 0 10px; }
+    .form-item input.readonly { background: #f5f5f5; color: var(--sub); cursor: not-allowed; }
+    .form-item textarea { padding: 8px 10px; min-height: 72px; resize: vertical; }
+    .radio-group { display: flex; gap: 16px; height: 32px; align-items: center; }
+    .radio-group label { display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; font-size: 13px; }
+    .form-item.full { grid-column: 1 / -1; }
+    .modal-foot {
+      padding: 12px 20px 16px; text-align: right;
+      border-top: 1px solid var(--line);
+    }
+    .modal-foot .btn { margin-left: 8px; min-width: 72px; }
+  </style>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+</head>
+<body>
+  <header class="top-header">
+    <div class="logo">腾信物流 · 基础配置</div>
+    <div class="nav-tab">结算节点</div>
+  </header>
+
+  <main class="page">
+    <div class="proto-link">
+      关联：<a href="整柜配送模式-业务流程图-MVP.html">七种配送主流程图</a> ·
+      <a href="整柜下单-订单录入-MVP.html">订单录入</a> ·
+      <a href="整柜订舱-原型导航.html">整柜订舱导航</a>
+    </div>
+
+    <div class="mode-tabs" id="modeTabs"></div>
+
+    <div class="toolbar">
+      <label for="nameFilter">节点名称</label>
+      <input type="text" id="nameFilter" placeholder="请输入节点名称" />
+      <button type="button" class="btn btn-primary" id="btnQuery">查询数据</button>
+      <button type="button" class="btn btn-orange" id="btnAdd">+ 新增节点</button>
+      <button type="button" class="btn btn-orange" id="btnEdit">+ 节点编辑</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-check"><input type="checkbox" id="checkAll" /></th>
+            <th class="th-filter">序号</th>
+            <th class="th-filter">结算节点编号</th>
+            <th class="th-filter">结算节点名称</th>
+            <th class="th-filter">类型</th>
+            <th class="th-filter">前置节点</th>
+            <th class="th-filter">后续节点</th>
+            <th class="th-filter">完结标记</th>
+            <th class="th-filter">运单状态</th>
+            <th class="th-filter">客户端名称</th>
+            <th class="th-filter">员工端名称</th>
+            <th class="th-filter">序号</th>
+          </tr>
+        </thead>
+        <tbody id="nodeTbody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div class="modal-mask" id="nodeModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="modalTitle">
+      <div class="modal-head" id="modalTitle">编辑节点</div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div class="form-item">
+            <label><span class="req">*</span>节点编号</label>
+            <input type="text" id="fId" />
+          </div>
+          <div class="form-item">
+            <label><span class="req">*</span>节点名称</label>
+            <input type="text" id="fName" placeholder="请输入节点名称" />
+          </div>
+          <div class="form-item">
+            <label>轨迹编号</label>
+            <select id="fTrack">
+              <option value="">选择轨迹编号</option>
+              <option value="TK001">TK001 · 已递送</option>
+              <option value="TK002">TK002 · 派送中</option>
+              <option value="TK003">TK003 · 已入海外仓</option>
+              <option value="TK004">TK004 · 已自提</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label><span class="req">*</span>类型</label>
+            <div class="radio-group">
+              <label><input type="radio" name="fType" value="目录" /> 目录</label>
+              <label><input type="radio" name="fType" value="按钮" /> 按钮</label>
+            </div>
+          </div>
+          <div class="form-item">
+            <label>客户端名称</label>
+            <input type="text" id="fCustomer" placeholder="请输入客户端名称" />
+          </div>
+          <div class="form-item">
+            <label>员工端名称</label>
+            <input type="text" id="fEmployee" placeholder="请输入员工端名称" />
+          </div>
+          <div class="form-item">
+            <label><span class="req">*</span>排序号</label>
+            <input type="number" id="fSort" min="0" step="1" />
+          </div>
+          <div class="form-item">
+            <label><span class="req">*</span>页面可操作</label>
+            <div class="radio-group">
+              <label><input type="radio" name="fPageOp" value="否" /> 否</label>
+              <label><input type="radio" name="fPageOp" value="是" /> 是</label>
+            </div>
+          </div>
+          <div class="form-item">
+            <label>上一个节点</label>
+            <input type="text" id="fPre" placeholder="请输入上一个节点" />
+          </div>
+          <div class="form-item">
+            <label>下一个节点</label>
+            <input type="text" id="fNext" placeholder="请输入下一个节点" />
+          </div>
+          <div class="form-item">
+            <label>运单状态</label>
+            <select id="fWaybill">
+              <option value="">选择运单状态</option>
+              <option value="草稿">草稿</option>
+              <option value="已预报">已预报</option>
+              <option value="已订舱">已订舱</option>
+              <option value="已配舱">已配舱</option>
+              <option value="截单完成">截单完成</option>
+              <option value="已清关">已清关</option>
+              <option value="派送中">派送中</option>
+              <option value="已入海外仓">已入海外仓</option>
+              <option value="已签收">已签收</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>运单大类</label>
+            <select id="fCategory">
+              <option value="">选择运单大类</option>
+              <option value="11待订舱">11待订舱</option>
+              <option value="40待出库">40待出库</option>
+              <option value="50待到港">50待到港</option>
+              <option value="70尾程派送">70尾程派送</option>
+              <option value="70海外派送">70海外派送</option>
+              <option value="90已签收">90已签收</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>完结标识</label>
+            <select id="fDone">
+              <option value="">选择完结标识</option>
+              <option value="否">否</option>
+              <option value="是">是</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label><span class="req">*</span>父节点编号</label>
+            <input type="text" id="fParent" placeholder="请输入父节点编号" />
+          </div>
+          <div class="form-item full">
+            <label>备注</label>
+            <textarea id="fRemark" placeholder="请填写备注"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" id="btnModalClose">关闭</button>
+        <button type="button" class="btn btn-primary" id="btnModalSubmit">提交</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 结算节点</span>
+    <h3>整柜七种配送模式 · 结算节点</h3>
+    <ul>
+      <li>页签切换 7 种配送模式，表格字段与现网「结算节点」页一致。</li>
+      <li>节点分<strong>目录</strong>（阶段）与<strong>按钮</strong>（操作）；完结标记为是/否。</li>
+      <li>运单状态按传统调整对照表绑定；节点编辑弹窗：运输状态=运单状态，运单大类=状态大类(传统调整)，完成标识=完结标记。</li>
+    </ul>
+  </div>
+
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var MODES = [
+        { pk: "PK2548", label: "整柜清关", key: "clearance" },
+        { pk: "PK2549", label: "整柜清关直送", key: "clearanceDirect" },
+        { pk: "PK2550", label: "整柜清关拆送", key: "clearanceSplit" },
+        { pk: "PK2551", label: "整柜直送", key: "direct" },
+        { pk: "PK2552", label: "整柜拆送", key: "split" },
+        { pk: "PK2553", label: "整柜到港自提", key: "selfPickup" },
+        { pk: "PK2554", label: "整柜海外仓自提--海运", key: "overseasWh" }
+      ];
+
+      function dir(id, name, waybill, customer, employee, sort, extra) {
+        extra = extra || {};
+        return enrichNode({
+          id: id, name: name, type: "目录", pre: "", next: "",
+          done: "否", waybill: waybill || "", customer: customer, employee: employee, sort: sort
+        }, extra);
+      }
+
+      function btn(id, name, pre, next, done, waybill, customer, employee, sort, extra) {
+        extra = extra || {};
+        return enrichNode({
+          id: id, name: name, type: "按钮", pre: pre || "", next: next || "",
+          done: done ? "是" : "否", waybill: waybill || "", customer: customer, employee: employee, sort: sort
+        }, extra);
+      }
+
+      var WAYBILL_TO_CATEGORY = {
+        "草稿": "11待订舱", "已预报": "11待订舱", "已订舱": "40待出库", "已配舱": "40待出库",
+        "截单完成": "40待出库", "已清关": "50待到港", "派送中": "70尾程派送",
+        "已入海外仓": "70海外派送", "已签收": "90已签收"
+      };
+
+      function parentIdOf(node) {
+        if (node.type === "目录") return node.id;
+        if (/\d{2}$/.test(node.id) && node.id.length > 5) {
+          return node.id.substring(0, node.id.length - 2);
+        }
+        var m = node.id.match(/^(TR\d+)/);
+        return m ? m[1] : node.id;
+      }
+
+      function enrichNode(node, extra) {
+        node.parentId = extra.parentId || parentIdOf(node);
+        node.categoryTrad = extra.categoryTrad || WAYBILL_TO_CATEGORY[node.waybill] || "";
+        node.trackNo = extra.trackNo || "";
+        node.pageOperable = extra.pageOperable != null ? extra.pageOperable : (node.type === "按钮" ? "是" : "否");
+        node.remark = extra.remark || "";
+        return node;
+      }
+
+      function findNode(id) {
+        var list = MODE_DATA[activeMode] || [];
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].id === id) return list[i];
+        }
+        return null;
+      }
+
+      function buildOrderPhase(nextDir, nextBtn) {
+        return [
+          dir("TR001", "客户下单", "草稿", "客户下单", "客户下单", 10),
+          btn("TR00101", "客户下单", "", "TR00102", true, "", "客户下单", "客户下单", 11),
+          btn("TR00102", "提交预报", "TR00101", nextDir + "," + nextBtn, true, "已预报", "客户下单", "客户下单", 12)
+        ];
+      }
+
+      function buildBookingPhase(preBtn, nextDir, nextBtn) {
+        return [
+          dir("TR003", "订舱", "", "订舱", "订舱·放舱签入", 30),
+          btn("TR00301", "订舱登记", preBtn, "TR00302", true, "", "订舱受理中", "订舱·放舱签入", 31),
+          btn("TR00302", "订舱完成", "TR00301", "TR004,TR00401", true, "已订舱", "订舱受理中", "订舱·放舱签入", 32)
+        ];
+      }
+
+      function buildCutoffPhase(preBtn, nextDir, nextBtn) {
+        return [
+          dir("TR004", "截单/截关", "", "截单/截关", "截单/截关", 40),
+          btn("TR00401", "补料登记", preBtn, "TR00402", true, "已配舱", "", "配舱登记", 41),
+          btn("TR00402", "截单完成", "TR00401", nextDir + "," + nextBtn, true, "截单完成", "", "", 42)
+        ];
+      }
+
+      function buildCustomsPhase(preBtn, nextDir, nextBtn) {
+        return [
+          dir("TR002", "目的港清关", "", "目的港清关", "关务·目的港清关", 20),
+          btn("TR00201", "清关登记", preBtn, "TR00202", true, "", "目的港清关", "关务·目的港清关", 21),
+          btn("TR00202", "清关完成", "TR00201", nextDir + "," + nextBtn, true, "已清关", "目的港清关完成", "关务·目的港清关", 22)
+        ];
+      }
+
+      function buildDeliveryPhase(preBtn, name, customer, employee, nextDir, nextBtn) {
+        return [
+          dir("TR005", name, "", name, employee, 50),
+          btn("TR00501", "派送登记", preBtn, "TR00502", true, "", customer, employee, 51),
+          btn("TR00502", "派送完成", "TR00501", nextDir + "," + nextBtn, true, "派送中", customer, employee, 52)
+        ];
+      }
+
+      function buildOverseasWhPhase(preBtn) {
+        return [
+          dir("TR007", "海外仓", "", "海外仓", "尾端·入仓预报", 70),
+          btn("TR00701", "入仓登记", preBtn, "TR00702", true, "", "货物已入海外仓", "尾端·入仓预报", 71),
+          btn("TR00702", "入仓完成", "TR00701", "TR009,TR00901", true, "已入海外仓", "货物已入海外仓", "尾端·入仓预报", 72)
+        ];
+      }
+
+      function buildDonePhase(preBtn, customer, employee, selfPickup) {
+        var dirName = selfPickup ? "海外自提" : "POD上传";
+        var btnName = selfPickup ? "自提完成" : "跟进完成";
+        return [
+          dir("TR009", dirName, "已签收", dirName, dirName, 90),
+          btn("TR00901", btnName, preBtn, "", true, "已签收", customer, employee, 91)
+        ];
+      }
+
+      function buildNodes(modeKey) {
+        var nodes = [];
+
+        if (modeKey === "clearance") {
+          nodes = buildOrderPhase("TR002", "TR00201")
+            .concat(buildCustomsPhase("TR00102", "TR009", "TR00901"))
+            .concat(buildDonePhase("TR00202", "服务完成", "进卡派跟进（新）", false));
+        } else if (modeKey === "clearanceDirect") {
+          nodes = buildOrderPhase("TR002", "TR00201")
+            .concat(buildCustomsPhase("TR00102", "TR005", "TR00501"))
+            .concat(buildDeliveryPhase("TR00202", "尾程派送（直送）", "货物派送中", "尾端·派送预约/POD", "TR009", "TR00901"))
+            .concat(buildDonePhase("TR00502", "已签收", "进卡派跟进（新）", false));
+        } else if (modeKey === "clearanceSplit") {
+          nodes = buildOrderPhase("TR002", "TR00201")
+            .concat(buildCustomsPhase("TR00102", "TR005", "TR00501"))
+            .concat(buildDeliveryPhase("TR00202", "尾程派送（拆送）", "货物拆柜派送中", "尾端·提拆+派送", "TR009", "TR00901"))
+            .concat(buildDonePhase("TR00502", "已签收", "进卡派跟进（新）", false));
+        } else if (modeKey === "direct") {
+          nodes = buildOrderPhase("TR003", "TR00301")
+            .concat(buildBookingPhase("TR00102", "TR004", "TR00401"))
+            .concat(buildCutoffPhase("TR00302", "TR002", "TR00201"))
+            .concat(buildCustomsPhase("TR00402", "TR005", "TR00501"))
+            .concat(buildDeliveryPhase("TR00202", "尾程派送（直送）", "货物派送中", "尾端·派送预约/POD", "TR009", "TR00901"))
+            .concat(buildDonePhase("TR00502", "已签收", "进卡派跟进（新）", false));
+        } else if (modeKey === "split") {
+          nodes = buildOrderPhase("TR003", "TR00301")
+            .concat(buildBookingPhase("TR00102", "TR004", "TR00401"))
+            .concat(buildCutoffPhase("TR00302", "TR002", "TR00201"))
+            .concat(buildCustomsPhase("TR00402", "TR005", "TR00501"))
+            .concat(buildDeliveryPhase("TR00202", "尾程派送（拆送）", "货物拆柜派送中", "尾端·提拆+派送", "TR009", "TR00901"))
+            .concat(buildDonePhase("TR00502", "已签收", "进卡派跟进（新）", false));
+        } else if (modeKey === "selfPickup") {
+          nodes = buildOrderPhase("TR003", "TR00301")
+            .concat(buildBookingPhase("TR00102", "TR004", "TR00401"))
+            .concat(buildCutoffPhase("TR00302", "TR002", "TR00201"))
+            .concat(buildCustomsPhase("TR00402", "TR010", "TR01001"))
+            .concat([
+              dir("TR010", "海外自提", "已签收", "海外自提", "海外自提", 99),
+              btn("TR01001", "自提完成", "TR00202", "", true, "已签收", "码头自提完成", "进卡派自提", 100)
+            ]);
+        } else if (modeKey === "overseasWh") {
+          nodes = buildOrderPhase("TR003", "TR00301")
+            .concat(buildBookingPhase("TR00102", "TR004", "TR00401"))
+            .concat(buildCutoffPhase("TR00302", "TR002", "TR00201"))
+            .concat(buildCustomsPhase("TR00402", "TR007", "TR00701"))
+            .concat(buildOverseasWhPhase("TR00202"))
+            .concat(buildDonePhase("TR00702", "海外仓自提完成", "进卡派跟进（新）", false));
+        }
+        return nodes;
+      }
+
+      var MODE_DATA = {};
+      MODES.forEach(function (m) {
+        MODE_DATA[m.key] = buildNodes(m.key);
+      });
+
+      var activeMode = MODES[0].key;
+      var modeTabsEl = document.getElementById("modeTabs");
+      var tbody = document.getElementById("nodeTbody");
+      var nameFilter = document.getElementById("nameFilter");
+      var selectedRow = null;
+      var modalMode = "edit";
+      var editingId = null;
+
+      var nodeModal = document.getElementById("nodeModal");
+      var modalTitle = document.getElementById("modalTitle");
+      var fId = document.getElementById("fId");
+      var fName = document.getElementById("fName");
+      var fTrack = document.getElementById("fTrack");
+      var fCustomer = document.getElementById("fCustomer");
+      var fEmployee = document.getElementById("fEmployee");
+      var fSort = document.getElementById("fSort");
+      var fPre = document.getElementById("fPre");
+      var fNext = document.getElementById("fNext");
+      var fWaybill = document.getElementById("fWaybill");
+      var fCategory = document.getElementById("fCategory");
+      var fDone = document.getElementById("fDone");
+      var fParent = document.getElementById("fParent");
+      var fRemark = document.getElementById("fRemark");
+
+      MODES.forEach(function (m, i) {
+        var tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "mode-tab" + (i === 0 ? " active" : "");
+        tab.textContent = m.label;
+        tab.dataset.mode = m.key;
+        tab.title = m.pk;
+        tab.addEventListener("click", function () {
+          document.querySelectorAll(".mode-tab").forEach(function (t) { t.classList.remove("active"); });
+          tab.classList.add("active");
+          activeMode = m.key;
+          selectedRow = null;
+          render();
+        });
+        modeTabsEl.appendChild(tab);
+      });
+
+      function render() {
+        var q = (nameFilter.value || "").trim().toLowerCase();
+        var list = MODE_DATA[activeMode].filter(function (n) {
+          if (!q) return true;
+          return n.name.toLowerCase().indexOf(q) > -1 ||
+            n.id.toLowerCase().indexOf(q) > -1 ||
+            (n.customer && n.customer.toLowerCase().indexOf(q) > -1) ||
+            (n.employee && n.employee.toLowerCase().indexOf(q) > -1);
+        });
+        tbody.innerHTML = list.map(function (n, idx) {
+          var isDir = n.type === "目录";
+          return (
+            "<tr data-id=\"" + n.id + "\"" + (isDir ? ' class="row-dir"' : "") + ">" +
+            "<td class=\"col-check\"><input type=\"checkbox\" class=\"row-check\" /></td>" +
+            "<td>" + (idx + 1) + "</td>" +
+            "<td><a href=\"#\" class=\"node-link\">" + n.id + "</a></td>" +
+            "<td>" + n.name + "</td>" +
+            "<td>" + n.type + "</td>" +
+            "<td>" + (n.pre || "") + "</td>" +
+            "<td>" + (n.next || "") + "</td>" +
+            "<td>" + n.done + "</td>" +
+            "<td>" + (n.waybill || "") + "</td>" +
+            "<td>" + (n.customer || "") + "</td>" +
+            "<td>" + (n.employee || "") + "</td>" +
+            "<td>" + n.sort + "</td>" +
+            "</tr>"
+          );
+        }).join("");
+
+        tbody.querySelectorAll("tr").forEach(function (tr) {
+          tr.addEventListener("click", function (e) {
+            if (e.target.type === "checkbox") return;
+            tbody.querySelectorAll("tr").forEach(function (r) { r.classList.remove("selected"); });
+            tr.classList.add("selected");
+            selectedRow = tr.dataset.id;
+          });
+        });
+        tbody.querySelectorAll(".node-link").forEach(function (link) {
+          link.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var tr = link.closest("tr");
+            selectedRow = tr.dataset.id;
+            tbody.querySelectorAll("tr").forEach(function (r) { r.classList.remove("selected"); });
+            tr.classList.add("selected");
+            openModal("edit", selectedRow);
+          });
+        });
+      }
+
+      function setRadio(name, value) {
+        document.querySelectorAll('input[name="' + name + '"]').forEach(function (r) {
+          r.checked = r.value === value;
+        });
+      }
+
+      function getRadio(name) {
+        var el = document.querySelector('input[name="' + name + '"]:checked');
+        return el ? el.value : "";
+      }
+
+      function openModal(mode, nodeId) {
+        modalMode = mode;
+        editingId = nodeId || null;
+        modalTitle.textContent = mode === "add" ? "新增节点" : "编辑节点";
+        fId.readOnly = mode === "edit";
+        fId.classList.toggle("readonly", mode === "edit");
+
+        if (mode === "add") {
+          fId.value = "";
+          fName.value = "";
+          fTrack.value = "";
+          setRadio("fType", "按钮");
+          fCustomer.value = "";
+          fEmployee.value = "";
+          fSort.value = "";
+          setRadio("fPageOp", "是");
+          fPre.value = "";
+          fNext.value = "";
+          fWaybill.value = "";
+          fCategory.value = "";
+          fDone.value = "否";
+          fParent.value = selectedRow ? parentIdOf(findNode(selectedRow) || { id: selectedRow, type: "目录" }) : "";
+          fRemark.value = "";
+        } else {
+          var n = findNode(nodeId);
+          if (!n) return;
+          fId.value = n.id;
+          fName.value = n.name;
+          fTrack.value = n.trackNo || "";
+          setRadio("fType", n.type);
+          fCustomer.value = n.customer || "";
+          fEmployee.value = n.employee || "";
+          fSort.value = n.sort;
+          setRadio("fPageOp", n.pageOperable || (n.type === "按钮" ? "是" : "否"));
+          fPre.value = n.pre || "";
+          fNext.value = n.next || "";
+          fWaybill.value = n.waybill || "";
+          fCategory.value = n.categoryTrad || "";
+          fDone.value = n.done || "否";
+          fParent.value = n.parentId || parentIdOf(n);
+          fRemark.value = n.remark || "";
+        }
+
+        nodeModal.classList.add("open");
+        nodeModal.setAttribute("aria-hidden", "false");
+      }
+
+      function closeModal() {
+        nodeModal.classList.remove("open");
+        nodeModal.setAttribute("aria-hidden", "true");
+        editingId = null;
+      }
+
+      function validateModal() {
+        if (modalMode === "edit") {
+          if (!fId.value.trim()) { alert("请填写节点编号"); return false; }
+          if (!fName.value.trim()) { alert("请填写节点名称"); return false; }
+          if (!getRadio("fType")) { alert("请选择类型"); return false; }
+          if (fSort.value === "") { alert("请填写排序号"); return false; }
+          if (!getRadio("fPageOp")) { alert("请选择页面可操作"); return false; }
+          if (!fParent.value.trim()) { alert("请填写父节点编号"); return false; }
+        }
+        return true;
+      }
+
+      function saveModal() {
+        if (!validateModal()) return;
+        if (modalMode === "add") {
+          alert("原型演示：新增节点已提交（待对接后端）");
+          closeModal();
+          return;
+        }
+        var n = findNode(editingId);
+        if (!n) return;
+        n.name = fName.value.trim();
+        n.trackNo = fTrack.value;
+        n.type = getRadio("fType");
+        n.customer = fCustomer.value.trim();
+        n.employee = fEmployee.value.trim();
+        n.sort = parseInt(fSort.value, 10) || n.sort;
+        n.pageOperable = getRadio("fPageOp");
+        n.pre = fPre.value.trim();
+        n.next = fNext.value.trim();
+        n.waybill = fWaybill.value;
+        n.categoryTrad = fCategory.value;
+        n.done = fDone.value || "否";
+        n.parentId = fParent.value.trim();
+        n.remark = fRemark.value.trim();
+        closeModal();
+        render();
+      }
+
+      document.getElementById("btnQuery").addEventListener("click", render);
+      nameFilter.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") render();
+      });
+      document.getElementById("checkAll").addEventListener("change", function (e) {
+        tbody.querySelectorAll(".row-check").forEach(function (cb) {
+          cb.checked = e.target.checked;
+        });
+      });
+      document.getElementById("btnAdd").addEventListener("click", function () {
+        openModal("add");
+      });
+      document.getElementById("btnEdit").addEventListener("click", function () {
+        if (!selectedRow) {
+          alert("请先选中一行节点");
+          return;
+        }
+        openModal("edit", selectedRow);
+      });
+      document.getElementById("btnModalClose").addEventListener("click", closeModal);
+      document.getElementById("btnModalSubmit").addEventListener("click", saveModal);
+      nodeModal.addEventListener("click", function (e) {
+        if (e.target === nodeModal) closeModal();
+      });
+      fWaybill.addEventListener("change", function () {
+        if (fWaybill.value && WAYBILL_TO_CATEGORY[fWaybill.value]) {
+          fCategory.value = WAYBILL_TO_CATEGORY[fWaybill.value];
+        }
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && nodeModal.classList.contains("open")) closeModal();
+      });
+
+      render();
+    })();
+  </script>
+  <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
+  <script src="fcl-prototype-nav.js" defer></script>
+</body>
+</html>

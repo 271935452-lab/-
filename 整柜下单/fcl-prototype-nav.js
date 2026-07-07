@@ -23,6 +23,7 @@
         { file: "整柜下单-订单录入-MVP.html", label: "整柜下单 · 订单录入" },
         { file: "仓位管理-订舱完善提单-整合-MVP.html", label: "仓位管理 · 订舱与提单" },
         { file: "整柜舱位-业务流程泳道图-MVP.html", label: "整柜舱位 · 业务流程图" },
+        { file: "整柜配送模式-业务流程图-MVP.html", label: "配送模式 · 七种主流程图" },
         { file: "客户管理-编辑-权限配置-MVP.html", label: "客户管理 · 编辑" },
         { file: "员工管理-整柜岗位与客户默认-MVP.html", label: "员工管理 · 整柜岗位" },
         { file: "整柜客户岗位绑定-MVP.html", label: "整柜客户岗位绑定" },

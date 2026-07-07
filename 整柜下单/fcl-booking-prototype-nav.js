@@ -20,6 +20,7 @@
       label: "订舱主流程",
       links: [
         { file: "整柜舱位-业务流程泳道图-MVP.html", label: "舱位 · 业务流程泳道图" },
+        { file: "整柜配送模式-业务流程图-MVP.html", label: "配送模式 · 七种主流程图" },
         { file: "传统订单管理-MVP.html", label: "传统订单管理 · 列表" },
         { file: "整柜下单-订单录入-MVP.html", label: "整柜下单 · 订单录入" },
         { file: "仓位管理-订舱完善提单-整合-MVP.html", label: "仓位管理 · 订舱与提单" },
