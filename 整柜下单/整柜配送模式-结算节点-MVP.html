@@ -127,7 +127,7 @@
   </style>
   <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
 </head>
-<body>
+<body data-fcl-nav="core-flow">
   <header class="top-header">
     <div class="logo">腾信物流 · 基础配置</div>
     <div class="nav-tab">结算节点</div>
@@ -234,27 +234,12 @@
             <label>运单状态</label>
             <select id="fWaybill">
               <option value="">选择运单状态</option>
-              <option value="草稿">草稿</option>
-              <option value="已预报">已预报</option>
-              <option value="已订舱">已订舱</option>
-              <option value="已配舱">已配舱</option>
-              <option value="截单完成">截单完成</option>
-              <option value="已清关">已清关</option>
-              <option value="派送中">派送中</option>
-              <option value="已入海外仓">已入海外仓</option>
-              <option value="已签收">已签收</option>
             </select>
           </div>
           <div class="form-item">
             <label>运单大类</label>
             <select id="fCategory">
               <option value="">选择运单大类</option>
-              <option value="11待订舱">11待订舱</option>
-              <option value="40待出库">40待出库</option>
-              <option value="50待到港">50待到港</option>
-              <option value="70尾程派送">70尾程派送</option>
-              <option value="70海外派送">70海外派送</option>
-              <option value="90已签收">90已签收</option>
             </select>
           </div>
           <div class="form-item">
@@ -288,7 +273,7 @@
     <ul>
       <li>页签切换 7 种配送模式，表格字段与现网「结算节点」页一致。</li>
       <li>节点分<strong>目录</strong>（阶段）与<strong>按钮</strong>（操作）；完结标记为是/否。</li>
-      <li>运单状态按传统调整对照表绑定；节点编辑弹窗：运输状态=运单状态，运单大类=状态大类(传统调整)，完成标识=完结标记。</li>
+      <li>运单状态下拉仅含对照表<strong>备注标红行</strong>；运单大类取下拉「状态大类(传统调整)」全集；选择运单状态后自动带出对应大类。</li>
     </ul>
   </div>
 
@@ -302,7 +287,7 @@
         { pk: "PK2551", label: "整柜直送", key: "direct" },
         { pk: "PK2552", label: "整柜拆送", key: "split" },
         { pk: "PK2553", label: "整柜到港自提", key: "selfPickup" },
-        { pk: "PK2554", label: "整柜海外仓自提--海运", key: "overseasWh" }
+        { pk: "PK2554", label: "整柜海外仓自提", key: "overseasWh" }
       ];
 
       function dir(id, name, waybill, customer, employee, sort, extra) {
@@ -321,11 +306,41 @@
         }, extra);
       }
 
-      var WAYBILL_TO_CATEGORY = {
-        "草稿": "11待订舱", "已预报": "11待订舱", "已订舱": "40待出库", "已配舱": "40待出库",
-        "截单完成": "40待出库", "已清关": "50待到港", "派送中": "70尾程派送",
-        "已入海外仓": "70海外派送", "已签收": "90已签收"
-      };
+      /* 对照表 · 备注标红行 → 运单状态；状态大类(传统调整) → 运单大类 */
+      var RED_ROW_STATUSES = [
+        { label: "草稿", categoryTrad: "11待订舱" },
+        { label: "待预报", categoryTrad: "11待订舱" },
+        { label: "已预报", categoryTrad: "11待订舱" },
+        { label: "已退件", categoryTrad: "21已退件" },
+        { label: "已订舱", categoryTrad: "40待出库" },
+        { label: "装柜完成", categoryTrad: "50待到港" },
+        { label: "离港", categoryTrad: "50待到港" },
+        { label: "到港", categoryTrad: "50待到港" },
+        { label: "港口提柜", categoryTrad: "50待到港" },
+        { label: "海外出库", categoryTrad: "70海外派送" },
+        { label: "已签收", categoryTrad: "90已签收" }
+      ];
+
+      var CATEGORY_TRAD_OPTIONS = [
+        "11待订舱", "21已退件", "40待出库", "50待到港",
+        "70尾程派送", "70海外派送", "90已签收"
+      ];
+
+      var WAYBILL_TO_CATEGORY = {};
+      RED_ROW_STATUSES.forEach(function (r) {
+        WAYBILL_TO_CATEGORY[r.label] = r.categoryTrad;
+      });
+
+      function initStatusSelects() {
+        fWaybill.innerHTML = '<option value="">选择运单状态</option>' +
+          RED_ROW_STATUSES.map(function (r) {
+            return '<option value="' + r.label + '">' + r.label + "</option>";
+          }).join("");
+        fCategory.innerHTML = '<option value="">选择运单大类</option>' +
+          CATEGORY_TRAD_OPTIONS.map(function (c) {
+            return '<option value="' + c + '">' + c + "</option>";
+          }).join("");
+      }
 
       function parentIdOf(node) {
         if (node.type === "目录") return node.id;
@@ -372,8 +387,8 @@
       function buildCutoffPhase(preBtn, nextDir, nextBtn) {
         return [
           dir("TR004", "截单/截关", "", "截单/截关", "截单/截关", 40),
-          btn("TR00401", "补料登记", preBtn, "TR00402", true, "已配舱", "", "配舱登记", 41),
-          btn("TR00402", "截单完成", "TR00401", nextDir + "," + nextBtn, true, "截单完成", "", "", 42)
+          btn("TR00401", "补料登记", preBtn, "TR00402", true, "", "", "配舱登记", 41),
+          btn("TR00402", "截单完成", "TR00401", nextDir + "," + nextBtn, true, "已订舱", "", "", 42)
         ];
       }
 
@@ -381,7 +396,7 @@
         return [
           dir("TR002", "目的港清关", "", "目的港清关", "关务·目的港清关", 20),
           btn("TR00201", "清关登记", preBtn, "TR00202", true, "", "目的港清关", "关务·目的港清关", 21),
-          btn("TR00202", "清关完成", "TR00201", nextDir + "," + nextBtn, true, "已清关", "目的港清关完成", "关务·目的港清关", 22)
+          btn("TR00202", "清关完成", "TR00201", nextDir + "," + nextBtn, true, "装柜完成", "目的港清关完成", "关务·目的港清关", 22)
         ];
       }
 
@@ -389,7 +404,8 @@
         return [
           dir("TR005", name, "", name, employee, 50),
           btn("TR00501", "派送登记", preBtn, "TR00502", true, "", customer, employee, 51),
-          btn("TR00502", "派送完成", "TR00501", nextDir + "," + nextBtn, true, "派送中", customer, employee, 52)
+          btn("TR00502", "派送完成", "TR00501", nextDir + "," + nextBtn, true, "港口提柜", customer, employee, 52,
+            { categoryTrad: "70尾程派送" })
         ];
       }
 
@@ -397,7 +413,7 @@
         return [
           dir("TR007", "海外仓", "", "海外仓", "尾端·入仓预报", 70),
           btn("TR00701", "入仓登记", preBtn, "TR00702", true, "", "货物已入海外仓", "尾端·入仓预报", 71),
-          btn("TR00702", "入仓完成", "TR00701", "TR009,TR00901", true, "已入海外仓", "货物已入海外仓", "尾端·入仓预报", 72)
+          btn("TR00702", "入仓完成", "TR00701", "TR009,TR00901", true, "海外出库", "货物已入海外仓", "尾端·入仓预报", 72)
         ];
       }
 
@@ -693,10 +709,11 @@
         if (e.key === "Escape" && nodeModal.classList.contains("open")) closeModal();
       });
 
+      initStatusSelects();
       render();
     })();
   </script>
   <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
-  <script src="fcl-prototype-nav.js" defer></script>
+  <script src="fcl-core-flow-nav.js" defer></script>
 </body>
 </html>

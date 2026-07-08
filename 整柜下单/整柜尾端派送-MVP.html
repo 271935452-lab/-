@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜尾端派送 · MVP</title>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --tab-active: #fa541c;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --ok: #389e0d;
+      --warn: #d46b08;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .tab-bar {
+      display: flex; align-items: stretch; background: #fafafa;
+      border-bottom: 1px solid var(--line); overflow-x: auto;
+    }
+    .tab-bar a, .tab-bar span {
+      padding: 0 16px; height: 36px; line-height: 36px; white-space: nowrap;
+      border-right: 1px solid var(--line); font-size: 13px; color: var(--text);
+      background: #f5f5f5; text-decoration: none;
+    }
+    .tab-bar .active { background: var(--tab-active); color: #fff; font-weight: 600; }
+
+    .page-hd {
+      background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 14px 0;
+    }
+    .page-title { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+
+    .filter-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px;
+    }
+    .filter-grid-more { display: none; }
+    .filter-wrap.is-expanded .filter-grid-more { display: grid; }
+    .filter-wrap:not(.is-expanded) .filter-grid-default { padding-bottom: 0; }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(2, 1fr); } }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter-item input, .filter-item select, .filter-item textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .filter-item input, .filter-item select { height: 30px; }
+    .filter-item textarea {
+      min-height: 30px; height: 30px; resize: vertical; line-height: 1.4; padding: 4px 8px;
+    }
+    .filter-item .date-range { display: flex; align-items: center; gap: 6px; }
+    .filter-item .date-range input {
+      flex: 1; min-width: 0; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px;
+    }
+    .filter-item .date-range span { color: var(--sub); flex-shrink: 0; }
+    .filter-item.span2 { grid-column: span 2; }
+    .filter-extra {
+      display: flex; justify-content: flex-end; gap: 8px; padding: 10px 0;
+    }
+    .filter-extra .btn {
+      height: 30px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; color: var(--text); cursor: pointer;
+    }
+    .filter-extra .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .filter-extra .btn-more[aria-expanded="true"] { color: var(--blue); border-color: var(--blue); }
+
+    .toolbar {
+      padding: 8px 14px; background: var(--card); border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .toolbar .btn {
+      height: 30px; padding: 0 12px; border: none; border-radius: 4px;
+      cursor: pointer; white-space: nowrap; font-size: 12px; color: #fff;
+    }
+    .tb-blue { background: #1890ff; }
+    .tb-green { background: #52c41a; }
+    .tb-cyan { background: #13c2c2; }
+    .tb-purple { background: #722ed1; }
+    .tb-orange { background: #fa8c16; }
+    .tb-red { background: #ff4d4f; }
+    .tb-gray { background: #8c8c8c; }
+
+    .status-bar {
+      display: flex; flex-wrap: wrap; gap: 0; background: var(--card);
+      border-bottom: 1px solid var(--line); padding: 0 14px;
+    }
+    .status-tab {
+      padding: 10px 14px; border: none; background: none; cursor: pointer;
+      font-size: 13px; color: var(--sub); border-bottom: 2px solid transparent;
+    }
+    .status-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .status-tab .cnt { color: var(--sub); font-size: 12px; margin-left: 2px; }
+
+    .mode-legend {
+      padding: 8px 14px; background: #fafafa; border-bottom: 1px solid var(--line);
+      font-size: 12px; color: var(--sub); line-height: 1.6;
+    }
+    .mode-legend strong { color: var(--text); }
+
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1400px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; white-space: nowrap; vertical-align: middle; }
+    th { background: #fafafa; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+    tr:hover td { background: #e6f7ff; }
+    tr.selected td { background: #bae7ff; }
+    .link { color: var(--blue); cursor: pointer; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; line-height: 18px;
+      border: 1px solid transparent;
+    }
+    .tag-mode { background: #e6f4ff; color: #0958d9; border-color: #91caff; }
+    .tag-mode.skip { background: #f5f5f5; color: #8c8c8c; border-color: #d9d9d9; }
+    .tag-pending { background: #fff7e6; color: #d46b08; border-color: #ffd591; }
+    .tag-ok { background: #f6ffed; color: var(--ok); border-color: #b7eb8f; }
+    .tag-warn { background: #fff1f0; color: #cf1322; border-color: #ffa39e; }
+    .tag-isa { background: #f9f0ff; color: #531dab; border-color: #d3adf7; }
+    .table-foot {
+      padding: 8px 14px; background: var(--card); border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; font-size: 12px; color: var(--sub);
+    }
+    .demo-bar {
+      padding: 6px 14px; background: #e6f4ff; border-bottom: 1px solid #91caff;
+      font-size: 12px; color: #0958d9;
+    }
+    .demo-bar a { color: #1890ff; }
+  </style>
+</head>
+<body data-fcl-page="lastmile" data-fcl-nav="core-flow-v3">
+  <div class="app">
+    <div class="demo-bar">
+      <strong>整柜尾端派送 MVP</strong> · 基于卡派跟进（新）改造 · 七种配送模式 Tab 筛选 + 列表标识 ·
+      <a href="整柜配送模式-业务流程图-MVP.html">配送模式流程图</a>
+    </div>
+
+    <nav class="tab-bar" aria-label="页签">
+      <a href="传统订单管理-MVP.html">传统订单管理</a>
+      <span class="active">整柜尾端派送</span>
+      <a href="仓位管理-订舱完善提单-整合-MVP.html">仓位管理</a>
+    </nav>
+
+    <div class="page-hd">
+      <h1 class="page-title">整柜尾端派送</h1>
+      <div class="filter-wrap" id="filterWrap">
+        <div class="filter-grid filter-grid-default">
+          <div class="filter-item span2">
+            <label>柜号 / 运单号</label>
+            <textarea rows="1" placeholder="支持批量，一行一个或逗号分隔"></textarea>
+          </div>
+          <div class="filter-item">
+            <label>客户单号</label>
+            <input type="text" placeholder="请输入客户单号" />
+          </div>
+          <div class="filter-item">
+            <label>配送模式</label>
+            <select id="filterDeliveryMode">
+              <option value="">全部</option>
+              <option value="PK2548">整柜清关</option>
+              <option value="PK2549">整柜清关直送</option>
+              <option value="PK2550">整柜清关拆送</option>
+              <option value="PK2551">整柜直送</option>
+              <option value="PK2552">整柜拆送</option>
+              <option value="PK2553">整柜到港自提</option>
+              <option value="PK2554">整柜海外仓自提</option>
+            </select>
+          </div>
+        </div>
+        <div class="filter-grid filter-grid-more">
+          <div class="filter-item">
+            <label>FBA 仓 / 目的地</label>
+            <input type="text" placeholder="如 ONT8、洛杉矶仓" />
+          </div>
+          <div class="filter-item">
+            <label>派送类型</label>
+            <select>
+              <option value="">全部</option>
+              <option>直送</option>
+              <option>拆送</option>
+              <option>海外仓入仓</option>
+              <option>码头自提</option>
+              <option>海外仓自提</option>
+              <option>不涉及尾端</option>
+            </select>
+          </div>
+          <div class="filter-item span2">
+            <label>预约时间</label>
+            <div class="date-range">
+              <input type="date" aria-label="预约时间起" />
+              <span>—</span>
+              <input type="date" aria-label="预约时间止" />
+            </div>
+          </div>
+          <div class="filter-item">
+            <label>ISA</label>
+            <input type="text" placeholder="ISA 编号" />
+          </div>
+          <div class="filter-item span2">
+            <label>预计到港</label>
+            <div class="date-range">
+              <input type="date" />
+              <span>—</span>
+              <input type="date" />
+            </div>
+          </div>
+          <div class="filter-item span2">
+            <label>预计提柜</label>
+            <div class="date-range">
+              <input type="date" />
+              <span>—</span>
+              <input type="date" />
+            </div>
+          </div>
+          <div class="filter-item span2">
+            <label>实际提柜</label>
+            <div class="date-range">
+              <input type="date" />
+              <span>—</span>
+              <input type="date" />
+            </div>
+          </div>
+          <div class="filter-item">
+            <label>船司</label>
+            <select>
+              <option value="">全部</option>
+              <option>COSCO</option>
+              <option>EMC</option>
+              <option>MSC</option>
+              <option>CMA</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>提单号</label>
+            <input type="text" placeholder="TXZG..." />
+          </div>
+        </div>
+      </div>
+      <div class="filter-extra">
+        <button type="button" class="btn btn-more" id="btnMoreFilter" aria-expanded="false" aria-controls="filterWrap">更多筛选</button>
+        <button type="button" class="btn btn-primary" id="btnQuery">查询</button>
+        <button type="button" class="btn" id="btnReset">重置</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button type="button" class="btn tb-blue">导出查询</button>
+      <button type="button" class="btn tb-green">约仓登记</button>
+      <button type="button" class="btn tb-cyan">提柜登记</button>
+      <button type="button" class="btn tb-purple">出发登记</button>
+      <button type="button" class="btn tb-orange">卸载登记</button>
+      <button type="button" class="btn tb-blue">上传 POD</button>
+      <button type="button" class="btn tb-gray">修改备注</button>
+      <button type="button" class="btn tb-red">取消约仓</button>
+    </div>
+
+    <div class="status-bar" role="tablist">
+      <button type="button" class="status-tab active" data-filter="all">全部<span class="cnt">(8)</span></button>
+      <button type="button" class="status-tab" data-filter="pending-appt">待约仓<span class="cnt">(2)</span></button>
+      <button type="button" class="status-tab" data-filter="appointed">已约仓<span class="cnt">(2)</span></button>
+      <button type="button" class="status-tab" data-filter="picked">已提柜<span class="cnt">(1)</span></button>
+      <button type="button" class="status-tab" data-filter="delivering">派送中<span class="cnt">(2)</span></button>
+      <button type="button" class="status-tab" data-filter="done">已送达<span class="cnt">(1)</span></button>
+    </div>
+
+    <div class="mode-legend">
+      <strong>七种配送模式 · 尾端派送范围</strong>：
+      清关直送/清关拆送/直送/拆送 → 卡派约仓提柜派送；
+      海外仓自提 → 入仓后客户自提；
+      到港自提 / 仅清关 → 尾端「不涉及」，列表灰标展示。
+    </div>
+
+    <div class="table-wrap">
+      <table aria-label="尾端派送列表">
+        <thead>
+          <tr>
+            <th><input type="checkbox" aria-label="全选" /></th>
+            <th>操作</th>
+            <th>运单号</th>
+            <th>配送模式</th>
+            <th>尾端类型</th>
+            <th>柜号</th>
+            <th>客户单号</th>
+            <th>FBA仓/目的地</th>
+            <th>状态</th>
+            <th>预约时间</th>
+            <th>ISA</th>
+            <th>预计到港</th>
+            <th>预计提柜</th>
+            <th>实际提柜</th>
+            <th>船司</th>
+            <th>提单号</th>
+            <th>海外仓</th>
+            <th>箱数</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="selected" data-status="delivering" data-mode="PK2549">
+            <td><input type="checkbox" checked /></td>
+            <td><span class="link">派送详情</span> · <span class="link">轨迹</span></td>
+            <td><a class="link" href="传统订单管理-MVP.html">RC266501</a></td>
+            <td><span class="tag tag-mode">整柜清关直送</span></td>
+            <td>直送</td>
+            <td>TEMU1234567</td>
+            <td>CUST-2026-001</td>
+            <td>ONT8</td>
+            <td><span class="tag tag-pending">派送中</span></td>
+            <td>2026-07-10 14:00</td>
+            <td><span class="tag tag-isa">ISA-8821</span></td>
+            <td>2026-07-08</td>
+            <td>2026-07-09</td>
+            <td>2026-07-09 10:30</td>
+            <td>COSCO</td>
+            <td>TXZG00000000043</td>
+            <td>洛杉矶海外仓</td>
+            <td>1</td>
+            <td>—</td>
+          </tr>
+          <tr data-status="pending-appt" data-mode="PK2550">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">派送详情</span> · <span class="link">轨迹</span></td>
+            <td><a class="link" href="传统订单管理-MVP.html">RC266502</a></td>
+            <td><span class="tag tag-mode">整柜清关拆送</span></td>
+            <td>拆送</td>
+            <td>MSKU9988776</td>
+            <td>CUST-2026-002</td>
+            <td>LGB8 + SBD1</td>
+            <td><span class="tag tag-warn">待约仓</span></td>
+            <td>—</td>
+            <td>—</td>
+            <td>2026-07-12</td>
+            <td>2026-07-13</td>
+            <td>—</td>
+            <td>EMC</td>
+            <td>TXZG00000000051</td>
+            <td>—</td>
+            <td>2</td>
+            <td>待拆柜后分批派送</td>
+          </tr>
+          <tr data-status="appointed" data-mode="PK2551">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">派送详情</span> · <span class="link">轨迹</span></td>
+            <td><a class="link" href="传统订单管理-MVP.html">RC266503</a></td>
+            <td><span class="tag tag-mode">整柜直送</span></td>
+            <td>直送</td>
+            <td>CCLU5566778</td>
+            <td>CUST-2026-003</td>
+            <td>SMF3</td>
+            <td><span class="tag tag-pending">已约仓</span></td>
+            <td>2026-07-11 09:00</td>
+            <td><span class="tag tag-isa">ISA-9012</span></td>
+            <td>2026-07-10</td>
+            <td>2026-07-11</td>
+            <td>—</td>
+            <td>MSC</td>
+            <td>TXZG00000000051</td>
+            <td>—</td>
+            <td>1</td>
+            <td>—</td>
+          </tr>
+          <tr data-status="picked" data-mode="PK2552">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">派送详情</span> · <span class="link">轨迹</span></td>
+            <td><a class="link" href="传统订单管理-MVP.html">RC266504</a></td>
+            <td><span class="tag tag-mode">整柜拆送</span></td>
+            <td>拆送</td>
+            <td>HLBU3344556</td>
+            <td>CUST-2026-004</td>
+            <td>多个 FBA 仓</td>
+            <td><span class="tag tag-ok">已提柜</span></td>
+            <td>2026-07-09 16:00</td>
+            <td>—</td>
+            <td>2026-07-07</td>
+            <td>2026-07-08</td>
+            <td>2026-07-08 15:20</td>
+            <td>CMA</td>
+            <td>TXZG00000000052</td>
+            <td>纽约仓</td>
+            <td>3</td>
+            <td>已提柜待出发</td>
+          </tr>
+          <tr data-status="done" data-mode="PK2554">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">派送详情</span> · <span class="link">轨迹</span></td>
+            <td><a class="link" href="传统订单管理-MVP.html">RC266506</a></td>
+            <td><span class="tag tag-mode">整柜海外仓自提</span></td>
+            <td>海外仓自提</td>
+            <td>TRHU1122334</td>
+            <td>CUST-2026-006</td>
+            <td>海外仓 LA-01</td>
+            <td><span class="tag tag-ok">已送达</span></td>
+            <td>—</td>
+            <td>—</td>
+            <td>2026-07-05</td>
+            <td>2026-07-06</td>
+            <td>2026-07-06 08:00</td>
+            <td>COSCO</td>
+            <td>TXZG00000000055</td>
+            <td>LA 海外仓</td>
+            <td>1</td>
+            <td>入仓完成 · 待客户自提</td>
+          </tr>
+          <tr data-status="delivering" data-mode="PK2554">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">派送详情</span> · <span class="link">轨迹</span></td>
+            <td><a class="link" href="传统订单管理-MVP.html">RC266507</a></td>
+            <td><span class="tag tag-mode">整柜海外仓自提</span></td>
+            <td>海外仓入仓</td>
+            <td>OOLU7788990</td>
+            <td>CUST-2026-007</td>
+            <td>海外仓 NJ-02</td>
+            <td><span class="tag tag-pending">派送中</span></td>
+            <td>2026-07-12 10:00</td>
+            <td>—</td>
+            <td>2026-07-11</td>
+            <td>2026-07-12</td>
+            <td>—</td>
+            <td>ONE</td>
+            <td>TXZG00000000056</td>
+            <td>新泽西海外仓</td>
+            <td>1</td>
+            <td>入仓预约已确认</td>
+          </tr>
+          <tr data-status="pending-appt" data-mode="PK2548">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">查看运单</span></td>
+            <td><a class="link" href="传统订单管理-MVP.html">RC266508</a></td>
+            <td><span class="tag tag-mode skip">整柜清关</span></td>
+            <td>不涉及尾端</td>
+            <td>—</td>
+            <td>CUST-2026-008</td>
+            <td>—</td>
+            <td><span class="tag tag-mode skip">尾端不涉及</span></td>
+            <td>—</td>
+            <td>—</td>
+            <td>2026-07-15</td>
+            <td>—</td>
+            <td>—</td>
+            <td>EMC</td>
+            <td>TXZG00000000057</td>
+            <td>—</td>
+            <td>1</td>
+            <td>仅清关服务 · 无卡派</td>
+          </tr>
+          <tr data-status="done" data-mode="PK2553">
+            <td><input type="checkbox" /></td>
+            <td><span class="link">查看运单</span></td>
+            <td><a class="link" href="传统订单管理-MVP.html">RC266509</a></td>
+            <td><span class="tag tag-mode skip">整柜到港自提</span></td>
+            <td>码头自提</td>
+            <td>CSNU4455667</td>
+            <td>CUST-2026-009</td>
+            <td>洛杉矶港</td>
+            <td><span class="tag tag-ok">已完结</span></td>
+            <td>—</td>
+            <td>—</td>
+            <td>2026-07-04</td>
+            <td>—</td>
+            <td>2026-07-05 11:00</td>
+            <td>COSCO</td>
+            <td>TXZG00000000058</td>
+            <td>—</td>
+            <td>1</td>
+            <td>客户码头自提结案</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-foot">
+      <span>当前筛选：全部配送模式 · 共 <strong>8</strong> 条</span>
+      <span>50 条/页 · 第 1/1 页</span>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 整柜尾端派送</span>
+    <h3>整柜尾端派送 · MVP</h3>
+    <h4>页面定位</h4>
+    <ul>
+      <li>承接流程 7.2 第四步「派送」与第五步「已完结」，对应原系统 <strong>卡派跟进（新）</strong>，专用于整柜七种配送模式的尾端操作。</li>
+      <li>与传统订单、仓位管理联动：运单号跳转传统订单；提单号与仓位放舱记录一致。</li>
+    </ul>
+    <h4>七种配送模式</h4>
+    <ul>
+      <li><strong>PK2548 整柜清关</strong>：尾端不涉及，列表灰标，仅查看运单。</li>
+      <li><strong>PK2549 整柜清关直送</strong>：直送 · 约仓 → 提柜 → 出发 → POD。</li>
+      <li><strong>PK2550 整柜清关拆送</strong>：拆送 · 拆柜后多 FBA 仓分批派送。</li>
+      <li><strong>PK2551 整柜直送</strong>：直送 · 与 2549 尾端操作一致。</li>
+      <li><strong>PK2552 整柜拆送</strong>：拆送 · 与 2550 尾端操作一致。</li>
+      <li><strong>PK2553 整柜到港自提</strong>：码头自提 · 无卡派约仓，到港后客户自提结案。</li>
+      <li><strong>PK2554 整柜海外仓自提</strong>：入海外仓 → 客户海外仓自提结案。</li>
+    </ul>
+    <h4>筛选区</h4>
+    <ul>
+      <li><strong>默认一行</strong>：柜号/运单号（批量）、客户单号、<strong>配送模式（7 项）</strong>。</li>
+      <li><strong>更多筛选</strong>：FBA仓、派送类型、预约/到港/提柜时间、ISA、船司、提单号。</li>
+      <li>查询、重置、更多筛选置于筛选区右下方。</li>
+    </ul>
+    <h4>工具栏</h4>
+    <ul>
+      <li>约仓登记、提柜登记、出发登记、卸载登记、上传 POD、修改备注、取消约仓等（按配送模式与状态启用/禁用，原型演示）。</li>
+      <li>「不涉及尾端」模式（清关-only、到港自提）隐藏或禁用卡派类按钮。</li>
+    </ul>
+    <h4>状态页签</h4>
+    <ul>
+      <li>全部 · 待约仓 · 已约仓 · 已提柜 · 派送中 · 已送达。</li>
+      <li>与配送模式筛选、列表 <code>data-mode</code> / <code>data-status</code> 联动（原型演示）。</li>
+    </ul>
+  </div>
+
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var DELIVERY_MODES = {
+        PK2548: "整柜清关",
+        PK2549: "整柜清关直送",
+        PK2550: "整柜清关拆送",
+        PK2551: "整柜直送",
+        PK2552: "整柜拆送",
+        PK2553: "整柜到港自提",
+        PK2554: "整柜海外仓自提"
+      };
+
+      function toast(msg, type) {
+        if (window.FclCore && FclCore.toast) FclCore.toast(msg, type || "ok");
+        else alert(msg);
+      }
+
+      var filterWrap = document.getElementById("filterWrap");
+      var btnMoreFilter = document.getElementById("btnMoreFilter");
+      if (filterWrap && btnMoreFilter) {
+        btnMoreFilter.addEventListener("click", function () {
+          var expanded = filterWrap.classList.toggle("is-expanded");
+          btnMoreFilter.setAttribute("aria-expanded", expanded ? "true" : "false");
+          btnMoreFilter.textContent = expanded ? "收起筛选" : "更多筛选";
+        });
+      }
+
+      document.getElementById("btnQuery").addEventListener("click", function () {
+        var mode = document.getElementById("filterDeliveryMode").value;
+        var rows = document.querySelectorAll('table[aria-label="尾端派送列表"] tbody tr');
+        var shown = 0;
+        rows.forEach(function (tr) {
+          var match = !mode || tr.dataset.mode === mode;
+          tr.hidden = !match;
+          if (match) shown++;
+        });
+        var label = mode ? DELIVERY_MODES[mode] : "全部配送模式";
+        document.querySelector(".table-foot span").innerHTML =
+          "当前筛选：<strong>" + label + "</strong> · 共 <strong>" + shown + "</strong> 条";
+        toast("查询完成 · 显示 " + shown + " 条（原型演示）");
+      });
+
+      document.getElementById("btnReset").addEventListener("click", function () {
+        document.querySelectorAll(".page-hd input, .page-hd select, .page-hd textarea").forEach(function (el) {
+          if (el.tagName === "SELECT") el.selectedIndex = 0;
+          else el.value = "";
+        });
+        document.querySelectorAll('table[aria-label="尾端派送列表"] tbody tr').forEach(function (tr) {
+          tr.hidden = false;
+        });
+        document.querySelector(".table-foot span").innerHTML = "当前筛选：全部配送模式 · 共 <strong>8</strong> 条";
+        toast("筛选条件已重置");
+      });
+
+      document.querySelectorAll(".status-tab").forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (t) {
+            t.classList.remove("active");
+          });
+          tab.classList.add("active");
+          var f = tab.getAttribute("data-filter");
+          var rows = document.querySelectorAll('table[aria-label="尾端派送列表"] tbody tr');
+          var shown = 0;
+          rows.forEach(function (tr) {
+            var match = f === "all" || tr.dataset.status === f;
+            tr.hidden = !match;
+            if (match) shown++;
+          });
+          toast("已切换至「" + tab.textContent.trim() + "」· " + shown + " 条");
+        });
+      });
+
+      document.querySelectorAll(".toolbar .btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var checked = document.querySelectorAll('table[aria-label="尾端派送列表"] tbody input:checked').length;
+          if (btn.textContent.indexOf("导出") !== -1) {
+            toast("导出任务已提交（原型演示）");
+            return;
+          }
+          if (!checked && btn.classList.contains("tb-red")) {
+            toast("请先勾选记录", "warn");
+            return;
+          }
+          toast("「" + btn.textContent.trim() + "」已提交（原型演示）");
+        });
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
+  <script src="fcl-core-interactions.js" defer></script>
+  <script src="fcl-core-flow-v3-nav.js" defer></script>
+</body>
+</html>

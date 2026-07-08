@@ -35,14 +35,16 @@
         { file: "ESS整柜报价编辑-MVP.html", label: "报价编辑 · 分段" },
         { file: "ESS整柜报价编辑-一口价-MVP.html", label: "报价编辑 · 一口价" },
         { file: "ESS整柜报价详情-MVP.html", label: "报价详情 · 混合" },
+        { file: ERQI + "报价员配置-MVP.html", label: "报价员配置" },
       ],
     },
     {
-      label: "岗位 · 订舱岗",
+      label: "岗位 · V3.0",
       links: [
+        { file: "整柜流程V3.0-原型导航.html", label: "整柜流程V3.0 · 导航首页" },
         { file: "整柜客户岗位绑定-MVP.html", label: "整柜客户岗位绑定" },
         { file: "员工管理-整柜岗位与客户默认-MVP.html", label: "员工管理 · 整柜岗位" },
-        { file: ERQI + "报价员配置-MVP.html", label: "报价员配置" },
+        { file: "整柜尾端派送-MVP.html", label: "整柜尾端派送" },
       ],
     },
     {

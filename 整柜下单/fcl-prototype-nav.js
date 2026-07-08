@@ -17,6 +17,13 @@
       ],
     },
     {
+      label: "流程导航",
+      links: [
+        { file: "整柜流程V2.0-原型导航.html", label: "整柜流程V2.0 · 主链路" },
+        { file: "整柜流程V3.0-原型导航.html", label: "整柜流程V3.0 · 尾端与岗位" },
+      ],
+    },
+    {
       label: "下单与舱位",
       links: [
         { file: "传统订单管理-MVP.html", label: "传统订单管理 · 列表" },
@@ -24,9 +31,15 @@
         { file: "仓位管理-订舱完善提单-整合-MVP.html", label: "仓位管理 · 订舱与提单" },
         { file: "整柜舱位-业务流程泳道图-MVP.html", label: "整柜舱位 · 业务流程图" },
         { file: "整柜配送模式-业务流程图-MVP.html", label: "配送模式 · 七种主流程图" },
-        { file: "客户管理-编辑-权限配置-MVP.html", label: "客户管理 · 编辑" },
-        { file: "员工管理-整柜岗位与客户默认-MVP.html", label: "员工管理 · 整柜岗位" },
+      ],
+    },
+    {
+      label: "V3.0 · 尾端与岗位",
+      links: [
+        { file: "整柜尾端派送-MVP.html", label: "整柜尾端派送" },
         { file: "整柜客户岗位绑定-MVP.html", label: "整柜客户岗位绑定" },
+        { file: "员工管理-整柜岗位与客户默认-MVP.html", label: "员工管理 · 整柜岗位" },
+        { file: "客户管理-编辑-权限配置-MVP.html", label: "客户管理 · 编辑" },
       ],
     },
     {
