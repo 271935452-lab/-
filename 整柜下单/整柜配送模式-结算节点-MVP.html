@@ -273,7 +273,18 @@
     <ul>
       <li>页签切换 7 种配送模式，表格字段与现网「结算节点」页一致。</li>
       <li>节点分<strong>目录</strong>（阶段）与<strong>按钮</strong>（操作）；完结标记为是/否。</li>
-      <li>运单状态下拉仅含对照表<strong>备注标红行</strong>；运单大类取下拉「状态大类(传统调整)」全集；选择运单状态后自动带出对应大类。</li>
+      <li>新增/编辑弹窗「运单状态」下拉与业务系统运单状态字典一致（<strong>展示不含数字编码</strong>，见下方枚举）；选择后自动带出对应「运单大类」。</li>
+      <li><strong>运单状态枚举</strong>（与业务系统一致，本期展示去掉前缀数字）：
+        <ul>
+          <li>订舱前：草稿、待预报、已预报</li>
+          <li>异常：已作废、已退件</li>
+          <li>出库前：已签入、已订舱、制单中、已制单、调拨出库、调拨入库</li>
+          <li>在途/到港：装柜完成、出库完成、离港、到港、港口提柜、<strong>清关完成（本期新增）</strong></li>
+          <li>尾程：海外拆柜、确认报价、海外出库、自提下载、移交快递</li>
+          <li>完结：已签收</li>
+        </ul>
+      </li>
+      <li>运单大类取下拉「状态大类(传统调整)」全集（<strong>展示不含数字编码</strong>）：待签入、待订舱、已作废、已退件、待出库、已出库、尾程派送、已交快递、已签收；与运单状态存在默认映射，可手工改选。</li>
     </ul>
   </div>
 
@@ -306,34 +317,46 @@
         }, extra);
       }
 
-      /* 对照表 · 备注标红行 → 运单状态；状态大类(传统调整) → 运单大类 */
-      var RED_ROW_STATUSES = [
-        { label: "草稿", categoryTrad: "11待订舱" },
-        { label: "待预报", categoryTrad: "11待订舱" },
-        { label: "已预报", categoryTrad: "11待订舱" },
-        { label: "已退件", categoryTrad: "21已退件" },
-        { label: "已订舱", categoryTrad: "40待出库" },
-        { label: "装柜完成", categoryTrad: "50待到港" },
-        { label: "离港", categoryTrad: "50待到港" },
-        { label: "到港", categoryTrad: "50待到港" },
-        { label: "港口提柜", categoryTrad: "50待到港" },
-        { label: "海外出库", categoryTrad: "70海外派送" },
-        { label: "已签收", categoryTrad: "90已签收" }
+      /* 运单状态字典（与业务系统一致，展示不含数字编码）→ 运单大类默认映射 */
+      var WAYBILL_STATUSES = [
+        { label: "草稿", categoryTrad: "待订舱" },
+        { label: "待预报", categoryTrad: "待订舱" },
+        { label: "已预报", categoryTrad: "待订舱" },
+        { label: "已作废", categoryTrad: "已作废" },
+        { label: "已退件", categoryTrad: "已退件" },
+        { label: "已签入", categoryTrad: "待签入" },
+        { label: "已订舱", categoryTrad: "待出库" },
+        { label: "制单中", categoryTrad: "待出库" },
+        { label: "已制单", categoryTrad: "待出库" },
+        { label: "调拨出库", categoryTrad: "待出库" },
+        { label: "调拨入库", categoryTrad: "待出库" },
+        { label: "装柜完成", categoryTrad: "已出库" },
+        { label: "出库完成", categoryTrad: "已出库" },
+        { label: "离港", categoryTrad: "已出库" },
+        { label: "到港", categoryTrad: "已出库" },
+        { label: "港口提柜", categoryTrad: "已出库" },
+        { label: "清关完成", categoryTrad: "已出库" },
+        { label: "海外拆柜", categoryTrad: "尾程派送" },
+        { label: "确认报价", categoryTrad: "尾程派送" },
+        { label: "海外出库", categoryTrad: "尾程派送" },
+        { label: "自提下载", categoryTrad: "尾程派送" },
+        { label: "移交快递", categoryTrad: "已交快递" },
+        { label: "已签收", categoryTrad: "已签收" }
       ];
 
       var CATEGORY_TRAD_OPTIONS = [
-        "11待订舱", "21已退件", "40待出库", "50待到港",
-        "70尾程派送", "70海外派送", "90已签收"
+        "待签入", "待订舱", "已作废", "已退件", "待出库",
+        "已出库", "尾程派送", "已交快递", "已签收"
       ];
 
       var WAYBILL_TO_CATEGORY = {};
-      RED_ROW_STATUSES.forEach(function (r) {
+      WAYBILL_STATUSES.forEach(function (r) {
         WAYBILL_TO_CATEGORY[r.label] = r.categoryTrad;
       });
 
       function initStatusSelects() {
         fWaybill.innerHTML = '<option value="">选择运单状态</option>' +
-          RED_ROW_STATUSES.map(function (r) {
+          WAYBILL_STATUSES.map(function (r) {
             return '<option value="' + r.label + '">' + r.label + "</option>";
           }).join("");
         fCategory.innerHTML = '<option value="">选择运单大类</option>' +
@@ -396,7 +419,7 @@
         return [
           dir("TR002", "目的港清关", "", "目的港清关", "关务·目的港清关", 20),
           btn("TR00201", "清关登记", preBtn, "TR00202", true, "", "目的港清关", "关务·目的港清关", 21),
-          btn("TR00202", "清关完成", "TR00201", nextDir + "," + nextBtn, true, "装柜完成", "目的港清关完成", "关务·目的港清关", 22)
+          btn("TR00202", "清关完成", "TR00201", nextDir + "," + nextBtn, true, "清关完成", "目的港清关完成", "关务·目的港清关", 22)
         ];
       }
 
@@ -405,7 +428,7 @@
           dir("TR005", name, "", name, employee, 50),
           btn("TR00501", "派送登记", preBtn, "TR00502", true, "", customer, employee, 51),
           btn("TR00502", "派送完成", "TR00501", nextDir + "," + nextBtn, true, "港口提柜", customer, employee, 52,
-            { categoryTrad: "70尾程派送" })
+            { categoryTrad: "尾程派送" })
         ];
       }
 

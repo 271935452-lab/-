@@ -178,7 +178,7 @@
       if (!tab.getAttribute("data-filter")) {
         var filters = ["all", "unreleased", "freight", "cutoff", "released"];
         if (attr === "data-status") {
-          filters = ["all", "pending-booking", "pending-loading", "pending-customs", "signed", "returned"];
+          filters = ["all", "pending-booking", "pending-loading", "pending-customs", "pending-sign", "completed", "returned"];
         }
         tab.setAttribute("data-filter", filters[idx] || "all");
       }
@@ -194,7 +194,7 @@
         var shown = 0;
         rows.forEach(function (tr) {
           var match = f === "all" || tr.getAttribute(attr) === f ||
-            (f === "freight" && (tr.getAttribute("data-freight") === "warn" || tr.getAttribute("data-freight") === "expired")) ||
+            (f === "freight" && tr.getAttribute("data-freight") === "expired") ||
             (f === "cutoff" && tr.getAttribute("data-cutoff") === "near");
           tr.hidden = !match;
           if (match) shown++;

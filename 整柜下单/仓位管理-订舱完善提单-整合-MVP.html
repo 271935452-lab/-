@@ -336,9 +336,13 @@
       text-align: right;
     }
     .drawer .form-grid.compact-inline .field.field-stack label { text-align: left; margin-bottom: 2px; }
+    .drawer .form-grid.compact-inline.cols3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .drawer .form-grid.compact-inline .field.field-loading-addr .field-hint { display: none; }
+    .drawer .form-grid.compact-inline .field.field-loading-addr input[readonly] { color: var(--text); }
     @media (max-width: 1200px) {
       .drawer-row { grid-template-columns: 1fr; }
       .drawer .form-grid.cols4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .drawer .form-grid.compact-inline.cols3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     .sec {
@@ -365,6 +369,9 @@
     .field input[readonly], .field .readonly {
       background: #fafafa; color: var(--sub);
     }
+    .field select:disabled {
+      background: #f5f5f5; color: rgba(0, 0, 0, 0.45); cursor: not-allowed;
+    }
     .slot-table input:disabled, .slot-table select:disabled {
       background: #fafafa; color: var(--sub); cursor: not-allowed;
     }
@@ -374,7 +381,9 @@
     .transit-inline {
       display: flex; align-items: center; gap: 8px; min-height: 28px; flex-wrap: wrap;
     }
-    .transit-inline .transit-port-input { flex: 1; min-width: 120px; height: 28px; }
+    .transit-inline .transit-port-ac-wrap { flex: 1; min-width: 160px; }
+    .transit-port-ac-wrap .transit-port-input { width: 100%; height: 28px; }
+    .transit-port-row .transit-port-ac-wrap { min-width: 0; }
     .transit-ports { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-top: 4px; }
     .transit-port-row {
       display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 6px; align-items: center;
@@ -661,8 +670,8 @@
                 <select><option>全部</option><option>未放舱</option><option>已放舱</option></select>
               </div>
               <div class="filter-item">
-                <label>海运费状态</label>
-                <select><option>全部</option><option>正常</option><option>即将过期</option><option>已过期</option></select>
+                <label>海运费异常状态</label>
+                <select><option>全部</option><option>正常</option><option>已过期</option></select>
               </div>
             </div>
             <div class="filter-grid filter-grid-more">
@@ -720,17 +729,16 @@
           <span class="mark-new">新</span>
           <button type="button" class="status-tab active" data-filter="all">全部(15)</button>
           <button type="button" class="status-tab" data-filter="unreleased">未放舱<span class="cnt">(3)</span></button>
-          <button type="button" class="status-tab" data-filter="freight">海运费异常<span class="cnt">(2)</span></button>
+          <button type="button" class="status-tab" data-filter="freight">海运费异常<span class="cnt">(1)</span></button>
           <button type="button" class="status-tab" data-filter="cutoff">截单/截关临近(1)</button>
           <button type="button" class="status-tab" data-filter="released">已放舱(11)</button>
         </div>
 
         <div class="legend-bar">
-          <span><i class="lg-danger"></i>红底行：未放舱 / 海运费已过期 / 装柜完成不在有效期内 / 必填缺失</span>
-          <span><i class="lg-warn"></i>橙底行：海运费即将过期 / 截关未抓取且距开船≤3天 / 截单 48h 内 / 船期待确认</span>
+          <span><i class="lg-danger"></i>红底行：未放舱（放舱=否）/ 海运费已过期 / 装柜完成不在有效期内 / 必填缺失</span>
+          <span><i class="lg-warn"></i>橙底行：截关时间为空 / 截关距 ETD≤3 天 / 截单(SI) 48h 内 / 船期待确认</span>
           <span><i class="lg-void"></i>灰底删除线：甩柜换船后原舱作废</span>
           <span><i class="lg-new"></i>绿底行：甩柜换船后新生成舱位</span>
-          <span>红字单元格：海运费金额/有效期异常等</span>
         </div>
 
         <div class="table-wrap">
@@ -756,6 +764,7 @@
                 <th>ETA</th>
                 <th>带车架</th>
                 <th>放舱</th>
+                <th>进港时间<span class="mark-new">新</span></th>
                 <th>海运费</th>
                 <th>备注</th>
               </tr>
@@ -781,6 +790,7 @@
                 <td>2026-08-03 00:00</td>
                 <td>否</td>
                 <td><span class="tag tag-ok">已放舱</span></td>
+                <td>—</td>
                 <td><span class="tag tag-ok">正常</span></td>
                 <td>—</td>
               </tr>
@@ -804,10 +814,11 @@
                 <td>2026-07-28 00:00</td>
                 <td>是<span class="tag tag-tail">尾端</span></td>
                 <td><span class="tag tag-no">未放舱</span></td>
+                <td class="cell-danger">—</td>
                 <td><span class="tag tag-no">已过期</span></td>
                 <td>未放舱待导出BC</td>
               </tr>
-              <tr class="row-warn" data-transit="1" data-release="released" data-freight="warn" data-waybills="RC266503,RC266504">
+              <tr class="row-warn" data-transit="1" data-release="released" data-freight="ok" data-waybills="RC266503,RC266504">
                 <td><input type="checkbox" /></td>
                 <td>3</td>
                 <td>MSC OSCAR / 045W</td>
@@ -827,10 +838,11 @@
                 <td>2026-07-25 00:00</td>
                 <td>否</td>
                 <td><span class="tag tag-ok">已放舱</span></td>
-                <td><span class="tag tag-warn">即将过期</span></td>
-                <td>进港前需更新海运费</td>
+                <td>—</td>
+                <td><span class="tag tag-ok">正常</span></td>
+                <td>中转港 · 纽约</td>
               </tr>
-              <tr class="row-warn" data-release="released" data-freight="warn" data-cutoff="near" data-waybills="RC266505" data-schedule-pending="1">
+              <tr class="row-warn" data-release="released" data-freight="ok" data-cutoff="near" data-waybills="RC266505" data-schedule-pending="1">
                 <td><input type="checkbox" /></td>
                 <td>4</td>
                 <td>CMA CGM MARCO POLO / 089E</td>
@@ -850,6 +862,7 @@
                 <td>2026-07-20 00:00</td>
                 <td>否</td>
                 <td><span class="tag tag-ok">已放舱</span></td>
+                <td>—</td>
                 <td><span class="tag tag-ok">正常</span></td>
                 <td>船期变更待订舱确认；截关待抓取·距开船≤3天</td>
               </tr>
@@ -873,6 +886,7 @@
                 <td>2026-07-18 00:00</td>
                 <td>否</td>
                 <td><span class="tag tag-void">已作废</span></td>
+                <td>2026-06-08</td>
                 <td><span class="tag tag-ok">正常</span></td>
                 <td>甩柜换船作废 · 新船 COSCO AQUARIUS / 2518W（原 MAERSK LUZ / 318W）</td>
               </tr>
@@ -912,7 +926,7 @@
           </thead>
           <tbody id="waybillPickTbody"></tbody>
         </table>
-        <p class="field-hint" style="margin:8px 0 0;font-size:11px;color:var(--sub)">仅展示<strong>已预报且未绑定仓位</strong>的整柜运单；双击行或点「确定」完成选择。</p>
+        <p class="field-hint" style="margin:8px 0 0;font-size:11px;color:var(--sub)">须已填<strong>起运港、目的港、仓位录入（箱型+数量）</strong>后，按港口与箱型数量组合匹配运单；仅展示已预报且未绑定仓位的运单。</p>
       </div>
       <footer class="modal-ft">
         <button type="button" class="btn" id="waybillPickCancel">取消</button>
@@ -1046,7 +1060,10 @@
             <div class="field field-transit-wrap full">
               <div class="transit-inline">
                 <label class="check-inline"><input type="checkbox" id="chkTransit" /> 中转</label>
-                <input type="text" id="transitPortMain" class="transit-port-input" placeholder="中转港" hidden />
+                <div class="field-port transit-port-ac-wrap" id="transitPortWrap" hidden>
+                  <input type="text" id="transitPortMain" class="transit-port-input" placeholder="搜索中转港" autocomplete="off" />
+                  <div class="port-ac" id="transitPortAc" hidden></div>
+                </div>
               </div>
               <div class="transit-ports" id="transitPortsExtra" hidden></div>
             </div>
@@ -1110,6 +1127,10 @@
             <div class="field">
               <label>收货人</label>
               <input type="text" id="baseConsignee" readonly value="ABC Trading Inc.（装柜后补全地址）" />
+            </div>
+            <div class="field">
+              <label>拖车方式</label>
+              <input type="text" id="baseTruckMode" readonly value="我司统一安排拖车" />
             </div>
             <div class="field">
               <label>下单车架备注</label>
@@ -1302,16 +1323,17 @@
               </select>
             </div>
             <div class="field">
-              <label>拖车供应商</label>
-              <select><option>请选择</option><option>福永XX拖车</option></select>
+              <label>车队供应商</label>
+              <select id="truckSupplierSelect"><option>请选择</option><option>福永XX拖车</option></select>
             </div>
             <div class="field">
               <label>报关代理</label>
               <select><option>上海易豹达 / 李关务 / 021-****</option></select>
             </div>
-            <div class="field">
-              <label>装柜地址</label>
-              <input type="text" value="广东省深圳市宝安区福永街道某某物流园" />
+            <div class="field field-loading-addr" id="fieldLoadingAddress">
+              <label>装柜地址<span class="mark-new">新</span></label>
+              <input type="text" id="loadingAddressInput" class="readonly" readonly placeholder="—" title="下单需拖车且已填装柜地址时自动带入" />
+              <p class="field-hint" id="loadingAddressHint">下单需拖车且已填装柜地址时自动带入，只读</p>
             </div>
           </div>
         </div>
@@ -1356,22 +1378,85 @@
     <ul>
       <li>原「订舱登记」与「完善提单」合并为<strong>同一全屏单页</strong>；布局：订舱信息+运单基础信息、飞驼推荐+补充信息、仓位录入+海运费、完善提单+放舱确认。</li>
       <li>放舱 = 流程 7.2 签入 = 仓位信息绑定；须录海运费金额 + 合约有效期。</li>
-      <li>新增须先选运单；编辑/完善通过列表提单号或「完善提单」入口打开。</li>
+      <li>新增须先选运单；编辑/完善通过列表提单号或「完善提单」入口打开。运单匹配规则见下「关联运单」。</li>
+    </ul>
+
+    <h4>新增 · 关联运单（新增订舱）</h4>
+    <ul>
+      <li><strong>触发条件</strong>：新增订舱时，须已选择<strong>起运港、目的港</strong>，且<strong>仓位录入</strong>区已填写箱型与数量，方可按条件匹配可选运单列表。</li>
+      <li><strong>匹配维度</strong>：起运港 + 目的港 + 箱型数量组合须与运单预报一致；仅展示<strong>已预报且未绑定仓位</strong>的运单。</li>
+      <li><strong>一票一柜</strong>：运单仅 1 个柜型 × 数量，须与仓位录入<strong>完全一致</strong>方可筛出。
+        <ul>
+          <li>例：下单 <code>40HQ×1</code>，仓位录入 <code>40HQ×1</code> → 可匹配。</li>
+        </ul>
+      </li>
+      <li><strong>一票多柜</strong>：运单含多个柜型，仓位录入须<strong>箱型与数量全部一致</strong>方可筛出（缺一不可、不可多不可少）。
+        <ul>
+          <li>例：下单 <code>40HQ×1 + 20GP×1</code>，仓位录入 <code>40HQ×1 + 20GP×1</code> → 可匹配。</li>
+          <li>反例：下单 <code>40HQ×1 + 20GP×1</code>，仓位录入仅 <code>40HQ×1</code> → 不匹配，不展示。</li>
+        </ul>
+      </li>
+      <li><strong>选择后带入</strong>：运单号、客户代码、派送方式、柜量类型、货好时间、收货人、拖车方式、装柜地址（需拖车时）、下单车架备注等只读回填；起运港/目的港/首行箱型可与仓位录入互相同步。</li>
     </ul>
 
     <h4>新增 · 列表</h4>
     <ul>
       <li><strong>导出放舱 BC</strong>（模板）、<strong>导出预报模板</strong>（模板）、<strong>未放舱导出</strong>（模板）、<strong>批量导出</strong>（按筛选区+状态页签）、<strong>编辑备注</strong>（备注流转至<strong>卡派跟进（新）</strong>海外卡派总单）。</li>
+      <li><strong>放舱模版 · 联系人</strong>（「导出放舱 BC」「甩柜 BC 导出」等标准放舱模板共用）：<strong>联系人姓名、联系人手机号</strong>取本条订舱记录的<strong>订舱创建人</strong>在 <a href="员工管理-整柜岗位与客户默认-MVP.html">员工管理</a> 中维护的<strong>员工姓名、手机号</strong>；未维护或查无此人时对应字段<strong>留空</strong>（不兜底、不在导出时手填覆盖）。</li>
+      <li><strong>导出预报模板（仓位预报表）</strong>：汇总<strong>已放舱</strong>（放舱状态=是）的舱位记录，按<strong>开船时间（ETD）</strong>所在自然周生成 Excel 标准模板（表头示例「WEEK xx 预报（起止日期）」，周区间以开船时间为准），供订舱岗发送给<strong>订舱代理</strong>做周度舱位预报/对舱确认。模板字段含 <strong>POL、POD、航线、船名航次、船司、开船时间（ETD）、柜量、备注</strong>；数据来源为列表/订舱登记已录入项，同一周内按船司+航线+船名航次聚合柜量。<strong>不含未放舱记录</strong>（未放舱走「未放舱导出」）。与下列导出<strong>用途不同</strong>：
+        <ul>
+          <li><strong>放舱 BC</strong>：单票放舱确认后给客户的放舱单据；</li>
+          <li><strong>未放舱导出</strong>：未放舱舱位 Excel 模板（见下「未放舱导出」字段映射），非本预报模板；</li>
+          <li>运单侧「提交预报」：客户/业务员向货代提交订单意向，非本模板；</li>
+          <li>海外仓预报：到港/拆柜计划（含 ETA、consignee 等），非本模板。</li>
+        </ul>
+      </li>
+      <li><strong>未放舱导出（未放舱数据模板）</strong>：一键导出<strong>未放舱</strong>（放舱状态=否）舱位记录，叠加当前筛选区条件，生成 Excel 标准模板（表头「未放舱数据」）。字段映射：
+        <ul>
+          <li><strong>编码</strong>：取本条舱位<strong>绑定的报价编码</strong>（关联报价单号，如 BJ…）；未绑定则<strong>留空</strong>。</li>
+          <li><strong>订舱时间</strong>：取本条<strong>仓位创建时间</strong>（订舱登记保存时间）。</li>
+          <li><strong>代理名称、船名航次、起运港、目的港、ETD</strong>：取订舱登记/列表已录入项。</li>
+          <li><strong>备注</strong>：拼接订舱登记中的<strong>是否保舱</strong>、<strong>是否 SOC/COC</strong>（如「保舱：是 · SOC/COC：COC」）；<strong>是否超重</strong>待业务确认后纳入，本期导出<strong>不含</strong>。</li>
+        </ul>
+      </li>
       <li><strong>编辑舱位 / 完善提单</strong>：同一页面，<strong>必填项因场景不同</strong>（见下「订舱编辑状态」）。</li>
       <li><strong>甩柜换船</strong>、<strong>甩柜 BC 导出</strong>：已放舱记录换船，原舱作废、异人录入新舱。</li>
+      <li><strong>进港时间</strong>：列表新增列，取自关联运单「装柜完成」登记的进港时间（多运单时展示首条或「—」）；供海运费异常判定与订舱岗核对。</li>
     </ul>
 
-    <h4>新增 · 海运费异常标红</h4>
+    <h4>新增 · 状态页签</h4>
     <ul>
-      <li><strong>无合约时间</strong>：不判断，不标红。</li>
-      <li><strong>有合约时间，关联运单无进港时间</strong>：标红；补录「超出有效期调价金额」（非 0 且非空）后恢复正常。</li>
-      <li><strong>有合约时间，进港时间超出合约止</strong>：标红；补充「超出有效期调价金额」后恢复正常。</li>
-      <li><strong>有合约时间，进港时间在合约期间内</strong>：正常。</li>
+      <li><strong>全部</strong>：展示当前筛选条件下的全部舱位记录。</li>
+      <li><strong>未放舱</strong>：放舱状态为<strong>否</strong>的记录（含新增订舱登记且尚未放舱）；列表以<strong>红底行</strong>标识。</li>
+      <li><strong>海运费异常</strong>：「海运费」列状态为<strong>已过期</strong>的记录；该列枚举仅<strong>已过期</strong>、<strong>正常</strong>两种（无「即将过期」）。页签与筛选区「海运费异常状态」联动，判定规则见下「海运费异常」。</li>
+      <li><strong>截单/截关临近</strong>：满足下列任一条件时列表<strong>橙底行</strong>或相关时间单元格标橙，并归入本页签：
+        <ul>
+          <li><strong>截关时间为空</strong>（未抓取/未填写）；</li>
+          <li><strong>截关时间距 ETD ≤ 3 天</strong>；</li>
+          <li><strong>截单时间(SI) 距当前时间 ≤ 48 小时</strong>。</li>
+        </ul>
+      </li>
+      <li><strong>已放舱</strong>：放舱状态为<strong>已放舱</strong>（是）的记录。</li>
+      <li>页签计数随列表筛选结果动态更新；切换页签在原型中按 <code>data-release</code> / <code>data-freight</code> / <code>data-cutoff</code> 等属性过滤演示。</li>
+    </ul>
+
+    <h4>新增 · 列表行样式</h4>
+    <ul>
+      <li><strong>红底行</strong>：未放舱（放舱状态=否）/ 海运费已过期 / 装柜完成不在合约有效期内 / 必填缺失。</li>
+      <li><strong>橙底行</strong>：截关时间为空 / 截关距 ETD≤3 天 / 截单(SI) 距当前≤48h / 船期变更待确认。</li>
+      <li><strong>灰底删除线</strong>：甩柜换船后原舱作废。</li>
+      <li><strong>绿底行</strong>：甩柜换船后新生成舱位。</li>
+    </ul>
+
+    <h4>新增 · 海运费异常（两个节点触发）</h4>
+    <ul>
+      <li><strong>触发节点 ① · 装柜完成</strong>：关联运单在「装柜完成」确认后，系统按下列规则重算海运费异常状态；异常时列表行标红，「海运费」列显示<strong>已过期</strong>。</li>
+      <li><strong>触发节点 ② · 编辑超出有效调价金额</strong>：订舱岗在编辑舱位时补录「超出有效调价金额」后，海运费状态恢复<strong>正常</strong>（列表标红消除）。</li>
+      <li><strong>无合约时间</strong>：不判断。</li>
+      <li><strong>有合约时间，且没有运单的进港时间关联在内</strong>：标红，海运费状态<strong>已过期</strong>；「超出有效调价金额」不为 0 且不为空时，后正常（海运费状态<strong>正常</strong>）。</li>
+      <li><strong>有合约时间，且运单的进港时间超过合约止</strong>：标红，海运费状态<strong>已过期</strong>；补充「超出有效调价金额」后正常（海运费状态<strong>正常</strong>）。</li>
+      <li><strong>有合约时间，且运单的进港时间在合约期间内</strong>：正常（海运费状态<strong>正常</strong>）。</li>
+      <li>进港时间来源：关联运单「装柜完成」时登记的进港时间（见 <a href="传统订单管理-MVP.html">传统订单管理 PRD</a>）。</li>
     </ul>
 
     <h4>调整 · 新增/编辑订舱</h4>
@@ -1383,6 +1468,9 @@
       <li><strong>放舱资料</strong>：上传后同步至关联运单，供客户与业务员下载。</li>
       <li><strong>放舱状态 = 否</strong>：提单号、截单时间(SI)、SO No 均为<strong>非必填</strong>。</li>
       <li><strong>放舱状态 = 是（编辑态）</strong>：<strong>提单号、放舱状态、仓位录入</strong>（箱型/数量/SO/增删行）不可修改。</li>
+      <li><strong>超出有效调价金额</strong>（编辑区字段标签：超出有效期调价金额）：海运费状态为「已过期」时可补录；补录后由<strong>触发节点 ②</strong>将海运费状态恢复<strong>正常</strong>。</li>
+      <li><strong>装柜地址</strong>：完善提单区<strong>两列两行</strong>（分公司+车队供应商 / 报关代理+装柜地址）；关联运单拖车方式为「我司统一安排拖车」且已填装柜地址 → <strong>只读带入</strong>；客户自拖车时占位提示「客户自拖车，无装柜地址」。基础信息区同步只读展示<strong>拖车方式</strong>。</li>
+      <li><strong>车队供应商</strong>：仅当装柜地址<strong>有值</strong>时可选；装柜地址为空（含客户自拖车、需拖车但未填地址）时<strong>置灰不可选</strong>并清空已选。</li>
       <li><strong>车架备注</strong>：下单页「车架备注」只读带入「下单车架备注」，订舱岗在放舱确认可再确认是否带车架。</li>
     </ul>
 
@@ -1433,6 +1521,8 @@
           cargoReady: "2026-06-15",
           consignee: "Hamburg Trading GmbH（装柜后补全地址）",
           orderChassis: "yes",
+          truckMode: "self",
+          loadingAddress: "",
           pol: "CNNGB · 宁波",
           pod: "DEHAM · 汉堡",
           boxSpec: "40HQ+20GP",
@@ -1448,6 +1538,8 @@
           cargoReady: "2026-06-22",
           consignee: "West Coast Retail LLC（装柜后补全地址）",
           orderChassis: "no",
+          truckMode: "company",
+          loadingAddress: "广东省东莞市虎门镇港口路 88 号 XX 工业园",
           pol: "CNYTN · 盐田",
           pod: "USLAX · 洛杉矶",
           boxSpec: "40HQ",
@@ -1463,6 +1555,8 @@
           cargoReady: "2026-06-25",
           consignee: "NY Import Co.（装柜后补全地址）",
           orderChassis: "no",
+          truckMode: "company",
+          loadingAddress: "",
           pol: "CNSHA · 上海",
           pod: "USNYC · 纽约",
           boxSpec: "40HQ",
@@ -1477,7 +1571,9 @@
         boxType: "一票一柜",
         cargoReady: "2026-06-20",
         consignee: "ABC Trading Inc.（装柜后补全地址）",
-        orderChassis: "yes"
+        orderChassis: "yes",
+        truckMode: "company",
+        loadingAddress: "广东省深圳市宝安区福永街道某某物流园"
       };
 
       var waybillPickSelected = null;
@@ -1565,8 +1661,12 @@
         var label = transitPortLabels[index] || String(index + 1);
         row.innerHTML =
           '<span>港' + label + "</span>" +
-          '<input type="text" class="transit-port-input" placeholder="港口" value="' + (value || "").replace(/"/g, "&quot;") + '" />' +
+          '<div class="field-port transit-port-ac-wrap">' +
+          '<input type="text" class="transit-port-input" placeholder="搜索中转港" autocomplete="off" value="' +
+          (value || "").replace(/"/g, "&quot;") + '" />' +
+          '<div class="port-ac" hidden></div></div>' +
           '<button type="button" class="btn-link danger btn-del-transit">删</button>';
+        bindPortAc(row.querySelector(".transit-port-input"), row.querySelector(".port-ac"), triggerFeituoFromTransit);
         return row;
       }
 
@@ -1699,6 +1799,45 @@
         if (no) no.checked = value !== "yes";
       }
 
+      function truckModeLabel(mode) {
+        return mode === "company" ? "我司统一安排拖车" : "客户自拖车";
+      }
+
+      function syncTruckSupplierState(canSelect) {
+        var truckSupplier = document.getElementById("truckSupplierSelect");
+        if (!truckSupplier) return;
+        truckSupplier.disabled = !canSelect;
+        if (!canSelect) truckSupplier.selectedIndex = 0;
+      }
+
+      function syncLoadingAddressFromWaybill(item) {
+        var field = document.getElementById("fieldLoadingAddress");
+        var input = document.getElementById("loadingAddressInput");
+        var hint = document.getElementById("loadingAddressHint");
+        if (!field || !input) return;
+        var needsTruck = item && item.truckMode === "company";
+        if (!needsTruck) {
+          input.value = "";
+          input.placeholder = "客户自拖车，无装柜地址";
+          input.title = "下单未勾选拖车，无需装柜地址";
+          if (hint) hint.textContent = "下单为客户自拖车时，装柜地址留空";
+          syncTruckSupplierState(false);
+          return;
+        }
+        var addr = (item.loadingAddress || "").trim();
+        input.value = addr;
+        input.placeholder = addr ? "" : "运单未填写装柜地址";
+        input.title = addr
+          ? "来自订单录入 · " + addr
+          : "下单需拖车，但运单未填装柜地址";
+        if (hint) {
+          hint.textContent = addr
+            ? "来自订单录入 · 拖车方式为我司统一安排拖车"
+            : "下单需拖车，但运单未填装柜地址 · 车队供应商不可选";
+        }
+        syncTruckSupplierState(!!addr);
+      }
+
       function applyWaybillToForm(item) {
         if (!item) return;
         var waybillNo = document.getElementById("waybillNo");
@@ -1713,6 +1852,8 @@
         if (cargoReady) cargoReady.value = item.cargoReady || "";
         var consignee = document.getElementById("baseConsignee");
         if (consignee) consignee.value = item.consignee || "";
+        var baseTruckMode = document.getElementById("baseTruckMode");
+        if (baseTruckMode) baseTruckMode.value = truckModeLabel(item.truckMode || "self");
         setOrderChassisFlag(item.orderChassis || "no");
         if (drawerMode === "add" && item.pol && polInput) polInput.value = item.pol;
         if (drawerMode === "add" && item.pod && podInput) {
@@ -1728,6 +1869,7 @@
             typeSelect.value = spec;
           }
         }
+        syncLoadingAddressFromWaybill(item);
       }
 
       function clearBaseInfoFields() {
@@ -1738,7 +1880,9 @@
           boxType: "",
           cargoReady: "",
           consignee: "",
-          orderChassis: "no"
+          orderChassis: "no",
+          truckMode: "self",
+          loadingAddress: ""
         });
       }
 
@@ -1943,7 +2087,8 @@
 
       function syncTransit() {
         var transit = chkTransit.checked;
-        if (transitPortMain) transitPortMain.hidden = !transit;
+        var transitPortWrap = document.getElementById("transitPortWrap");
+        if (transitPortWrap) transitPortWrap.hidden = !transit;
         transitOnly.forEach(function (el) {
           el.hidden = !transit;
         });
@@ -1961,11 +2106,6 @@
           if (!transitPortsExtra.children.length) transitPortsExtra.hidden = true;
           triggerFeituoFromTransit();
         });
-        transitPortsExtra.addEventListener("input", triggerFeituoFromTransit);
-      }
-      if (transitPortMain) {
-        transitPortMain.addEventListener("input", triggerFeituoFromTransit);
-        transitPortMain.addEventListener("change", triggerFeituoFromTransit);
       }
       syncTransit();
 
@@ -1992,6 +2132,7 @@
       var podInputEl = document.getElementById("podInput");
       bindPortAc(polInputEl, document.getElementById("polAc"));
       bindPortAc(podInputEl, document.getElementById("podAc"), syncDischargeFromPod);
+      bindPortAc(transitPortMain, document.getElementById("transitPortAc"), triggerFeituoFromTransit);
       fillDischargeSelect("USLAX · 洛杉矶");
 
       /* —— 飞驼港到港 · 起运港+目的港智能推荐（参考飞驼投航运） —— */
