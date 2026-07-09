@@ -7,10 +7,11 @@
 
   var LINKS = [
     { file: "整柜流程V3.0-原型导航.html", label: "整柜流程V3.0 · 导航首页", icon: "⌂" },
-    { file: "整柜尾端派送-MVP.html", label: "整柜尾端派送", icon: "1" },
-    { file: "整柜客户岗位绑定-MVP.html", label: "整柜客户岗位绑定", icon: "2" },
-    { file: "员工管理-整柜岗位与客户默认-MVP.html", label: "员工管理 · 整柜岗位", icon: "3" },
-    { file: "客户管理-编辑-权限配置-MVP.html", label: "客户管理 · 权限配置", icon: "4" },
+    { file: "整柜询价与报价绑定-MVP.html", label: "询价与报价绑定", icon: "1" },
+    { file: "整柜尾端派送-MVP.html", label: "整柜尾端派送", icon: "2" },
+    { file: "整柜客户岗位绑定-MVP.html", label: "整柜客户岗位绑定", icon: "3" },
+    { file: "员工管理-整柜岗位与客户默认-MVP.html", label: "员工管理 · 整柜岗位", icon: "4" },
+    { file: "客户管理-编辑-权限配置-MVP.html", label: "客户管理 · 权限配置", icon: "5" },
   ];
 
   function currentFile() {
@@ -38,7 +39,7 @@
     brand.className = "ess-nav-brand";
     brand.innerHTML =
       "<h1>整柜流程V3.0</h1>" +
-      "<p>尾端派送 · 岗位绑定 · 权限配置。本组为流程扩展，<strong>V2.0 主链路暂不纳入</strong>；与 V2 配送模式流程图可交叉查阅。</p>";
+      "<p>询价报价绑定 · 尾端派送 · 岗位权限。本组为流程扩展，<strong>V2.0 订舱侧栏不含询价绑定区块</strong>。</p>";
     aside.appendChild(brand);
 
     var scroll = document.createElement("nav");

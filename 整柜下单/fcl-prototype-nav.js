@@ -36,6 +36,8 @@
     {
       label: "V3.0 · 尾端与岗位",
       links: [
+        { file: "整柜流程V3.0-原型导航.html", label: "整柜流程V3.0 · 导航首页" },
+        { file: "整柜询价与报价绑定-MVP.html", label: "询价与报价绑定" },
         { file: "整柜尾端派送-MVP.html", label: "整柜尾端派送" },
         { file: "整柜客户岗位绑定-MVP.html", label: "整柜客户岗位绑定" },
         { file: "员工管理-整柜岗位与客户默认-MVP.html", label: "员工管理 · 整柜岗位" },

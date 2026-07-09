@@ -114,6 +114,31 @@
     .field textarea { height: auto; min-height: 48px; padding: 4px 6px; resize: vertical; }
     .field textarea.tiny { min-height: 36px; }
     .field input[readonly] { background: #fafafa; color: var(--sub); }
+    .field select:disabled {
+      background: #f5f5f5; color: rgba(0, 0, 0, 0.45); cursor: not-allowed;
+    }
+    .field.is-extra-linked label::after {
+      content: "（由额外服务带入）"; font-size: 11px; color: var(--sub); font-weight: normal;
+    }
+    .field.is-extra-linked select:disabled {
+      background: #f0f0f0; border-color: #e8e8e8; opacity: 0.85;
+    }
+
+    .field-inline-add {
+      display: flex; gap: 6px; align-items: center;
+    }
+    .field-inline-add select { flex: 1; min-width: 0; }
+    .link-add {
+      flex-shrink: 0; color: var(--blue); font-size: 12px;
+      cursor: pointer; white-space: nowrap; text-decoration: none;
+    }
+    .link-add:hover { text-decoration: underline; }
+
+    .extra-chassis-split {
+      display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;
+    }
+    .extra-chassis-services { flex: 1; min-width: 220px; }
+    .extra-chassis-flag { flex-shrink: 0; min-width: 120px; }
 
     .check-row, .radio-row {
       display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; min-height: 30px;
@@ -200,7 +225,7 @@
 </head>
 <body data-fcl-page="order" data-fcl-nav="core-flow">
   <div class="app">
-    <div class="demo-bar"><strong>本次更新 2026-06-22</strong> · 字号加大 · 关联询价/报价跳转 · 流程四绑定运单 · <a href="整柜本次更新-MVP.html">完整变更说明</a></div>
+    <div class="demo-bar"><strong>本次更新 2026-07-08</strong> · 计划装柜时间 · 去掉堆场/提柜点、拖车费、报关联系人、报关费 · 额外服务联动报关/拖车方式 · <a href="整柜本次更新-MVP.html">完整变更说明</a></div>
 
     <header class="top-header">
       <div class="logo">腾信物流</div>
@@ -244,21 +269,28 @@
                   <input type="date" value="2026-06-20" />
                 </div>
                 <div class="field full">
-                  <label>额外服务</label>
-                  <div class="check-row">
-                    <label><input type="checkbox" checked /> 报关</label>
-                    <label><input type="checkbox" /> 保险</label>
-                    <label><input type="checkbox" /> 带电</label>
-                    <label><input type="checkbox" /> 拖车<span class="mark-phase-new">新</span></label>
+                  <div class="extra-chassis-split">
+                    <div class="extra-chassis-services">
+                      <label>额外服务</label>
+                      <div class="check-row">
+                        <label><input type="checkbox" id="chkExtraCustoms" checked /> 报关</label>
+                        <label><input type="checkbox" /> 保险</label>
+                        <label><input type="checkbox" /> 带电</label>
+                        <label><input type="checkbox" id="chkExtraTruck" /> 拖车<span class="mark-phase-new">新</span></label>
+                      </div>
+                    </div>
+                    <div class="extra-chassis-flag">
+                      <label>车架备注<span class="mark-phase-new">新</span></label>
+                      <div class="radio-row">
+                        <label><input type="radio" name="chassisFlag" value="no" checked /> 否</label>
+                        <label><input type="radio" name="chassisFlag" value="yes" /> 是</label>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="field full">
                   <label>客户备注</label>
                   <input type="text" placeholder="特殊要求请在备注栏补充" />
-                </div>
-                <div class="field full">
-                  <label>车架备注<span class="mark-phase-new">新</span></label>
-                  <input type="text" id="chassisRemark" placeholder="是否带车架及说明（如：需带车架提柜），放舱时订舱岗勾选确认" />
                 </div>
                 <div class="field">
                   <label>起运港<span class="req">*</span></label>
@@ -282,16 +314,16 @@
                   <label>放货方式<span class="req">*</span><span class="mark-phase-chg">调</span></label>
                   <select><option selected>电放</option><option>正本</option><option>Seaway Bill</option></select>
                 </div>
-                <div class="field">
+                <div class="field is-extra-linked" id="fieldCustomsMode">
                   <label>报关方式<span class="req">*</span><span class="mark-phase-new">新</span></label>
-                  <select id="customsMode">
-                    <option value="self" selected>自行申报</option>
-                    <option value="agency">我司代理报关</option>
+                  <select id="customsMode" disabled aria-readonly="true">
+                    <option value="self">自行申报</option>
+                    <option value="agency" selected>我司代理报关</option>
                   </select>
                 </div>
-                <div class="field">
+                <div class="field is-extra-linked" id="fieldTruckMode">
                   <label>拖车方式<span class="req">*</span><span class="mark-phase-new">新</span></label>
-                  <select id="truckMode">
+                  <select id="truckMode" disabled aria-readonly="true">
                     <option value="self" selected>客户自拖车</option>
                     <option value="company">我司统一安排拖车</option>
                   </select>
@@ -320,16 +352,12 @@
               <div class="mode-detail" id="detailTruck" hidden>
                 <div class="form-grid">
                   <div class="field"><label>装柜地址<span class="req">*</span></label><input type="text" /></div>
-                  <div class="field"><label>计划提柜时间</label><input type="datetime-local" /></div>
-                  <div class="field"><label>堆场/提柜点</label><input type="text" /></div>
-                  <div class="field"><label>拖车费</label><input type="text" placeholder="CNY" /></div>
+                  <div class="field"><label>计划装柜时间</label><input type="datetime-local" /></div>
                 </div>
               </div>
-              <div class="mode-detail" id="detailCustoms" hidden>
+              <div class="mode-detail" id="detailCustoms">
                 <div class="form-grid">
                   <div class="field"><label>报关行<span class="req">*</span></label><select><option selected>深圳 XX 报关行</option></select></div>
-                  <div class="field"><label>报关联系人</label><input type="text" /></div>
-                  <div class="field"><label>报关费</label><input type="text" placeholder="CNY" /></div>
                 </div>
               </div>
               <input type="hidden" name="transportMode" value="海运" />
@@ -340,7 +368,10 @@
               <div class="form-grid">
                 <div class="field">
                   <label>发货人<span class="req">*</span></label>
-                  <select><option value="">请选择</option><option selected>深圳腾信物流有限公司</option><option>义乌 XX 贸易有限公司</option></select>
+                  <div class="field-inline-add">
+                    <select><option value="">请选择</option><option selected>深圳腾信物流有限公司</option><option>义乌 XX 贸易有限公司</option></select>
+                    <a class="link-add" href="#" data-add-party="shipper">新增</a>
+                  </div>
                 </div>
                 <div class="field">
                   <label>税号</label>
@@ -364,19 +395,29 @@
               <div class="form-grid">
                 <div class="field">
                   <label>收货人<span class="req">*</span></label>
-                  <select><option value="">请选择</option><option selected>ABC Trading LLC</option></select>
-                </div>
-                <div class="field">
-                  <label>EORI</label>
-                  <input type="text" />
+                  <div class="field-inline-add">
+                    <select><option value="">请选择</option><option selected>ABC Trading LLC</option></select>
+                    <a class="link-add" href="#" data-add-party="consignee">新增</a>
+                  </div>
                 </div>
                 <div class="field">
                   <label>通知人</label>
-                  <select><option value="">同收货人</option><option>Notify Party B</option></select>
+                  <div class="field-inline-add">
+                    <select><option value="">同收货人</option><option>Notify Party B</option></select>
+                    <a class="link-add" href="#" data-add-party="notify">新增</a>
+                  </div>
+                </div>
+                <div class="field full">
+                  <label>地址</label>
+                  <input type="text" id="notifyAddress" placeholder="通知人详细地址" />
                 </div>
                 <div class="field">
-                  <label>税号</label>
-                  <input type="text" />
+                  <label>联系人</label>
+                  <input type="text" id="notifyContact" />
+                </div>
+                <div class="field">
+                  <label>电话</label>
+                  <input type="text" id="notifyPhone" />
                 </div>
               </div>
             </div>
@@ -394,12 +435,12 @@
                     <th class="col-idx">#</th>
                     <th><span class="req">*</span>柜型</th>
                     <th><span class="req">*</span>柜量</th>
-                    <th>毛重小计</th>
-                    <th>体积小计</th>
+                    <th><span class="req">*</span>毛重小计</th>
+                    <th><span class="req">*</span>体积小计</th>
                     <th><span class="req">*</span>HSCODE</th>
                     <th><span class="req">*</span>中文品名</th>
                     <th><span class="req">*</span>英文品名</th>
-                    <th><span class="req">*</span>箱数</th>
+                    <th>箱数</th>
                     <th>单箱重量</th>
                     <th>单价</th>
                     <th>唛头</th>
@@ -415,12 +456,12 @@
                     <td class="col-idx">1</td>
                     <td><select class="row-type"><option selected>40HQ</option><option>20GP</option></select></td>
                     <td><input type="number" class="row-qty" value="1" min="1" readonly aria-readonly="true" /></td>
-                    <td><input type="text" value="12500" /></td>
-                    <td><input type="text" value="68.5" /></td>
+                    <td><input type="text" class="row-gross-weight" value="12500" required aria-required="true" /></td>
+                    <td><input type="text" class="row-volume" value="68.5" required aria-required="true" /></td>
                     <td><input type="text" value="940360" /></td>
                     <td><input type="text" value="办公椅" /></td>
                     <td><input type="text" value="Office Chair" /></td>
-                    <td><input type="number" value="500" /></td>
+                    <td><input type="number" class="row-box-count" value="500" />
                     <td><input type="text" value="25" /></td>
                     <td><input type="text" value="48" /></td>
                     <td><input type="text" /></td>
@@ -434,12 +475,12 @@
                     <td class="col-idx">2</td>
                     <td><select class="row-type"><option selected>40HQ</option><option>20GP</option></select></td>
                     <td><input type="number" class="row-qty" value="1" min="1" readonly aria-readonly="true" /></td>
+                    <td><input type="text" class="row-gross-weight" required aria-required="true" /></td>
+                    <td><input type="text" class="row-volume" required aria-required="true" /></td>
                     <td><input type="text" /></td>
                     <td><input type="text" /></td>
                     <td><input type="text" /></td>
-                    <td><input type="text" /></td>
-                    <td><input type="text" /></td>
-                    <td><input type="number" /></td>
+                    <td><input type="number" class="row-box-count" />
                     <td><input type="text" /></td>
                     <td><input type="text" /></td>
                     <td><input type="text" /></td>
@@ -483,72 +524,151 @@
   <div class="ess-prd-source" hidden aria-hidden="true">
     <span class="ess-prd-chip">PRD · 整柜下单</span>
     <h3>整柜下单 · 订单录入</h3>
-    <h4>本次更新（2026-07-03）</h4>
+
+    <h4>新增</h4>
+    <h5>基本信息区</h5>
     <ul>
-      <li>正文字号整体加大一号；关联询价/报价只读 + 跳转询价/报价/订舱放舱。</li>
-      <li><strong>字段顺序</strong>：基本信息区「报关方式」置于「柜量类型」之前（拖车方式 → 配送模式 → 柜量类型）。</li>
-      <li><strong>暂隐藏</strong>：「关联询价单」「绑定状态」字段本期先不在录入页展示，报价绑定仍走 XJ→BJ→RC 链路（流程 7.2 · 四）。</li>
-      <li>流程四：报价绑定运单后进入订舱放舱侧栏。见 <a href="整柜本次更新-MVP.html">整柜本次更新说明</a>。</li>
+      <li><strong>额外服务联动</strong>：额外服务含「报关」「拖车」勾选，与报关方式、拖车方式联动。
+        <ul>
+          <li>勾选报关 → 报关方式固定「我司代理报关」并置灰；未勾选 → 固定「自行申报」并置灰。</li>
+          <li>勾选拖车 → 拖车方式固定「我司统一安排拖车」并置灰；未勾选 → 固定「客户自拖车」并置灰。</li>
+        </ul>
+      </li>
+      <li><strong>明细联动</strong>：报关方式为「我司代理报关」时展开<strong>报关行</strong>；拖车方式为「我司统一安排拖车」时展开<strong>装柜地址、计划装柜时间</strong>（拖车费、报关费、报关联系人等下单页不录，由询价/报价带入）。</li>
+      <li><strong>车架备注</strong>：是/否单选；保存后同步至 <a href="仓位管理-订舱完善提单-整合-MVP.html">舱位管理</a>「下单车架备注」，供订舱岗确认。</li>
+      <li><strong>中转标识</strong>：默认<strong>直航</strong>；切换为<strong>中转</strong>时须填写中转港，选项取<strong>目的港数据字典</strong>。</li>
     </ul>
-    <p>布局参照原「海运订单录入」：左基本信息 + 右发货人/收件人信息；箱型在货物明细表格录入。</p>
+    <h5>发货人 / 收货人信息区</h5>
     <ul>
-      <li>已去掉：箱型组合、目的港派送方式（PK）、配送特殊操作要求、送货时间、结案日期。</li>
-      <li><strong>柜量类型</strong>、<strong>拖车方式</strong>、<strong>报关方式</strong>、<strong>配送模式</strong>下拉；枚举与 <a href="传统订单管理-MVP.html">传统订单管理</a> 批量修改弹窗对齐。</li>
-      <li><strong>配送模式</strong>（7 项）：整柜清关 · 整柜清关直送 · 整柜清关拆送 · 整柜直送 · 整柜拆送 · 整柜到港自提 · <strong>整柜海外仓自提</strong>。</li>
-      <li><strong>报关方式</strong>：自行申报 · 我司代理报关（选「我司代理报关」时展开报关明细）。</li>
-      <li><strong>拖车方式</strong>：客户自拖车 · 我司统一安排拖车（选「我司统一安排」时展开拖车明细）。</li>
-      <li>右侧新增<strong>发货人信息</strong>（发货人、税号、地址、联系人、电话）；收件人区保留收货人/EORI/通知人/税号（<strong>提货人</strong>本期暂隐藏）。</li>
-      <li><strong>车架备注</strong>：下单时客服填写是否带车架及说明；放舱时订舱岗勾选确认，带车架则流转尾端操作岗。</li>
-      <li><strong>关联询价/报价</strong>：报价完成后绑定运单（XJ→BJ→RC），订舱放舱侧栏只读带入（流程 7.2 · 四）。</li>
+      <li><strong>去掉</strong>：预计送货地点、期望 ETD。</li>
+      <li>按原型<strong>分开展示</strong>发货人信息与收货人（收件人）信息，通知人独立区块。</li>
+      <li>选择发货人 / 收货人后，自动带出该主体的<strong>地址、联系人、电话、邮编</strong>（支持「新增」维护主体）。</li>
+      <li>收件人区<strong>去掉</strong>税号、EORI；通知人保留地址、联系人、电话。</li>
+    </ul>
+
+    <h4>调整</h4>
+    <h5>配送模式 · 卡派跟进</h5>
+    <p>各配送模式结案后进入<strong>卡派跟进（新）</strong>；涉及派送的模式支持上传 POD，直送与拆送在轨迹上区分。</p>
+    <ul>
+      <li><strong>整柜清关</strong>（PK2548）：前端订舱、尾端派送均非我司 — 下单 → 清关 → 已完结（进卡派跟进）</li>
+      <li><strong>整柜清关直送</strong>（PK2549）：前端订舱非我司，我司管到港清关+派送直送 — 下单 → 清关 → 派送(直送) → 已完结（进卡派跟进）</li>
+      <li><strong>整柜清关拆送</strong>（PK2550）：前端订舱非我司，我司管到港清关+派送拆送 — 下单 → 清关 → 派送(拆送) → 已完结（进卡派跟进）</li>
+      <li><strong>整柜直送</strong>（PK2551）：我司管前端订舱+到港清关+派送直送 — 下单 → 订舱(报关并行) → 清关 → 派送(直送) → 已完结（进卡派跟进）</li>
+      <li><strong>整柜拆送</strong>（PK2552）：我司管前端订舱+到港清关+派送拆送 — 下单 → 订舱(报关并行) → 清关 → 派送(拆送) → 已完结（进卡派跟进）</li>
+      <li><strong>整柜到港自提</strong>（PK2553）：我司管前端订舱+到港清关，不管派送 — 下单 → 订舱 → 清关 → 已完结（进卡派自提）</li>
+      <li><strong>整柜海外仓自提</strong>：我司管前端订舱+到港清关，送海外仓客户自提 — 下单 → 订舱 → 清关 → 海外仓 → 已完结（进卡派跟进）</li>
+    </ul>
+    <ul>
+      <li>枚举与 <a href="传统订单管理-MVP.html">传统订单管理</a>「修改配送模式」弹窗对齐（7 项）。</li>
+      <li>货物明细必填：柜型、柜量、毛重小计、体积小计、HSCODE、中英文品名；箱数选填。</li>
+      <li>箱型在货物明细表录入；已去掉箱型组合、目的港派送方式(PK)、配送特殊操作要求、送货时间、结案日期等字段。</li>
+    </ul>
+
+    <h4>关联</h4>
+    <ul>
+      <li>报价绑定运单（XJ→BJ→RC）后进入订舱放舱；询价绑定见 <a href="整柜询价与报价绑定-MVP.html">V3.0 询价绑定页</a>。</li>
     </ul>
   </div>
 
   <script src="../二期/ess-prototype-prd.js"></script>
-  <script>
-    (function () {
-      var transitType = document.getElementById("transitType");
-      var transitPort = document.getElementById("transitPort");
-      var radios = document.querySelectorAll('input[name="containerMode"]');
-      var tbody = document.querySelector(".cargo-table tbody");
-      var truckMode = document.getElementById("truckMode");
-      var customsMode = document.getElementById("customsMode");
-      var detailTruck = document.getElementById("detailTruck");
-      var detailCustoms = document.getElementById("detailCustoms");
-
-      transitType.addEventListener("change", function () {
-        transitPort.hidden = transitType.value !== "transit";
-      });
-
-      function syncContainerMode() {
-        var oneOne = document.querySelector('input[name="containerMode"][value="oneOne"]').checked;
-        tbody.querySelectorAll("[data-extra-row]").forEach(function (row) {
-          row.style.display = oneOne ? "none" : "";
-        });
-        tbody.querySelectorAll(".row-qty").forEach(function (input) {
-          if (oneOne) {
-            input.value = "1";
-            input.readOnly = true;
-            input.setAttribute("aria-readonly", "true");
-          } else {
-            input.readOnly = false;
-            input.removeAttribute("aria-readonly");
-          }
-        });
-      }
-      radios.forEach(function (r) { r.addEventListener("change", syncContainerMode); });
-      syncContainerMode();
-
-      function syncPortService() {
-        detailTruck.hidden = truckMode.value !== "company";
-        detailCustoms.hidden = customsMode.value !== "agency";
-      }
-      truckMode.addEventListener("change", syncPortService);
-      customsMode.addEventListener("change", syncPortService);
-      syncPortService();
-    })();
-  </script>
   <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
   <script src="fcl-core-interactions.js" defer></script>
   <script src="fcl-core-flow-nav.js" defer></script>
+  <script>
+    (function () {
+      function initOrderEntryForm() {
+        var transitType = document.getElementById("transitType");
+        var transitPort = document.getElementById("transitPort");
+        var radios = document.querySelectorAll('input[name="containerMode"]');
+        var tbody = document.querySelector(".cargo-table tbody");
+        var truckMode = document.getElementById("truckMode");
+        var customsMode = document.getElementById("customsMode");
+        var chkExtraCustoms = document.getElementById("chkExtraCustoms");
+        var chkExtraTruck = document.getElementById("chkExtraTruck");
+        var detailTruck = document.getElementById("detailTruck");
+        var detailCustoms = document.getElementById("detailCustoms");
+        var extraServiceRow = document.querySelector(".check-row");
+
+        if (transitType && transitPort) {
+          transitType.addEventListener("change", function () {
+            transitPort.hidden = transitType.value !== "transit";
+          });
+        }
+
+        function syncContainerMode() {
+          if (!tbody) return;
+          var oneOneEl = document.querySelector('input[name="containerMode"][value="oneOne"]');
+          var oneOne = oneOneEl ? oneOneEl.checked : true;
+          tbody.querySelectorAll("[data-extra-row]").forEach(function (row) {
+            row.style.display = oneOne ? "none" : "";
+          });
+          tbody.querySelectorAll(".row-qty").forEach(function (input) {
+            if (oneOne) {
+              input.value = "1";
+              input.readOnly = true;
+              input.setAttribute("aria-readonly", "true");
+            } else {
+              input.readOnly = false;
+              input.removeAttribute("aria-readonly");
+            }
+          });
+        }
+        if (radios.length) {
+          radios.forEach(function (r) { r.addEventListener("change", syncContainerMode); });
+          syncContainerMode();
+        }
+
+        function syncPortService() {
+          if (detailTruck && truckMode) {
+            detailTruck.hidden = truckMode.value !== "company";
+          }
+          if (detailCustoms && customsMode) {
+            detailCustoms.hidden = customsMode.value !== "agency";
+          }
+        }
+
+        function syncExtraServiceModes() {
+          if (!customsMode || !truckMode || !chkExtraCustoms || !chkExtraTruck) return;
+
+          customsMode.value = chkExtraCustoms.checked ? "agency" : "self";
+          customsMode.disabled = true;
+          customsMode.setAttribute("aria-readonly", "true");
+
+          truckMode.value = chkExtraTruck.checked ? "company" : "self";
+          truckMode.disabled = true;
+          truckMode.setAttribute("aria-readonly", "true");
+
+          syncPortService();
+        }
+
+        if (extraServiceRow) {
+          extraServiceRow.addEventListener("change", function (e) {
+            if (e.target && (e.target.id === "chkExtraCustoms" || e.target.id === "chkExtraTruck")) {
+              syncExtraServiceModes();
+            }
+          });
+        }
+        syncExtraServiceModes();
+
+        var partyLabels = { shipper: "发货人", consignee: "收货人", notify: "通知人" };
+        document.querySelectorAll(".link-add[data-add-party]").forEach(function (link) {
+          link.addEventListener("click", function (e) {
+            e.preventDefault();
+            var key = link.getAttribute("data-add-party");
+            var label = partyLabels[key] || "收发货人";
+            if (typeof window.alert === "function") {
+              window.alert("原型演示：打开新增" + label + "弹窗");
+            }
+          });
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initOrderEntryForm);
+      } else {
+        initOrderEntryForm();
+      }
+    })();
+  </script>
 </body>
 </html>
