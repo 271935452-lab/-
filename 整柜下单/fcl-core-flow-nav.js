@@ -7,6 +7,7 @@
 
   var LINKS = [
     { file: "整柜流程V2.0-原型导航.html", label: "整柜流程V2.0 · 导航首页", icon: "⌂" },
+    { file: "整柜流程V2.0-原型导航.html#changelog", label: "本次更新 · 2026-07-10", icon: "◎" },
     { file: "传统订单管理-MVP.html", label: "传统订单管理", icon: "1" },
     { file: "整柜下单-订单录入-MVP.html", label: "整柜下单", icon: "2" },
     { file: "仓位管理-订舱完善提单-整合-MVP.html", label: "舱位管理", icon: "3" },
@@ -27,7 +28,12 @@
   function isActive(item, active) {
     var base = item.file.split("/").pop().split("#")[0];
     var activeBase = active.split("#")[0];
-    return base === activeBase || item.file === active;
+    var hash = (item.file.split("#")[1] || "");
+    var activeHash = (active.indexOf("#") > -1 ? active.split("#")[1] : location.hash.replace("#", ""));
+    if (hash) {
+      return base === activeBase && hash === activeHash;
+    }
+    return (base === activeBase || item.file === active) && !activeHash;
   }
 
   function buildAside(active) {

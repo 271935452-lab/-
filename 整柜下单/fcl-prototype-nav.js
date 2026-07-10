@@ -13,7 +13,8 @@
       links: [
         { file: "整柜原型导航.html", label: "整柜模块 · 原型导航" },
         { file: "整柜订舱-原型导航.html", label: "整柜订舱 · 原型导航" },
-        { file: "整柜本次更新-MVP.html", label: "本次更新说明 · 2026-06-22" },
+        { file: "整柜流程V2.0-原型导航.html#changelog", label: "V2.0 · 本次更新 · 2026-07-10" },
+        { file: "整柜本次更新-MVP.html", label: "V2.0 · 完整变更记录" },
       ],
     },
     {
@@ -91,8 +92,14 @@
   }
 
   function isActive(item, active) {
-    var base = item.file.split("/").pop();
-    return base === active || item.file === active;
+    var base = item.file.split("/").pop().split("#")[0];
+    var activeBase = active.split("#")[0];
+    var hash = (item.file.split("#")[1] || "");
+    var activeHash = (active.indexOf("#") > -1 ? active.split("#")[1] : location.hash.replace("#", ""));
+    if (hash) {
+      return base === activeBase && hash === activeHash;
+    }
+    return (base === activeBase || item.file === active) && !activeHash;
   }
 
   function buildAside(active) {
