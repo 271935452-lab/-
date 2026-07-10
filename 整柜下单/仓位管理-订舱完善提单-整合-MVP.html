@@ -409,9 +409,12 @@
     .check-inline { display: flex; align-items: center; gap: 16px; min-height: 32px; }
     .check-inline label { display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; }
     .transit-inline {
-      display: flex; align-items: center; gap: 8px; min-height: 28px; flex-wrap: wrap;
+      display: flex; align-items: flex-end; gap: 8px; min-height: 28px; flex-wrap: wrap;
     }
-    .transit-inline .transit-port-ac-wrap { flex: 1; min-width: 160px; }
+    .transit-inline .transit-port-ac-wrap { flex: 1; min-width: 140px; }
+    .transit-inline .transit-vessel-inline { flex: 1; min-width: 140px; }
+    .transit-vessel-inline label { display: block; font-size: 12px; margin-bottom: 4px; }
+    .transit-vessel-inline input { width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; }
     .transit-port-ac-wrap .transit-port-input { width: 100%; height: 28px; }
     .transit-port-row .transit-port-ac-wrap { min-width: 0; }
     .transit-ports { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-top: 4px; }
@@ -750,7 +753,7 @@
           <button type="button" class="btn btn-warn" id="btnRollover" title="已放舱舱位更换船名航次/SO，原记录作废并由异人录入新舱">甩柜换船<span class="mark-new">新</span></button>
           <button type="button" class="btn" id="btnExportBc">导出放舱 BC<span class="mark-new">新</span></button>
           <button type="button" class="btn" id="btnExportForecast">导出预报模板<span class="mark-new">新</span></button>
-          <button type="button" class="btn" id="btnBatchExport" title="按当前筛选区 + 状态页签（如「未放舱」）条件导出">批量导出<span class="mark-new">新</span></button>
+          <button type="button" class="btn" id="btnBatchExport" title="按当前查询条件（筛选区+状态页签）导出列表数据">批量导出<span class="mark-new">新</span></button>
           <button type="button" class="btn">编辑备注<span class="mark-new">新</span></button>
           <button type="button" class="btn btn-danger">批量删除</button>
           <button type="button" class="btn" id="btnUnreleasedExport" title="一键导出全部未放舱记录（叠加当前筛选区条件）">未放舱导出<span class="mark-new">新</span></button>
@@ -1111,9 +1114,13 @@
             <div class="field field-transit-wrap full">
               <div class="transit-inline">
                 <label class="check-inline"><input type="checkbox" id="chkTransit" /> 中转</label>
-                <div class="field-port transit-port-ac-wrap" id="transitPortWrap" hidden>
+                <div class="field-port transit-port-ac-wrap transit-only" id="transitPortWrap" hidden>
                   <input type="text" id="transitPortMain" class="transit-port-input" placeholder="搜索中转港" autocomplete="off" />
                   <div class="port-ac" id="transitPortAc" hidden></div>
+                </div>
+                <div class="field transit-vessel-inline transit-only" hidden>
+                  <label>中转船名航次</label>
+                  <input type="text" id="leg2Vessel" placeholder="中转船名 / 航次" />
                 </div>
               </div>
               <div class="transit-ports" id="transitPortsExtra" hidden></div>
@@ -1138,10 +1145,6 @@
                 <label><input type="radio" name="released" value="yes" checked /> 是</label>
                 <label><input type="radio" name="released" value="no" /> 否</label>
               </div>
-            </div>
-            <div class="field full transit-only" hidden>
-              <label>中转船名航次</label>
-              <input type="text" id="leg2Vessel" placeholder="中转船名 / 航次" />
             </div>
           </div>
         </div>
@@ -1452,28 +1455,56 @@
 
     <h4>新增 · 列表</h4>
     <ul>
-      <li><strong>导出放舱 BC</strong>、<strong>导出预报模板</strong>、<strong>未放舱导出</strong>：点击后弹出<strong>选择导出模板</strong>弹窗，展示对应标准模板（可预览样例文件），确认后按所选模板生成 Excel；导出范围叠加当前筛选区 + 状态页签条件（放舱 BC 优先已勾选舱位）。另含<strong>批量导出</strong>（按筛选区+状态页签）、<strong>编辑备注</strong>（备注流转至<strong>卡派跟进（新）</strong>海外卡派总单）。</li>
-      <li><strong>放舱模版 · 联系人</strong>（「导出放舱 BC」「甩柜 BC 导出」等标准放舱模板共用）：<strong>联系人姓名、联系人手机号</strong>取本条订舱记录的<strong>订舱创建人</strong>在 <a href="员工管理-整柜岗位与客户默认-MVP.html">员工管理</a> 中维护的<strong>员工姓名、手机号</strong>；未维护或查无此人时对应字段<strong>留空</strong>（不兜底、不在导出时手填覆盖）。</li>
-      <li><strong>放舱资料导出</strong>（「导出放舱 BC」「甩柜 BC 导出」等）：若放舱确认区已上传<strong>放舱资料</strong>附件，导出时<strong>直接导出已上传的附件文件</strong>（原文件下载，不再套系统模板）；若<strong>未上传</strong>附件，则按<strong>放舱模板</strong>（<code>导出模版/放舱模板.xlsx</code>）依据订舱登记已录入项生成并导出。</li>
-      <li><strong>导出预报模板（仓位预报表）</strong>：汇总<strong>已放舱</strong>（放舱状态=是）的舱位记录，按<strong>开船时间（ETD）</strong>所在自然周生成 Excel 标准模板（表头示例「WEEK xx 预报（起止日期）」，周区间以开船时间为准），供订舱岗发送给<strong>订舱代理</strong>做周度舱位预报/对舱确认。模板字段含 <strong>POL、POD、航线、船名航次、船司、开船时间（ETD）、柜量、备注</strong>；数据来源为列表/订舱登记已录入项，同一周内按船司+航线+船名航次聚合柜量；<strong>备注</strong>取订舱登记的<strong>是否保舱</strong>（如「是」「否」）。<strong>不含未放舱记录</strong>（未放舱走「未放舱导出」）。与下列导出<strong>用途不同</strong>：
-        <ul>
-          <li><strong>放舱 BC</strong>：单票放舱确认后给客户的放舱单据；</li>
-          <li><strong>未放舱导出</strong>：未放舱舱位 Excel 模板（见下「未放舱导出」字段映射），非本预报模板；</li>
-          <li>运单侧「提交预报」：客户/业务员向货代提交订单意向，非本模板；</li>
-          <li>海外仓预报：到港/拆柜计划（含 ETA、consignee 等），非本模板。</li>
-        </ul>
-      </li>
-      <li><strong>未放舱导出（未放舱数据模板）</strong>：一键导出<strong>未放舱</strong>（放舱状态=否）舱位记录，叠加当前筛选区条件，生成 Excel 标准模板（表头「未放舱数据」）。字段映射：
-        <ul>
-          <li><strong>编码</strong>：取本条舱位<strong>绑定的报价编码</strong>（关联报价单号，如 BJ…）；未绑定则<strong>留空</strong>。</li>
-          <li><strong>订舱时间</strong>：取本条<strong>仓位创建时间</strong>（订舱登记保存时间）。</li>
-          <li><strong>代理名称、船名航次、起运港、目的港、ETD</strong>：取订舱登记/列表已录入项。</li>
-          <li><strong>备注</strong>：拼接订舱登记中的<strong>是否保舱</strong>、<strong>是否 SOC/COC</strong>（如「保舱：是 · SOC/COC：COC」）；<strong>是否超重</strong>待业务确认后纳入，本期导出<strong>不含</strong>。</li>
-        </ul>
-      </li>
       <li><strong>编辑舱位 / 完善提单</strong>：同一页面，<strong>必填项因场景不同</strong>（见下「订舱编辑状态」）。</li>
-      <li><strong>甩柜换船</strong>、<strong>甩柜 BC 导出</strong>：已放舱记录换船，原舱作废、异人录入新舱。</li>
+      <li><strong>甩柜换船</strong>、<strong>甩柜 BC 导出</strong>：已放舱记录换船，原舱作废、异人录入新舱；甩柜 BC 导出规则同「导出放舱 BC」。</li>
+      <li><strong>编辑备注</strong>：备注流转至<strong>卡派跟进（新）</strong>海外卡派总单。</li>
       <li><strong>进港时间</strong>：列表新增列，取自关联运单「装柜完成」登记的进港时间（多运单时展示首条或「—」）；供海运费异常判定与订舱岗核对。</li>
+    </ul>
+
+    <h4>新增 · 导出功能</h4>
+    <ul>
+      <li><strong>1. 导出放舱 BC</strong>
+        <ul>
+          <li><strong>范围</strong>：<strong>已放舱</strong>（放舱状态=是）的舱位；优先导出列表<strong>已勾选</strong>记录，未勾选时取当前<strong>筛选区 + 状态页签</strong>条件下的已放舱数据。</li>
+          <li><strong>导出方式</strong>：点击后弹出「选择导出模板」弹窗。
+            <ul>
+              <li>若放舱确认区已上传<strong>放舱资料</strong>附件 → <strong>直接导出已上传的附件</strong>（原文件，不套模板）；</li>
+              <li>若<strong>未上传</strong>附件 → 按<strong>放舱模板</strong>（<code>导出模版/放舱模板.xlsx</code>）依据订舱登记已录入项生成 Excel。</li>
+            </ul>
+          </li>
+          <li><strong>联系人</strong>（模板字段）：<strong>联系人姓名、联系人手机号</strong>取本条订舱<strong>创建人</strong>在 <a href="员工管理-整柜岗位与客户默认-MVP.html">员工管理</a> 维护的姓名、手机号；未维护则<strong>留空</strong>。</li>
+        </ul>
+      </li>
+      <li><strong>2. 导出预报模板（仓位预报表）</strong>
+        <ul>
+          <li><strong>范围</strong>：<strong>已放舱</strong>且<strong>尚未开船</strong>（开船时间 ETD &gt; 当前时间）的舱位记录。</li>
+          <li><strong>导出方式</strong>：按<strong>开船时间（ETD）</strong>所在<strong>自然周</strong>汇总生成 Excel 标准模板（表头示例「WEEK xx 预报（起止日期）」），供订舱岗发送给<strong>订舱代理</strong>做周度舱位预报/对舱确认。</li>
+          <li><strong>模板字段</strong>：POL、POD、航线、船名航次、船司、开船时间（ETD）、柜量、备注；同一周内按船司+航线+船名航次聚合柜量；<strong>备注</strong>取订舱登记<strong>是否保舱</strong>。</li>
+          <li><strong>不含</strong>：未放舱记录、已开船（ETD≤当前）记录。</li>
+        </ul>
+      </li>
+      <li><strong>3. 未放舱导出</strong>
+        <ul>
+          <li><strong>范围</strong>：<strong>全量未放舱</strong>（放舱状态=否）舱位记录；可叠加当前<strong>筛选区</strong>条件收窄（默认导出全部未放舱）。</li>
+          <li><strong>导出方式</strong>：按<strong>未放舱数据模板</strong>（<code>导出模版/未放舱数据模板.xlsx</code>）生成 Excel（表头「未放舱数据」）。</li>
+          <li><strong>字段映射</strong>：
+            <ul>
+              <li><strong>编码</strong>：绑定报价编码（BJ…）；未绑定留空；</li>
+              <li><strong>订舱时间</strong>：仓位创建时间；</li>
+              <li><strong>代理名称、船名航次、起运港、目的港、ETD</strong>：订舱登记/列表已录入项；</li>
+              <li><strong>备注</strong>：拼接<strong>是否保舱</strong>、<strong>是否 SOC/COC</strong>（如「保舱：是 · SOC/COC：COC」）。</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><strong>4. 批量导出</strong>
+        <ul>
+          <li><strong>范围</strong>：按当前<strong>查询条件</strong>（筛选区 + 状态页签 + 列表可见数据）导出，<strong>不限放舱状态</strong>。</li>
+          <li><strong>导出方式</strong>：直接导出列表当前结果集（列表列字段），<strong>不使用</strong>上述 1～3 项业务模板；用于运营/对账按条件拉全量列表数据。</li>
+          <li>与「未放舱导出」区别：未放舱导出固定未放舱范围+专用模板；批量导出跟随查询条件、导出列表原始字段。</li>
+        </ul>
+      </li>
+      <li><strong>导出区分摘要</strong>：放舱 BC = 单票放舱单据（客户/业务）；预报模板 = 未开船已放舱按周报代理；未放舱导出 = 未放舱专用模板；批量导出 = 列表查询结果；运单侧「提交预报」与海外仓预报<strong>非本页模板</strong>。</li>
     </ul>
 
     <h4>新增 · 状态页签</h4>
@@ -1517,7 +1548,7 @@
       <li><strong>中转</strong>：默认<strong>直航</strong>；勾选中转须填中转港，取值<strong>目的港字典</strong>。</li>
       <li><strong>卸货港</strong>：下拉，取值目的港字典；修改目的港时自动同步。</li>
       <li><strong>补充信息 · 航线</strong>：文本编辑框；飞驼选用时自动回填。</li>
-      <li><strong>放舱资料</strong>：放舱确认区上传放舱资料 / EIR 等附件；上传后同步至关联运单，供客户与业务员下载。导出规则见上「<strong>放舱资料导出</strong>」。</li>
+      <li><strong>放舱资料</strong>：放舱确认区上传放舱资料 / EIR 等附件；上传后同步至关联运单，供客户与业务员下载。导出规则见上「<strong>1. 导出放舱 BC</strong>」。</li>
       <li><strong>放舱状态 = 否</strong>：提单号、截单时间(SI)、SO No 均为<strong>非必填</strong>。</li>
       <li><strong>放舱状态 = 是（编辑态）</strong>：<strong>提单号、放舱状态、仓位录入</strong>（箱型/数量/SO/增删行）不可修改。</li>
       <li><strong>超出有效调价金额</strong>（编辑区字段标签：超出有效期调价金额）：海运费状态为「已过期」时可补录；补录后由<strong>触发节点 ②</strong>将海运费状态恢复<strong>正常</strong>。</li>
@@ -3655,7 +3686,7 @@
         },
         forecast: {
           title: "导出预报模板",
-          hint: "汇总已放舱舱位，按开船时间（ETD）自然周生成预报表，供发送订舱代理。",
+          hint: "汇总已放舱且尚未开船（ETD>当前）的舱位，按开船时间自然周生成预报表，供发送订舱代理。",
           preferSelection: false,
           emptyMsg: "当前无可导出的已放舱记录",
           match: function (tr) { return tr.dataset.release === "released"; },
@@ -3673,7 +3704,7 @@
         },
         unreleased: {
           title: "未放舱导出",
-          hint: "导出未放舱舱位记录，叠加当前筛选区条件。",
+          hint: "按未放舱数据模板导出全量未放舱记录，可叠加当前筛选区条件。",
           preferSelection: false,
           emptyMsg: "当前无可导出的未放舱记录",
           match: function (tr) { return tr.dataset.release === "unreleased"; },
