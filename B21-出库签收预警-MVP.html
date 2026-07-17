@@ -1,0 +1,1184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>B21 出库签收预警（MVP）</title>
+  <link rel="stylesheet" href="二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --red: #dc2626;
+      --orange: #ea580c;
+      --badge-bg: #dc2626;
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      min-height: 100vh;
+    }
+    button, input, select { font: inherit; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .demo-bar {
+      background: #fffbeb;
+      border-bottom: 1px solid #fde68a;
+      padding: 8px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      font-size: 12px;
+      color: #92400e;
+      z-index: 100;
+    }
+    .demo-bar strong { color: #78350f; }
+    .demo-bar select, .demo-bar button {
+      height: 28px;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      background: #fff;
+      padding: 0 10px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #92400e;
+    }
+    .demo-bar button:hover { background: #fef3c7; }
+    .top-header {
+      background: var(--header);
+      color: #fff;
+      display: flex;
+      align-items: stretch;
+      min-height: 48px;
+    }
+    .logo {
+      width: 48px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,.06);
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .nav-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .nav-tab {
+      position: relative;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--header-tab);
+      border: none;
+      color: rgba(255,255,255,.75);
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 14px;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+    .msg-bell-wrap { position: relative; }
+    .msg-bell-btn {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    .msg-bell-btn:hover { background: rgba(255,255,255,.08); border-radius: 4px; }
+    .bell-badge {
+      position: absolute;
+      top: -2px;
+      right: -4px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 10px;
+      background: var(--badge-bg);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 16px;
+      text-align: center;
+      border: 1.5px solid var(--header);
+      transform: scale(0);
+      opacity: 0;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+    }
+    .bell-badge.show { transform: scale(1); opacity: 1; }
+    .bell-badge.pulse { animation: badgePulse .6s ease; }
+    @keyframes badgePulse {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 200px;
+      flex-shrink: 0;
+      background: var(--sidebar);
+      color: rgba(255,255,255,.75);
+      padding: 12px 0 24px;
+      overflow-y: auto;
+    }
+    .side-section {
+      font-size: 11px;
+      color: rgba(255,255,255,.35);
+      padding: 12px 16px 6px;
+      font-weight: 600;
+    }
+    .side-link {
+      position: relative;
+      display: block;
+      padding: 9px 16px 9px 20px;
+      margin: 0 8px 2px;
+      font-size: 13px;
+      color: rgba(255,255,255,.75);
+      text-decoration: none;
+      border-radius: 6px;
+      border-left: 3px solid transparent;
+    }
+    .side-link:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .side-link.active {
+      background: rgba(37,99,235,.25);
+      color: #93c5fd;
+      font-weight: 600;
+      border-left-color: #2563eb;
+    }
+    .menu-badge {
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--badge-bg);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 18px;
+      text-align: center;
+      transform: scale(0);
+      opacity: 0;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+    }
+    .menu-badge.show { transform: scale(1); opacity: 1; }
+    .menu-badge.pulse { animation: badgePulse .6s ease; }
+    .app-main { flex: 1; min-width: 0; overflow: auto; }
+    .page { max-width: 100%; padding: 20px 16px 32px; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .header h1 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .header p { margin: 8px 0 0; color: var(--sub); font-size: 13px; line-height: 1.55; max-width: 920px; }
+    .page-head-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: var(--badge-bg);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      transform: scale(0);
+      opacity: 0;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+    }
+    .page-head-badge.show { transform: scale(1); opacity: 1; }
+    .schedule-pill {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .role-pill {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #f3f4f6;
+      color: #4b5563;
+      border: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .filter {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr)) auto;
+      gap: 10px;
+      padding: 14px 16px;
+      align-items: end;
+    }
+    .filter.expanded { grid-template-columns: repeat(4, minmax(140px, 1fr)); }
+    .filter-extra {
+      display: none;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 10px;
+      padding-top: 4px;
+    }
+    .filter.expanded .filter-extra { display: grid; }
+    .field label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--sub); }
+    .field input, .field select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .filter-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn:hover { border-color: #cbd5e1; }
+    .btn-primary { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-outline { border-color: var(--primary); background: #fff; color: var(--primary); }
+    .btn-link {
+      border: none;
+      background: none;
+      padding: 0;
+      color: var(--primary);
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .tabs-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fafbff;
+    }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .tab {
+      position: relative;
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #374151;
+      font-weight: 500;
+    }
+    .tab:hover { color: var(--primary); }
+    .tab.active { border-color: var(--primary); background: var(--primary); color: #fff; font-weight: 600; }
+    .tab .cnt { margin-left: 2px; }
+    .tab.tab-timeout { color: var(--red); }
+    .tab.tab-timeout.active { background: var(--red); border-color: var(--red); color: #fff; }
+    .tab.tab-outbound { color: var(--orange); }
+    .tab.tab-outbound.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+    .tab-badge {
+      position: absolute;
+      top: -6px;
+      right: -4px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: var(--badge-bg);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 16px;
+      text-align: center;
+      transform: scale(0);
+      opacity: 0;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+    }
+    .tab.active .tab-badge { border: 1px solid #fff; }
+    .tab-badge.show { transform: scale(1); opacity: 1; }
+    .tab-badge.pulse { animation: badgePulse .6s ease; }
+    .toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .table-wrap { overflow-x: auto; }
+    table.data-table {
+      width: 100%;
+      min-width: 2600px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    th {
+      background: #fafbff;
+      font-size: 12px;
+      color: #4b5563;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr.row-timeout td { color: var(--red); }
+    tr.row-outbound td { color: var(--orange); }
+    tr.row-processed td { color: #111827; }
+    tr.row-new td { background: #fffbeb; }
+    tr.row-new:hover td { background: #fef3c7; }
+    tr.row-timeout td a, tr.row-outbound td a { color: inherit; }
+    tr:hover td { background: #f8fafc; }
+    tr.row-new:hover td { background: #fef3c7; }
+    .link-waybill { color: var(--primary); text-decoration: none; font-weight: 500; }
+    tr.row-timeout .link-waybill { color: var(--red); }
+    tr.row-outbound .link-waybill { color: var(--orange); }
+    .link-waybill:hover { text-decoration: underline; }
+    .tag-cat {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #f3f4f6;
+      color: #374151;
+    }
+    tr.row-timeout .tag-cat { background: #fee2e2; color: #991b1b; }
+    tr.row-outbound .tag-cat { background: #ffedd5; color: #9a3412; }
+    tr.row-processed .tag-cat.pod {
+      background: #f3f4f6;
+      color: #111827;
+      border: 1px solid #e5e7eb;
+    }
+    .mark-new {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 700;
+      color: #dc2626;
+      vertical-align: middle;
+    }
+    .mark-adj {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 700;
+      color: #ea580c;
+      vertical-align: middle;
+    }
+    th .mark-new,
+    th .mark-adj {
+      font-size: 10px;
+    }
+    .tag-cat .mark-new {
+      padding: 1px 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.75);
+    }
+    tr.row-timeout .tag-cat .mark-new,
+    tr.row-outbound .tag-cat .mark-new {
+      background: rgba(255, 255, 255, 0.55);
+    }
+    .chk-col { width: 44px; text-align: center; }
+    .chk-col input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+    .foot-note {
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.7;
+      border-top: 1px solid var(--line);
+      background: #fafafa;
+    }
+    .empty-tip { padding: 48px 16px; text-align: center; color: var(--sub); font-size: 14px; display: none; }
+    .empty-tip.show { display: block; }
+    .mini-toast {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translate(-50%, -12px);
+      z-index: 2000;
+      max-width: min(520px, calc(100vw - 32px));
+      padding: 12px 18px;
+      background: #1e293b;
+      color: #f8fafc;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.55;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s, transform .25s;
+    }
+    .mini-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+    .mini-toast strong { color: #fbbf24; }
+    @media (max-width: 900px) {
+      .filter { grid-template-columns: 1fr 1fr; }
+      .sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="demo-bar" role="note">
+      <strong>原型演示</strong>
+      <label>当前角色
+        <select id="roleSelect">
+          <option value="admin">管理员（全部数据）</option>
+          <option value="sales">业务员 · 张三</option>
+          <option value="cs" selected>港后客服 · 王明</option>
+        </select>
+      </label>
+      <button type="button" id="btnSimOutbound">模拟即将超时预警</button>
+      <button type="button" id="btnSimPod">模拟 POD 回传预警</button>
+      <button type="button" id="btnClearBadge">清空角标</button>
+      <span style="color:#78716c;margin-left:auto;">新预警 → 菜单/页签/铃铛角标 +1，并弹出待办消息</span>
+    </div>
+
+    <header class="top-header">
+      <div class="logo">LOGO</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab">工作台</button>
+        <button type="button" class="nav-tab active">B21 出库签收预警</button>
+      </div>
+      <div class="header-right">
+        <div class="msg-bell-wrap">
+          <button type="button" class="msg-bell-btn" id="btnBell" aria-label="消息待办">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"/><path d="M9.5 17a2.5 2.5 0 0 0 5 0"/></svg>
+            <span class="bell-badge" id="bellBadge">0</span>
+          </button>
+        </div>
+        <span id="headerUser">港后客服 · 王明</span>
+      </div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar" aria-label="模块导航">
+        <div class="side-section">尾程预警</div>
+        <a href="#" class="side-link active">B21 出库签收预警<span class="menu-badge" id="menuBadge">0</span></a>
+        <div class="side-section">基础配置</div>
+        <a href="销售产品编辑-港后客服分配方式-MVP.html" class="side-link">销售产品 · 港后客服</a>
+      </aside>
+
+      <div class="app-main">
+        <main class="page">
+          <div class="header">
+            <div>
+              <h1>
+                B21 出库签收预警
+                <span class="page-head-badge" id="pageBadge">0</span>
+                <span class="role-pill" id="rolePill">港后客服 · 王明</span>
+              </h1>
+              <p>以<strong>拆柜时间</strong>为时效基准，监控出库、签收、POD 回传三类预警；港后客服按销售产品配置的港后客服字段过滤可见数据。</p>
+              <span class="schedule-pill">数据逻辑 · <strong>每小时提取一次</strong> · 待办角标统计未处理预警 · 支持消息推送</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <form class="filter" id="filterForm">
+              <div class="field">
+                <label for="fCustomer">按客户简称查</label>
+                <input type="text" id="fCustomer" placeholder="客户简称" />
+              </div>
+              <div class="field">
+                <label for="fProduct">销售产品</label>
+                <input type="text" id="fProduct" placeholder="产品编码" />
+              </div>
+              <div class="field">
+                <label for="fCountry">国家</label>
+                <input type="text" id="fCountry" placeholder="目的国" />
+              </div>
+              <div class="field">
+                <label for="fWaybill">运单号</label>
+                <input type="text" id="fWaybill" placeholder="ICBU..." />
+              </div>
+              <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">查询</button>
+                <button type="button" class="btn" id="btnReset">重置</button>
+                <button type="button" class="btn-link" id="btnExpand">展开</button>
+                <button type="button" class="btn-link" id="btnColSetting">列设置</button>
+              </div>
+              <div class="filter-extra" id="filterExtra">
+                <div class="field">
+                  <label for="fSales">业务员</label>
+                  <input type="text" id="fSales" placeholder="业务员姓名" />
+                </div>
+                <div class="field">
+                  <label for="fCs">港后客服</label>
+                  <input type="text" id="fCs" placeholder="港后客服姓名" />
+                </div>
+                <div class="field">
+                  <label for="fZip">邮编</label>
+                  <input type="text" id="fZip" placeholder="目的邮编" />
+                </div>
+                <div class="field">
+                  <label for="fCategory">预警分类</label>
+                  <select id="fCategory">
+                    <option value="">全部</option>
+                    <option value="出库预警">出库预警</option>
+                    <option value="签收预警">签收预警</option>
+                    <option value="POD回传预警">POD回传预警（新）</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="fTrack">最新轨迹</label>
+                  <input type="text" id="fTrack" placeholder="如：海外拆柜" />
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="tabs-toolbar">
+              <div class="tabs" role="tablist" aria-label="预警状态">
+                <button type="button" class="tab active" data-tab="all" role="tab" aria-selected="true">全部<span class="cnt" id="cntAll">(30)</span></button>
+                <button type="button" class="tab tab-timeout" data-tab="timeout" role="tab">
+                  超时预警<span class="cnt" id="cntTimeout">(10)</span>
+                  <span class="tab-badge" id="badgeTimeout">0</span>
+                </button>
+                <button type="button" class="tab tab-outbound" data-tab="outbound" role="tab">
+                  即将超时<span class="cnt" id="cntOutbound">(10)</span>
+                  <span class="tab-badge" id="badgeOutbound">0</span>
+                </button>
+                <button type="button" class="tab" data-tab="processed" role="tab">已处理<span class="cnt" id="cntProcessed">(10)</span></button>
+              </div>
+              <div class="toolbar-actions">
+                <button type="button" class="btn btn-outline" id="btnTrack">轨迹维护</button>
+                <button type="button" class="btn btn-outline" id="btnModifyOutbound">修改出库件</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" aria-label="出库签收预警列表">
+                <thead>
+                  <tr>
+                    <th class="chk-col"><input type="checkbox" id="chkAll" aria-label="全选" /></th>
+                    <th>序号</th>
+                    <th>预警分类</th>
+                    <th>运单号</th>
+                    <th>业务员</th>
+                    <th>港后客服</th>
+                    <th>最新轨迹</th>
+                    <th>客户简称</th>
+                    <th>销售产品</th>
+                    <th>目的国</th>
+                    <th>邮编</th>
+                    <th>拆柜时间<span class="mark-adj">调</span></th>
+                    <th>拆柜天数<span class="mark-adj">调</span></th>
+                    <th>超时预警天数</th>
+                    <th>预计出库时间</th>
+                    <th>预计签收时间</th>
+                    <th>预计POD回传时间<span class="mark-new">新</span></th>
+                    <th>实际出库时间</th>
+                    <th>实际签收时间</th>
+                    <th>实际POD回传时间<span class="mark-new">新</span></th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+              <div class="empty-tip" id="emptyTip">暂无符合条件的数据</div>
+            </div>
+            <div class="foot-note">
+              行色：<strong style="color:var(--red)">红</strong>=超时预警 · <strong style="color:var(--orange)">橙</strong>=即将超时 · <strong>黑</strong>=已处理。列标记：<span class="mark-adj">调</span>=本期基准/字段调整（拆柜时间、拆柜天数） · <span class="mark-new">新</span>=本期新增列（POD回传时间）。
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <div class="mini-toast" id="miniToast" role="status" aria-live="polite"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · B21 出库签收预警</span>
+    <h3>出库签收预警 PRD</h3>
+
+    <h4>背景与目标</h4>
+    <p>面向<strong>私卡</strong>等尾程派送场景，以<strong>拆柜时间</strong>为时效起点，对未按时出库、签收及 POD 未回传的运单进行监控预警；结合待办角标与消息推送，督促港后客服与业务员及时跟进。</p>
+
+    <h4>用户与场景</h4>
+    <ul>
+      <li><strong>管理员</strong>：查看全部预警，批量轨迹维护。</li>
+      <li><strong>业务员</strong>：仅可见本人负责运单的预警。</li>
+      <li><strong>港后客服</strong>：仅可见<strong>销售产品配置的港后客服字段</strong>与当前登录人一致的运单（配置来源见 <a href="销售产品编辑-港后客服分配方式-MVP.html">销售产品 · 港后客服分配</a>）。</li>
+    </ul>
+
+    <h4>1. 数据范围</h4>
+    <ol>
+      <li><strong>权限</strong>：管理员全部；业务员按业务员字段；港后客服按销售产品「港后客服」配置匹配（与客户类型直客/同行及分公司规则一并解析）。</li>
+      <li><strong>时间</strong>：拆柜开始日期 ≥ 当日 00:00:00，且 &lt; （当前日期 − 1 天）00:00:00。</li>
+      <li><strong>行色</strong>：超时预警 → 红；即将超时 → 橙；已处理 → 黑。</li>
+      <li><strong>排序</strong>：预警在前、已处理在后；同组按超时预警天数降序。</li>
+      <li><strong>刷新</strong>：每小时提取一次；产生新预警时触发待办推送（见 §6）。</li>
+    </ol>
+
+    <h4>2. 基础字段</h4>
+    <ul>
+      <li><strong>运单号</strong>：点击跳转运单查询详情。</li>
+      <li><strong>港后客服</strong>：取自运单关联销售产品在「港后客服分配」中解析出的客服姓名/标签。</li>
+      <li><strong>最新轨迹</strong>：运单当前最新轨迹节点名称。</li>
+      <li><strong>列标记</strong>：表头 <span class="mark-adj">调</span> = 本期调整（原提柜基准改为拆柜）；<span class="mark-new">新</span> = 本期新增列。</li>
+      <li><strong>拆柜时间 / 拆柜天数</strong><span class="mark-adj">调</span>：时效基准由提柜改为拆柜，见 §3.4、§3.5。</li>
+      <li><strong>预计POD回传时间 / 实际POD回传时间</strong><span class="mark-new">新</span>：POD 回传预警专用，见 §3.3、§3.7、§3.8。</li>
+    </ul>
+
+    <h4>3. 动态计算字段</h4>
+    <p><strong>3.1 出库预警</strong></p>
+    <ul>
+      <li>依据：<strong>拆柜时间 + 配置出库时效</strong>（销售产品 + 邮编）。</li>
+      <li>超时且未更新出库节点（<code>TC00105</code> / <code>TC001031</code>）→ 预警分类「出库预警」。</li>
+      <li>例外：已有签收轨迹（<code>TC0010401</code>）不再发出库预警。</li>
+    </ul>
+    <p><strong>3.2 签收预警</strong></p>
+    <ul>
+      <li>依据：实际出库时间（或预计出库时间）+ 配置签收时效。</li>
+      <li>超时且未更新签收节点（<code>TC001051</code> / <code>TC0010401</code>）→「签收预警」。</li>
+    </ul>
+    <p><strong>3.3 POD回传预警</strong><span class="mark-new">新</span></p>
+    <ul>
+      <li>前置：运单已出库且已签收（或至少已签收，以实现轨迹字典为准）。</li>
+      <li>依据：<strong>实际签收时间 + 配置 POD 回传时效</strong>（销售产品 + 邮编，可与签收时效同表扩展字段）。</li>
+      <li>若超过预计 POD 回传时间，且 POD 附件/轨迹节点（<code>TC0010601</code> 或 POD 上传记录）未回传 → 预警分类「POD回传预警」。</li>
+      <li>页签档位与出库/签收/POD 预警共用（超时预警 / 即将超时 / 已处理）。</li>
+    </ul>
+    <p><strong>3.4 拆柜时间（时效基准）</strong></p>
+    <ul>
+      <li>来源：轨迹节点「海外拆柜」(<code>TA0001</code>) 的<strong>最早发生时间</strong>；多记录取最早。</li>
+      <li><strong>原提柜/提货时间不再作为本页时效基准</strong>；原误用 <code>TC00070</code> / 状态 70 已更正为 <code>TA0001</code>。</li>
+    </ul>
+    <p><strong>3.5 拆柜天数</strong></p>
+    <ul>
+      <li><code>拆柜天数 = floor((当前时间 − 拆柜时间) / 1天)</code></li>
+    </ul>
+    <p><strong>3.6 超时预警天数</strong></p>
+    <ul>
+      <li>按当前预警类型取对应配置截止时点 − 当前时间（或 − 实际完成时间）。</li>
+    </ul>
+    <p><strong>3.7 预计出库 / 签收 / POD 回传时间</strong></p>
+    <ul>
+      <li>预计出库 = 拆柜时间 + 出库时效。</li>
+      <li>预计签收 = 预计出库 + 签收时效。</li>
+      <li>预计POD回传 = 实际签收时间（无则用预计签收）+ POD回传时效。</li>
+    </ul>
+    <p><strong>3.8 实际出库 / 签收 / POD 时间</strong></p>
+    <ul>
+      <li>出库 <code>TC001031</code>、签收 <code>TC0010401</code>、POD <code>TC0010601</code> 或 POD 上传表最早记录。</li>
+    </ul>
+
+    <p><strong>3.9 轨迹编码对照（本模块引用）</strong></p>
+    <ul>
+      <li><strong>拆柜</strong>：<code>TA0001</code>（海外拆柜，时效基准）</li>
+      <li><strong>出库</strong>：<code>TC00105</code> / <code>TC001031</code></li>
+      <li><strong>签收</strong>：<code>TC001051</code> / <code>TC0010401</code></li>
+      <li><strong>POD 回传</strong>：<code>TC0010601</code> 或 POD 上传记录</li>
+    </ul>
+
+    <h4>4. 规则配置</h4>
+    <ul>
+      <li>按<strong>销售产品 + 目的邮编</strong>配置出库、签收、<strong>POD回传</strong>时效。</li>
+      <li>配置页本版暂不处理；参数表维护。</li>
+    </ul>
+
+    <h4>5. 页签口径</h4>
+    <ul>
+      <li><strong>全部</strong>：符合数据范围的全部记录。</li>
+      <li><strong>超时预警</strong>：已超出配置截止时点且未处理（红色）。</li>
+      <li><strong>即将超时</strong>：临近截止（如剩余 ≤ 1 天）或次级预警档（橙色）；<strong>非「已出库超时」语义</strong>，表示即将到达出库/签收/POD 截止时点。</li>
+      <li><strong>已处理</strong>：人工标记已处理，或轨迹已补齐至对应节点后自动归档。</li>
+      <li>出库 / 签收 / POD 回传三类预警均计入上述页签档位。</li>
+    </ul>
+
+    <h4>6. 待办消息推送与角标（新增）</h4>
+    <ul>
+      <li><strong>触发</strong>：小时任务或实时轨迹变更产生<strong>新的未处理预警</strong>时，向相关港后客服 / 业务员推送待办。</li>
+      <li><strong>推送文案</strong>：「您有一件待办事项，请及时处理：出库签收预警 · {预警分类} · {运单号}」。</li>
+      <li><strong>角标位置</strong>：
+        <ul>
+          <li>左侧菜单「B21 出库签收预警」：未处理预警总数；</li>
+          <li>页面标题旁：同上（当前用户可见范围）；</li>
+          <li>状态 Tab「超时预警」「即将超时」：各 Tab 下未处理条数；</li>
+          <li>顶部消息铃铛：待办总数（含本模块及其他待办，本原型仅演示本模块增量）。</li>
+        </ul>
+      </li>
+      <li><strong>消角标</strong>：运单标记已处理或轨迹补齐至对应节点后，下次刷新扣减；用户进入页面处理后可同步已读（以实现为准）。</li>
+      <li><strong>渠道</strong>：站内消息 + 铃铛待办（必做）；钉钉/企业微信推送（后续）。</li>
+    </ul>
+
+    <h4>交互说明</h4>
+    <ul>
+      <li>筛选含预警分类（含 POD回传预警）、港后客服；查询 / 重置 / 列设置同前。</li>
+      <li>轨迹维护、修改出库件：勾选后操作。</li>
+    </ul>
+
+    <h4>与其他模块联动</h4>
+    <ul>
+      <li>运单管理、轨迹中心、<strong>销售产品港后客服配置</strong>、消息中心。</li>
+      <li>港后客服解析规则与「销售产品编辑 · 港后客服分配方式」一致。</li>
+    </ul>
+
+    <h4>非功能性要求</h4>
+    <ul>
+      <li>角标与列表计数 eventual consistency，延迟 ≤ 1 小时（与提取频率一致）；实时推送可选。</li>
+      <li>港后客服数据隔离在接口层强制过滤。</li>
+    </ul>
+
+    <h4>本次范围与后续规划</h4>
+    <ul>
+      <li><strong>本次</strong>：拆柜基准（轨迹 <code>TA0001</code>）、POD回传预警、港后客服权限、待办角标与消息推送原型。</li>
+      <li><strong>后续</strong>：时效规则配置页、钉钉推送、POD 上传快捷入口。</li>
+    </ul>
+  </div>
+
+  <script>
+    (function () {
+      var CUSTOMERS = ["YANTIAN", "SHEKOU", "NINGBO", "SHANGHAI", "QINGDAO"];
+      var SALES = ["张三", "李四", "王五", "赵六", "钱七"];
+      var CS_LIST = ["王明", "李港后", "陈客服", "刘港后", "周港后"];
+      var PRODUCTS = ["1000123456", "1000234567", "1000345678", "1000456789", "1000567890"];
+      var PRODUCT_CS = {
+        "1000123456": "王明",
+        "1000234567": "王明",
+        "1000345678": "李港后",
+        "1000456789": "陈客服",
+        "1000567890": "刘港后"
+      };
+      var ZIPS = ["96810", "90001", "33101", "60601", "77001"];
+      var CATEGORIES = ["出库预警", "签收预警", "POD回传预警"];
+
+      var roleConfig = {
+        admin: { label: "管理员", sales: null, cs: null },
+        sales: { label: "业务员 · 张三", sales: "张三", cs: null },
+        cs: { label: "港后客服 · 王明", sales: null, cs: "王明" }
+      };
+
+      var todoBadgeCount = 20;
+      var simCounter = 9000;
+
+      function pad(n) { return n < 10 ? "0" + n : "" + n; }
+      function fmtDate(d) {
+        return d.getFullYear() + "/" + pad(d.getMonth() + 1) + "/" + pad(d.getDate());
+      }
+      function fmtDateTime(d) {
+        return fmtDate(d) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+      }
+
+      function categoryForIndex(i) {
+        if (i % 6 === 0 || i % 9 === 0) return "POD回传预警";
+        if (i % 7 === 0) return "签收预警";
+        return "出库预警";
+      }
+
+      function buildRows() {
+        var rows = [];
+        var now = new Date();
+        for (var i = 1; i <= 30; i++) {
+          var level = i <= 10 ? "timeout" : (i <= 20 ? "outbound" : "processed");
+          var category = categoryForIndex(i);
+
+          var unpack = new Date(now);
+          unpack.setDate(unpack.getDate() - (3 + (i % 12)));
+          unpack.setHours(8 + (i % 6), 30, 0, 0);
+
+          var estOut = new Date(unpack);
+          estOut.setDate(estOut.getDate() + 2);
+          var estSign = new Date(estOut);
+          estSign.setDate(estSign.getDate() + 4);
+          var estPod = new Date(estSign);
+          estPod.setDate(estPod.getDate() + 2);
+
+          var product = PRODUCTS[i % PRODUCTS.length];
+          var warnDays = level === "timeout" ? -(1 + (i % 4)) : (level === "outbound" ? (i % 2) : 0);
+          var unpackDays = Math.floor((now - unpack) / 86400000);
+
+          var actOut = "";
+          var actSign = "";
+          var actPod = "";
+          var track = "海外拆柜";
+
+          if (category === "签收预警" || category === "POD回传预警" || level === "processed" || i % 5 === 0) {
+            actOut = fmtDateTime(estOut);
+            track = "已出库";
+          }
+          if (category === "POD回传预警" || level === "processed") {
+            actSign = fmtDateTime(estSign);
+            track = "已签收";
+          }
+          if (level === "processed" && category === "POD回传预警") {
+            actPod = fmtDateTime(estPod);
+            track = "POD已回传";
+          }
+
+          rows.push({
+            id: i,
+            level: level,
+            isNew: false,
+            category: category,
+            waybill: "ICBU2211000" + pad(5000 + i),
+            sales: SALES[i % SALES.length],
+            afterCs: PRODUCT_CS[product] || CS_LIST[i % CS_LIST.length],
+            track: track,
+            customer: CUSTOMERS[i % CUSTOMERS.length],
+            product: product,
+            country: "US",
+            zip: ZIPS[i % ZIPS.length],
+            unpack: fmtDate(unpack),
+            unpackDays: unpackDays,
+            warnDays: warnDays,
+            estOut: fmtDateTime(estOut),
+            estSign: fmtDateTime(estSign),
+            estPod: fmtDateTime(estPod),
+            actOut: actOut,
+            actSign: actSign,
+            actPod: actPod
+          });
+        }
+        return rows;
+      }
+
+      var allRows = buildRows();
+      var state = { tab: "all", filters: {}, role: "cs" };
+      var tbody = document.getElementById("tableBody");
+
+      function getRole() { return roleConfig[state.role]; }
+
+      function matchRole(row) {
+        var r = getRole();
+        if (r.sales && row.sales !== r.sales) return false;
+        if (r.cs && row.afterCs !== r.cs) return false;
+        return true;
+      }
+
+      function matchFilters(row) {
+        var f = state.filters;
+        if (f.customer && row.customer.indexOf(f.customer) === -1) return false;
+        if (f.product && row.product.indexOf(f.product) === -1) return false;
+        if (f.country && row.country.indexOf(f.country.toUpperCase()) === -1) return false;
+        if (f.waybill && row.waybill.indexOf(f.waybill.toUpperCase()) === -1) return false;
+        if (f.sales && row.sales.indexOf(f.sales) === -1) return false;
+        if (f.cs && row.afterCs.indexOf(f.cs) === -1) return false;
+        if (f.zip && row.zip.indexOf(f.zip) === -1) return false;
+        if (f.category && row.category !== f.category) return false;
+        if (f.track && row.track.indexOf(f.track) === -1) return false;
+        return true;
+      }
+
+      function matchTab(row) {
+        if (state.tab === "all") return true;
+        return row.level === state.tab;
+      }
+
+      function visibleRows() {
+        return allRows.filter(function (r) { return matchRole(r) && matchFilters(r); });
+      }
+
+      function filteredRows() {
+        return visibleRows().filter(matchTab);
+      }
+
+      function pendingRows(rows) {
+        return rows.filter(function (r) { return r.level === "timeout" || r.level === "outbound"; });
+      }
+
+      function setBadgeEl(el, n, pulse) {
+        el.textContent = n > 99 ? "99+" : String(n);
+        el.classList.toggle("show", n > 0);
+        if (pulse) {
+          el.classList.remove("pulse");
+          void el.offsetWidth;
+          el.classList.add("pulse");
+        }
+      }
+
+      function updateBadges(pulse) {
+        var base = visibleRows();
+        var pending = pendingRows(base);
+        var timeoutN = pending.filter(function (r) { return r.level === "timeout"; }).length;
+        var outboundN = pending.filter(function (r) { return r.level === "outbound"; }).length;
+        var totalPending = pending.length;
+
+        setBadgeEl(document.getElementById("menuBadge"), totalPending, pulse);
+        setBadgeEl(document.getElementById("pageBadge"), totalPending, pulse);
+        setBadgeEl(document.getElementById("badgeTimeout"), timeoutN, pulse);
+        setBadgeEl(document.getElementById("badgeOutbound"), outboundN, pulse);
+        setBadgeEl(document.getElementById("bellBadge"), todoBadgeCount, pulse);
+      }
+
+      function updateCounts() {
+        var base = visibleRows();
+        document.getElementById("cntAll").textContent = "(" + base.length + ")";
+        document.getElementById("cntTimeout").textContent = "(" + base.filter(function (r) { return r.level === "timeout"; }).length + ")";
+        document.getElementById("cntOutbound").textContent = "(" + base.filter(function (r) { return r.level === "outbound"; }).length + ")";
+        document.getElementById("cntProcessed").textContent = "(" + base.filter(function (r) { return r.level === "processed"; }).length + ")";
+        updateBadges(false);
+      }
+
+      function catTag(cat) {
+        var cls = "tag-cat" + (cat === "POD回传预警" ? " pod" : "");
+        var label = cat;
+        if (cat === "POD回传预警") {
+          label += '<span class="mark-new">新</span>';
+        }
+        return '<span class="' + cls + '">' + label + "</span>";
+      }
+
+      function render() {
+        var rows = filteredRows();
+        tbody.innerHTML = "";
+        rows.forEach(function (r, idx) {
+          var tr = document.createElement("tr");
+          tr.className = "row-" + r.level + (r.isNew ? " row-new" : "");
+          tr.dataset.id = r.id;
+          tr.innerHTML =
+            '<td class="chk-col"><input type="checkbox" aria-label="选择 ' + r.waybill + '" /></td>' +
+            "<td>" + (idx + 1) + "</td>" +
+            "<td>" + catTag(r.category) + "</td>" +
+            '<td><a href="#" class="link-waybill" data-waybill="' + r.waybill + '">' + r.waybill + "</a></td>" +
+            "<td>" + r.sales + "</td>" +
+            "<td>" + r.afterCs + "</td>" +
+            "<td>" + r.track + "</td>" +
+            "<td>" + r.customer + "</td>" +
+            "<td>" + r.product + "</td>" +
+            "<td>" + r.country + "</td>" +
+            "<td>" + r.zip + "</td>" +
+            "<td>" + r.unpack + "</td>" +
+            "<td>" + r.unpackDays + "</td>" +
+            "<td>" + r.warnDays + "</td>" +
+            "<td>" + r.estOut + "</td>" +
+            "<td>" + r.estSign + "</td>" +
+            "<td>" + r.estPod + "</td>" +
+            "<td>" + (r.actOut || "—") + "</td>" +
+            "<td>" + (r.actSign || "—") + "</td>" +
+            "<td>" + (r.actPod || "—") + "</td>";
+          tbody.appendChild(tr);
+        });
+        document.getElementById("emptyTip").classList.toggle("show", rows.length === 0);
+        updateCounts();
+      }
+
+      function showToast(text) {
+        var el = document.getElementById("miniToast");
+        el.innerHTML = text;
+        el.classList.add("show");
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(function () { el.classList.remove("show"); }, 4200);
+      }
+
+      function pushTodo(category, waybill) {
+        todoBadgeCount += 1;
+        updateBadges(true);
+        showToast("<strong>待办提醒</strong>：您有一件待办事项，请及时处理：出库签收预警 · " + category + " · " + waybill);
+      }
+
+      function addSimRow(category) {
+        simCounter += 1;
+        var now = new Date();
+        var r = getRole();
+        var product = "1000123456";
+        var unpack = new Date(now);
+        unpack.setDate(unpack.getDate() - 5);
+        var estOut = new Date(unpack);
+        estOut.setDate(estOut.getDate() + 2);
+        var estSign = new Date(estOut);
+        estSign.setDate(estSign.getDate() + 4);
+        var estPod = new Date(estSign);
+        estPod.setDate(estPod.getDate() + 2);
+        var row = {
+          id: "sim-" + simCounter,
+          level: "timeout",
+          isNew: true,
+          category: category,
+          waybill: "ICBU2211000" + simCounter,
+          sales: r.sales || "张三",
+          afterCs: r.cs || PRODUCT_CS[product],
+          track: category === "POD回传预警" ? "已签收" : (category === "签收预警" ? "已出库" : "海外拆柜"),
+          customer: "YANTIAN",
+          product: product,
+          country: "US",
+          zip: "96810",
+          unpack: fmtDate(unpack),
+          unpackDays: 5,
+          warnDays: -2,
+          estOut: fmtDateTime(estOut),
+          estSign: fmtDateTime(estSign),
+          estPod: fmtDateTime(estPod),
+          actOut: category !== "出库预警" ? fmtDateTime(estOut) : "",
+          actSign: category === "POD回传预警" ? fmtDateTime(estSign) : "",
+          actPod: ""
+        };
+        allRows.unshift(row);
+        pushTodo(category, row.waybill);
+        render();
+      }
+
+      document.getElementById("roleSelect").addEventListener("change", function () {
+        state.role = this.value;
+        var rc = getRole();
+        document.getElementById("rolePill").textContent = rc.label;
+        document.getElementById("headerUser").textContent = rc.label;
+        render();
+      });
+
+      document.querySelectorAll(".tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".tab").forEach(function (t) {
+            t.classList.remove("active");
+            t.setAttribute("aria-selected", "false");
+          });
+          btn.classList.add("active");
+          btn.setAttribute("aria-selected", "true");
+          state.tab = btn.dataset.tab;
+          render();
+        });
+      });
+
+      document.getElementById("filterForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        state.filters = {
+          customer: document.getElementById("fCustomer").value.trim().toUpperCase(),
+          product: document.getElementById("fProduct").value.trim(),
+          country: document.getElementById("fCountry").value.trim(),
+          waybill: document.getElementById("fWaybill").value.trim().toUpperCase(),
+          sales: document.getElementById("fSales").value.trim(),
+          cs: document.getElementById("fCs").value.trim(),
+          zip: document.getElementById("fZip").value.trim(),
+          category: document.getElementById("fCategory").value,
+          track: document.getElementById("fTrack").value.trim()
+        };
+        render();
+      });
+
+      document.getElementById("btnReset").addEventListener("click", function () {
+        document.getElementById("filterForm").reset();
+        state.filters = {};
+        state.tab = "all";
+        document.querySelectorAll(".tab").forEach(function (t) {
+          t.classList.remove("active");
+          t.setAttribute("aria-selected", "false");
+        });
+        document.querySelector('.tab[data-tab="all"]').classList.add("active");
+        document.querySelector('.tab[data-tab="all"]').setAttribute("aria-selected", "true");
+        render();
+      });
+
+      document.getElementById("btnExpand").addEventListener("click", function () {
+        var form = document.getElementById("filterForm");
+        var open = form.classList.toggle("expanded");
+        document.getElementById("btnExpand").textContent = open ? "收起" : "展开";
+      });
+
+      document.getElementById("btnColSetting").addEventListener("click", function () {
+        alert("列设置：本原型占位。实现时可勾选显示/隐藏可选列。");
+      });
+
+      document.getElementById("btnSimOutbound").addEventListener("click", function () {
+        addSimRow("出库预警");
+      });
+
+      document.getElementById("btnSimPod").addEventListener("click", function () {
+        addSimRow("POD回传预警");
+      });
+
+      document.getElementById("btnClearBadge").addEventListener("click", function () {
+        todoBadgeCount = 0;
+        allRows.forEach(function (r) { r.isNew = false; });
+        updateBadges(false);
+        render();
+      });
+
+      document.getElementById("btnBell").addEventListener("click", function () {
+        alert("打开消息待办列表（原型占位）\n当前待办数：" + todoBadgeCount);
+      });
+
+      tbody.addEventListener("click", function (e) {
+        var a = e.target.closest(".link-waybill");
+        if (a) {
+          e.preventDefault();
+          alert("跳转运单查询详情：\n" + a.dataset.waybill);
+        }
+      });
+
+      document.getElementById("chkAll").addEventListener("change", function () {
+        tbody.querySelectorAll('input[type="checkbox"]').forEach(function (c) {
+          c.checked = document.getElementById("chkAll").checked;
+        });
+      });
+
+      function selectedWaybills() {
+        var list = [];
+        tbody.querySelectorAll("tr").forEach(function (tr) {
+          var chk = tr.querySelector('input[type="checkbox"]');
+          if (chk && chk.checked) {
+            var link = tr.querySelector(".link-waybill");
+            if (link) list.push(link.dataset.waybill);
+          }
+        });
+        return list;
+      }
+
+      document.getElementById("btnTrack").addEventListener("click", function () {
+        var sel = selectedWaybills();
+        if (!sel.length) { alert("请先勾选至少一条运单。"); return; }
+        alert("打开轨迹维护（原型）：\n" + sel.join("\n"));
+      });
+
+      document.getElementById("btnModifyOutbound").addEventListener("click", function () {
+        var sel = selectedWaybills();
+        if (!sel.length) { alert("请先勾选至少一条运单。"); return; }
+        alert("打开修改出库件（原型）：\n" + sel.join("\n"));
+      });
+
+      render();
+    })();
+  </script>
+  <script src="二期/ess-prototype-prd.js"></script>
+</body>
+</html>
