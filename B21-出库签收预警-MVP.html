@@ -462,6 +462,113 @@
     }
     .mini-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
     .mini-toast strong { color: #fbbf24; }
+
+    /* ── 右下角私卡预警弹窗 ── */
+    .warn-alert-stack {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 2100;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 10px;
+      pointer-events: none;
+      max-width: min(420px, calc(100vw - 40px));
+    }
+    .warn-alert {
+      pointer-events: auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04);
+      padding: 16px 16px 12px 48px;
+      position: relative;
+      transform: translateX(calc(100% + 48px));
+      opacity: 0;
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s;
+      border-left: 4px solid var(--red);
+    }
+    .warn-alert.show { transform: translateX(0); opacity: 1; }
+    .warn-alert.hide { transform: translateX(calc(100% + 48px)); opacity: 0; }
+    .warn-alert.cat-outbound { border-left-color: var(--orange); }
+    .warn-alert.cat-sign { border-left-color: #d97706; }
+    .warn-alert.cat-pod { border-left-color: var(--primary); }
+    .warn-alert .alert-ico {
+      position: absolute;
+      left: 14px;
+      top: 16px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fee2e2;
+      color: var(--red);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .warn-alert.cat-outbound .alert-ico { background: #ffedd5; color: var(--orange); }
+    .warn-alert.cat-sign .alert-ico { background: #fef3c7; color: #d97706; }
+    .warn-alert.cat-pod .alert-ico { background: #dbeafe; color: var(--primary); }
+    .warn-alert .alert-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 6px;
+      line-height: 1.45;
+      padding-right: 20px;
+    }
+    .warn-alert .alert-title em {
+      font-style: normal;
+      color: var(--red);
+    }
+    .warn-alert.cat-outbound .alert-title em { color: var(--orange); }
+    .warn-alert.cat-sign .alert-title em { color: #d97706; }
+    .warn-alert.cat-pod .alert-title em { color: var(--primary); }
+    .warn-alert .alert-meta {
+      font-size: 12px;
+      color: var(--sub);
+      margin: 0 0 10px;
+      line-height: 1.5;
+    }
+    .warn-alert .alert-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .warn-alert .alert-btn {
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .warn-alert .alert-btn:hover { border-color: #cbd5e1; background: #f8fafc; }
+    .warn-alert .alert-btn.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .warn-alert .alert-btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .warn-alert .alert-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: none;
+      color: var(--sub);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      border-radius: 4px;
+    }
+    .warn-alert .alert-close:hover { background: #f3f4f6; color: var(--text); }
+
     @media (max-width: 900px) {
       .filter { grid-template-columns: 1fr 1fr; }
       .sidebar { display: none; }
@@ -481,8 +588,9 @@
       </label>
       <button type="button" id="btnSimOutbound">模拟即将超时预警</button>
       <button type="button" id="btnSimPod">模拟 POD 回传预警</button>
+      <button type="button" id="btnSimAlert">演示弹窗提醒</button>
       <button type="button" id="btnClearBadge">清空角标</button>
-      <span style="color:#78716c;margin-left:auto;">新预警 → 菜单/页签/铃铛角标 +1，并弹出待办消息</span>
+      <span style="color:#78716c;margin-left:auto;">新预警 → 菜单/页签/铃铛角标 +1，右下角弹窗 + 顶部轻提示</span>
     </div>
 
     <header class="top-header">
@@ -636,6 +744,7 @@
     </div>
   </div>
 
+  <div class="warn-alert-stack" id="alertToastStack" aria-live="polite" aria-atomic="false"></div>
   <div class="mini-toast" id="miniToast" role="status" aria-live="polite"></div>
 
   <div class="ess-prd-source" hidden aria-hidden="true">
@@ -741,6 +850,7 @@
     <ul>
       <li><strong>触发</strong>：小时任务或实时轨迹变更产生<strong>新的未处理预警</strong>时，向相关港后客服 / 业务员推送待办。</li>
       <li><strong>推送文案</strong>：「您有一件待办事项，请及时处理：出库签收预警 · {预警分类} · {运单号}」。</li>
+      <li><strong>弹窗提醒</strong>（新增）：产生新预警时，页面<strong>右下角</strong>滑入卡片式弹窗（私卡预警 · {分类}），展示运单号与拆柜基准说明；支持「稍后处理」「立即处理」与手动关闭；约 8 秒无操作自动收起；同屏最多堆叠 3 条。顶部同步轻提示（mini toast）。</li>
       <li><strong>角标位置</strong>：
         <ul>
           <li>左侧菜单「B21 出库签收预警」：未处理预警总数；</li>
@@ -1012,10 +1122,106 @@
         showToast._t = setTimeout(function () { el.classList.remove("show"); }, 4200);
       }
 
+      var MAX_ALERTS = 3;
+      var ALERT_AUTO_DISMISS = 8000;
+
+      function alertCatClass(category) {
+        if (category === "出库预警") return "cat-outbound";
+        if (category === "签收预警") return "cat-sign";
+        if (category === "POD回传预警") return "cat-pod";
+        return "";
+      }
+
+      function alertMetaText(category) {
+        if (category === "出库预警") return "已超过预计出库时间 · 拆柜轨迹 TA0001";
+        if (category === "签收预警") return "已超过预计签收时间 · 请跟进尾程派送";
+        if (category === "POD回传预警") return "POD 尚未回传 · 请催促车队/仓库";
+        return "请及时跟进处理";
+      }
+
+      function dismissWarnAlert(node) {
+        if (!node || node.classList.contains("hide")) return;
+        node.classList.remove("show");
+        node.classList.add("hide");
+        setTimeout(function () {
+          if (node.parentNode) node.parentNode.removeChild(node);
+        }, 350);
+      }
+
+      function focusWaybillInList(waybill) {
+        state.tab = "timeout";
+        document.querySelectorAll(".tab").forEach(function (t) {
+          t.classList.remove("active");
+          t.setAttribute("aria-selected", "false");
+        });
+        var tabBtn = document.querySelector('.tab[data-tab="timeout"]');
+        if (tabBtn) {
+          tabBtn.classList.add("active");
+          tabBtn.setAttribute("aria-selected", "true");
+        }
+        document.getElementById("fWaybill").value = waybill;
+        state.filters = Object.assign({}, state.filters, { waybill: waybill.toUpperCase() });
+        render();
+        requestAnimationFrame(function () {
+          var link = tbody.querySelector('.link-waybill[data-waybill="' + waybill + '"]');
+          if (link) {
+            var tr = link.closest("tr");
+            tr.scrollIntoView({ behavior: "smooth", block: "center" });
+            tr.style.transition = "background .3s";
+            tr.style.background = "#fef3c7";
+            setTimeout(function () { tr.style.background = ""; }, 1800);
+          }
+        });
+      }
+
+      function showWarnAlert(category, waybill, opts) {
+        opts = opts || {};
+        var stack = document.getElementById("alertToastStack");
+        var cc = alertCatClass(category);
+        var meta = opts.meta || alertMetaText(category);
+        var el = document.createElement("div");
+        el.className = "warn-alert " + cc;
+        el.setAttribute("role", "alert");
+        el.innerHTML =
+          '<button type="button" class="alert-close" aria-label="关闭">&times;</button>' +
+          '<div class="alert-ico">!</div>' +
+          '<p class="alert-title">私卡预警 · <em>' + category + "</em></p>" +
+          '<p class="alert-meta">运单 <strong>' + waybill + "</strong><br />" + meta + "</p>" +
+          '<div class="alert-actions">' +
+          '<button type="button" class="alert-btn alert-btn-later">稍后处理</button>' +
+          '<button type="button" class="alert-btn primary alert-btn-go">立即处理</button>' +
+          "</div>";
+        stack.appendChild(el);
+
+        while (stack.children.length > MAX_ALERTS) {
+          dismissWarnAlert(stack.firstElementChild);
+        }
+
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { el.classList.add("show"); });
+        });
+
+        var autoT = setTimeout(function () { dismissWarnAlert(el); }, ALERT_AUTO_DISMISS);
+
+        function closeAlert() {
+          clearTimeout(autoT);
+          dismissWarnAlert(el);
+        }
+
+        el.querySelector(".alert-close").addEventListener("click", closeAlert);
+        el.querySelector(".alert-btn-later").addEventListener("click", closeAlert);
+        el.querySelector(".alert-btn-go").addEventListener("click", function () {
+          closeAlert();
+          focusWaybillInList(waybill);
+          showToast("<strong>已定位</strong>：运单 " + waybill + " 已筛选至超时预警列表");
+        });
+      }
+
       function pushTodo(category, waybill) {
         todoBadgeCount += 1;
         updateBadges(true);
         showToast("<strong>待办提醒</strong>：您有一件待办事项，请及时处理：出库签收预警 · " + category + " · " + waybill);
+        showWarnAlert(category, waybill);
       }
 
       function addSimRow(category) {
@@ -1125,6 +1331,13 @@
 
       document.getElementById("btnSimPod").addEventListener("click", function () {
         addSimRow("POD回传预警");
+      });
+
+      document.getElementById("btnSimAlert").addEventListener("click", function () {
+        var sample = allRows.find(function (r) {
+          return r.level === "timeout" && matchRole(r);
+        }) || allRows[0];
+        pushTodo(sample.category, sample.waybill);
       });
 
       document.getElementById("btnClearBadge").addEventListener("click", function () {
