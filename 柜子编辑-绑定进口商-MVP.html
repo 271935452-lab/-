@@ -15,6 +15,8 @@
       --blue: #1890ff;
       --warn: #faad14;
       --warn-bg: #fffbe6;
+      --bond: #cf1322;
+      --bond-bg: #fff1f0;
     }
     * { box-sizing: border-box; }
     body {
@@ -135,17 +137,40 @@
     .tag-inactive { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
     .tag-bond { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
     .tag-stop { background: #f5f5f5; color: #8c8c8c; border: 1px solid #d9d9d9; }
-    .alert-warn {
+    .risk-stack {
       margin-top: 8px;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .risk-stack[hidden] { display: none !important; }
+    .alert-risk {
       padding: 8px 10px;
-      background: #fff2e8;
-      border: 1px solid #ffbb96;
       border-radius: 2px;
       font-size: 12px;
-      color: #d4380d;
-      max-width: 520px;
+      line-height: 1.55;
+      white-space: normal;
     }
-    .alert-warn[hidden] { display: none !important; }
+    .alert-risk[hidden] { display: none !important; }
+    .alert-risk .risk-title {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .alert-risk.watch {
+      background: #fff7e6;
+      border: 1px solid #ffd591;
+      color: #ad6800;
+    }
+    .alert-risk.bond {
+      background: var(--bond-bg);
+      border: 1px solid #ffa39e;
+      color: var(--bond);
+    }
+    .alert-risk .risk-meta {
+      color: inherit;
+      opacity: .92;
+    }
     .sticky-ft {
       position: sticky;
       bottom: 0;
@@ -158,7 +183,7 @@
       margin-top: 16px;
       box-shadow: 0 -2px 8px rgba(0,0,0,.06);
     }
-    .importer-card, .alert-warn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 520px; }
+    .importer-card { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 520px; }
     html.embed-mode .top-header { display: none; }
     html.embed-mode .page { padding: 12px 14px 16px; max-width: none; }
     html.embed-mode .shell { min-height: auto; }
@@ -219,7 +244,8 @@
               <select id="importerSelect" aria-label="选择进口商">
                 <option value="">请选择进口商</option>
                 <option value="IMP-US-2024-018" data-status="active">IMP-US-2024-018 · Pacific Trade Logistics LLC</option>
-                <option value="IMP-US-2023-006" data-status="watch">IMP-US-2023-006 · East Coast Import Co.（停用待观察）</option>
+                <option value="IMP-US-2024-021" data-status="active" data-bond-soon="1">IMP-US-2024-021 · Westbay Trading Inc.</option>
+                <option value="IMP-US-2023-006" data-status="watch" data-bond-soon="1">IMP-US-2023-006 · East Coast Import Co.（停用待观察）</option>
                 <option value="IMP-US-2025-003" data-status="inactive" disabled>IMP-US-2025-003 · Sunrise Global LLC（未启用）</option>
                 <option value="IMP-US-2022-001" data-status="disabled" disabled>IMP-US-2022-001 · Legacy Harbor Inc.（已停用）</option>
               </select>
@@ -232,8 +258,19 @@
               <div>POA：<span id="previewPoa">—</span> · 抬头：<span id="previewHeader">—</span></div>
               <div>法人：<span id="previewLegal">—</span> · 在途未清关：<span id="previewTransit">—</span> 柜</div>
             </div>
-            <div class="alert-warn" id="watchAlert" hidden>
-              该进口商处于<strong>停用待观察</strong>，近 30 天查验率 12.8%，绑定前请确认业务风险。
+            <div class="risk-stack" id="riskStack" hidden>
+              <div class="alert-risk watch" id="watchAlert" hidden>
+                <div class="risk-title">停用待观察</div>
+                <div class="risk-meta" id="watchAlertText">
+                  该进口商处于<strong>停用待观察</strong>，近 30 天查验率偏高，绑定前请确认业务风险。
+                </div>
+              </div>
+              <div class="alert-risk bond" id="bondAlert" hidden>
+                <div class="risk-title">Bond 临期</div>
+                <div class="risk-meta" id="bondAlertText">
+                  该进口商 Bond 将于近期失效，请确认是否继续绑定，并安排续购。
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -272,10 +309,16 @@
     <p>进口商在<strong>柜子新增/编辑</strong>维护绑定（非订单）。主数据在<a href="进口商管理-MVP.html">进口商管理</a>维护。</p>
     <h4>进口商选择</h4>
     <ul>
-      <li>下拉仅展示「已启用」「停用待观察」；<strong>未启用</strong>、<strong>已停用</strong>不可新绑定。</li>
+      <li>下拉仅展示「已启用」「停用待观察」；<strong>未启用</strong>、<strong>已停用</strong>不可新绑定。已启用但 Bond 临期仍可选。</li>
       <li>保存后写入柜子主档，用于在途统计与查验率汇总。</li>
       <li>选中后展示额度、POA、发货人抬头、Bond 类型与保险代码、法人、在途柜数摘要。</li>
-      <li>「停用待观察」或 Bond 临期时展示风险提示条（交互演示）。</li>
+      <li>风险提示条（可叠加）：
+        <ul>
+          <li><strong>停用待观察：</strong>「该进口商处于停用待观察，近 30 天查验率 {x%}，绑定前请确认业务风险。」</li>
+          <li><strong>Bond 临期（失效 ≤30 天）：</strong>「该进口商 Bond 将于 {失效日} 失效（剩余 {N} 天），请确认是否继续绑定，并安排续购。」</li>
+        </ul>
+      </li>
+      <li>保存时：无风险直接保存；有任一风险条则二次确认后保存（不阻断）。</li>
     </ul>
     <h4>清关字段</h4>
     <ul>
@@ -298,27 +341,51 @@
         'IMP-US-2024-018': {
           name: 'Pacific Trade Logistics LLC',
           status: 'active',
+          bondSoon: false,
           limit: 'USD 500,000',
           poa: '已授权',
           header: 'Pacific Trade Logistics Inc.',
           bond: '收货人 · 054',
+          bondExpire: '2027-03-18',
+          bondDaysLeft: 233,
           legal: 'Michael Chen / 美国',
-          transit: 5
+          transit: 5,
+          inspectRate: null
+        },
+        'IMP-US-2024-021': {
+          name: 'Westbay Trading Inc.',
+          status: 'active',
+          bondSoon: true,
+          limit: 'USD 350,000',
+          poa: '已授权',
+          header: 'Westbay Trading Inc.',
+          bond: '收货人 · 054（临期）',
+          bondExpire: '2026-08-09',
+          bondDaysLeft: 12,
+          legal: 'David Park / 韩国',
+          transit: 3,
+          inspectRate: null
         },
         'IMP-US-2023-006': {
           name: 'East Coast Import Co.',
           status: 'watch',
+          bondSoon: true,
           limit: 'USD 200,000',
           poa: '已授权',
           header: 'East Coast Logistics LLC',
           bond: '发货人 · 856（临期）',
+          bondExpire: '2026-08-15',
+          bondDaysLeft: 18,
           legal: 'Lisa Wang / 中国',
-          transit: 12
+          transit: 12,
+          inspectRate: '12.8%'
         }
       };
       var sel = document.getElementById('importerSelect');
       var preview = document.getElementById('importerPreview');
+      var riskStack = document.getElementById('riskStack');
       var watchAlert = document.getElementById('watchAlert');
+      var bondAlert = document.getElementById('bondAlert');
       var tagMap = {
         active: { text: '已启用', cls: 'tag-ok' },
         watch: { text: '停用待观察', cls: 'tag-warn' },
@@ -327,15 +394,42 @@
         soon: { text: '临期', cls: 'tag-bond' }
       };
 
+      function renderRisk(m) {
+        var showWatch = m.status === 'watch';
+        var showBond = !!m.bondSoon || m.status === 'soon';
+
+        if (showWatch) {
+          var rate = m.inspectRate ? ('近 30 天查验率 ' + m.inspectRate + '，') : '近 30 天查验率偏高，';
+          document.getElementById('watchAlertText').innerHTML =
+            '该进口商处于<strong>停用待观察</strong>，' + rate + '绑定前请确认业务风险。';
+        }
+        if (showBond) {
+          var days = typeof m.bondDaysLeft === 'number' ? m.bondDaysLeft : null;
+          var expire = m.bondExpire || '—';
+          document.getElementById('bondAlertText').innerHTML =
+            '该进口商 Bond 将于 <strong>' + expire + '</strong> 失效' +
+            (days != null ? '（剩余 <strong>' + days + '</strong> 天）' : '') +
+            '，请确认是否继续绑定，并安排续购。';
+        }
+
+        watchAlert.hidden = !showWatch;
+        bondAlert.hidden = !showBond;
+        riskStack.hidden = !(showWatch || showBond);
+        return { showWatch: showWatch, showBond: showBond };
+      }
+
       sel.addEventListener('change', function () {
         var code = sel.value;
         if (!code || !meta[code]) {
           preview.hidden = true;
+          riskStack.hidden = true;
           watchAlert.hidden = true;
+          bondAlert.hidden = true;
           return;
         }
         var m = meta[code];
         var t = tagMap[m.status] || tagMap.active;
+        // 已启用但 Bond 临期：状态标签仍显示「已启用」，摘要里 Bond 带临期；提示条单独展示
         preview.hidden = false;
         document.getElementById('previewName').textContent = code + ' · ' + m.name;
         var tagEl = document.getElementById('previewTag');
@@ -347,16 +441,24 @@
         document.getElementById('previewBond').textContent = m.bond;
         document.getElementById('previewLegal').textContent = m.legal;
         document.getElementById('previewTransit').textContent = m.transit;
-        watchAlert.hidden = m.status !== 'watch';
+        renderRisk(m);
       });
 
-      sel.value = 'IMP-US-2024-018';
+      sel.value = 'IMP-US-2024-021';
       sel.dispatchEvent(new Event('change'));
 
       document.getElementById('btnSave').addEventListener('click', function () {
         if (!sel.value) {
           alert('请选择进口商');
           return;
+        }
+        var m = meta[sel.value];
+        var risk = renderRisk(m);
+        if (risk.showWatch || risk.showBond) {
+          var tips = [];
+          if (risk.showWatch) tips.push('停用待观察');
+          if (risk.showBond) tips.push('Bond 临期（' + (m.bondExpire || '') + '，剩余 ' + m.bondDaysLeft + ' 天）');
+          if (!confirm('当前进口商存在风险：' + tips.join('；') + '。\n确认仍要绑定并保存柜子？')) return;
         }
         alert('原型演示：柜子已保存，进口商绑定为 ' + sel.value);
       });
