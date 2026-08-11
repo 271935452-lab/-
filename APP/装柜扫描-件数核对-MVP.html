@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>装柜扫描 · 件数核对（MVP）</title>
+  <link rel="stylesheet" href="wh-pda-common.css" />
+</head>
+<body>
+  <div class="proto-wrap">
+    <div class="proto-head">
+      <h1>装柜扫描 · 件数核对</h1>
+      <p>扫描托盘号后输入<strong>核对件数</strong>，须与签入上托登记一致，方可「装柜完成/补单/落货」。</p>
+      <div class="flow">
+        流程：① 签入上托（录入） → ② 找货核对（核对） → <strong>③ 装柜扫描（核对）</strong>
+        <div class="nav-links">
+          <a href="仓库作业-导航-MVP.html">← 仓库作业导航</a>
+          <a href="签入上托-托上件数-MVP.html">← 签入上托</a>
+          <a href="找货核对扫描-件数核对-MVP.html">← 找货核对扫描</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="proto-layout">
+      <div class="phone-shell">
+        <div class="phone-inner">
+          <div class="status-bar"><span>11:06</span><span>PDA</span></div>
+          <header class="app-header">
+            <button type="button" class="back" aria-label="返回" onclick="location.href='仓库PDA-首页-MVP.html'">‹</button>
+            <h1 class="title">装柜扫描</h1>
+            <span></span>
+          </header>
+
+          <div class="screen">
+            <div class="form-block">
+              <div class="field-row">
+                <label>终配舱号</label>
+                <input type="text" id="cabinetNo" value="LHW-260810-52" />
+                <button type="button" class="btn-scan">⌁</button>
+              </div>
+              <div class="field-row" style="grid-template-columns:88px 1fr;">
+                <label>终配仓单号</label>
+                <span style="font-size:14px;color:#666;padding:8px 0">260810-龙岗-以星纽约-发深圳3</span>
+              </div>
+              <div class="field-row">
+                <label>托盘号</label>
+                <input type="text" id="palletNo" placeholder="扫描或输入托盘号" autocomplete="off" />
+                <button type="button" class="btn-scan" id="btnScanPallet">⌁</button>
+              </div>
+            </div>
+
+            <div class="pieces-panel" id="piecesPanel">
+              <div class="field-row">
+                <label>核对件数<span style="color:#dc2626">*</span></label>
+                <input type="number" id="piecesInput" inputmode="numeric" min="1" placeholder="请输入核对件数" />
+                <span></span>
+              </div>
+              <p class="pieces-hint" id="piecesHint">核对当前托盘的件数</p>
+            </div>
+
+            <div class="tabs">
+              <button type="button" class="tab active">待扫描 (17)</button>
+              <button type="button" class="tab">已扫描 (0)</button>
+            </div>
+
+            <div class="card-list">
+              <div class="scan-card">
+                <div class="row"><span class="k">客户单号</span><span class="v">DQ2608050075036</span></div>
+                <div class="row"><span class="k">件数</span><span class="v" id="cardPieces">—</span></div>
+                <div class="row"><span class="k">产品</span><span class="v">以星纽约快线FBA特价</span></div>
+                <div class="row"><span class="k">托数</span><span class="v">0/0 ⓘ</span></div>
+                <div class="row"><span class="k">业务员</span><span class="v">徐芬</span></div>
+                <div class="row"><span class="k">库区</span><span class="v">无</span></div>
+              </div>
+              <div class="scan-card">
+                <div class="row"><span class="k">客户单号</span><span class="v">DQ2608050075041</span></div>
+                <div class="row"><span class="k">件数</span><span class="v">13</span></div>
+                <div class="row"><span class="k">产品</span><span class="v">以星纽约快线FBA特价</span></div>
+                <div class="row"><span class="k">托数</span><span class="v">0/0 ⓘ</span></div>
+              </div>
+            </div>
+          </div>
+
+          <footer class="footer-bar single">
+            <button type="button" class="btn-primary" id="btnSubmit" disabled>装柜完成/补单/落货</button>
+          </footer>
+        </div>
+      </div>
+
+      <aside class="prd-panel">
+        <span class="chip">PRD · 装柜扫描</span>
+        <h2>件数核对</h2>
+        <h3>件数基准规则</h3>
+        <ul>
+          <li>每次操作托盘，操作员输入<strong>当前托盘的件数</strong>（盲核）。</li>
+          <li>核对基准 = 该托盘<strong>最后一次成功操作</strong>的件数（上托/换托/签入等，按操作时间）。</li>
+        </ul>
+        <h3>交互</h3>
+        <ul>
+          <li>扫描托盘号后展开核对件数；不展示基准件数，由操作员盲核。</li>
+          <li>核对一致后「装柜完成/补单/落货」才可点击；不一致或未登记均拦截。</li>
+        </ul>
+        <h3>业务规则</h3>
+        <ul>
+          <li>件数链路：上托/换托（写入基准）→ 找货核对（按最近上托/换托时间取基准）→ 装柜扫描（出库前终核）。</li>
+          <li>三环节均以<strong>托盘号 + 最新件数基准</strong>为核对维度；每次成功操作后基准更新。</li>
+        </ul>
+        <h3>演示</h3>
+        <ul>
+          <li>扫描 <code>TP260811001</code>，输入 <strong>43</strong> 后可装柜；输入 42 拦截。</li>
+        </ul>
+        <h3>操作日志</h3>
+        <ul>
+          <li>落库时机：装柜操作<strong>提交成功</strong>后写入；核对失败不写。</li>
+          <li><strong>操作类型</strong>：装柜扫描</li>
+          <li><strong>日志内容</strong>：<code>装柜扫描: [终配舱号: {cabinetNo}, 托盘号: {palletNo}, 核对件数: {pieces}, 操作: {装柜完成|补单|落货}]</code></li>
+          <li><strong>示例</strong>：<code>装柜扫描: [终配舱号: LHW-260810-52, 托盘号: TP260811001, 核对件数: 43, 操作: 装柜完成]</code></li>
+        </ul>
+      </aside>
+    </div>
+  </div>
+
+  <script src="wh-pda-pieces.js"></script>
+  <script src="wh-pda-nav.js"></script>
+  <script>
+    (function () {
+      WH_PDA.seedDemo();
+
+      var palletNo = document.getElementById("palletNo");
+      var piecesPanel = document.getElementById("piecesPanel");
+      var piecesInput = document.getElementById("piecesInput");
+      var piecesHint = document.getElementById("piecesHint");
+      var btnSubmit = document.getElementById("btnSubmit");
+      var btnScanPallet = document.getElementById("btnScanPallet");
+      var cardPieces = document.getElementById("cardPieces");
+
+      function syncState() {
+        var pallet = palletNo.value.trim();
+        if (!pallet) {
+          piecesPanel.classList.remove("is-open");
+          btnSubmit.disabled = true;
+          return;
+        }
+
+        piecesPanel.classList.add("is-open");
+        var expected = WH_PDA.getRegisteredPieces(pallet);
+        if (expected == null) {
+          piecesHint.className = "pieces-hint err";
+          piecesHint.textContent = "该托盘尚未登记托上件数，无法装柜扫描。";
+          btnSubmit.disabled = true;
+          return;
+        }
+
+        var result = WH_PDA.verifyPieces(pallet, piecesInput.value);
+        piecesHint.className = "pieces-hint";
+
+        if (!piecesInput.value) {
+          piecesHint.textContent = "核对当前托盘的件数";
+          btnSubmit.disabled = true;
+          return;
+        }
+
+        if (result.ok) {
+          piecesHint.textContent = "核对一致（" + result.actual + " 件），可装柜完成。";
+          piecesHint.classList.add("ok");
+          btnSubmit.disabled = false;
+        } else if (result.reason === "mismatch") {
+          piecesHint.textContent = "件数不一致，请重新核对。";
+          piecesHint.classList.add("err");
+          btnSubmit.disabled = true;
+        }
+      }
+
+      palletNo.addEventListener("input", syncState);
+      piecesInput.addEventListener("input", syncState);
+
+      btnScanPallet.addEventListener("click", function () {
+        palletNo.value = "TP260811001";
+        piecesInput.value = "";
+        syncState();
+        piecesInput.focus();
+      });
+
+      btnSubmit.addEventListener("click", function () {
+        var r = WH_PDA.verifyPieces(palletNo.value.trim(), piecesInput.value);
+        if (!r.ok) { alert("件数未核对通过，无法装柜"); return; }
+        alert("装柜完成（原型演示）\n托盘：" + palletNo.value.trim() + "\n核对件数：" + r.actual + " 件");
+      });
+    })();
+  </script>
+</body>
+</html>

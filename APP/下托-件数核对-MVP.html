@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>下托 · 件数核对（MVP）</title>
+  <link rel="stylesheet" href="wh-pda-common.css" />
+</head>
+<body>
+  <div class="proto-wrap">
+    <div class="proto-head">
+      <h1>下托</h1>
+      <p>扫描托盘号后须<strong>核对件数</strong>，与签入登记一致方可下托。</p>
+      <div class="flow">
+        <div class="nav-links">
+          <a href="仓库PDA-首页-MVP.html">← PDA 首页菜单</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="proto-layout">
+      <div class="phone-shell">
+        <div class="phone-inner">
+          <div class="status-bar"><span>11:06</span><span>PDA</span></div>
+          <header class="app-header">
+            <button type="button" class="back" aria-label="返回" onclick="location.href='仓库PDA-首页-MVP.html'">‹</button>
+            <h1 class="title">下托</h1>
+            <span></span>
+          </header>
+
+          <div class="screen">
+            <div class="form-block">
+              <div class="field-row">
+                <label>运单号</label>
+                <input type="text" id="waybillNo" placeholder="扫描或输入运单号" value="RC266501" />
+                <button type="button" class="btn-scan" title="扫描">⌁</button>
+              </div>
+            </div>
+
+            <div class="radio-block">
+              <div class="label">下托方式</div>
+              <div class="radio-row">
+                <label><input type="radio" name="unpalletMode" value="all" /> 整票下托</label>
+                <label><input type="radio" name="unpalletMode" value="single" checked /> 单个下托</label>
+              </div>
+            </div>
+
+            <div class="form-block">
+              <div class="field-row">
+                <label>托盘号</label>
+                <input type="text" id="palletNo" placeholder="扫描或输入托盘号" autocomplete="off" />
+                <button type="button" class="btn-scan" id="btnScanPallet" title="扫描">⌁</button>
+              </div>
+            </div>
+
+            <div class="pieces-panel" id="piecesPanel">
+              <div class="field-row">
+                <label>核对件数<span style="color:#dc2626">*</span></label>
+                <input type="number" id="piecesInput" inputmode="numeric" min="1" placeholder="请输入核对件数" />
+                <span></span>
+              </div>
+              <p class="pieces-hint" id="piecesHint">核对当前托盘的件数</p>
+            </div>
+
+            <p class="section-label">托盘列表</p>
+            <div class="pallet-table-wrap">
+              <table class="pallet-table">
+                <thead>
+                  <tr><th>托盘号</th><th>货区</th></tr>
+                </thead>
+                <tbody id="palletListBody">
+                  <tr><td colspan="2" style="text-align:center;color:#ccc;padding:24px">暂无内容</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <footer class="footer-bar single">
+            <button type="button" class="btn-primary" id="btnSubmit" disabled>确认下托</button>
+          </footer>
+        </div>
+      </div>
+
+      <aside class="prd-panel">
+        <span class="chip">PRD · 下托</span>
+        <h2>下托 · 件数核对</h2>
+        <h3>件数基准规则</h3>
+        <ul>
+          <li>每次操作托盘，操作员输入<strong>当前托盘的件数</strong>（盲核）。</li>
+          <li>核对基准 = 该托盘<strong>最后一次成功操作</strong>登记的件数（签入上托 / 正常上托 / 换托等）。</li>
+        </ul>
+        <h3>交互</h3>
+        <ul>
+          <li>支持<strong>整票下托</strong> / <strong>单个下托</strong>。</li>
+          <li>扫描托盘号后输入核对件数，须与当前件数基准一致。</li>
+          <li>核对通过后确认下托，托盘加入下方列表。</li>
+        </ul>
+        <h3>演示</h3>
+        <ul>
+          <li>先在「签入上托」登记 <code>TP260811001</code> = 43 件。</li>
+          <li>本页扫描该托盘，输入 <strong>43</strong> 后可下托。</li>
+        </ul>
+        <h3>操作日志</h3>
+        <ul>
+          <li>落库时机：确认下托<strong>提交成功</strong>后写入；件数核对失败不写。</li>
+          <li><strong>操作类型</strong>：下托</li>
+          <li><strong>日志内容（单个下托）</strong>：<code>下托: [运单号: {waybillNo}, 下托方式: 单个下托, 托盘号: {palletNo}, 核对件数: {pieces}, 货区: {area}]</code></li>
+          <li><strong>日志内容（整票下托）</strong>：<code>下托: [运单号: {waybillNo}, 下托方式: 整票下托, 托盘数: {count}, 托盘号: {p1,p2,...}, 核对件数合计: {totalPieces}]</code></li>
+          <li><strong>示例</strong>：<code>下托: [运单号: RC266501, 下托方式: 单个下托, 托盘号: TP260811001, 核对件数: 43, 货区: A区-03]</code></li>
+          <li>日志正文仅记操作员输入的<strong>核对件数</strong>，不展示签入登记基准件数。</li>
+        </ul>
+      </aside>
+    </div>
+  </div>
+
+  <script src="wh-pda-pieces.js"></script>
+  <script src="wh-pda-nav.js"></script>
+  <script>
+    (function () {
+      WH_PDA.seedDemo();
+      var palletNo = document.getElementById("palletNo");
+      var piecesPanel = document.getElementById("piecesPanel");
+      var piecesInput = document.getElementById("piecesInput");
+      var piecesHint = document.getElementById("piecesHint");
+      var btnSubmit = document.getElementById("btnSubmit");
+      var btnScanPallet = document.getElementById("btnScanPallet");
+      var palletListBody = document.getElementById("palletListBody");
+
+      function syncState() {
+        var pallet = palletNo.value.trim();
+        if (!pallet) {
+          piecesPanel.classList.remove("is-open");
+          btnSubmit.disabled = true;
+          return;
+        }
+        piecesPanel.classList.add("is-open");
+        var expected = WH_PDA.getRegisteredPieces(pallet);
+        if (expected == null) {
+          piecesHint.className = "pieces-hint err";
+          piecesHint.textContent = "该托盘尚未登记托上件数，无法下托。";
+          btnSubmit.disabled = true;
+          return;
+        }
+        var result = WH_PDA.verifyPieces(pallet, piecesInput.value);
+        piecesHint.className = "pieces-hint";
+        if (!piecesInput.value) {
+          piecesHint.textContent = "核对当前托盘的件数";
+          btnSubmit.disabled = true;
+          return;
+        }
+        if (result.ok) {
+          piecesHint.textContent = "核对一致（" + result.actual + " 件），可确认下托。";
+          piecesHint.classList.add("ok");
+          btnSubmit.disabled = false;
+        } else if (result.reason === "mismatch") {
+          piecesHint.textContent = "件数不一致，请重新核对。";
+          piecesHint.classList.add("err");
+          btnSubmit.disabled = true;
+        }
+      }
+
+      palletNo.addEventListener("input", syncState);
+      piecesInput.addEventListener("input", syncState);
+      btnScanPallet.addEventListener("click", function () {
+        palletNo.value = "TP260811001";
+        piecesInput.value = "";
+        syncState();
+        piecesInput.focus();
+      });
+
+      btnSubmit.addEventListener("click", function () {
+        var pallet = palletNo.value.trim();
+        var r = WH_PDA.verifyPieces(pallet, piecesInput.value);
+        if (!r.ok) return;
+        palletListBody.innerHTML = '<tr><td>' + pallet + '</td><td>A区-03</td></tr>';
+        alert("下托成功（原型演示）\n托盘：" + pallet + "\n核对件数：" + r.actual + " 件");
+        palletNo.value = "";
+        piecesInput.value = "";
+        piecesPanel.classList.remove("is-open");
+        btnSubmit.disabled = true;
+      });
+    })();
+  </script>
+</body>
+</html>
