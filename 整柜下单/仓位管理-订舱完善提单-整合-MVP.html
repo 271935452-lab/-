@@ -305,6 +305,11 @@
       align-items: start;
     }
     .drawer-row > .sec { min-width: 0; }
+    .drawer-row-slot-freight { grid-template-columns: 1fr; }
+    .drawer-row-slot-freight .slot-table { min-width: 1120px; }
+    .drawer-row-slot-freight .slot-freight-locked {
+      background: #f5f5f5; color: var(--sub); cursor: not-allowed;
+    }
     .drawer-row-feituo-sup > .sec .sec-bd {
       max-height: min(420px, 52vh);
       overflow-y: auto;
@@ -406,6 +411,8 @@
       background: #fafafa; color: var(--sub); cursor: not-allowed;
     }
     .slot-table .btn-link:disabled { opacity: .35; pointer-events: none; }
+    .slot-table .slot-op-cell { white-space: nowrap; }
+    .slot-table .slot-op-cell .btn-link + .btn-link { margin-left: 8px; }
     .check-inline { display: flex; align-items: center; gap: 16px; min-height: 32px; }
     .check-inline label { display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; }
     .transit-inline {
@@ -790,6 +797,10 @@
                 <th>SO No</th>
                 <th>放舱</th>
                 <th>海运费</th>
+                <th>合约有效期起<span class="mark-new">新</span></th>
+                <th>合约有效期止<span class="mark-new">新</span></th>
+                <th>固定海运费<span class="mark-new">新</span></th>
+                <th>调价金额<span class="mark-new">新</span></th>
                 <th>起运港</th>
                 <th>目的港</th>
                 <th>箱型</th>
@@ -816,6 +827,10 @@
                 <td>S0561</td>
                 <td><span class="tag tag-ok">已放舱</span></td>
                 <td><span class="tag tag-ok">正常</span></td>
+                <td>2026-06-01</td>
+                <td>2026-06-30</td>
+                <td>3200</td>
+                <td>—</td>
                 <td>CNNGB 宁波</td>
                 <td>USLAX 洛杉矶</td>
                 <td>40HQ</td>
@@ -840,6 +855,10 @@
                 <td>S0892,S0893</td>
                 <td><span class="tag tag-no">未放舱</span></td>
                 <td><span class="tag tag-no">已过期</span></td>
+                <td class="cell-danger">2026-05-01</td>
+                <td class="cell-danger">2026-05-31</td>
+                <td>2800</td>
+                <td>—</td>
                 <td>CNSHA 上海</td>
                 <td>DEHAM 汉堡</td>
                 <td>40HQ+20GP</td>
@@ -864,6 +883,10 @@
                 <td>14545115546</td>
                 <td><span class="tag tag-ok">已放舱</span></td>
                 <td><span class="tag tag-ok">正常</span></td>
+                <td>2026-06-01</td>
+                <td>2026-06-30</td>
+                <td>3500</td>
+                <td>—</td>
                 <td>CNSHA 上海</td>
                 <td>USNYC 纽约</td>
                 <td>40HQ</td>
@@ -888,6 +911,10 @@
                 <td>987554321</td>
                 <td><span class="tag tag-ok">已放舱</span></td>
                 <td><span class="tag tag-ok">正常</span></td>
+                <td>2026-06-10</td>
+                <td>2026-07-10</td>
+                <td>3100</td>
+                <td>—</td>
                 <td>CNTAO 青岛</td>
                 <td>USLAX 洛杉矶</td>
                 <td>40HQ</td>
@@ -912,6 +939,10 @@
                 <td>S0811</td>
                 <td><span class="tag tag-void">已作废</span></td>
                 <td><span class="tag tag-ok">正常</span></td>
+                <td>2026-05-20</td>
+                <td>2026-06-20</td>
+                <td>3000</td>
+                <td>—</td>
                 <td>CNTAO 青岛</td>
                 <td>USLAX 洛杉矶</td>
                 <td>40HQ</td>
@@ -1300,10 +1331,10 @@
       </div>
 
       <div class="drawer-row drawer-row-slot-freight">
-      <!-- 仓位录入 -->
-      <section class="sec">
+      <!-- 仓位信息（含海运费，按 SO 行） -->
+      <section class="sec" id="secSlotFreight">
         <div class="sec-hd booking-hd">
-          仓位录入
+          <span>仓位信息 <span class="hint" id="freightSectionHint">含海运费 · 按 SO 行 · 保存后按 SO 拆列表</span></span>
           <button type="button" class="btn-link" id="btnAddSlotRow">+ 添加一行</button>
         </div>
         <div class="sec-bd">
@@ -1313,6 +1344,14 @@
                 <th>箱型<span class="req">*</span></th>
                 <th>数量<span class="req">*</span></th>
                 <th>SO No<span class="req" id="slotSoReq">*</span></th>
+                <th>柜号<span class="mark-new">新</span></th>
+                <th>铅封号<span class="mark-new">新</span></th>
+                <th>合约有效期起<span class="req slot-freight-req" id="freightValidFromReq">*</span></th>
+                <th>合约有效期止<span class="req slot-freight-req" id="freightValidToReq">*</span></th>
+                <th>固定海运费(USD)<span class="req slot-freight-req" id="freightAmountReq">*</span></th>
+                <th>超出有效期调价金额</th>
+                <th>是否锁价<span class="mark-new">新</span></th>
+                <th>是否保舱<span class="mark-new">新</span></th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -1321,43 +1360,18 @@
                 <td><select><option>20GP</option><option selected>40HQ</option></select></td>
                 <td><input type="number" value="1" min="1" /></td>
                 <td><input type="text" value="S0561" placeholder="数量&gt;1 时逗号分隔" /></td>
-                <td><button type="button" class="btn-link danger btn-del-row">删除</button></td>
+                <td><input type="text" class="slot-container-no" placeholder="选填" /></td>
+                <td><input type="text" class="slot-seal-no" placeholder="选填" /></td>
+                <td><input type="date" class="slot-freight-from" value="2026-06-01" /></td>
+                <td><input type="date" class="slot-freight-to" value="2026-06-30" /></td>
+                <td><input type="number" class="slot-freight-amt" value="3200" step="0.01" /></td>
+                <td><input type="number" class="slot-freight-adj" placeholder="超期时补录" step="0.01" /></td>
+                <td><input type="text" class="slot-freight-locked readonly" readonly value="是" title="随关联报价单，只读" /></td>
+                <td><select class="slot-freight-guarantee"><option selected>否</option><option>是</option></select></td>
+                <td class="slot-op-cell"><button type="button" class="btn-link btn-copy-row" title="复制本行并新增">复制</button><button type="button" class="btn-link danger btn-del-row">删除</button></td>
               </tr>
             </tbody>
           </table>
-        </div>
-      </section>
-
-      <!-- 海运费 -->
-      <section class="sec" id="secFreight">
-        <div class="sec-hd booking-hd">海运费 <span class="hint" id="freightSectionHint">绑定必填</span></div>
-        <div class="sec-bd">
-          <div class="form-grid compact-inline">
-            <div class="field">
-              <label>合约有效期起<span class="req" id="freightValidFromReq">*</span></label>
-              <input type="date" id="freightValidFrom" value="2026-06-01" />
-            </div>
-            <div class="field">
-              <label>合约有效期止<span class="req" id="freightValidToReq">*</span></label>
-              <input type="date" id="freightValidTo" value="2026-06-30" />
-            </div>
-            <div class="field">
-              <label>合约期内固定海运费(USD)<span class="req" id="freightAmountReq">*</span></label>
-              <input type="number" id="freightAmount" value="3200" step="0.01" />
-            </div>
-            <div class="field">
-              <label>超出有效期调价金额</label>
-              <input type="number" placeholder="进港/装柜超有效期时开航前须补录" step="0.01" />
-            </div>
-            <div class="field">
-              <label>是否锁价</label>
-              <input type="text" readonly class="readonly" value="是 · 随关联报价单" />
-            </div>
-            <div class="field">
-              <label>是否保舱</label>
-              <select><option selected>否</option><option>是</option></select>
-            </div>
-          </div>
         </div>
       </section>
       </div>
@@ -1430,9 +1444,23 @@
 
     <h4>页面定位</h4>
     <ul>
-      <li>原「订舱登记」与「完善提单」合并为<strong>同一全屏单页</strong>；布局：订舱信息+运单基础信息、飞驼推荐+补充信息、仓位录入+海运费、完善提单+放舱确认。</li>
-      <li>放舱 = 流程 7.2 签入 = 仓位信息绑定；须录海运费金额 + 合约有效期。</li>
+      <li>原「订舱登记」与「完善提单」合并为<strong>同一全屏单页</strong>；布局：订舱信息+运单基础信息、飞驼推荐+补充信息、<strong>仓位信息（含海运费，按 SO 行维护）</strong>、完善提单+放舱确认。</li>
+      <li><strong>仓位登记合并规则（2026-08-11）</strong>：原分散的「仓位录入」与「海运费/合约/锁价/保舱」等信息<strong>合并在「仓位信息」区块</strong>，按 SO 行（柜子维度）一行维护，不再拆成两个独立模块。</li>
+      <li>放舱 = 流程 7.2 签入 = 仓位信息绑定；须按<strong>柜子维度</strong>录海运费金额 + 合约有效期。</li>
       <li>新增须先选运单；编辑/完善通过列表提单号或「完善提单」入口打开。运单匹配规则见下「关联运单」。</li>
+    </ul>
+
+    <h4>新增 · 多 SO 拆分列表（2026-08-11）</h4>
+    <ul>
+      <li><strong>生成规则</strong>：订舱登记保存时，「仓位信息」区若有多行 SO，系统在<strong>舱位管理列表生成多条数据</strong>，<strong>按 SO 号一一对应</strong>（1 个 SO = 1 条列表记录）。</li>
+      <li><strong>每条携带</strong>：该 SO 行的箱型、数量、SO No、柜号、铅封号、合约有效期起/止、固定海运费、超出有效期调价金额、是否锁价、是否保舱；公共订舱字段（船名航次、起运港/目的港、提单号、ETD/ETA 等）同步带入各条。</li>
+      <li><strong>SO 唯一性校验</strong>：
+        <ul>
+          <li>同一保存批次内，各 SO 行 SO No <strong>不可重复</strong>（含一行内逗号分隔拆出的多个 SO）；重复时拦截并提示「SO No 不可重复」。</li>
+          <li>与系统已有舱位 SO 冲突时拦截（全局 SO 不可重复占用）。</li>
+        </ul>
+      </li>
+      <li><strong>编辑</strong>：从列表进入时，单条记录仅编辑对应 SO 行；若需整票多 SO 一并维护，仍通过订舱登记侧栏多行录入后按 SO 拆分落库。</li>
     </ul>
 
     <h4>新增 · 关联运单（新增订舱）</h4>
@@ -1459,6 +1487,7 @@
       <li><strong>甩柜换船</strong>、<strong>甩柜 BC 导出</strong>：已放舱记录换船，原舱作废、异人录入新舱；甩柜 BC 导出规则同「导出放舱 BC」。</li>
       <li><strong>编辑备注</strong>：备注流转至<strong>卡派跟进（新）</strong>海外卡派总单。</li>
       <li><strong>进港时间</strong>：列表新增列，取自关联运单「装柜完成」登记的进港时间（多运单时展示首条或「—」）；供海运费异常判定与订舱岗核对。</li>
+      <li><strong>海运费（合并于仓位信息）</strong>：侧栏「仓位信息」按 <strong>SO 行（柜子）</strong>维护海运费、合约期、锁价/保舱及柜号/铅封号；保存后<strong>按 SO 拆成多条列表记录</strong>（见上「多 SO 拆分列表」）。列表同步展示<strong>合约有效期起 / 止、固定海运费、调价金额</strong>；「海运费」列仍为异常状态（正常 / 已过期）。</li>
     </ul>
 
     <h4>新增 · 导出功能</h4>
@@ -1479,7 +1508,7 @@
         <ul>
           <li><strong>范围</strong>：<strong>已放舱</strong>且<strong>尚未开船</strong>（开船时间 ETD &gt; 当前时间）的舱位记录。</li>
           <li><strong>导出方式</strong>：按<strong>开船时间（ETD）</strong>所在<strong>自然周</strong>汇总生成 Excel 标准模板（表头示例「WEEK xx 预报（起止日期）」），供订舱岗发送给<strong>订舱代理</strong>做周度舱位预报/对舱确认。</li>
-          <li><strong>模板字段</strong>：POL、POD、航线、船名航次、船司、开船时间（ETD）、柜量、备注；同一周内按船司+航线+船名航次聚合柜量；<strong>备注</strong>取订舱登记<strong>是否保舱</strong>。</li>
+          <li><strong>模板字段</strong>：POL、POD、航线、船名航次、船司、开船时间（ETD）、柜量、备注；同一周内按船司+航线+船名航次聚合柜量；<strong>备注</strong>取各 SO 行<strong>是否保舱</strong>（多 SO 时拼接，如「S0892：否 · S0893：是」）。</li>
           <li><strong>不含</strong>：未放舱记录、已开船（ETD≤当前）记录。</li>
         </ul>
       </li>
@@ -1492,7 +1521,7 @@
               <li><strong>编码</strong>：绑定报价编码（BJ…）；未绑定留空；</li>
               <li><strong>订舱时间</strong>：仓位创建时间；</li>
               <li><strong>代理名称、船名航次、起运港、目的港、ETD</strong>：订舱登记/列表已录入项；</li>
-              <li><strong>备注</strong>：拼接<strong>是否保舱</strong>、<strong>是否 SOC/COC</strong>（如「保舱：是 · SOC/COC：COC」）。</li>
+              <li><strong>备注</strong>：拼接各 SO 行<strong>是否保舱</strong>、<strong>是否 SOC/COC</strong>（如「保舱：S0892否/S0893是 · SOC/COC：COC」）。</li>
             </ul>
           </li>
         </ul>
@@ -1550,7 +1579,7 @@
       <li><strong>补充信息 · 航线</strong>：文本编辑框；飞驼选用时自动回填。</li>
       <li><strong>放舱资料</strong>：放舱确认区上传放舱资料 / EIR 等附件；上传后同步至关联运单，供客户与业务员下载。导出规则见上「<strong>1. 导出放舱 BC</strong>」。</li>
       <li><strong>放舱状态 = 否</strong>：提单号、截单时间(SI)、SO No 均为<strong>非必填</strong>。</li>
-      <li><strong>放舱状态 = 是（编辑态）</strong>：<strong>提单号、放舱状态、仓位录入</strong>（箱型/数量/SO/增删行）不可修改。</li>
+      <li><strong>放舱状态 = 是（编辑态）</strong>：<strong>提单号、放舱状态、仓位录入</strong>（箱型/数量/SO/增删行）不可修改；海运费合约期与固定金额锁定，但<strong>超出有效期调价金额、柜号、铅封号</strong>仍可补录。</li>
       <li><strong>超出有效调价金额</strong>（编辑区字段标签：超出有效期调价金额）：海运费状态为「已过期」时可补录；补录后由<strong>触发节点 ②</strong>将海运费状态恢复<strong>正常</strong>。</li>
       <li><strong>装柜地址</strong>：完善提单区<strong>两列两行</strong>（分公司+车队供应商 / 报关代理+装柜地址）；关联运单拖车方式为「我司统一安排拖车」且已填装柜地址 → <strong>只读带入</strong>；客户自拖车时占位提示「客户自拖车，无装柜地址」。基础信息区同步只读展示<strong>拖车方式</strong>。</li>
       <li><strong>车队供应商</strong>：仅当装柜地址<strong>有值</strong>时可选；装柜地址为空（含客户自拖车、需拖车但未填地址）时<strong>置灰不可选</strong>并清空已选。</li>
@@ -1566,8 +1595,8 @@
 
     <h4>放舱必填摘要</h4>
     <ul>
-      <li>放舱「是」：提单号、SO、截单 SI、船名航次、ETD/ETA、海运费+合约有效期必填；截关/截港/进港代码选填。</li>
-      <li>新增订舱时分公司、海运费可选；完善提单/绑定仓位时海运费必填。</li>
+      <li>放舱「是」：提单号、SO、截单 SI、船名航次、ETD/ETA、<strong>各 SO 行海运费+合约有效期</strong>必填；截关/截港/进港代码选填。</li>
+      <li>新增订舱时分公司、海运费可选；完善提单/绑定仓位时海运费（柜子维度）必填。</li>
       <li>选用飞驼船期可回填 ETD/ETA、截单/截关/开舱/开港/截港、免用箱天数、航线等，支持手动改。</li>
     </ul>
 
@@ -1793,6 +1822,127 @@
         syncTransit();
       }
 
+      function parseSlotTypes(text) {
+        if (!text || text === "—") return ["40HQ"];
+        var parts = String(text).split("+").map(function (s) { return s.trim(); }).filter(Boolean);
+        return parts.length ? parts : ["40HQ"];
+      }
+
+      function parseSoList(text) {
+        if (!text || text === "—") return [""];
+        var parts = String(text).split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+        return parts.length ? parts : [""];
+      }
+
+      function buildSlotRowHtml(opts) {
+        opts = opts || {};
+        var isAdd = drawerMode === "add";
+        var boxType = opts.boxType || "40HQ";
+        var is20GP = boxType === "20GP";
+        var gpSelected = is20GP ? " selected" : "";
+        var hqSelected = is20GP ? "" : " selected";
+        var guaranteeYes = opts.guarantee === "是" ? " selected" : "";
+        var guaranteeNo = opts.guarantee === "是" ? "" : " selected";
+        var lockedVal = opts.locked || "是";
+        return (
+          '<td><select><option' + gpSelected + '>20GP</option><option' + hqSelected + '>40HQ</option></select></td>' +
+          '<td><input type="number" value="' + (opts.qty || "1") + '" min="1" /></td>' +
+          '<td><input type="text" value="' + (opts.so || "").replace(/"/g, "&quot;") + '" placeholder="数量&gt;1 时逗号分隔" /></td>' +
+          '<td><input type="text" class="slot-container-no" value="' + (opts.containerNo || "").replace(/"/g, "&quot;") + '" placeholder="选填" /></td>' +
+          '<td><input type="text" class="slot-seal-no" value="' + (opts.sealNo || "").replace(/"/g, "&quot;") + '" placeholder="选填" /></td>' +
+          '<td><input type="date" class="slot-freight-from" value="' + (opts.from || (isAdd ? "" : "2026-06-01")) + '" /></td>' +
+          '<td><input type="date" class="slot-freight-to" value="' + (opts.to || (isAdd ? "" : "2026-06-30")) + '" /></td>' +
+          '<td><input type="number" class="slot-freight-amt" value="' + (opts.amt || (isAdd ? "" : "3200")) + '" step="0.01" /></td>' +
+          '<td><input type="number" class="slot-freight-adj" placeholder="超期时补录" value="' + (opts.adj || "").replace(/"/g, "&quot;") + '" step="0.01" /></td>' +
+          '<td><input type="text" class="slot-freight-locked readonly" readonly value="' + lockedVal + '" title="随关联报价单，只读" /></td>' +
+          '<td><select class="slot-freight-guarantee"><option' + guaranteeNo + '>否</option><option' + guaranteeYes + '>是</option></select></td>' +
+          '<td class="slot-op-cell"><button type="button" class="btn-link btn-copy-row" title="复制本行并新增">复制</button><button type="button" class="btn-link danger btn-del-row">删除</button></td>'
+        );
+      }
+
+      function duplicateSlotRow(sourceTr) {
+        if (!sourceTr || !slotTbody) return null;
+        var data = readSlotRowData(sourceTr);
+        if (!data) return null;
+        var tr = document.createElement("tr");
+        tr.innerHTML = buildSlotRowHtml({
+          boxType: data.boxType,
+          qty: data.qty,
+          so: data.so,
+          containerNo: data.containerNo,
+          sealNo: data.sealNo,
+          from: data.from,
+          to: data.to,
+          amt: data.amt,
+          adj: data.adj,
+          locked: data.locked,
+          guarantee: data.guarantee
+        });
+        if (sourceTr.nextElementSibling) {
+          slotTbody.insertBefore(tr, sourceTr.nextElementSibling);
+        } else {
+          slotTbody.appendChild(tr);
+        }
+        return tr;
+      }
+
+      function readSlotRowData(tr) {
+        if (!tr) return null;
+        var boxSel = tr.cells[0] && tr.cells[0].querySelector("select");
+        var qtyInput = tr.cells[1] && tr.cells[1].querySelector("input");
+        var soInput = tr.cells[2] && tr.cells[2].querySelector("input");
+        var guarantee = tr.querySelector(".slot-freight-guarantee");
+        var locked = tr.querySelector(".slot-freight-locked");
+        return {
+          boxType: boxSel ? boxSel.value : "40HQ",
+          qty: qtyInput ? qtyInput.value : "1",
+          so: soInput ? soInput.value : "",
+          containerNo: (tr.querySelector(".slot-container-no") || {}).value || "",
+          sealNo: (tr.querySelector(".slot-seal-no") || {}).value || "",
+          from: (tr.querySelector(".slot-freight-from") || {}).value || "",
+          to: (tr.querySelector(".slot-freight-to") || {}).value || "",
+          amt: (tr.querySelector(".slot-freight-amt") || {}).value || "",
+          adj: (tr.querySelector(".slot-freight-adj") || {}).value || "",
+          locked: locked ? locked.value : "是",
+          guarantee: guarantee ? guarantee.value : "否"
+        };
+      }
+
+      function syncSlotCopyButtons() {
+        if (!slotTbody) return;
+        var locked = isReleasedEditLocked();
+        Array.prototype.forEach.call(slotTbody.rows, function (tr) {
+          var copyBtn = tr.querySelector(".btn-copy-row");
+          if (copyBtn) copyBtn.disabled = locked;
+        });
+      }
+
+      function collectSlotSoList() {
+        var list = [];
+        if (!slotTbody) return list;
+        Array.prototype.forEach.call(slotTbody.rows, function (tr) {
+          var soInput = tr.cells[2] && tr.cells[2].querySelector("input");
+          if (!soInput) return;
+          parseSoList(soInput.value).forEach(function (so) {
+            if (so) list.push(so.toUpperCase());
+          });
+        });
+        return list;
+      }
+
+      function validateSlotSoUnique() {
+        var sos = collectSlotSoList();
+        var seen = {};
+        for (var i = 0; i < sos.length; i++) {
+          var so = sos[i];
+          if (seen[so]) {
+            return { ok: false, so: so };
+          }
+          seen[so] = true;
+        }
+        return { ok: true };
+      }
+
       function syncFreightRequired() {
         var isAdd = drawerMode === "add";
         ["freightValidFromReq", "freightValidToReq", "freightAmountReq"].forEach(function (id) {
@@ -1800,19 +1950,25 @@
           if (el) el.hidden = isAdd;
         });
         var hint = document.getElementById("freightSectionHint");
-        if (hint) hint.hidden = isAdd;
-        var from = document.getElementById("freightValidFrom");
-        var to = document.getElementById("freightValidTo");
-        var amt = document.getElementById("freightAmount");
-        if (isAdd) {
-          if (from) from.value = "";
-          if (to) to.value = "";
-          if (amt) amt.value = "";
-        } else {
-          if (from && !from.value) from.value = "2026-06-01";
-          if (to && !to.value) to.value = "2026-06-30";
-          if (amt && !amt.value) amt.value = "3200";
+        if (hint) {
+          hint.hidden = false;
+          hint.textContent = isAdd ? "含海运费 · 按 SO 行 · 新增可选" : "含海运费 · 按 SO 行 · 绑定必填 · 保存按 SO 拆列表";
         }
+        if (!slotTbody) return;
+        Array.prototype.forEach.call(slotTbody.rows, function (tr) {
+          var from = tr.querySelector(".slot-freight-from");
+          var to = tr.querySelector(".slot-freight-to");
+          var amt = tr.querySelector(".slot-freight-amt");
+          if (isAdd) {
+            if (from) from.value = "";
+            if (to) to.value = "";
+            if (amt) amt.value = "";
+          } else {
+            if (from && !from.value) from.value = "2026-06-01";
+            if (to && !to.value) to.value = "2026-06-30";
+            if (amt && !amt.value) amt.value = "3200";
+          }
+        });
       }
 
       function syncBranchCompanyRequired() {
@@ -1850,12 +2006,25 @@
         if (slotTbody) {
           Array.prototype.forEach.call(slotTbody.rows, function (tr) {
             Array.prototype.forEach.call(tr.querySelectorAll("select, input"), function (el) {
+              if (el.classList.contains("slot-freight-locked")) {
+                el.readOnly = true;
+                el.disabled = true;
+                return;
+              }
+              /* 已放舱锁定仓位行，但调价金额、柜号、铅封号仍可补录 */
+              if (el.classList.contains("slot-freight-adj") ||
+                  el.classList.contains("slot-container-no") ||
+                  el.classList.contains("slot-seal-no")) {
+                el.disabled = false;
+                return;
+              }
               el.disabled = locked;
             });
             var delBtn = tr.querySelector(".btn-del-row");
             if (delBtn) delBtn.disabled = locked;
           });
         }
+        syncSlotCopyButtons();
       }
 
       function syncReleaseRequired() {
@@ -1872,7 +2041,39 @@
         var val = row.dataset.release === "released" ? "yes" : "no";
         var radio = document.querySelector('input[name="released"][value="' + val + '"]');
         if (radio) radio.checked = true;
+        fillSlotFreightFromListRow(row);
         syncReleaseRequired();
+      }
+
+      function fillSlotFreightFromListRow(row) {
+        if (!row || !slotTbody) return;
+        var sos = parseSoList(cellText(row, 7));
+        var types = parseSlotTypes(cellText(row, 16));
+        var count = Math.max(sos.length, types.length, 1);
+        var fromVal = cellText(row, 10);
+        var toVal = cellText(row, 11);
+        var amtVal = cellText(row, 12);
+        var adjVal = cellText(row, 13);
+        var from = fromVal && fromVal !== "—" ? fromVal.slice(0, 10) : "";
+        var to = toVal && toVal !== "—" ? toVal.slice(0, 10) : "";
+        var amt = amtVal && amtVal !== "—" ? amtVal.replace(/,/g, "") : "";
+        var adj = adjVal && adjVal !== "—" ? adjVal.replace(/,/g, "") : "";
+        slotTbody.innerHTML = "";
+        for (var i = 0; i < count; i++) {
+          var tr = document.createElement("tr");
+          tr.innerHTML = buildSlotRowHtml({
+            boxType: types[i] || types[types.length - 1] || "40HQ",
+            so: sos[i] || sos[sos.length - 1] || "",
+            from: from,
+            to: to,
+            amt: amt,
+            adj: i === 0 ? adj : "",
+            guarantee: i === 0 ? "否" : (count > 1 ? "是" : "否")
+          });
+          slotTbody.appendChild(tr);
+        }
+        syncReleasedEditLock();
+        syncSlotCopyButtons();
       }
 
       function setOrderChassisFlag(value) {
@@ -2098,11 +2299,18 @@
         queryFeituoSchedules();
       });
       document.getElementById("btnEdit").addEventListener("click", function () {
-        applyTransitDemo(false);
-        openDrawer("完善提单 · TXZG00000000043", "edit");
-        var releasedYes = document.querySelector('input[name="released"][value="yes"]');
-        if (releasedYes) releasedYes.checked = true;
-        syncReleaseRequired();
+        var rows = typeof getSelectedSlotRows === "function" ? getSelectedSlotRows() : [];
+        var row = rows[0] || document.querySelector('table[aria-label="舱位列表"] tbody tr.selected');
+        applyTransitDemo(row && row.dataset.transit === "1");
+        var blEl = row && row.querySelector("[data-open-drawer]");
+        var blTitle = blEl ? blEl.textContent.trim() : "TXZG00000000043";
+        openDrawer("完善提单 · " + blTitle, "edit");
+        if (row) syncReleaseFromRow(row);
+        else {
+          var releasedYes = document.querySelector('input[name="released"][value="yes"]');
+          if (releasedYes) releasedYes.checked = true;
+          syncReleaseRequired();
+        }
         queryFeituoSchedules();
       });
 
@@ -3106,12 +3314,27 @@
               break;
             }
           }
+          if (drawerMode !== "add") {
+            for (var fi = 0; fi < slotRows.length; fi++) {
+              var fromEl = slotRows[fi].querySelector(".slot-freight-from");
+              var toEl = slotRows[fi].querySelector(".slot-freight-to");
+              var amtEl = slotRows[fi].querySelector(".slot-freight-amt");
+              if (fromEl && !fromEl.value.trim()) { missing.push("合约有效期起"); break; }
+              if (toEl && !toEl.value.trim()) { missing.push("合约有效期止"); break; }
+              if (amtEl && !amtEl.value.trim()) { missing.push("固定海运费"); break; }
+            }
+          }
         }
         if (missing.length) {
           alert("请填写必填项：" + missing.join("、"));
           return;
         }
-        alert("原型演示：保存成功");
+        var soCheck = validateSlotSoUnique();
+        if (!soCheck.ok) {
+          alert("SO No 不可重复：" + soCheck.so);
+          return;
+        }
+        alert("原型演示：保存成功（按 SO 拆分生成 " + collectSlotSoList().length + " 条列表记录）");
         closeDrawer();
       });
 
@@ -3239,17 +3462,28 @@
       document.getElementById("btnAddSlotRow").addEventListener("click", function () {
         if (isReleasedEditLocked()) return;
         var tr = document.createElement("tr");
-        tr.innerHTML =
-          '<td><select><option>20GP</option><option>40HQ</option></select></td>' +
-          '<td><input type="number" value="1" min="1" /></td>' +
-          '<td><input type="text" placeholder="数量&gt;1 时逗号分隔" /></td>' +
-          '<td><button type="button" class="btn-link danger btn-del-row">删除</button></td>';
+        tr.innerHTML = buildSlotRowHtml({ guarantee: "否" });
         slotTbody.appendChild(tr);
+        syncReleasedEditLock();
+        syncSlotCopyButtons();
       });
       slotTbody.addEventListener("click", function (e) {
+        if (e.target.classList.contains("btn-copy-row")) {
+          if (isReleasedEditLocked()) return;
+          var tr = e.target.closest("tr");
+          if (!tr) return;
+          duplicateSlotRow(tr);
+          syncReleasedEditLock();
+          syncSlotCopyButtons();
+          if (window.FclCore && FclCore.toast) {
+            FclCore.toast("已复制新增一行（数据与本行相同）", "ok");
+          }
+          return;
+        }
         if (isReleasedEditLocked()) return;
         if (e.target.classList.contains("btn-del-row") && slotTbody.rows.length > 1) {
           e.target.closest("tr").remove();
+          syncSlotCopyButtons();
         }
       });
 
@@ -3298,15 +3532,19 @@
           vessel: cellText(tr, 2),
           bl: bl,
           so: cellText(tr, 7),
-          pol: cellText(tr, 10),
-          pod: cellText(tr, 11),
-          boxType: cellText(tr, 12),
-          gp20: cellText(tr, 13),
-          hq40: cellText(tr, 14),
-          customs: cellText(tr, 15),
-          si: cellText(tr, 16),
-          etd: cellText(tr, 17),
-          eta: cellText(tr, 18),
+          freightFrom: cellText(tr, 10),
+          freightTo: cellText(tr, 11),
+          freightAmt: cellText(tr, 12),
+          freightAdj: cellText(tr, 13),
+          pol: cellText(tr, 14),
+          pod: cellText(tr, 15),
+          boxType: cellText(tr, 16),
+          gp20: cellText(tr, 17),
+          hq40: cellText(tr, 18),
+          customs: cellText(tr, 19),
+          si: cellText(tr, 20),
+          etd: cellText(tr, 21),
+          eta: cellText(tr, 22),
           release: tr.dataset.release === "released" ? "已放舱" : "未放舱",
           waybills: waybills
         };
@@ -3360,7 +3598,7 @@
           cb.disabled = true;
         }
         tr.cells[8].innerHTML = '<span class="tag tag-void">已作废</span>';
-        tr.cells[21].textContent = "甩柜换船作废 · 新船 " + neu.vessel + "（原 " + old.vessel + "）";
+        tr.cells[25].textContent = "甩柜换船作废 · 新船 " + neu.vessel + "（原 " + old.vessel + "）";
       }
 
       function buildNewSlotRow(oldTr, old, neu, wbs) {
@@ -3383,15 +3621,15 @@
         }
         newTr.cells[2].textContent = neu.vessel;
         newTr.cells[7].textContent = neu.so;
-        newTr.cells[15].textContent = neu.customs || old.customs;
-        newTr.cells[15].classList.remove("cell-warn");
-        newTr.cells[16].textContent = formatDisplayDt(neu.si || old.si);
-        newTr.cells[16].classList.remove("cell-warn");
-        newTr.cells[17].textContent = formatDisplayDt(neu.etd);
-        newTr.cells[17].classList.remove("cell-warn");
-        newTr.cells[18].textContent = formatDisplayDt(neu.eta);
+        newTr.cells[19].textContent = neu.customs || old.customs;
+        newTr.cells[19].classList.remove("cell-warn");
+        newTr.cells[20].textContent = formatDisplayDt(neu.si || old.si);
+        newTr.cells[20].classList.remove("cell-warn");
+        newTr.cells[21].textContent = formatDisplayDt(neu.etd);
+        newTr.cells[21].classList.remove("cell-warn");
+        newTr.cells[22].textContent = formatDisplayDt(neu.eta);
         newTr.cells[8].innerHTML = '<span class="tag tag-ok">已放舱</span><span class="tag tag-new">新舱</span>';
-        newTr.cells[21].textContent = "甩柜换船新舱 · 接替 " + old.bl + " · " + slotId;
+        newTr.cells[25].textContent = "甩柜换船新舱 · 接替 " + old.bl + " · " + slotId;
 
         newTr.querySelectorAll("[data-open-drawer]").forEach(function (el) {
           el.removeAttribute("data-drawer-bound");
