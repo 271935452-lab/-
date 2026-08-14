@@ -1,0 +1,3027 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>查货操作 · AI识图 / 品名识别（To-Be 原型）</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --orange: #fa8c16;
+      --new: #cf1322; --chg: #d46b08;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      font-size: 12px; color: var(--text); background: #eef1f6;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; font-size: 14px; white-space: nowrap; }
+    .topbar .nav { display: flex; gap: 2px; overflow-x: auto; flex: 1; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.72); padding: 0 10px; height: 40px;
+      display: inline-flex; align-items: center; white-space: nowrap; font-size: 12px;
+    }
+    .topbar .nav a.on {
+      color: #fff; font-weight: 600; background: var(--orange);
+    }
+    .topbar .right { margin-left: auto; color: rgba(255,255,255,.65); white-space: nowrap; }
+
+    .layout { display: flex; min-height: calc(100vh - 40px); }
+    .sider {
+      width: 168px; background: #001529; color: rgba(255,255,255,.75);
+      padding: 8px 0; flex: none;
+    }
+    .sider .g { padding: 8px 16px 4px; font-size: 11px; color: rgba(255,255,255,.45); }
+    .sider a {
+      display: block; padding: 8px 16px; color: rgba(255,255,255,.75); font-size: 12px;
+    }
+    .sider a.on { background: #1890ff; color: #fff; }
+
+    .main { flex: 1; min-width: 0; padding: 10px 12px 24px; overflow: auto; }
+
+    .badge {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; line-height: 16px; vertical-align: middle; margin-left: 4px;
+    }
+    .badge.new { background: #fff1f0; color: var(--new); border: 1px solid #ffa39e; }
+    .badge.chg { background: #fff7e6; color: var(--chg); border: 1px solid #ffd591; }
+
+    .page-hd {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px;
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); line-height: 1.55; }
+    .legend {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; color: var(--sub);
+    }
+
+    .panel {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px; margin-bottom: 8px;
+    }
+
+    .filters {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+      gap: 8px 10px; padding: 10px 12px; align-items: end; border-bottom: 1px solid var(--line);
+    }
+    .filters-more {
+      display: none; grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px 10px; padding: 0 12px 10px; border-bottom: 1px solid var(--line); align-items: end;
+    }
+    .filters-more.open { display: grid; }
+    @media (max-width: 1200px) {
+      .filters, .filters-more { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .fi label {
+      display: block; color: var(--sub); margin-bottom: 2px; font-size: 11px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .fi input, .fi select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font: inherit;
+    }
+    .fi.hl input, .fi.hl select { border-color: #ffa39e; background: #fff7f6; }
+    .fi.hlc input, .fi.hlc select { border-color: #ffd591; background: #fffbe6; }
+    .fi.range { display: flex; gap: 4px; align-items: center; }
+    .fi.range input { flex: 1; min-width: 0; }
+    .fi.range span { color: #bfbfbf; flex: none; }
+    .filter-side {
+      display: flex; flex-direction: column; gap: 6px; justify-content: flex-end;
+    }
+    .filter-side .btn { width: 110px; }
+
+    .acts {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+      border-bottom: 1px solid var(--line); align-items: center;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; background: #fff;
+      border-radius: 2px; font: inherit; cursor: pointer; white-space: nowrap;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.dark { background: #096dd9; border-color: #096dd9; color: #fff; }
+    .btn.light { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .btn.new { border-color: #ffa39e; color: #cf1322; background: #fff1f0; }
+    .btn.chg { border-color: #ffd591; color: #d46b08; background: #fff7e6; }
+
+    .status-tabs {
+      display: flex; gap: 0; padding: 0 8px; border-bottom: 1px solid var(--line);
+      overflow-x: auto; background: #fafafa;
+    }
+    .st {
+      border: none; background: transparent; padding: 10px 14px; cursor: pointer;
+      font: inherit; color: var(--sub); white-space: nowrap; border-bottom: 2px solid transparent;
+    }
+    .st.on { color: var(--orange); font-weight: 600; border-bottom-color: var(--orange); background: #fff; }
+    .st .n { margin-left: 2px; }
+
+    .col-hint {
+      padding: 6px 12px; font-size: 11px; color: var(--sub); background: #fafafa;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .table-wrap { overflow: auto; max-height: calc(100vh - 340px); }
+    table.grid {
+      width: 100%; border-collapse: collapse; min-width: 5200px; font-size: 11px;
+    }
+    table.grid th, table.grid td {
+      border: 1px solid #f0f0f0; padding: 5px 6px; white-space: nowrap;
+      text-align: left; vertical-align: middle;
+    }
+    table.grid th {
+      background: #fafafa; position: sticky; top: 0; z-index: 2; font-weight: 600;
+    }
+    table.grid th.core { background: #fff1f0; }
+    table.grid th .badge { display: inline-block; margin: 0 0 0 2px; }
+    table.grid th .filter-row {
+      display: flex; align-items: center; gap: 2px; margin-top: 4px;
+    }
+    table.grid th input.filter {
+      display: block; width: 100%; min-width: 70px; height: 22px;
+      border: 1px solid #e8e8e8; border-radius: 2px; padding: 0 4px; font: inherit; font-weight: 400;
+    }
+    table.grid th .funnel {
+      flex: none; width: 16px; height: 16px; color: #bfbfbf; font-size: 10px; text-align: center;
+    }
+    table.grid tr:nth-child(even) td { background: #fcfcfc; }
+    .link { color: var(--blue); cursor: pointer; }
+    .tag {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px; border: 1px solid;
+    }
+    .tag.ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.warn { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.bad { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.blue { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.gray { color: #8c8c8c; background: #f5f5f5; border-color: #d9d9d9; }
+    .muted { color: #8c8c8c; }
+    .red { color: #cf1322; }
+    .thumb {
+      width: 36px; height: 36px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: linear-gradient(135deg, #f0f5ff, #fff1f0); display: inline-flex;
+      align-items: center; justify-content: center; font-size: 9px; color: #597ef7; cursor: pointer;
+    }
+    .match-hi { color: #389e0d; font-weight: 600; }
+    .match-mid { color: #d46b08; font-weight: 600; }
+    .match-lo { color: #cf1322; font-weight: 600; }
+
+    .foot {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; border-top: 1px solid var(--line); color: var(--sub);
+    }
+    .pager { display: flex; gap: 6px; align-items: center; }
+    .pager select { height: 24px; border: 1px solid #d9d9d9; border-radius: 2px; font: inherit; }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #111827; color: #fff; padding: 10px 16px; border-radius: 6px;
+      font-size: 12px; display: none; z-index: 99; max-width: 80%;
+    }
+
+    /* AI 详情抽屉 */
+    .drawer-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; z-index: 80;
+    }
+    .drawer-mask.open { display: block; }
+    .drawer {
+      position: fixed; top: 0; right: 0; width: min(560px, 96vw); height: 100%;
+      background: #fff; z-index: 81; transform: translateX(100%);
+      transition: transform .2s; box-shadow: -4px 0 24px rgba(0,0,0,.12);
+      display: flex; flex-direction: column;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .drawer-hd h3 { margin: 0; font-size: 15px; flex: 1; min-width: 0; }
+    .drawer-hd-acts { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+    .drawer-bd { padding: 14px 16px; overflow: auto; flex: 1; }
+    .drawer-bd h4 { margin: 14px 0 8px; font-size: 13px; }
+    .drawer-bd h4:first-child { margin-top: 0; }
+    .drawer-bd .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .drawer-bd .photos .p {
+      aspect-ratio: 1; border: 1px solid var(--line); border-radius: 4px;
+      background: #fafafa; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: var(--sub);
+    }
+    .kv { display: grid; grid-template-columns: 100px 1fr; gap: 6px 8px; font-size: 12px; }
+    .kv span { color: var(--sub); }
+    .drawer-form {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px;
+    }
+    .drawer-form .full { grid-column: 1 / -1; }
+    .drawer-form label {
+      display: block; font-size: 11px; color: var(--sub); margin-bottom: 2px;
+    }
+    .drawer-form label .req { color: #cf1322; }
+    .drawer-form input, .drawer-form select, .drawer-form textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 5px 8px; font: inherit; font-size: 12px;
+    }
+    .drawer-form textarea { min-height: 52px; resize: vertical; }
+    .attach-list { border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+    .attach-row {
+      display: grid; grid-template-columns: 88px 1fr auto; gap: 8px; align-items: center;
+      padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 12px;
+    }
+    .attach-row:last-child { border-bottom: none; }
+    .attach-row .atype { font-weight: 600; color: #003a8c; }
+    .attach-row .afile { color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .attach-row .afile.has { color: #389e0d; }
+    .attach-hint { margin: 6px 0 0; font-size: 11px; color: var(--sub); line-height: 1.5; }
+    .nav-pos { font-size: 11px; color: var(--sub); margin-right: 4px; white-space: nowrap; }
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+    }
+    .drawer-ft .btn.warn-act {
+      background: #fff7e6; border-color: #ffd591; color: #d46b08;
+    }
+    .drawer-ft .btn.fee-act {
+      background: #e6fffb; border-color: #87e8de; color: #08979c;
+    }
+
+    /* 添加成本费用弹窗 */
+    .fee-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 90;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .fee-mask.open { display: flex; }
+    .fee-modal {
+      width: min(560px, 96vw); background: #fff; border-radius: 4px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.18); display: flex; flex-direction: column; max-height: 90vh;
+    }
+    .fee-modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .fee-modal-hd h3 { margin: 0; font-size: 15px; }
+    .fee-modal-bd { padding: 14px 16px; overflow: auto; }
+    .fee-modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .fee-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+    .fee-form .full { grid-column: 1 / -1; }
+    .fee-form label { display: block; color: var(--sub); font-size: 11px; margin-bottom: 3px; }
+    .fee-form input, .fee-form select, .fee-form textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+      font: inherit; min-height: 28px;
+    }
+    .fee-form textarea { padding: 6px 8px; min-height: 56px; resize: vertical; }
+    .fee-tip {
+      margin: 0 0 12px; padding: 8px 10px; font-size: 11px; line-height: 1.55;
+      background: #fffbe6; border: 1px solid #ffe58f; color: #614700; border-radius: 2px;
+    }
+    .fee-tip strong { color: #874d00; }
+    .fee-preview {
+      margin-top: 10px; padding: 8px 10px; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 2px; font-size: 12px; line-height: 1.55;
+    }
+
+    /* 产品确认 / 查货确认（对齐现网弹窗 + AI） */
+    .confirm-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 88;
+      display: none; align-items: center; justify-content: center; padding: 12px;
+    }
+    .confirm-mask.open { display: flex; }
+    .confirm-modal {
+      width: min(1180px, 98vw); max-height: 92vh; background: #fff; border-radius: 2px;
+      box-shadow: 0 10px 32px rgba(0,0,0,.22); display: flex; flex-direction: column;
+    }
+    .confirm-modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .confirm-modal-hd h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .confirm-modal-bd { padding: 12px 16px; overflow: auto; flex: 1; min-height: 0; }
+    .confirm-modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .confirm-top {
+      display: grid; grid-template-columns: 140px 1fr; gap: 10px 16px; align-items: start;
+      margin-bottom: 10px;
+    }
+    .confirm-top .fi label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px;
+    }
+    .confirm-top .fi input[readonly] {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 10px; background: #fafafa; font: inherit;
+    }
+    .confirm-top textarea {
+      width: 100%; min-height: 64px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 6px 10px; font: inherit; resize: vertical;
+    }
+    .confirm-tip {
+      margin: 0 0 10px; padding: 8px 10px; font-size: 11px; line-height: 1.55;
+      background: #e6f7ff; border: 1px solid #91d5ff; color: #094b8a; border-radius: 2px;
+    }
+    .confirm-acts {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px;
+    }
+    .confirm-table-wrap {
+      border: 1px solid var(--line); border-radius: 2px; overflow: auto; max-height: 48vh;
+    }
+    .confirm-grid {
+      width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px;
+    }
+    .confirm-grid th, .confirm-grid td {
+      border-bottom: 1px solid #f0f0f0; padding: 6px 8px; text-align: left;
+      white-space: nowrap; vertical-align: middle;
+    }
+    .confirm-grid th {
+      background: #fafafa; font-weight: 600; position: sticky; top: 0; z-index: 1;
+      border-bottom: 1px solid var(--line);
+    }
+    .confirm-grid th.core { background: #fff1f0; }
+    .confirm-grid td.core { background: #fffafa; }
+    .confirm-grid tr:hover td { background: #f5f9ff; }
+    .confirm-grid tr:hover td.core { background: #fff1f0; }
+    .confirm-grid .thumb {
+      width: 36px; height: 36px; border-radius: 2px; background: #f0f0f0;
+      border: 1px solid #d9d9d9; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10px; color: var(--sub); cursor: pointer;
+    }
+    .confirm-grid .thumb.has { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .confirm-grid input.cell, .confirm-grid select.cell {
+      height: 26px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font: inherit;
+      min-width: 88px; background: #fff;
+    }
+    .confirm-grid input.cell:focus, .confirm-grid select.cell:focus {
+      border-color: #40a9ff; outline: none;
+    }
+    .tag-ok { color: #389e0d; }
+    .tag-wait { color: #d46b08; }
+    .tag-no { color: rgba(0,0,0,.45); }
+
+    /* 多品名加费确认 */
+    .multi-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 89;
+      display: none; align-items: center; justify-content: center; padding: 12px;
+    }
+    .multi-mask.open { display: flex; }
+    .multi-modal {
+      width: min(760px, 96vw); max-height: 92vh; background: #fff; border-radius: 2px;
+      box-shadow: 0 10px 32px rgba(0,0,0,.22); display: flex; flex-direction: column;
+    }
+    .multi-modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .multi-modal-hd h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .multi-modal-bd { padding: 14px 16px; overflow: auto; flex: 1; min-height: 0; }
+    .multi-modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center;
+    }
+    .multi-tip {
+      margin: 0 0 12px; padding: 8px 10px; font-size: 11px; line-height: 1.55;
+      background: #fffbe6; border: 1px solid #ffe58f; color: #614700; border-radius: 2px;
+    }
+    .multi-meta {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-bottom: 12px;
+    }
+    .multi-meta .fi label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 3px; }
+    .multi-meta .fi input, .multi-meta .fi select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font: inherit; background: #fff;
+    }
+    .multi-meta .fi input[readonly] { background: #fafafa; }
+    .multi-pack {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .multi-pack label {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+      border: 1px solid #d9d9d9; border-radius: 2px; cursor: pointer; font-size: 12px;
+    }
+    .multi-pack label.on { border-color: #1890ff; background: #e6f7ff; color: #096dd9; font-weight: 600; }
+    .multi-names {
+      border: 1px solid var(--line); border-radius: 2px; padding: 10px; background: #fafafa; margin-bottom: 12px;
+    }
+    .multi-names h4 { margin: 0 0 8px; font-size: 12px; }
+    .multi-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px; }
+    .multi-chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+      background: #fff; border: 1px solid #d9d9d9; border-radius: 12px; font-size: 12px;
+    }
+    .multi-chip .x {
+      border: none; background: transparent; color: #8c8c8c; cursor: pointer; padding: 0 2px; font-size: 14px; line-height: 1;
+    }
+    .multi-chip .x:hover { color: #cf1322; }
+    .multi-add {
+      display: flex; gap: 6px; margin-top: 8px;
+    }
+    .multi-add input {
+      flex: 1; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .multi-calc {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px;
+    }
+    .multi-calc .box {
+      border: 1px solid var(--line); border-radius: 2px; padding: 8px 10px; background: #fff;
+    }
+    .multi-calc .box .k { font-size: 11px; color: var(--sub); }
+    .multi-calc .box .v { font-size: 16px; font-weight: 700; margin-top: 2px; }
+    .multi-calc .box.warn { border-color: #ffd591; background: #fff7e6; }
+    .multi-calc .box.fee { border-color: #ffa39e; background: #fff1f0; }
+    .multi-calc .box.fee .v { color: #cf1322; }
+    .multi-preview {
+      padding: 8px 10px; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 2px; font-size: 12px; line-height: 1.55;
+    }
+    .multi-preview strong { color: #135200; }
+    .multi-ft-hint { margin-right: auto; font-size: 11px; color: var(--sub); }
+
+    /* 批量修改附加服务（勾选/勾除 · 回显已有） */
+    .svc-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 87;
+      display: none; align-items: center; justify-content: center; padding: 12px;
+    }
+    .svc-mask.open { display: flex; }
+    .svc-modal {
+      width: min(920px, 96vw); max-height: 90vh; background: #fff; border-radius: 2px;
+      box-shadow: 0 10px 32px rgba(0,0,0,.22); display: flex; flex-direction: column;
+    }
+    .svc-modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .svc-modal-hd h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .svc-modal-bd { padding: 12px 16px; overflow: auto; flex: 1; min-height: 0; }
+    .svc-modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center;
+    }
+    .svc-tip {
+      margin: 0 0 10px; padding: 8px 10px; font-size: 11px; line-height: 1.55;
+      background: #e6f7ff; border: 1px solid #91d5ff; color: #094b8a; border-radius: 2px;
+    }
+    .svc-tip strong { color: #003a8c; }
+    .svc-meta {
+      margin-bottom: 8px; font-size: 12px; color: var(--sub);
+    }
+    .svc-meta b { color: var(--text); }
+    .svc-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px;
+      border: 1px solid var(--line); border-radius: 2px; padding: 10px 12px; background: #fafafa;
+    }
+    @media (max-width: 800px) { .svc-grid { grid-template-columns: repeat(2, 1fr); } }
+    .svc-item {
+      display: flex; align-items: flex-start; gap: 6px; padding: 4px 2px;
+      font-size: 12px; line-height: 1.35; cursor: pointer; user-select: none;
+    }
+    .svc-item:hover { color: #096dd9; }
+    .svc-item input { margin-top: 2px; flex-shrink: 0; }
+    .svc-item.mixed { color: #d46b08; }
+    .svc-item.mixed .hint { font-size: 10px; color: #d46b08; margin-left: 2px; }
+    .svc-diff {
+      margin-top: 10px; padding: 8px 10px; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 2px; font-size: 12px; line-height: 1.55;
+    }
+    .svc-diff .rm { color: #cf1322; }
+    .svc-diff .add { color: #389e0d; }
+    .svc-ft-hint { margin-right: auto; font-size: 11px; color: var(--sub); max-width: 55%; }
+
+    .ai-feed {
+      margin: 0 0 12px; padding: 10px 12px; background: #f9f0ff; border: 1px solid #d3adf7;
+      border-radius: 2px; font-size: 12px; line-height: 1.55;
+    }
+    .ai-feed h5 { margin: 0 0 6px; font-size: 12px; color: #531dab; }
+    .ai-feed .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ai-feed .chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+      background: #fff; border: 1px solid #d3adf7; border-radius: 12px; font-size: 11px;
+    }
+    .ai-feed .chip b { color: #531dab; font-weight: 600; }
+    .ai-feed .muted { color: var(--sub); font-size: 11px; margin-top: 6px; }
+
+    .hold-marks {
+      display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 6px 0 8px;
+      padding: 8px 10px; background: #fff1f0; border: 1px solid #ffa39e; border-radius: 2px;
+    }
+    .hold-marks label {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer;
+      white-space: nowrap;
+    }
+    .hold-marks .note {
+      width: 100%; font-size: 11px; color: #cf1322; margin: 0;
+    }
+    .drawer-ft .btn.danger-act {
+      background: #ff4d4f; border-color: #ff4d4f; color: #fff;
+    }
+    .drawer-ft .btn.danger-act:hover { filter: brightness(1.05); }
+
+    /* 品牌侵权查询抽屉 */
+    .infr-drawer { width: min(520px, 96vw); z-index: 82; }
+    .step-bar {
+      display: flex; gap: 0; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+    }
+    .step-bar .s {
+      flex: 1; text-align: center; padding: 6px 4px; font-size: 11px; color: var(--sub); background: #fafafa;
+      border-right: 1px solid var(--line);
+    }
+    .step-bar .s:last-child { border-right: none; }
+    .step-bar .s.on { background: #e6f7ff; color: #096dd9; font-weight: 600; }
+    .step-bar .s.done { background: #f6ffed; color: #389e0d; }
+    .step-panel { display: none; }
+    .step-panel.on { display: block; }
+    .radio-group { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+    .radio-group label {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      border: 1px solid var(--line); border-radius: 2px; cursor: pointer;
+    }
+    .radio-group label:hover { border-color: #91d5ff; background: #fafafa; }
+    .radio-group label.sel { border-color: #1890ff; background: #e6f7ff; }
+    .auth-box {
+      margin-top: 10px; padding: 10px; background: #fafafa; border: 1px solid var(--line); border-radius: 2px;
+    }
+    .auth-box .upload {
+      border: 1px dashed #d9d9d9; padding: 16px; text-align: center; color: var(--sub);
+      border-radius: 2px; cursor: pointer; margin-bottom: 8px;
+    }
+    .auth-box .upload:hover { border-color: #1890ff; color: #1890ff; }
+    .cmp-result {
+      margin-top: 8px; padding: 8px 10px; border-radius: 2px; font-size: 12px; font-weight: 600;
+    }
+    .cmp-result.ok { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+    .cmp-result.bad { background: #fff1f0; border: 1px solid #ffa39e; color: var(--new); }
+    .infr-actions {
+      margin-top: 12px; padding: 10px; background: #fff1f0; border: 1px solid #ffa39e; border-radius: 2px;
+    }
+    .notify-preview {
+      margin-top: 10px; padding: 10px; background: #f5f5f5; border: 1px solid var(--line);
+      border-radius: 2px; font-size: 11px; line-height: 1.6; color: var(--sub);
+    }
+    .notify-preview b { color: var(--text); }
+
+    /* 扣货风险告知弹窗 */
+    .notify-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 92;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .notify-mask.open { display: flex; }
+    .notify-modal {
+      width: min(480px, 96vw); background: #fff; border-radius: 4px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.18);
+    }
+    .notify-modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .notify-modal-hd h3 { margin: 0; font-size: 15px; }
+    .notify-modal-bd { padding: 14px 16px; }
+    .notify-copy {
+      padding: 10px 12px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 2px; font-size: 13px; line-height: 1.6; color: #614700;
+    }
+    .notify-modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .fee-red { color: #cf1322; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">腾信物流</div>
+    <div class="nav">
+      <a href="#">控制台</a>
+      <a href="#">运单管理</a>
+      <a href="#">客户管理</a>
+      <a href="#">月度调整表</a>
+      <a href="#">尾单单票跟踪</a>
+      <a href="#">卡派跟进(新)</a>
+      <a href="#">整柜下单</a>
+      <a class="on" href="#">查货操作</a>
+      <a href="#">工单</a>
+    </div>
+    <div class="right">风控 · To-Be 原型 · IT(BT0022)</div>
+  </div>
+
+  <div class="layout">
+    <aside class="sider">
+      <div class="g">操作</div>
+      <a class="on" href="#">查货操作</a>
+      <a href="#">查货扣件</a>
+      <a href="#">产品确认</a>
+      <div class="g">查询</div>
+      <a href="#">运单查询</a>
+      <a href="#">历史查货</a>
+      <div class="g">报表</div>
+      <a href="风控组-操作查货率报表-MVP.html">操作查货率报表 <span class="badge new">NEW</span></a>
+    </aside>
+
+    <div class="main">
+      <div class="page-hd">
+        <h1>查货操作 <span class="badge chg">改</span> · 产品确认 / AI识图（合并）</h1>
+        <p>
+          <strong>仓库拍图后默认自动调用 AI 识图</strong>，结果直接回传风控列表（无需再点「触发识图」）。
+          喂给 AI 的内容：<strong>图片、品名、品牌名、是否侵权、是否带电</strong>等。
+          <strong>产品确认与识图合并</strong>：查货同事点「产品确认」后<strong>一条一条</strong>看图 + 核 AI 结果 + 确认品名。
+        </p>
+        <div class="legend">
+          <span><span class="badge new">NEW</span> 拍图自动识图 · 结果回传风控</span>
+          <span><span class="badge chg">改</span> 产品确认 = 逐条识图确认</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <!-- 搜索区：原条件 + NEW -->
+        <div class="filters" id="filtersMain">
+          <div class="fi">
+            <label>到货时间</label>
+            <div class="range">
+              <input type="date" value="2026-08-05" />
+              <span>~</span>
+              <input type="date" value="2026-08-06" />
+            </div>
+          </div>
+          <div class="fi">
+            <label>产品组</label>
+            <select><option>请选择</option><option>美线</option><option>空派</option></select>
+          </div>
+          <div class="fi">
+            <label>运单号</label>
+            <input placeholder="请输入运单号或客户单号" />
+          </div>
+          <div class="fi">
+            <label>销售产品</label>
+            <select><option>请选择</option><option>T16限时达</option><option>美东特价FBA卡派</option></select>
+          </div>
+          <div class="fi">
+            <label>客户</label>
+            <select><option>请选择</option><option>浩泽包装</option><option>梦通体育</option></select>
+          </div>
+          <div class="fi">
+            <label>到货网点</label>
+            <select><option>请选择</option><option>义乌总部</option><option>北苑分公司</option><option>青岛分公司</option></select>
+          </div>
+          <div class="filter-side">
+            <button type="button" class="btn primary" id="btnMultiQuery">多选数据查询</button>
+            <button type="button" class="btn" id="btnMore">更多筛选 ▾</button>
+            <button type="button" class="btn" id="btnReset">数据重置</button>
+          </div>
+        </div>
+
+        <div class="filters-more" id="filtersMore">
+          <div class="fi">
+            <label>终配舱单号</label>
+            <input placeholder="终配舱单号" />
+          </div>
+          <div class="fi">
+            <label>扣件状态</label>
+            <select><option>全部</option><option>正常件</option><option>止退件</option></select>
+          </div>
+          <div class="fi">
+            <label>记录状态</label>
+            <select><option>全部</option><option>查货中</option><option>查货扣件中</option><option>产品已确认</option><option>已退件</option></select>
+          </div>
+          <div class="fi hl">
+            <label>AI识图状态 <span class="badge new">NEW</span></label>
+            <select id="qAiImg">
+              <option value="">全部</option>
+              <option>未识别</option>
+              <option>识别中</option>
+              <option>已识别</option>
+              <option>识别失败</option>
+            </select>
+          </div>
+          <div class="fi hl">
+            <label>品名识别状态 <span class="badge new">NEW</span></label>
+            <select id="qAiName">
+              <option value="">全部</option>
+              <option>未识别</option>
+              <option>待人工确认</option>
+              <option>已确认采纳</option>
+              <option>已驳回</option>
+              <option>低置信跳过</option>
+            </select>
+          </div>
+          <div class="fi hl">
+            <label>识别匹配度 <span class="badge new">NEW</span></label>
+            <select id="qMatch">
+              <option value="">全部</option>
+              <option>≥90%</option>
+              <option>70%～89%</option>
+              <option>&lt;70%</option>
+            </select>
+          </div>
+          <div class="fi hl">
+            <label>AI建议品名 <span class="badge new">NEW</span></label>
+            <input id="qSuggest" placeholder="关键字，如 包装袋" />
+          </div>
+          <div class="fi hlc">
+            <label>照片已看完 <span class="badge chg">改</span></label>
+            <select>
+              <option value="">全部</option>
+              <option>是</option>
+              <option>否</option>
+            </select>
+          </div>
+          <div class="fi">
+            <label>查货员</label>
+            <input placeholder="查货员" />
+          </div>
+          <div class="fi">
+            <label>所属业务员</label>
+            <input placeholder="业务员" />
+          </div>
+          <div class="fi">
+            <label>客户类型</label>
+            <select><option>全部</option><option>直客</option><option>同行</option></select>
+          </div>
+          <div class="fi hl">
+            <label>成本费用 <span class="badge new">NEW</span></label>
+            <select id="qCostFee">
+              <option value="">全部</option>
+              <option>未添加</option>
+              <option>已加业务成本</option>
+              <option>已加应收+成本</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="acts">
+          <button type="button" class="btn primary" id="btnProductConfirm">产品确认（逐条） <span class="badge chg">改</span></button>
+          <button type="button" class="btn">查询数据</button>
+          <button type="button" class="btn light" id="btnHoldBatch">+ 查货扣件</button>
+          <button type="button" class="btn dark">查验扣件放行</button>
+          <button type="button" class="btn chg" id="btnBatchSvc">批量修改附加服务 <span class="badge chg">改</span></button>
+          <button type="button" class="btn new" id="btnMultiNameFee">多品名加费确认 <span class="badge new">NEW</span></button>
+          <button type="button" class="btn new" id="btnAddCost">+ 添加成本费用 <span class="badge new">NEW</span></button>
+          <button type="button" class="btn new" id="btnBrandQuery">品牌侵权查询 <span class="badge new">NEW</span></button>
+          <button type="button" class="btn chg" id="btnHoldNotify">扣货风险告知 <span class="badge chg">NEW</span></button>
+          <button type="button" class="btn" id="btnSubBatch" title="现网子单表批量确认（可选）">子单批量确认</button>
+          <span class="muted" style="margin-left:8px">已选 <b id="selCount">0</b> 条</span>
+        </div>
+
+        <!-- 状态页签 -->
+        <div class="status-tabs" id="statusTabs">
+          <button type="button" class="st on" data-st="">全部<span class="n">(434)</span></button>
+          <button type="button" class="st" data-st="查货中">查货中<span class="n">(72)</span></button>
+          <button type="button" class="st" data-st="查货扣件中">查货扣件中<span class="n">(4)</span></button>
+          <button type="button" class="st" data-st="产品已确认">产品已确认<span class="n">(358)</span></button>
+          <button type="button" class="st" data-st="已退件">已退件<span class="n">(0)</span></button>
+          <button type="button" class="st" data-st="ai" style="color:#cf1322">待确认<span class="n" id="cntPending">(0)</span> <span class="badge chg">改</span></button>
+          <button type="button" class="st" data-st="multi" style="color:#531dab">多品名<span class="n" id="cntMulti">(0)</span> <span class="badge new">NEW</span></button>
+        </div>
+
+        <div class="col-hint">
+          粉底表头 = AI 自动回传列；「待确认」逐条核图；「多品名」单独页签看超限票（可点多品名加费确认）。
+        </div>
+
+        <div class="table-wrap">
+          <table class="grid" id="grid">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="chkAll" /></th>
+                <th>序号<input class="filter" /></th>
+                <th>状态<input class="filter" placeholder="状态" /></th>
+                <th>收货时间<input class="filter" /></th>
+                <th>客户单号<input class="filter" /></th>
+                <th>运单状态<input class="filter" /></th>
+                <th>查货率<input class="filter" /></th>
+                <th>出库计费重<input class="filter" /></th>
+                <th>件数<input class="filter" /></th>
+                <th>扣件状态<input class="filter" /></th>
+                <th>客户简称<input class="filter" /></th>
+                <th>主品名<input class="filter" /></th>
+                <!-- NEW AI 列：紧挨主品名 -->
+                <th class="core">AI识图 <span class="badge new">NEW</span><input class="filter" placeholder="状态" /></th>
+                <th class="core">查货图 <span class="badge new">NEW</span><input class="filter" placeholder="有/无" /></th>
+                <th class="core">AI建议品名 <span class="badge new">NEW</span><input class="filter" /></th>
+                <th class="core">识别匹配度 <span class="badge new">NEW</span><input class="filter" /></th>
+                <th class="core">品名识别状态 <span class="badge new">NEW</span><input class="filter" /></th>
+                <th class="core">AI识别品牌 <span class="badge new">NEW</span><input class="filter" /></th>
+                <th class="core">是否侵权(AI) <span class="badge new">NEW</span><input class="filter" /></th>
+                <th class="core">是否带电(AI) <span class="badge new">NEW</span><input class="filter" /></th>
+                <th class="core">侵权状态 <span class="badge new">NEW</span><input class="filter" placeholder="状态" /></th>
+                <th class="core">风险告知 <span class="badge new">NEW</span><input class="filter" placeholder="已/未" /></th>
+                <th>查货标记<input class="filter" /></th>
+                <th>查货备注<input class="filter" /></th>
+                <th>查货员<input class="filter" /></th>
+                <th>最后查货时间<input class="filter" /></th>
+                <th>核对人<input class="filter" /></th>
+                <th>核对时间<input class="filter" /></th>
+                <th>核对备注<input class="filter" /></th>
+                <th>附加服务<input class="filter" /></th>
+                <th class="core">成本费用 <span class="badge new">NEW</span><input class="filter" placeholder="费用/金额" /></th>
+                <th>放行备注<input class="filter" /></th>
+                <th>运单备注<input class="filter" /></th>
+                <th>操作备注<input class="filter" /></th>
+                <th>客服备注<input class="filter" /></th>
+                <th>收货仓<input class="filter" /></th>
+                <th>销售产品<input class="filter" /></th>
+                <th>所属业务员<input class="filter" /></th>
+                <th>所属客服<input class="filter" /></th>
+                <th>客户类型<input class="filter" /></th>
+                <th>业务类型<input class="filter" /></th>
+                <th>报关编号<input class="filter" /></th>
+                <th>终配舱单号<input class="filter" /></th>
+                <th>所属财务<input class="filter" /></th>
+                <th>所在仓<input class="filter" /></th>
+                <th>创建人<input class="filter" /></th>
+                <th>创建时间<input class="filter" /></th>
+                <th style="position:sticky;right:0;background:#fafafa;z-index:3">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="foot">
+          <span>共 <b id="totalN">8</b> 条（原型演示子集 · 现网 434）</span>
+          <div class="pager">
+            <select><option>500条/页</option><option>100条/页</option><option>50条/页</option></select>
+            <button type="button" class="btn">‹</button>
+            <span>1 / 1</span>
+            <button type="button" class="btn">›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-mask" id="drawerMask"></div>
+  <aside class="drawer" id="drawer" style="width:min(560px,96vw)">
+    <div class="drawer-hd">
+      <h3>产品确认 · 识图确认 <span class="badge chg">改</span></h3>
+      <div class="drawer-hd-acts">
+        <span class="nav-pos" id="drawerNavPos">—</span>
+        <button type="button" class="btn" id="btnPrev" title="上一条">上一条</button>
+        <button type="button" class="btn" id="btnNext" title="下一条">下一条</button>
+        <button type="button" class="btn" id="drawerClose">关闭</button>
+      </div>
+    </div>
+    <div class="drawer-bd" id="drawerBody"></div>
+    <div class="drawer-ft">
+      <button type="button" class="btn" id="btnReject">驳回建议</button>
+      <button type="button" class="btn fee-act" id="btnDrawerFee">添加费用</button>
+      <button type="button" class="btn new" id="btnDrawerMulti">多品名加费</button>
+      <button type="button" class="btn warn-act" id="btnDrawerRisk">风险告知</button>
+      <button type="button" class="btn danger-act" id="btnHoldConfirm" title="确认品名并扣件，状态→查货扣件中">扣件确定</button>
+      <button type="button" class="btn primary" id="btnAdopt">确认并下一条 <span class="badge chg">改</span></button>
+    </div>
+  </aside>
+
+  <!-- 添加成本费用 -->
+  <div class="fee-mask" id="feeMask" aria-hidden="true">
+    <div class="fee-modal" role="dialog" aria-labelledby="feeTitle">
+      <div class="fee-modal-hd">
+        <h3 id="feeTitle">添加成本费用 <span class="badge new">NEW</span></h3>
+        <button type="button" class="btn" id="feeClose">关闭</button>
+      </div>
+      <div class="fee-modal-bd">
+        <div class="fee-tip">
+          <strong>归属规则（0729）：</strong>同行 → 加客户<strong>应收 + 成本</strong>；
+          直客 → 加业务员<strong>附加服务业务成本</strong>（查货费可同时加应收）。
+          勾选附加服务 ≠ 完成计费，本入口直接写入业务数据统计。
+        </div>
+        <div class="fee-form">
+          <div class="full">
+            <label>适用运单（已勾选 / 当前行）</label>
+            <input id="feeWaybills" readonly value="" />
+          </div>
+          <div>
+            <label>客户类型</label>
+            <select id="feeCustType">
+              <option>直客</option>
+              <option>同行</option>
+            </select>
+          </div>
+          <div>
+            <label>费用类型</label>
+            <select id="feeType">
+              <option>查货服务费</option>
+              <option>超品名费</option>
+              <option>分开包装费</option>
+              <option>侵权罚款</option>
+              <option>其他附加成本</option>
+            </select>
+          </div>
+          <div id="feeQtyWrap" hidden>
+            <label>超品名个数（超出 5 个的部分）</label>
+            <input type="number" id="feeQty" min="1" value="3" />
+          </div>
+          <div>
+            <label>金额（USD / CNY）</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="feeAmt" min="0" step="0.01" value="30" style="flex:1" />
+              <select id="feeCur" style="width:72px"><option>CNY</option><option>USD</option></select>
+            </div>
+          </div>
+          <div>
+            <label>写入去向</label>
+            <select id="feeTarget">
+              <option value="auto">按客户类型自动</option>
+              <option value="cost">仅业务成本</option>
+              <option value="both">应收 + 成本</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>备注（产品确认时可直接备注，免找客服/业务来回）</label>
+            <textarea id="feeRemark" placeholder="例：开箱核实多品名，超 3 个加收"></textarea>
+          </div>
+        </div>
+        <div class="fee-preview" id="feePreview"></div>
+      </div>
+      <div class="fee-modal-ft">
+        <button type="button" class="btn" id="feeCancel">取消</button>
+        <button type="button" class="btn primary" id="feeSave">确认写入业务数据统计</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 品牌侵权查询抽屉 -->
+  <aside class="drawer infr-drawer" id="infrDrawer">
+    <div class="drawer-hd">
+      <h3>品牌侵权查询 <span class="badge new">NEW</span></h3>
+      <button type="button" class="btn" id="infrClose">关闭</button>
+    </div>
+    <div class="drawer-bd" id="infrBody">
+      <div class="step-bar" id="infrSteps">
+        <div class="s on" data-step="1">① 看图/AI品牌</div>
+        <div class="s" data-step="2">② 外链查询</div>
+        <div class="s" data-step="3">③ 授权/处置</div>
+      </div>
+      <div class="step-panel on" id="infrStep1">
+        <h4 style="margin:0 0 8px">看图结论 / AI品牌</h4>
+        <div class="kv" id="infrKv1"></div>
+      </div>
+      <div class="step-panel" id="infrStep2">
+        <h4 style="margin:0 0 8px">外链查询结果</h4>
+        <p class="muted" style="margin:0 0 6px">对照 USPTO / 品牌库 / 内部侵权库（原型示意）</p>
+        <div class="radio-group" id="infrRadio">
+          <label><input type="radio" name="infrRes" value="pass" /> 可放行 — 无侵权风险或已备案</label>
+          <label><input type="radio" name="infrRes" value="auth" /> 需授权 — 品牌需客户提供授权书</label>
+          <label><input type="radio" name="infrRes" value="confirm" /> 确认侵权 — 扣件并加收罚款</label>
+        </div>
+      </div>
+      <div class="step-panel" id="infrStep3">
+        <div id="infrPanelAuth" hidden>
+          <h4 style="margin:0 0 8px">品牌授权比对</h4>
+          <div class="auth-box">
+            <div class="upload" id="infrUpload">+ 上传品牌授权书（PDF/JPG）</div>
+            <div class="fi"><label>授权主体</label>
+              <input id="infrAuthEntity" placeholder="例：NIKE INC." style="width:100%;height:28px;border:1px solid #d9d9d9;border-radius:2px;padding:0 8px" />
+            </div>
+            <div class="fi" style="margin-top:8px"><label>报关抬头（订单）</label>
+              <input id="infrDeclHeader" readonly style="width:100%;height:28px;border:1px solid #d9d9d9;border-radius:2px;padding:0 8px;background:#fafafa" />
+            </div>
+            <div class="cmp-result" id="infrCmpResult">填写授权主体后自动比对</div>
+            <p class="muted" style="margin:8px 0 0;font-size:11px">
+              授权附件类型=<strong>品牌授权书</strong> 将同步至
+              <a href="../../报关行对接/报关管理-列表-MVP.html">报关管理</a>，供做资料分票核准「授权必比」。
+            </p>
+          </div>
+        </div>
+        <div id="infrPanelConfirm" hidden>
+          <h4 style="margin:0 0 8px">确认侵权 · 处置</h4>
+          <div class="infr-actions">
+            <p style="margin:0 0 8px;color:#cf1322;font-weight:600">确认侵权后将：</p>
+            <ul style="margin:0;padding-left:18px;line-height:1.7;font-size:12px">
+              <li>扣件并加收 <strong class="fee-red">侵权罚款 500 CNY/票</strong></li>
+              <li>状态 → <strong>查货扣件 / 退回</strong></li>
+              <li>通知客户 + 所属业务员</li>
+            </ul>
+          </div>
+          <div class="notify-preview" id="infrNotifyPreview"></div>
+        </div>
+        <div id="infrPanelPass" hidden>
+          <p style="margin:0;color:#389e0d;font-weight:600">✓ 可放行，无需额外处置。</p>
+        </div>
+      </div>
+    </div>
+    <div class="drawer-ft">
+      <button type="button" class="btn" id="infrPrev" hidden>上一步</button>
+      <button type="button" class="btn primary" id="infrNext">下一步</button>
+      <button type="button" class="btn new" id="infrConfirmHold" hidden>确认侵权 · 扣件</button>
+      <button type="button" class="btn primary" id="infrSaveAuth" hidden>保存授权并放行</button>
+    </div>
+  </aside>
+
+  <!-- 扣货风险告知弹窗 -->
+  <div class="notify-mask" id="notifyMask">
+    <div class="notify-modal">
+      <div class="notify-modal-hd">
+        <h3>扣货风险告知 <span class="badge chg">涉证</span></h3>
+        <button type="button" class="btn" id="notifyClose">关闭</button>
+      </div>
+      <div class="notify-modal-bd">
+        <div class="notify-copy">
+          涉证/扣货风险已告知客户与业务员；<strong>扣货不赔</strong>。
+        </div>
+        <div class="notify-preview" id="notifyPreview" style="margin-top:12px"></div>
+      </div>
+      <div class="notify-modal-ft">
+        <button type="button" class="btn" id="notifyCancel">取消</button>
+        <button type="button" class="btn primary" id="notifySend">发送告知并标记</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 产品确认 / 查货确认（对齐现网弹窗 + AI） -->
+  <div class="confirm-mask" id="confirmMask" aria-hidden="true">
+    <div class="confirm-modal" role="dialog" aria-labelledby="confirmTitle">
+      <div class="confirm-modal-hd">
+        <h3 id="confirmTitle">产品确认 · 查货确认 <span class="badge chg">改</span></h3>
+        <button type="button" class="btn" id="confirmClose">关闭</button>
+      </div>
+      <div class="confirm-modal-bd">
+        <div class="confirm-tip">
+          对齐现网「产品确认」：按<strong>运单 → 子单</strong>核对查货与核对状态；叠加 AI：看图 → 建议品名 → 人工确认品名 → 可顺手加成本费用 / <strong>多品名加费确认（确认后自动加费）</strong>。
+          仅<strong>已查货</strong>子单可确认；产品确认前建议已看图（0729）。
+        </div>
+        <div class="confirm-top">
+          <div class="fi">
+            <label>选择票数</label>
+            <input id="confirmTicketCount" readonly value="0" />
+          </div>
+          <div class="fi">
+            <label>产品备注</label>
+            <textarea id="confirmRemark" placeholder="请输入备注（确认后写入产品备注 / 核对备注）"></textarea>
+          </div>
+        </div>
+        <div class="confirm-acts">
+          <button type="button" class="btn new" id="confirmAdoptAi">采纳 AI 建议品名 <span class="badge new">NEW</span></button>
+          <button type="button" class="btn new" id="confirmMultiFee">多品名加费确认 <span class="badge new">NEW</span></button>
+          <button type="button" class="btn new" id="confirmAddFee">+ 添加成本费用 <span class="badge new">NEW</span></button>
+          <button type="button" class="btn" id="confirmMarkVerified">批量标已核对</button>
+          <button type="button" class="btn chg" id="confirmMarkViewed">标记已看图 <span class="badge chg">改</span></button>
+          <span class="muted" id="confirmSubHint">子单 0 · 已查货 0 · 待AI确认 0</span>
+        </div>
+        <div class="confirm-table-wrap">
+          <table class="confirm-grid" id="confirmGrid">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="confirmChkAll" /></th>
+                <th>序号</th>
+                <th>运单号</th>
+                <th>子单号</th>
+                <th>是否查货</th>
+                <th>查货人名称</th>
+                <th>查货时间</th>
+                <th>查货备注</th>
+                <th>查货标记</th>
+                <th>是否核对</th>
+                <th class="core">查货图 <span class="badge new">NEW</span></th>
+                <th class="core">AI建议品名 <span class="badge new">NEW</span></th>
+                <th class="core">匹配度 <span class="badge new">NEW</span></th>
+                <th class="core">品名确认 <span class="badge new">NEW</span></th>
+                <th class="core">确认品名 <span class="badge new">NEW</span></th>
+              </tr>
+            </thead>
+            <tbody id="confirmTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="confirm-modal-ft">
+        <button type="button" class="btn primary" id="confirmOk">确定</button>
+        <button type="button" class="btn" id="confirmCancel">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 多品名加费确认 -->
+  <div class="multi-mask" id="multiMask" aria-hidden="true">
+    <div class="multi-modal" role="dialog" aria-labelledby="multiTitle">
+      <div class="multi-modal-hd">
+        <h3 id="multiTitle">多品名加费确认 <span class="badge new">NEW</span></h3>
+        <button type="button" class="btn" id="multiClose">关闭</button>
+      </div>
+      <div class="multi-modal-bd">
+        <div class="multi-tip">
+          规则（0729）：实核品名数 <strong>&gt; 5</strong> → 打「多品名」标识；超出部分每个 <strong>+30 CNY</strong>。
+          确认后<strong>自动写入超品名费</strong>到业务数据统计（无需再手工「添加成本费用」）。
+        </div>
+        <div class="multi-meta">
+          <div class="fi">
+            <label>适用运单</label>
+            <input id="multiWaybills" readonly />
+          </div>
+          <div class="fi">
+            <label>客户类型</label>
+            <select id="multiCustType">
+              <option>直客</option>
+              <option>同行</option>
+            </select>
+          </div>
+          <div class="fi" style="grid-column:1/-1">
+            <label>包装类型 <span style="color:#cf1322">*</span></label>
+            <div class="multi-pack" id="multiPack">
+              <label class="on"><input type="radio" name="multiPack" value="包装" checked /> 包装</label>
+              <label><input type="radio" name="multiPack" value="分开包装" /> 分开包装</label>
+            </div>
+          </div>
+        </div>
+        <div class="multi-names">
+          <h4>实核品名清单 <span class="muted" style="font-weight:400">（AI 识别 + 可增删；改数后重算）</span></h4>
+          <div class="multi-chips" id="multiChips"></div>
+          <div class="multi-add">
+            <input id="multiAddInput" placeholder="补录品名，回车或点添加" />
+            <button type="button" class="btn" id="multiAddBtn">添加</button>
+            <button type="button" class="btn new" id="multiAiFill">从 AI 建议填充</button>
+          </div>
+        </div>
+        <div class="multi-calc">
+          <div class="box"><div class="k">实核品名数</div><div class="v" id="multiCnt">0</div></div>
+          <div class="box"><div class="k">免费额度</div><div class="v">5</div></div>
+          <div class="box warn"><div class="k">超出个数</div><div class="v" id="multiOver">0</div></div>
+          <div class="box fee"><div class="k">应付超品名费</div><div class="v" id="multiAmt">¥0</div></div>
+        </div>
+        <div class="multi-preview" id="multiPreview">确认后将自动加费…</div>
+        <div class="fi" style="margin-top:10px">
+          <label style="display:block;font-size:11px;color:var(--sub);margin-bottom:3px">备注（可选）</label>
+          <textarea id="multiRemark" placeholder="例：开箱核实 8 个品名，分开包装" style="width:100%;min-height:48px;border:1px solid #d9d9d9;border-radius:2px;padding:6px 8px;font:inherit;resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="multi-modal-ft">
+        <span class="multi-ft-hint" id="multiFtHint">超出 0 个 × 30 = 0 CNY · 确认即自动落账</span>
+        <button type="button" class="btn" id="multiCancel">取消</button>
+        <button type="button" class="btn primary" id="multiOk">确认并自动加费</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量修改附加服务（回显已有 · 可勾选可勾除） -->
+  <div class="svc-mask" id="svcMask" aria-hidden="true">
+    <div class="svc-modal" role="dialog" aria-labelledby="svcTitle">
+      <div class="svc-modal-hd">
+        <h3 id="svcTitle">常用附加服务选项--批量 <span class="badge chg">改</span></h3>
+        <button type="button" class="btn" id="svcClose">关闭</button>
+      </div>
+      <div class="svc-modal-bd">
+        <div class="svc-tip">
+          对齐<strong>运单管理 · 附加服务</strong>：打开时<strong>回显已有服务</strong>（勾选=已有）；可<strong>勾选增加</strong>，也可<strong>取消勾选移除</strong>。
+          多票时：全有=勾选、全无=空、部分有=<strong>半选</strong>（橙字）。确定后按变更落账，避免「每次空白刷新导致重复加收」。
+        </div>
+        <div class="svc-meta" id="svcMeta">已选 0 票</div>
+        <div class="svc-grid" id="svcGrid"></div>
+        <div class="svc-diff" id="svcDiff">变更预览将显示在此</div>
+      </div>
+      <div class="svc-modal-ft">
+        <span class="svc-ft-hint" id="svcFtHint">勾选=增加 · 取消勾选=移除 · 半选保留原样</span>
+        <button type="button" class="btn" id="svcCancel">关闭</button>
+        <button type="button" class="btn primary" id="svcOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · 查货操作 AI</span>
+    <h3>查货操作 · 产品确认 / AI识图（合并）</h3>
+    <p>仓库拍图后<strong>默认自动 AI 识图</strong>并回传风控；产品确认与识图合并为<strong>逐条确认</strong>工作台。</p>
+    <div class="legend" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+     <span class="badge new">NEW</span><span class="badge chg">改</span>
+    </div>
+    <h4>改 · 拍图自动识图 + 产品确认合并</h4>
+    <ul>
+      <li>仓库完成查货拍图上传后，系统<strong>默认自动调用 AI 识图</strong>，结果直接回写列表（识图状态 / 建议品名 / 匹配度 / 品牌 / 是否侵权 / 是否带电），风控同事无需再点「触发识图」。</li>
+      <li><strong>喂给 AI 的输入</strong>：查货<strong>图片</strong>、下单/申报<strong>品名</strong>、<strong>品牌名</strong>、<strong>是否侵权</strong>（申报/历史标签）、<strong>是否带电</strong>等上下文；AI 结合图片与文本交叉校验后回传。</li>
+      <li>主入口「<strong>产品确认（逐条）</strong>」= 识图确认 + 产品确认：打开侧栏逐票看图 → 核 AI 结果 → 改/采纳品名 →「确认并下一条」；同屏可勾选<strong>查货标记</strong>并「扣件确定」（看图即判场景整合）。</li>
+      <li><strong>扣件整合口径</strong>：日常「边确认边扣件」整合进确认侧栏；「+ 查货扣件」仍保留给批量/只扣不确认场景。子单级精细标识（行内「标识」）复杂批处理可继续用独立扣件弹窗（现网）。</li>
+      <li>确认后回写：主品名、产品已确认、核对人/时间/备注；队列自动进下一条，直到本批结束。</li>
+      <li>页签「待确认」= 有图且待核票；「<strong>多品名</strong>」= 单独页签，汇集实核品名&gt;5 / 已打多品名标记 / 已加超品名费的票。</li>
+      <li>「子单批量确认」保留现网子单表批量能力（可选）；日常以逐条为主。</li>
+    </ul>
+    <h4>现网能力</h4>
+    <ul>
+      <li>筛选：到货时间、产品组、运单号、销售产品、客户、到货网点、终配舱单号、扣件状态、记录状态、查货员、业务员、客户类型等。</li>
+      <li>按钮：查询、查货扣件、查验扣件放行、产品确认、<strong>批量修改附加服务（改：回显已有、可勾选可勾除，对齐运单管理）</strong>、多品名加费确认、添加成本费用等。</li>
+      <li>状态页签：全部 / 查货中 / 查货扣件中 / 产品已确认 / 已退件。</li>
+      <li>列表列：状态、收货时间、客户单号、运单状态、查货率、计费重、件数、扣件状态、客户简称、主品名、查货标记/备注/员/时间、核对人/时间/备注、附加服务、各类备注、收货仓、销售产品、业务员/客服、客户类型、业务类型、报关编号、终配舱单号、财务、所在仓、创建人/时间。</li>
+    </ul>
+    <h4>NEW · AI识图 / 品名识别（自动回传）</h4>
+    <ul>
+      <li>触发：仓库拍图上传成功 → 自动识图（非人工批量按钮）。</li>
+      <li><strong>AI 输入（喂给模型）</strong>：① 查货图片；② 品名（下单/申报）；③ 品牌名；④ 是否侵权（申报侧/历史）；⑤ 是否带电；及其他必要上下文（客户类型、销售产品等可扩展）。</li>
+      <li><strong>AI 输出（回传风控）</strong>：识图状态、建议品名、匹配度、识别品牌、侵权风险结论、带电判断、品名识别状态。</li>
+      <li>列表列：AI识图状态、查货图、AI建议品名、匹配度、品名识别状态、AI识别品牌、侵权/带电结论。</li>
+      <li>人工确认入口合并进「产品确认（逐条）」侧栏。</li>
+    </ul>
+    <h4>改 · 批量修改附加服务（勾选 / 勾除）</h4>
+    <ul>
+      <li>问题：现网「批量添加」每次打开空白刷新，不展示已有服务 → 无法取消，且可能重复加收；取消只能去运单管理 / 业务数据统计。</li>
+      <li>To-Be：与运单管理附加服务同理——打开回显已有；勾选=增加，取消勾选=移除。</li>
+      <li>多票：全有勾选、全无空选、部分有半选；半选未改动则该服务对各票保持原样。</li>
+      <li>确定时按「新增 / 移除」差分写入，列表「附加服务」列即时更新；多收费项仍建议配合「添加成本费用」落业务数据统计（勾选 ≠ 自动计费完毕）。</li>
+    </ul>
+    <h4>NEW · 多品名加费确认（确认后自动加费）</h4>
+    <ul>
+      <li>入口：工具栏「多品名加费确认」；列表页签「多品名」单独汇集；产品确认侧栏亦可进入。</li>
+      <li>规则：实核品名数 &gt; 5 → 多品名；超出个数 × 30 CNY = 超品名费；包装类型必选（包装 / 分开包装）。</li>
+      <li>品名清单：AI 建议可一键填充，支持增删；改数后重算费用预览。</li>
+      <li>确认后自动：打「多品名」标记、勾选附加服务示意、写入超品名费到业务数据统计（直客→业务成本；同行→应收+成本），无需再手工加费。</li>
+      <li>若未超限（≤5）：确认只落标记/包装类型，不加费。</li>
+    </ul>
+    <h4>NEW · 添加成本费用</h4>
+    <ul>
+      <li>工具栏入口「+ 添加成本费用」；对勾选运单批量添加（产品确认时可直接备注，免找客服/业务）。</li>
+      <li>筛选 / 列：成本费用状态与摘要。</li>
+      <li>同行：写入对客应收 + 成本；直客：写入附加服务业务成本（查货费可加应收）。</li>
+      <li>支持超品名费：默认单价 30，按超出个数加收。</li>
+      <li>与「批量修改附加服务」区分：本入口强调<strong>计费落账</strong>进业务数据统计。</li>
+    </ul>
+    <h4>改 · 产品确认（逐条为主 · 子单批量为辅）</h4>
+    <ul>
+      <li>主入口：「产品确认（逐条）」→ 侧栏队列，确认并下一条。</li>
+      <li>可选：「子单批量确认」仍用现网子单表弹窗。</li>
+    </ul>
+    <h4>改</h4>
+    <ul>
+      <li>识图改为仓库拍图后自动触发；人工侧重点从「触发识图」变为「核图确认」。</li>
+      <li>主品名：采纳 AI 建议后回写（需人工确认，AI 不作唯一卡控）。</li>
+    </ul>
+    <h4>NEW · 侵权查询 / 罚款 / 告知</h4>
+    <ul>
+      <li><strong>侵权查询链路</strong>：AI识别品牌 →「品牌侵权查询」→ 看图结论 → 外链查询（可放行/需授权/确认侵权）→ 授权比对或扣件处置。</li>
+      <li><strong>罚款500</strong>：确认侵权 → 扣件并加收「侵权罚款」500 CNY/票（成本费用列标红），状态改查货扣件/退回。</li>
+      <li><strong>扣货风险告知</strong>：涉证场景「扣货风险告知」→ 固定文案「涉证/扣货风险已告知客户与业务员；扣货不赔」→ 发送预览 → 行标记「已告知」。</li>
+      <li><strong>授权衔接收关</strong>：需授权时上传「品牌授权书」+ 授权主体 vs 报关抬头比对；附件类型同步至<a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">做资料分票核准</a>「品牌授权比对」硬卡。</li>
+    </ul>
+    <h4>业务规则</h4>
+    <ul>
+      <li>匹配度 ≥90%：可批量确认；70～89% 待人工；&lt;70% 标红建议重拍/手填。</li>
+      <li>疑似品牌 → 走侵权查询链路（见上方 NEW 节）。</li>
+      <li>识别结果沉淀品牌/品名库，供后续智能体与历史对照。</li>
+    </ul>
+    <h4>关联</h4>
+    <ul>
+      <li><a href="风控组-0729-查货管理-大致方案.html">0729 查货管理大致方案</a></li>
+      <li><a href="../关务组调研摘录_2026-07-29_查货管理.txt">0729 下午摘录</a></li>
+    </ul>
+  </div>
+
+  <script>
+(function () {
+  var ROWS = [
+    {
+      st: "查货中", recv: "2026-08-06 09:51:02", custNo: "HZBZ0804-4US", waySt: "已打单",
+      rate: "12%", weight: "86.5", pcs: 4, hold: "正常件", cust: "浩泽包装", name: "包装袋",
+      aiImg: "已识别", aiNameSt: "待人工确认", suggest: "塑料包装袋", match: 92, brand: "—",
+      mark: "", remark: "", checker: "张富坤", lastChk: "2026-08-06 09:51:02",
+      verifier: "海siri", verifyAt: "2026-08-06 09:52:10", verifyRm: "",
+      svc: "商业地址,非偏远", releaseRm: "", wayRm: "", opRm: "4件", csRm: "",
+      costFee: "", costLabel: "",
+      wh: "义乌总部", product: "T16限时达", sales: "秦明", cs: "财满满",
+      custType: "直客", bizType: "快递(打单)", decl: "ICBU00001187282", finalNo: "",
+      fin: "钞能力", loc: "义乌总部", creator: "张富坤", created: "2026-08-06 09:51:02",
+      photos: 3, viewed: true,
+      infringeSt: "—", riskNotify: "", declHeader: "HAO ZE PACKAGING LTD",
+      declName: "包装袋", declBrand: "无", battery: "否", infringeDecl: "否",
+      aiBattery: "不带电", aiInfringe: "未见明显侵权",
+      nameCn: "塑料包装袋", nameEn: "Plastic packaging bag", hs: "3923.21",
+      material: "PE塑料", usage: "商品包装",
+      names: ["塑料包装袋", "气泡膜", "封箱胶带", "纸箱", "吊牌", "说明书"],
+      packType: "包装",
+      attach: { letter: "保函_浩泽_HZBZ0804.pdf", authCn: "", authOs: "" }
+    },
+    {
+      st: "查货中", recv: "2026-08-06 09:48:33", custNo: "MTTY0806-12", waySt: "已签入",
+      rate: "8%", weight: "120.0", pcs: 10, hold: "正常件", cust: "梦通体育", name: "运动服装",
+      aiImg: "已识别", aiNameSt: "待人工确认", suggest: "运动卫衣", match: 78, brand: "疑似Nike",
+      mark: "", remark: "开箱核对", checker: "孟祥龙", lastChk: "2026-08-06 09:48:33",
+      verifier: "海siri", verifyAt: "2026-08-06 09:49:01", verifyRm: "",
+      svc: "报关, 指定报关费", releaseRm: "", wayRm: "", opRm: "10件", csRm: "",
+      costFee: "已加应收+成本", costLabel: "查货服务费 50 CNY",
+      wh: "北苑分公司", product: "美东特价FBA卡派", sales: "宋立业", cs: "凯蒂猫",
+      custType: "同行", bizType: "自营(非打单)", decl: "ICBU00001187301", finalNo: "ZP20260806012",
+      fin: "金益求精", loc: "北苑分公司", creator: "孟祥龙", created: "2026-08-06 09:48:33",
+      photos: 4, viewed: false,
+      infringeSt: "待查询", riskNotify: "", declHeader: "MENG TONG SPORTS CO., LTD",
+      declName: "运动服装", declBrand: "Nike", battery: "否", infringeDecl: "疑似",
+      aiBattery: "不带电", aiInfringe: "疑似侵权",
+      authEntity: "", authUploaded: false,
+      nameCn: "运动卫衣", nameEn: "Sports hoodie", hs: "6110.30",
+      material: "棉涤混纺", usage: "日常穿着",
+      names: ["运动卫衣", "运动裤", "球袜", "护腕", "运动鞋", "帽子", "手套", "护膝"],
+      packType: "分开包装",
+      attach: { letter: "", authCn: "品牌授权_国内_梦通.pdf", authOs: "" }
+    },
+    {
+      st: "查货扣件中", recv: "2026-08-06 09:40:11", custNo: "QYWL0805-9", waySt: "已配舱",
+      rate: "25%", weight: "45.2", pcs: 2, hold: "止退件", cust: "启扬物流", name: "灯具配件",
+      aiImg: "识别中", aiNameSt: "未识别", suggest: "—", match: null, brand: "—",
+      mark: "扣件", remark: "待放行", checker: "张富坤", lastChk: "2026-08-06 09:40:11",
+      verifier: "", verifyAt: "", verifyRm: "",
+      svc: "商业地址,非偏远", releaseRm: "", wayRm: "", opRm: "2件", csRm: "客户催",
+      costFee: "", costLabel: "",
+      wh: "青岛分公司", product: "美国空派LAX", sales: "秦明", cs: "财满满",
+      custType: "同行", bizType: "快递(打单)", decl: "", finalNo: "",
+      fin: "钞能力", loc: "青岛分公司", creator: "张富坤", created: "2026-08-06 09:40:11",
+      photos: 2, viewed: true,
+      infringeSt: "—", riskNotify: "已告知", declHeader: "QI YANG LOGISTICS INC"
+    },
+    {
+      st: "产品已确认", recv: "2026-08-06 09:34:10", custNo: "HZBZ0804-1US", waySt: "已打单",
+      rate: "5%", weight: "33.0", pcs: 1, hold: "正常件", cust: "浩泽包装", name: "包装袋",
+      aiImg: "已识别", aiNameSt: "已确认采纳", suggest: "塑料包装袋", match: 95, brand: "—",
+      mark: "", remark: "", checker: "张富坤", lastChk: "2026-08-06 09:34:10",
+      verifier: "海siri", verifyAt: "2026-08-06 09:35:00", verifyRm: "已确认",
+      svc: "商业地址,非偏远", releaseRm: "已上传报关资料，系统自动放行", wayRm: "", opRm: "1件", csRm: "",
+      costFee: "已加业务成本", costLabel: "查货服务费 30 CNY",
+      wh: "义乌总部", product: "T16限时达", sales: "秦明", cs: "财满满",
+      custType: "直客", bizType: "快递(打单)", decl: "ICBU00001187280", finalNo: "",
+      fin: "钞能力", loc: "义乌总部", creator: "张富坤", created: "2026-08-06 09:34:10",
+      photos: 2, viewed: true
+    },
+    {
+      st: "查货中", recv: "2026-08-06 09:30:22", custNo: "XH0806-88", waySt: "已签入",
+      rate: "15%", weight: "210.4", pcs: 20, hold: "正常件", cust: "星火贸易", name: "家居用品",
+      aiImg: "未识别", aiNameSt: "未识别", suggest: "—", match: null, brand: "—",
+      mark: "", remark: "", checker: "孟祥龙", lastChk: "2026-08-06 09:30:22",
+      verifier: "", verifyAt: "", verifyRm: "",
+      svc: "商业地址,非偏远", releaseRm: "", wayRm: "", opRm: "20件", csRm: "",
+      costFee: "", costLabel: "",
+      wh: "义乌总部", product: "T16限时达", sales: "宋立业", cs: "凯蒂猫",
+      custType: "直客", bizType: "自营(非打单)", decl: "ICBU00001187400", finalNo: "",
+      fin: "金益求精", loc: "义乌总部", creator: "孟祥龙", created: "2026-08-06 09:30:22",
+      photos: 1, viewed: false
+    },
+    {
+      st: "产品已确认", recv: "2026-08-06 09:22:08", custNo: "MTTY0805-3", waySt: "已配舱",
+      rate: "3%", weight: "56.0", pcs: 5, hold: "正常件", cust: "梦通体育", name: "运动鞋",
+      aiImg: "已识别", aiNameSt: "已驳回", suggest: "休闲鞋", match: 61, brand: "无品牌",
+      mark: "", remark: "手填运动鞋", checker: "孟祥龙", lastChk: "2026-08-06 09:22:08",
+      verifier: "海siri", verifyAt: "2026-08-06 09:25:40", verifyRm: "AI不准，已手改",
+      svc: "报关, 指定报关费", releaseRm: "已上传报关资料，系统自动放行", wayRm: "", opRm: "5件", csRm: "",
+      costFee: "已加应收+成本", costLabel: "超品名费 90 CNY（超出3个）",
+      wh: "北苑分公司", product: "美东特价FBA卡派", sales: "宋立业", cs: "凯蒂猫",
+      custType: "同行", bizType: "快递(打单)", decl: "ICBU00001187110", finalNo: "ZP20260805088",
+      fin: "金益求精", loc: "北苑分公司", creator: "孟祥龙", created: "2026-08-06 09:22:08",
+      photos: 3, viewed: true
+    },
+    {
+      st: "查货中", recv: "2026-08-06 09:18:55", custNo: "BL0806-01", waySt: "已打单",
+      rate: "18%", weight: "14.2", pcs: 469, hold: "正常件", cust: "百联电商", name: "小商品",
+      aiImg: "识别失败", aiNameSt: "低置信跳过", suggest: "杂货", match: 42, brand: "—",
+      mark: "多品名", remark: "建议重拍", checker: "张富坤", lastChk: "2026-08-06 09:18:55",
+      verifier: "", verifyAt: "", verifyRm: "",
+      svc: "商业地址,非偏远", releaseRm: "", wayRm: "", opRm: "469件", csRm: "",
+      costFee: "", costLabel: "",
+      wh: "义乌总部", product: "T16限时达", sales: "秦明", cs: "财满满",
+      custType: "直客", bizType: "快递(打单)", decl: "ICBU00001187555", finalNo: "",
+      fin: "钞能力", loc: "义乌总部", creator: "张富坤", created: "2026-08-06 09:18:55",
+      photos: 5, viewed: true,
+      names: ["钥匙扣", "发夹", "发圈", "耳钉", "项链", "手链", "胸针", "手机壳", "贴纸"],
+      packType: "分开包装"
+    },
+    {
+      st: "产品已确认", recv: "2026-08-06 09:10:01", custNo: "QYWL0804-2", waySt: "已配舱",
+      rate: "6%", weight: "78.8", pcs: 6, hold: "正常件", cust: "启扬物流", name: "电子配件",
+      aiImg: "已识别", aiNameSt: "已确认采纳", suggest: "电源适配器", match: 88, brand: "—",
+      mark: "", remark: "", checker: "孟祥龙", lastChk: "2026-08-06 09:10:01",
+      verifier: "海siri", verifyAt: "2026-08-06 09:12:20", verifyRm: "",
+      svc: "报关, 指定报关费", releaseRm: "已上传报关资料，系统自动放行", wayRm: "", opRm: "6件", csRm: "",
+      costFee: "", costLabel: "",
+      wh: "青岛分公司", product: "美国空派LAX", sales: "秦明", cs: "财满满",
+      custType: "同行", bizType: "快递(打单)", decl: "ICBU00001187001", finalNo: "",
+      fin: "钞能力", loc: "青岛分公司", creator: "孟祥龙", created: "2026-08-06 09:10:01",
+      photos: 2, viewed: true
+    }
+  ];
+
+  var filterSt = "";
+  var activeRow = null;
+  var activeIdx = -1;
+  var infrRow = null;
+  var infrStep = 1;
+  var infrRes = "";
+  var notifyRowIdxs = [];
+
+  function normHeader(s) {
+    return (s || "").replace(/\s+/g, " ").trim().toUpperCase();
+  }
+
+  function infringeTag(v) {
+    if (!v || v === "—") return '<span class="muted">—</span>';
+    if (v === "可放行") return '<span class="tag ok">可放行</span>';
+    if (v === "需授权") return '<span class="tag warn">需授权</span>';
+    if (v === "确认侵权") return '<span class="tag bad">确认侵权</span>';
+    if (v === "待查询") return '<span class="tag warn">待查询</span>';
+    return '<span class="tag gray">' + v + '</span>';
+  }
+
+  function notifyTag(v) {
+    if (v === "已告知") return '<span class="tag ok">已告知</span>';
+    return '<span class="muted">未告知</span>';
+  }
+
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    setTimeout(function () { el.style.display = "none"; }, 2000);
+  }
+
+  function aiImgTag(v) {
+    if (v === "已识别") return '<span class="tag ok">已识别</span>';
+    if (v === "识别中") return '<span class="tag blue">识别中</span>';
+    if (v === "识别失败") return '<span class="tag bad">识别失败</span>';
+    return '<span class="tag gray">未识别</span>';
+  }
+
+  function nameStTag(v) {
+    if (v === "已确认采纳") return '<span class="tag ok">已确认采纳</span>';
+    if (v === "待人工确认") return '<span class="tag warn">待人工确认</span>';
+    if (v === "已驳回") return '<span class="tag bad">已驳回</span>';
+    if (v === "低置信跳过") return '<span class="tag bad">低置信跳过</span>';
+    return '<span class="tag gray">未识别</span>';
+  }
+
+  function matchHtml(m) {
+    if (m == null) return '<span class="muted">—</span>';
+    var cls = m >= 90 ? "match-hi" : m >= 70 ? "match-mid" : "match-lo";
+    return '<span class="' + cls + '">' + m + '%</span>';
+  }
+
+  function costFeeHtml(r) {
+    if (!r.costFee) return '<span class="muted">未添加</span>';
+    var isInfr = r.costLabel && r.costLabel.indexOf("侵权罚款") >= 0;
+    var tagCls = isInfr ? "bad" : (r.costFee.indexOf("应收") >= 0 ? "ok" : "blue");
+    var tag = '<span class="tag ' + tagCls + '">' + r.costFee + '</span>';
+    var labelCls = isInfr ? ' class="fee-red"' : '';
+    return tag + (r.costLabel ? '<div' + labelCls + ' style="margin-top:2px;font-size:11px">' + r.costLabel + '</div>' : '');
+  }
+
+  function filtered() {
+    var aiImg = document.getElementById("qAiImg").value;
+    var aiName = document.getElementById("qAiName").value;
+    var match = document.getElementById("qMatch").value;
+    var suggest = (document.getElementById("qSuggest").value || "").trim().toLowerCase();
+    var costFee = document.getElementById("qCostFee").value;
+    return ROWS.filter(function (r) {
+      if (filterSt === "ai") return needsProductConfirm(r);
+      if (filterSt === "multi") return isMultiNameRow(r);
+      if (filterSt && r.st !== filterSt) return false;
+      if (aiImg && r.aiImg !== aiImg) return false;
+      if (aiName && r.aiNameSt !== aiName) return false;
+      if (suggest && (r.suggest || "").toLowerCase().indexOf(suggest) < 0) return false;
+      if (match === "≥90%" && !(r.match != null && r.match >= 90)) return false;
+      if (match === "70%～89%" && !(r.match != null && r.match >= 70 && r.match < 90)) return false;
+      if (match === "<70%" && !(r.match != null && r.match < 70)) return false;
+      if (costFee === "未添加" && r.costFee) return false;
+      if (costFee === "已加业务成本" && r.costFee !== "已加业务成本") return false;
+      if (costFee === "已加应收+成本" && r.costFee !== "已加应收+成本") return false;
+      return true;
+    });
+  }
+
+  function render() {
+    var rows = filtered();
+    var pendingN = pendingConfirmList().length;
+    var multiN = multiNameList().length;
+    var cntEl = document.getElementById("cntPending");
+    if (cntEl) cntEl.textContent = "(" + pendingN + ")";
+    var cntMulti = document.getElementById("cntMulti");
+    if (cntMulti) cntMulti.textContent = "(" + multiN + ")";
+    document.getElementById("totalN").textContent = rows.length;
+    document.getElementById("tbody").innerHTML = rows.map(function (r, i) {
+      var biz = r.bizType.indexOf("自营") >= 0
+        ? '<span class="red">' + r.bizType + '</span>'
+        : r.bizType;
+      var brand = r.brand && r.brand.indexOf("疑似") >= 0
+        ? '<span class="tag bad">' + r.brand + '</span>'
+        : (r.brand || "—");
+      return '<tr data-idx="' + ROWS.indexOf(r) + '">' +
+        '<td><input type="checkbox" class="row-chk" /></td>' +
+        '<td>' + (i + 1) + '</td>' +
+        '<td>' + r.st + '</td>' +
+        '<td>' + r.recv + '</td>' +
+        '<td><a class="link" href="#">' + r.custNo + '</a></td>' +
+        '<td>' + r.waySt + '</td>' +
+        '<td>' + r.rate + '</td>' +
+        '<td>' + r.weight + '</td>' +
+        '<td>' + r.pcs + '</td>' +
+        '<td>' + r.hold + '</td>' +
+        '<td>' + r.cust + '</td>' +
+        '<td>' + r.name + '</td>' +
+        '<td>' + aiImgTag(r.aiImg) + '</td>' +
+        '<td><span class="thumb" data-open="' + ROWS.indexOf(r) + '" title="查看识图">' + r.photos + '图</span></td>' +
+        '<td>' + (r.suggest || "—") + '</td>' +
+        '<td>' + matchHtml(r.match) + '</td>' +
+        '<td>' + nameStTag(r.aiNameSt) + '</td>' +
+        '<td>' + brand + '</td>' +
+        '<td>' + (r.aiInfringe || "—") + '</td>' +
+        '<td>' + (r.aiBattery || "—") + '</td>' +
+        '<td>' + infringeTag(r.infringeSt || "—") + '</td>' +
+        '<td>' + notifyTag(r.riskNotify) + '</td>' +
+        '<td>' + (r.mark || "") + '</td>' +
+        '<td>' + (r.remark || "") + '</td>' +
+        '<td>' + r.checker + '</td>' +
+        '<td>' + r.lastChk + '</td>' +
+        '<td>' + (r.verifier || "") + '</td>' +
+        '<td>' + (r.verifyAt || "") + '</td>' +
+        '<td>' + (r.verifyRm || "") + '</td>' +
+        '<td title="' + r.svc + '">' + r.svc + '</td>' +
+        '<td class="core">' + costFeeHtml(r) + '</td>' +
+        '<td title="' + (r.releaseRm || "") + '">' + (r.releaseRm || "") + '</td>' +
+        '<td>' + (r.wayRm || "") + '</td>' +
+        '<td>' + (r.opRm || "") + '</td>' +
+        '<td>' + (r.csRm || "") + '</td>' +
+        '<td>' + r.wh + '</td>' +
+        '<td>' + r.product + '</td>' +
+        '<td>' + r.sales + '</td>' +
+        '<td>' + r.cs + '</td>' +
+        '<td>' + r.custType + '</td>' +
+        '<td>' + biz + '</td>' +
+        '<td>' + (r.decl || "") + '</td>' +
+        '<td>' + (r.finalNo || "") + '</td>' +
+        '<td>' + r.fin + '</td>' +
+        '<td>' + r.loc + '</td>' +
+        '<td>' + r.creator + '</td>' +
+        '<td>' + r.created + '</td>' +
+        '<td style="position:sticky;right:0;background:#fff;white-space:nowrap">' +
+          '<button type="button" class="btn new" style="height:24px;padding:0 6px" data-open="' + ROWS.indexOf(r) + '">识图</button> ' +
+          '<button type="button" class="btn new" style="height:24px;padding:0 6px" data-fee="' + ROWS.indexOf(r) + '">加费用</button> ' +
+          (r.brand && r.brand.indexOf("疑似") >= 0
+            ? '<button type="button" class="btn chg" style="height:24px;padding:0 6px" data-infr="' + ROWS.indexOf(r) + '">侵权</button> '
+            : '') +
+          '<button type="button" class="btn" style="height:24px;padding:0 6px">明细</button>' +
+        '</td>' +
+        '</tr>';
+    }).join("") || '<tr><td colspan="47" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+    syncSel();
+  }
+
+  function syncSel() {
+    var n = document.querySelectorAll(".row-chk:checked").length;
+    document.getElementById("selCount").textContent = n;
+  }
+
+  function ensureAttach(r) {
+    if (!r.attach) r.attach = { letter: "", authCn: "", authOs: "" };
+    return r.attach;
+  }
+
+  function openDrawer(idx) {
+    activeIdx = idx;
+    activeRow = ROWS[idx];
+    renderDrawerBody();
+    updateDrawerNav();
+    document.getElementById("drawerMask").classList.add("open");
+    document.getElementById("drawer").classList.add("open");
+  }
+
+  function renderDrawerBody() {
+    var r = activeRow;
+    if (!r) return;
+    var a = ensureAttach(r);
+    var cn = r.nameCn || (r.suggest && r.suggest !== "—" ? r.suggest : r.name) || "";
+    var en = r.nameEn || "";
+    var declName = r.declName || r.name || "—";
+    var declBrand = r.declBrand || "无";
+    var batteryIn = r.battery != null ? r.battery : "未知";
+    var infringeIn = r.infringeDecl || "否";
+    var aiBattery = r.aiBattery || (batteryIn === "是" ? "带电（AI）" : batteryIn === "否" ? "不带电（AI）" : "待判");
+    var aiInfringe = r.aiInfringe || (r.brand && String(r.brand).indexOf("疑似") >= 0 ? "疑似侵权" : (r.infringeSt && r.infringeSt !== "—" ? r.infringeSt : "未见明显侵权"));
+    var autoTip = r.photos > 0
+      ? '<div class="confirm-tip" style="margin:0 0 12px">仓库已拍图 <strong>' + r.photos + '</strong> 张 → <strong>已自动调用 AI 识图</strong>，结果已回传风控。请核图后确认品名（确认后自动下一条）。</div>'
+      : '<div class="confirm-tip" style="margin:0 0 12px;background:#fff1f0;border-color:#ffa39e;color:#a8071a">尚无查货图。请等仓库拍图后系统会自动识图并回传。</div>';
+    document.getElementById("drawerBody").innerHTML =
+      autoTip +
+      '<div class="kv">' +
+      '<span>客户单号</span><b>' + r.custNo + '</b>' +
+      '<span>客户</span><b>' + r.cust + '</b>' +
+      '<span>当前主品名</span><b>' + r.name + '</b>' +
+      '<span>记录状态</span><b>' + r.st + '</b>' +
+      '</div>' +
+      '<h4>① 查货照片（仓库拍图）</h4>' +
+      '<div class="photos">' +
+      (r.photos
+        ? Array.from({ length: r.photos }, function (_, i) {
+            return '<div class="p">图' + (i + 1) + '</div>';
+          }).join("")
+        : '<div class="muted">暂无照片</div>') +
+      '</div>' +
+      '<div class="ai-feed">' +
+      '<h5>喂给 AI 的内容 <span class="badge new">NEW</span></h5>' +
+      '<div class="chips">' +
+      '<span class="chip"><b>图片</b> ' + (r.photos || 0) + ' 张查货图</span>' +
+      '<span class="chip"><b>品名</b> ' + declName + '</span>' +
+      '<span class="chip"><b>品牌名</b> ' + declBrand + '</span>' +
+      '<span class="chip"><b>是否侵权</b> ' + infringeIn + '</span>' +
+      '<span class="chip"><b>是否带电</b> ' + batteryIn + '</span>' +
+      '</div>' +
+      '<div class="muted">拍图上传后，以上字段与图片一并送入模型；AI 交叉校验后回传建议品名 / 品牌 / 侵权与带电结论。</div>' +
+      '</div>' +
+      '<h4>② AI 自动识图结果 <span class="badge new">NEW</span></h4>' +
+      '<div class="kv">' +
+      '<span>识图状态</span><div>' + aiImgTag(r.aiImg) + '</div>' +
+      '<span>建议品名</span><b>' + (r.suggest || "—") + '</b>' +
+      '<span>匹配度</span><div>' + matchHtml(r.match) + '</div>' +
+      '<span>识别品牌</span><div>' + (r.brand || "—") + '</div>' +
+      '<span>是否侵权（AI）</span><div>' + aiInfringe + '</div>' +
+      '<span>是否带电（AI）</span><div>' + aiBattery + '</div>' +
+      '<span>品名状态</span><div>' + nameStTag(r.aiNameSt) + '</div>' +
+      '</div>' +
+      '<h4>③ 产品确认 · 人工核品名 <span class="badge chg">改</span></h4>' +
+      '<div class="drawer-form">' +
+      '<div><label>中文品名 <span class="req">*</span></label><input id="fNameCn" value="' + escAttr(cn) + '" /></div>' +
+      '<div><label>英文品名</label><input id="fNameEn" value="' + escAttr(en) + '" placeholder="English product name" /></div>' +
+      '<div><label>HS码</label><input id="fHs" value="' + escAttr(r.hs || "") + '" placeholder="例 3923.21" /></div>' +
+      '<div><label>材质</label><input id="fMaterial" value="' + escAttr(r.material || "") + '" placeholder="例 PE塑料 / 棉涤" /></div>' +
+      '<div><label>是否带电（确认）</label><select id="fBattery"><option' + (batteryIn === "否" ? " selected" : "") + '>否</option><option' + (batteryIn === "是" ? " selected" : "") + '>是</option><option' + (batteryIn === "未知" ? " selected" : "") + '>未知</option></select></div>' +
+      '<div><label>侵权结论（确认）</label><select id="fInfringe"><option>未见侵权</option><option' + (String(aiInfringe).indexOf("疑似") >= 0 ? " selected" : "") + '>疑似侵权</option><option>确认侵权</option></select></div>' +
+      '<div class="full"><label>用途</label><input id="fUsage" value="' + escAttr(r.usage || "") + '" placeholder="例 商品包装 / 日常穿着" /></div>' +
+      '<div class="full"><label>产品备注</label><textarea id="fProductRm" placeholder="确认备注（写入核对备注）">' + escAttr(r.verifyRm || "") + '</textarea></div>' +
+      '</div>' +
+      '<h4>③b 查货标记 / 扣件 <span class="badge chg">改 · 可整合</span></h4>' +
+      '<div class="hold-marks" id="holdMarks">' +
+      '<p class="note">*注意：勾选查货标记时会覆盖本票（及子单）查货标记。看图确认时若需扣件，勾选后点底部「扣件确定」；仅批量扣件仍走工具栏「+ 查货扣件」。</p>' +
+      holdMarkChecksHtml(r.mark) +
+      '</div>' +
+      (r.brand && r.brand.indexOf("疑似") >= 0
+        ? '<p style="margin:10px 0 0;color:#cf1322;font-size:12px">⚠ 疑似品牌，确认后请走侵权查询；可上传国内/国外授权附件。</p>'
+        : '') +
+      '<h4>④ 附件</h4>' +
+      '<div class="attach-list">' +
+      attachRowHtml("letter", "保函", a.letter) +
+      attachRowHtml("authCn", "国内授权", a.authCn) +
+      attachRowHtml("authOs", "国外授权", a.authOs) +
+      '</div>' +
+      '<p class="attach-hint">底部：「确认并下一条」= 正常放行确认；「扣件确定」= 写标记并进入查货扣件中，再下一条。</p>';
+  }
+
+  var HOLD_MARK_OPTS = [
+    "UL授权", "违禁品", "瞒报", "3M授权",
+    "涉及军用迷彩", "毛绒玩具", "品牌授权", "带电/磁性"
+  ];
+
+  function holdMarkChecksHtml(markStr) {
+    var cur = String(markStr || "").split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    return HOLD_MARK_OPTS.map(function (m) {
+      var on = cur.indexOf(m) >= 0;
+      return '<label><input type="checkbox" class="hold-mk" value="' + m + '"' +
+        (on ? " checked" : "") + " /> " + m + "</label>";
+    }).join("");
+  }
+
+  function readHoldMarksFromDom() {
+    var picked = [];
+    document.querySelectorAll("#holdMarks .hold-mk:checked").forEach(function (c) {
+      picked.push(c.value);
+    });
+    return picked;
+  }
+
+  function escAttr(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+  }
+
+  function attachRowHtml(key, label, file) {
+    var has = !!(file && file.trim());
+    return '<div class="attach-row" data-akey="' + key + '">' +
+      '<span class="atype">' + label + '</span>' +
+      '<span class="afile ' + (has ? "has" : "") + '" id="afile_' + key + '">' +
+      (has ? file : "未上传") + '</span>' +
+      '<button type="button" class="btn" style="height:24px;padding:0 8px" data-up="' + key + '">' +
+      (has ? "更换" : "上传") + '</button></div>';
+  }
+
+  function updateDrawerNav() {
+    var list = confirmQueueMode && confirmQueue.length
+      ? confirmQueue.filter(function (r) { return needsProductConfirm(r) || r === activeRow; })
+      : filtered();
+    var pos = list.indexOf(activeRow);
+    var el = document.getElementById("drawerNavPos");
+    if (pos < 0) {
+      el.textContent = "—";
+      document.getElementById("btnPrev").disabled = true;
+      document.getElementById("btnNext").disabled = true;
+      return;
+    }
+    el.textContent = (confirmQueueMode ? "确认队列 " : "") + (pos + 1) + " / " + list.length;
+    document.getElementById("btnPrev").disabled = pos <= 0;
+    document.getElementById("btnNext").disabled = pos >= list.length - 1;
+  }
+
+  function goDrawer(delta) {
+    var list = confirmQueueMode && confirmQueue.length
+      ? confirmQueue.filter(function (r) { return needsProductConfirm(r) || r === activeRow; })
+      : filtered();
+    var pos = list.indexOf(activeRow);
+    if (pos < 0) return;
+    var next = pos + delta;
+    if (next < 0 || next >= list.length) {
+      toast(delta < 0 ? "已是第一条" : "已是最后一条");
+      return;
+    }
+    saveDrawerDraft();
+    openDrawer(ROWS.indexOf(list[next]));
+  }
+
+  function saveDrawerDraft() {
+    if (!activeRow) return;
+    var cn = document.getElementById("fNameCn");
+    if (!cn) return;
+    activeRow.nameCn = cn.value.trim();
+    activeRow.nameEn = document.getElementById("fNameEn").value.trim();
+    activeRow.hs = document.getElementById("fHs").value.trim();
+    activeRow.material = document.getElementById("fMaterial").value.trim();
+    activeRow.usage = document.getElementById("fUsage").value.trim();
+    var rm = document.getElementById("fProductRm");
+    if (rm) activeRow.verifyRm = rm.value.trim();
+    var bat = document.getElementById("fBattery");
+    if (bat) activeRow.battery = bat.value;
+    var inf = document.getElementById("fInfringe");
+    if (inf) {
+      activeRow.infringeSt = inf.value;
+      activeRow.aiInfringe = inf.value;
+    }
+  }
+
+  var confirmQueue = [];
+  var confirmQueueMode = false;
+
+  function needsProductConfirm(r) {
+    if (!r) return false;
+    if (r.aiNameSt === "已确认采纳" || r.aiNameSt === "已确认") return false;
+    if (r.st === "产品已确认") return false;
+    if (r.st === "已退件") return false;
+    return r.photos > 0 && (
+      r.aiNameSt === "待人工确认" ||
+      r.aiNameSt === "未识别" ||
+      r.aiNameSt === "低置信跳过" ||
+      r.aiNameSt === "已驳回" ||
+      r.st === "查货中" ||
+      r.st === "查货扣件中"
+    );
+  }
+
+  function pendingConfirmList() {
+    return ROWS.filter(needsProductConfirm);
+  }
+
+  function isMultiNameRow(r) {
+    if (!r) return false;
+    var mark = String(r.mark || "");
+    if (mark.indexOf("多品名") >= 0) return true;
+    if (r.names && r.names.length > 5) return true;
+    if (r.costLabel && String(r.costLabel).indexOf("超品名费") >= 0) return true;
+    if (r.svc && String(r.svc).indexOf("多品名") >= 0) return true;
+    return false;
+  }
+
+  function multiNameList() {
+    return ROWS.filter(isMultiNameRow);
+  }
+
+  function startConfirmQueue(idxs) {
+    var list;
+    if (idxs && idxs.length) {
+      list = idxs.map(function (i) { return ROWS[i]; }).filter(needsProductConfirm);
+      if (!list.length) list = idxs.map(function (i) { return ROWS[i]; });
+    } else {
+      list = pendingConfirmList();
+    }
+    if (!list.length) {
+      toast("暂无待确认票（仓库拍图并自动识图后会出现在此）");
+      return;
+    }
+    confirmQueue = list.slice();
+    confirmQueueMode = true;
+    openDrawer(ROWS.indexOf(confirmQueue[0]));
+    toast("逐条确认 · 共 " + confirmQueue.length + " 票（仓库拍图已自动识图）");
+  }
+
+  function advanceConfirmQueue() {
+    if (!confirmQueueMode) {
+      closeDrawer();
+      render();
+      return;
+    }
+    var remaining = confirmQueue.filter(function (r) {
+      return r !== activeRow && needsProductConfirm(r);
+    });
+    confirmQueue = remaining;
+    if (!remaining.length) {
+      confirmQueueMode = false;
+      closeDrawer();
+      render();
+      toast("本批已全部确认完毕");
+      return;
+    }
+    openDrawer(ROWS.indexOf(remaining[0]));
+  }
+
+  function closeDrawer() {
+    document.getElementById("drawerMask").classList.remove("open");
+    document.getElementById("drawer").classList.remove("open");
+    activeIdx = -1;
+    activeRow = null;
+    confirmQueueMode = false;
+    confirmQueue = [];
+  }
+
+  document.getElementById("btnMore").addEventListener("click", function () {
+    var el = document.getElementById("filtersMore");
+    var open = el.classList.toggle("open");
+    this.textContent = open ? "收起筛选 ▴" : "更多筛选 ▾";
+  });
+
+  document.getElementById("btnReset").addEventListener("click", function () {
+    ["qAiImg", "qAiName", "qMatch", "qSuggest", "qCostFee"].forEach(function (id) {
+      document.getElementById(id).value = "";
+    });
+    filterSt = "";
+    document.querySelectorAll(".st").forEach(function (x) { x.classList.remove("on"); });
+    document.querySelector('.st[data-st=""]').classList.add("on");
+    render();
+    toast("已重置筛选（原型）");
+  });
+
+  document.getElementById("statusTabs").addEventListener("click", function (e) {
+    var st = e.target.closest(".st");
+    if (!st) return;
+    document.querySelectorAll(".st").forEach(function (x) { x.classList.remove("on"); });
+    st.classList.add("on");
+    filterSt = st.getAttribute("data-st") || "";
+    render();
+  });
+
+  ["qAiImg", "qAiName", "qMatch", "qCostFee"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", render);
+  });
+  document.getElementById("qSuggest").addEventListener("input", render);
+
+  document.getElementById("chkAll").addEventListener("change", function () {
+    document.querySelectorAll(".row-chk").forEach(function (c) { c.checked = document.getElementById("chkAll").checked; });
+    syncSel();
+  });
+  document.getElementById("tbody").addEventListener("change", function (e) {
+    if (e.target.classList.contains("row-chk")) syncSel();
+  });
+  document.getElementById("tbody").addEventListener("click", function (e) {
+    var infrBtn = e.target.closest("[data-infr]");
+    if (infrBtn) {
+      openInfrDrawer(+infrBtn.getAttribute("data-infr"));
+      return;
+    }
+    var feeBtn = e.target.closest("[data-fee]");
+    if (feeBtn) {
+      openFeeModal([+feeBtn.getAttribute("data-fee")]);
+      return;
+    }
+    var btn = e.target.closest("[data-open]");
+    if (!btn) return;
+    openDrawer(+btn.getAttribute("data-open"));
+  });
+
+  document.getElementById("drawerClose").onclick = closeDrawer;
+  document.getElementById("btnPrev").onclick = function () { goDrawer(-1); };
+  document.getElementById("btnNext").onclick = function () { goDrawer(1); };
+  document.getElementById("drawerBody").addEventListener("click", function (e) {
+    var up = e.target.closest("[data-up]");
+    if (!up || !activeRow) return;
+    var key = up.getAttribute("data-up");
+    var labels = { letter: "保函", authCn: "国内授权", authOs: "国外授权" };
+    var name = window.prompt("模拟上传「" + labels[key] + "」文件名", labels[key] + "_" + activeRow.custNo + ".pdf");
+    if (name == null) return;
+    name = name.trim();
+    ensureAttach(activeRow)[key] = name;
+    renderDrawerBody();
+    toast(name ? ("已上传" + labels[key] + "：" + name) : (labels[key] + "已清除"));
+  });
+  document.getElementById("drawerMask").onclick = function (e) {
+    if (e.target !== this) return;
+    if (document.getElementById("infrDrawer").classList.contains("open")) closeInfrDrawer();
+    else closeDrawer();
+  };
+
+  document.getElementById("btnDrawerFee").onclick = function () {
+    if (activeIdx < 0) { toast("请先打开详情"); return; }
+    saveDrawerDraft();
+    openFeeModal([activeIdx]);
+  };
+  document.getElementById("btnDrawerRisk").onclick = function () {
+    if (activeIdx < 0) { toast("请先打开详情"); return; }
+    saveDrawerDraft();
+    openNotifyModal([activeIdx]);
+  };
+
+  document.getElementById("btnAdopt").onclick = function () {
+    finishConfirmTicket(false);
+  };
+
+  document.getElementById("btnHoldConfirm").onclick = function () {
+    var marks = readHoldMarksFromDom();
+    if (!marks.length) {
+      toast("扣件请先勾选至少一项查货标记（违禁品 / 瞒报 / 品牌授权等）");
+      return;
+    }
+    if (!window.confirm("确认对本票扣件？将写入查货标记并进入「查货扣件中」。")) return;
+    finishConfirmTicket(true, marks);
+  };
+
+  function finishConfirmTicket(isHold, marks) {
+    if (!activeRow) return;
+    saveDrawerDraft();
+    var name = (activeRow.nameCn || "").trim();
+    if (!name) { toast("请填写中文品名"); return; }
+    activeRow.name = name;
+    activeRow.nameCn = name;
+    activeRow.suggest = activeRow.nameEn ? (name + " / " + activeRow.nameEn) : name;
+    activeRow.aiNameSt = "已确认采纳";
+    activeRow.aiImg = "已识别";
+    activeRow.viewed = true;
+    activeRow.verifier = activeRow.verifier || "风控确认";
+    activeRow.verifyAt = "2026-08-14 23:40:00";
+    var picked = marks || readHoldMarksFromDom();
+    if (picked.length) {
+      var parts = String(activeRow.mark || "").split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+      picked.forEach(function (m) { if (parts.indexOf(m) < 0) parts.push(m); });
+      activeRow.mark = parts.join(",");
+    }
+    if (isHold) {
+      activeRow.st = "查货扣件中";
+      activeRow.hold = "止退件";
+      if (!picked.length) activeRow.mark = activeRow.mark || "扣件";
+    } else {
+      activeRow.st = "产品已确认";
+    }
+    var tip = isHold
+      ? ("已扣件「" + name + "」→ 查货扣件中 · 标记：" + (activeRow.mark || "—"))
+      : ("已确认「" + name + "」→ 产品已确认");
+    if (confirmQueueMode) {
+      toast(tip + " · 下一条…");
+      advanceConfirmQueue();
+      render();
+    } else {
+      closeDrawer();
+      render();
+      toast(tip);
+    }
+  }
+
+  document.getElementById("btnHoldBatch").onclick = function () {
+    var idxs = getSelectedIdxs();
+    if (!idxs.length) {
+      toast("请先勾选要扣件的运单，将进入逐条确认并可点「扣件确定」；或勾选后打开子单批量确认");
+      return;
+    }
+    startConfirmQueue(idxs);
+    toast("已进入逐条确认 · 勾选查货标记后点「扣件确定」即可扣件（与现网扣件弹窗能力对齐整合）");
+  };
+
+  document.getElementById("btnReject").onclick = function () {
+    if (!activeRow) return;
+    activeRow.aiNameSt = "已驳回";
+    toast("已驳回 AI 建议，请手填后再次「确认并下一条」");
+    renderDrawerBody();
+  };
+
+  document.getElementById("btnDrawerMulti").onclick = function () {
+    if (activeIdx < 0) { toast("请先打开确认"); return; }
+    saveDrawerDraft();
+    openMultiFeeModal([activeIdx]);
+  };
+
+  document.getElementById("btnMultiQuery").onclick = function () {
+    toast("原型：多选数据查询（现网保留）");
+  };
+
+  /* 仓库拍图 → 自动识图（页面加载时演示：有图且未识别的自动进入识别回传） */
+  function simulateWarehouseAutoAi() {
+    var n = 0;
+    ROWS.forEach(function (r) {
+      if (!r.declName) r.declName = r.name || "";
+      if (!r.declBrand) r.declBrand = (r.brand && r.brand !== "—" && r.brand.indexOf("疑似") < 0) ? r.brand : "无";
+      if (r.battery == null) r.battery = "未知";
+      if (!r.infringeDecl) r.infringeDecl = "否";
+      if (r.photos > 0 && (r.aiImg === "未识别" || r.aiImg === "识别失败")) {
+        r.aiImg = "已识别";
+        if (!r.suggest || r.suggest === "—") r.suggest = (r.name || "货品") + "（AI）";
+        if (r.match == null) r.match = 84;
+        if (r.aiNameSt === "未识别" || r.aiNameSt === "低置信跳过") r.aiNameSt = "待人工确认";
+        n++;
+      }
+      if (r.photos > 0 && r.aiImg === "识别中") {
+        r.aiImg = "已识别";
+        if (r.aiNameSt === "未识别") r.aiNameSt = "待人工确认";
+        if (!r.suggest || r.suggest === "—") r.suggest = (r.name || "货品") + "（AI）";
+        if (r.match == null) r.match = 80;
+        n++;
+      }
+      if (r.photos > 0) {
+        if (!r.aiBattery) {
+          r.aiBattery = r.battery === "是" ? "带电" : r.battery === "否" ? "不带电" : "待判";
+        }
+        if (!r.aiInfringe) {
+          r.aiInfringe = (r.brand && String(r.brand).indexOf("疑似") >= 0)
+            ? "疑似侵权"
+            : (r.infringeDecl === "疑似" || r.infringeDecl === "是" ? "需复核侵权" : "未见明显侵权");
+        }
+      }
+    });
+    return n;
+  }
+  simulateWarehouseAutoAi();
+
+  var feeRowIdxs = [];
+
+  function resolveFeeTarget(custType, target) {
+    if (target === "cost") return { status: "已加业务成本", text: "附加服务业务成本（直客口径）" };
+    if (target === "both") return { status: "已加应收+成本", text: "客户应收 + 成本" };
+    if (custType === "同行") return { status: "已加应收+成本", text: "客户应收 + 成本（同行）" };
+    return { status: "已加业务成本", text: "附加服务业务成本（直客；查货费可另加应收）" };
+  }
+
+  function updateFeePreview() {
+    var type = document.getElementById("feeType").value;
+    var custType = document.getElementById("feeCustType").value;
+    var target = document.getElementById("feeTarget").value;
+    var amt = parseFloat(document.getElementById("feeAmt").value) || 0;
+    var cur = document.getElementById("feeCur").value;
+    var qty = parseInt(document.getElementById("feeQty").value, 10) || 0;
+    var dest = resolveFeeTarget(custType, target);
+    var extra = type === "超品名费" ? (" · 超出 " + qty + " 个 × 30") : "";
+    document.getElementById("feePreview").innerHTML =
+      "<strong>预览写入：</strong>" + type + " " + amt + " " + cur + extra +
+      " → " + dest.text + " · 共 " + feeRowIdxs.length + " 票进业务数据统计";
+  }
+
+  function syncFeeTypeUi() {
+    var isOver = document.getElementById("feeType").value === "超品名费";
+    document.getElementById("feeQtyWrap").hidden = !isOver;
+    if (isOver) {
+      var qty = parseInt(document.getElementById("feeQty").value, 10) || 0;
+      document.getElementById("feeAmt").value = String(qty * 30);
+    }
+    updateFeePreview();
+  }
+
+  function openFeeModal(idxs) {
+    feeRowIdxs = idxs && idxs.length ? idxs : [];
+    if (!feeRowIdxs.length) {
+      toast("请先勾选运单，或从行操作「加费用」进入");
+      return;
+    }
+    var rows = feeRowIdxs.map(function (i) { return ROWS[i]; });
+    document.getElementById("feeWaybills").value = rows.map(function (r) { return r.custNo; }).join("、");
+    document.getElementById("feeCustType").value = rows[0].custType || "直客";
+    document.getElementById("feeType").value = "查货服务费";
+    document.getElementById("feeQty").value = "3";
+    document.getElementById("feeAmt").value = "30";
+    document.getElementById("feeCur").value = "CNY";
+    document.getElementById("feeTarget").value = "auto";
+    document.getElementById("feeRemark").value = "";
+    syncFeeTypeUi();
+    document.getElementById("feeMask").classList.add("open");
+    document.getElementById("feeMask").setAttribute("aria-hidden", "false");
+  }
+
+  function closeFeeModal() {
+    document.getElementById("feeMask").classList.remove("open");
+    document.getElementById("feeMask").setAttribute("aria-hidden", "true");
+    feeRowIdxs = [];
+  }
+
+  document.getElementById("btnAddCost").onclick = function () {
+    var idxs = [];
+    document.querySelectorAll("#tbody tr").forEach(function (tr) {
+      var chk = tr.querySelector(".row-chk");
+      if (chk && chk.checked) idxs.push(+tr.getAttribute("data-idx"));
+    });
+    openFeeModal(idxs);
+  };
+
+  /* —— 批量修改附加服务（回显已有 · 勾选增加 / 取消勾除） —— */
+  var SVC_CATALOG = [
+    "一件代发优惠-2/KG", "现场展示", "多品名费", "多品名加收", "绑定订单", "拆分报关",
+    "商业地址", "非偏远", "分拨费", "贴标费+2/Pc", "报关", "指定报关费",
+    "产品附加+0.5/KG", "产品附加+1.0/KG", "产品附加+1.5/KG", "产品附加+2.0/KG",
+    "产品附加+2.5/KG", "产品附加+3.0/KG", "产品附加+4.0/KG", "产品附加+5.0/KG",
+    "CPC附加+1/kg", "保险", "反倾销", "FBA-Fedex打单", "FBA-UPS打单",
+    "查货备注", "超品名费", "分开包装", "包装"
+  ];
+  var svcRowIdxs = [];
+  /** @type {Record<string, 'all'|'none'|'some'>} */
+  var svcInitial = {};
+  /** @type {Record<string, 'on'|'off'|'mixed'>} */
+  var svcState = {};
+
+  function parseSvcList(str) {
+    return String(str || "")
+      .split(/[,，]/)
+      .map(function (s) { return s.trim(); })
+      .filter(Boolean);
+  }
+
+  function svcAlias(name) {
+    if (name === "多品名费") return "多品名加收";
+    if (name === "多品名加收") return "多品名费";
+    return null;
+  }
+
+  function rowHasSvc(row, name) {
+    var list = parseSvcList(row.svc);
+    if (list.indexOf(name) >= 0) return true;
+    var alt = svcAlias(name);
+    return alt ? list.indexOf(alt) >= 0 : false;
+  }
+
+  function computeSvcCoverage(idxs) {
+    var cov = {};
+    SVC_CATALOG.forEach(function (name) {
+      var hit = 0;
+      idxs.forEach(function (i) {
+        if (rowHasSvc(ROWS[i], name)) hit++;
+      });
+      if (hit === 0) cov[name] = "none";
+      else if (hit === idxs.length) cov[name] = "all";
+      else cov[name] = "some";
+    });
+    return cov;
+  }
+
+  function renderSvcGrid() {
+    var html = "";
+    SVC_CATALOG.forEach(function (name) {
+      var st = svcState[name] || "off";
+      var mixed = st === "mixed";
+      html +=
+        '<label class="svc-item' + (mixed ? " mixed" : "") + '" data-name="' + name + '">' +
+        '<input type="checkbox" data-name="' + name + '"' +
+        (st === "on" ? " checked" : "") +
+        (mixed ? " data-mixed=\"1\"" : "") +
+        " />" +
+        "<span>" + name + (mixed ? '<span class="hint">（部分票已有）</span>' : "") + "</span>" +
+        "</label>";
+    });
+    document.getElementById("svcGrid").innerHTML = html;
+    // apply indeterminate after mount
+    document.querySelectorAll("#svcGrid input[data-mixed='1']").forEach(function (inp) {
+      inp.indeterminate = true;
+      inp.checked = false;
+    });
+    updateSvcDiff();
+  }
+
+  function updateSvcDiff() {
+    var add = [];
+    var remove = [];
+    var keepMixed = [];
+    SVC_CATALOG.forEach(function (name) {
+      var init = svcInitial[name];
+      var cur = svcState[name];
+      if (cur === "mixed") {
+        keepMixed.push(name);
+        return;
+      }
+      if (cur === "on" && init !== "all") add.push(name);
+      if (cur === "off" && init !== "none") remove.push(name);
+    });
+    var parts = [];
+    if (add.length) parts.push('<span class="add">将增加：' + add.join("、") + "</span>");
+    if (remove.length) parts.push('<span class="rm">将移除：' + remove.join("、") + "</span>");
+    if (keepMixed.length) parts.push("半选未改（各票保持原样）：" + keepMixed.slice(0, 6).join("、") + (keepMixed.length > 6 ? "…" : ""));
+    if (!parts.length) {
+      document.getElementById("svcDiff").innerHTML = "<strong>无变更</strong> · 当前勾选与已有服务一致，确定不会重复加收。";
+      document.getElementById("svcFtHint").textContent = "无变更 · 可关闭";
+    } else {
+      document.getElementById("svcDiff").innerHTML = "<strong>变更预览（差分写入，防重复加收）：</strong><br>" + parts.join("<br>");
+      document.getElementById("svcFtHint").textContent =
+        "增加 " + add.length + " · 移除 " + remove.length + " · 半选保留 " + keepMixed.length;
+    }
+  }
+
+  function openSvcModal(idxs) {
+    svcRowIdxs = idxs && idxs.length ? idxs.slice() : [];
+    if (!svcRowIdxs.length) {
+      toast("请先勾选运单");
+      return;
+    }
+    svcInitial = computeSvcCoverage(svcRowIdxs);
+    svcState = {};
+    SVC_CATALOG.forEach(function (name) {
+      var c = svcInitial[name];
+      svcState[name] = c === "all" ? "on" : c === "some" ? "mixed" : "off";
+    });
+    var nos = svcRowIdxs.map(function (i) { return ROWS[i].custNo; }).join("、");
+    document.getElementById("svcMeta").innerHTML =
+      "已选 <b>" + svcRowIdxs.length + "</b> 票 · " + nos +
+      " · 下方勾选状态已按<strong>已有附加服务</strong>回显";
+    renderSvcGrid();
+    document.getElementById("svcMask").classList.add("open");
+    document.getElementById("svcMask").setAttribute("aria-hidden", "false");
+  }
+
+  function closeSvcModal() {
+    document.getElementById("svcMask").classList.remove("open");
+    document.getElementById("svcMask").setAttribute("aria-hidden", "true");
+    svcRowIdxs = [];
+  }
+
+  document.getElementById("btnBatchSvc").onclick = function () {
+    var idxs = getSelectedIdxs();
+    if (!idxs.length) {
+      toast("请先勾选需要修改附加服务的运单");
+      return;
+    }
+    openSvcModal(idxs);
+  };
+  document.getElementById("svcClose").onclick = closeSvcModal;
+  document.getElementById("svcCancel").onclick = closeSvcModal;
+  document.getElementById("svcMask").addEventListener("click", function (e) {
+    if (e.target === this) closeSvcModal();
+  });
+
+  document.getElementById("svcGrid").addEventListener("click", function (e) {
+    var lab = e.target.closest(".svc-item");
+    if (!lab) return;
+    e.preventDefault();
+    var name = lab.getAttribute("data-name");
+    var st = svcState[name];
+    // cycle: mixed → on → off → on... ; off ↔ on
+    if (st === "mixed") svcState[name] = "on";
+    else if (st === "on") svcState[name] = "off";
+    else svcState[name] = "on";
+    renderSvcGrid();
+  });
+
+  document.getElementById("svcOk").onclick = function () {
+    if (!svcRowIdxs.length) return;
+    var add = [];
+    var remove = [];
+    SVC_CATALOG.forEach(function (name) {
+      var init = svcInitial[name];
+      var cur = svcState[name];
+      if (cur === "mixed") return;
+      if (cur === "on" && init !== "all") add.push(name);
+      if (cur === "off" && init !== "none") remove.push(name);
+    });
+    if (!add.length && !remove.length) {
+      toast("无变更，未写入（避免空白刷新重复加收）");
+      closeSvcModal();
+      return;
+    }
+
+    function stripName(list, name) {
+      var alt = svcAlias(name);
+      return list.filter(function (x) { return x !== name && x !== alt; });
+    }
+
+    svcRowIdxs.forEach(function (i) {
+      var list = parseSvcList(ROWS[i].svc);
+      remove.forEach(function (name) { list = stripName(list, name); });
+      add.forEach(function (name) {
+        // canonical: prefer 多品名加收 over 多品名费 in storage if either
+        var store = name === "多品名费" ? "多品名加收" : name;
+        if (list.indexOf(store) < 0 && list.indexOf(name) < 0) list.push(store);
+      });
+      // unique
+      var uniq = [];
+      list.forEach(function (x) { if (uniq.indexOf(x) < 0) uniq.push(x); });
+      ROWS[i].svc = uniq.join(",");
+    });
+
+    var n = svcRowIdxs.length;
+    closeSvcModal();
+    render();
+    toast(
+      "附加服务已更新 ×" + n + " 票" +
+      (add.length ? (" · 增加 " + add.length + " 项") : "") +
+      (remove.length ? (" · 移除 " + remove.length + " 项") : "") +
+      "（差分写入，不重复加收）"
+    );
+  };
+
+  document.getElementById("feeClose").onclick = closeFeeModal;
+  document.getElementById("feeCancel").onclick = closeFeeModal;
+  document.getElementById("feeMask").addEventListener("click", function (e) {
+    if (e.target === this) closeFeeModal();
+  });
+
+  ["feeType", "feeCustType", "feeTarget", "feeCur"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", function () {
+      if (id === "feeType") syncFeeTypeUi();
+      else updateFeePreview();
+    });
+  });
+  document.getElementById("feeQty").addEventListener("input", syncFeeTypeUi);
+  document.getElementById("feeAmt").addEventListener("input", updateFeePreview);
+
+  document.getElementById("feeSave").onclick = function () {
+    if (!feeRowIdxs.length) return;
+    var type = document.getElementById("feeType").value;
+    var custType = document.getElementById("feeCustType").value;
+    var target = document.getElementById("feeTarget").value;
+    var amt = parseFloat(document.getElementById("feeAmt").value) || 0;
+    var cur = document.getElementById("feeCur").value;
+    var qty = parseInt(document.getElementById("feeQty").value, 10) || 0;
+    var remark = (document.getElementById("feeRemark").value || "").trim();
+    if (amt <= 0) { toast("请填写有效金额"); return; }
+    var dest = resolveFeeTarget(custType, target);
+    var label = type + " " + amt + " " + cur +
+      (type === "超品名费" ? ("（超出" + qty + "个）") : "") +
+      (remark ? (" · " + remark) : "");
+    feeRowIdxs.forEach(function (i) {
+      ROWS[i].costFee = dest.status;
+      ROWS[i].costLabel = label;
+      if (custType) ROWS[i].custType = custType;
+    });
+    var n = feeRowIdxs.length;
+    closeFeeModal();
+    render();
+    toast("已写入 " + n + " 票：" + label + " → " + dest.text);
+  };
+
+  /* —— 品牌侵权查询 —— */
+  function getSelectedIdxs() {
+    var idxs = [];
+    document.querySelectorAll("#tbody tr").forEach(function (tr) {
+      var chk = tr.querySelector(".row-chk");
+      if (chk && chk.checked) idxs.push(+tr.getAttribute("data-idx"));
+    });
+    return idxs;
+  }
+
+  function updateInfrStepUi() {
+    [1, 2, 3].forEach(function (n) {
+      document.getElementById("infrStep" + n).classList.toggle("on", infrStep === n);
+      var s = document.querySelector('#infrSteps .s[data-step="' + n + '"]');
+      s.classList.toggle("on", infrStep === n);
+      s.classList.toggle("done", infrStep > n);
+    });
+    document.getElementById("infrPrev").hidden = infrStep <= 1;
+    document.getElementById("infrNext").hidden = infrStep >= 3;
+    document.getElementById("infrConfirmHold").hidden = !(infrStep === 3 && infrRes === "confirm");
+    document.getElementById("infrSaveAuth").hidden = !(infrStep === 3 && infrRes === "auth");
+    if (infrStep === 3) {
+      document.getElementById("infrPanelAuth").hidden = infrRes !== "auth";
+      document.getElementById("infrPanelConfirm").hidden = infrRes !== "confirm";
+      document.getElementById("infrPanelPass").hidden = infrRes !== "pass";
+    }
+  }
+
+  function updateAuthCompare() {
+    if (!infrRow) return;
+    var entity = document.getElementById("infrAuthEntity").value.trim();
+    var header = infrRow.declHeader || "";
+    var el = document.getElementById("infrCmpResult");
+    if (!entity) {
+      el.className = "cmp-result";
+      el.textContent = "填写授权主体后自动比对";
+      return;
+    }
+    var ok = normHeader(entity) === normHeader(header);
+    el.className = "cmp-result " + (ok ? "ok" : "bad");
+    el.textContent = ok ? "✓ 一致 — 授权主体与报关抬头匹配" : "✗ 不一致 — 授权主体「" + entity + "」≠ 报关抬头「" + header + "」";
+    infrRow.authEntity = entity;
+  }
+
+  function buildNotifyText(r, kind) {
+    if (kind === "infr") {
+      return "【侵权扣件通知】运单 " + r.custNo + "（" + r.cust + "）确认品牌侵权，已扣件并加收侵权罚款 500 CNY/票。\n" +
+        "收件：客户 + 业务员（" + r.sales + "）+ 客服（" + r.cs + "）";
+    }
+    return "【扣货风险告知】运单 " + r.custNo + "（" + r.cust + "）\n" +
+      "涉证/扣货风险已告知客户与业务员；扣货不赔。\n" +
+      "收件：客户 + 业务员（" + r.sales + "）+ 客服（" + r.cs + "）";
+  }
+
+  function openInfrDrawer(idx) {
+    closeDrawer();
+    infrRow = ROWS[idx];
+    infrStep = 1;
+    infrRes = "";
+    var r = infrRow;
+    document.getElementById("infrKv1").innerHTML =
+      '<span>客户单号</span><b>' + r.custNo + '</b>' +
+      '<span>主品名</span><b>' + r.name + '</b>' +
+      '<span>AI识别品牌</span><b class="red">' + (r.brand || "—") + '</b>' +
+      '<span>看图结论</span><b>Logo/吊牌可见 · 疑似注册商标</b>' +
+      '<span>报关抬头</span><b>' + (r.declHeader || "—") + '</b>';
+    document.querySelectorAll('#infrRadio input[name="infrRes"]').forEach(function (x) { x.checked = false; });
+    document.querySelectorAll("#infrRadio label").forEach(function (x) { x.classList.remove("sel"); });
+    document.getElementById("infrAuthEntity").value = r.authEntity || "";
+    document.getElementById("infrDeclHeader").value = r.declHeader || "";
+    document.getElementById("infrUpload").textContent = r.authUploaded ? "✓ 品牌授权书.pdf（已上传）" : "+ 上传品牌授权书（PDF/JPG）";
+    updateAuthCompare();
+    document.getElementById("infrNotifyPreview").innerHTML =
+      "<b>通知预览</b><br>" + buildNotifyText(r, "infr").replace(/\n/g, "<br>");
+    updateInfrStepUi();
+    document.getElementById("drawerMask").classList.add("open");
+    document.getElementById("infrDrawer").classList.add("open");
+  }
+
+  function closeInfrDrawer() {
+    document.getElementById("drawerMask").classList.remove("open");
+    document.getElementById("infrDrawer").classList.remove("open");
+    infrRow = null;
+    infrStep = 1;
+    infrRes = "";
+  }
+
+  document.getElementById("btnBrandQuery").onclick = function () {
+    var idxs = getSelectedIdxs();
+    if (!idxs.length) {
+      var suspect = ROWS.findIndex(function (r) { return r.brand && r.brand.indexOf("疑似") >= 0; });
+      if (suspect < 0) { toast("请勾选运单，或选择疑似品牌行"); return; }
+      openInfrDrawer(suspect);
+      return;
+    }
+    openInfrDrawer(idxs[0]);
+  };
+
+  document.getElementById("infrClose").onclick = closeInfrDrawer;
+  document.getElementById("infrPrev").onclick = function () {
+    if (infrStep > 1) { infrStep--; updateInfrStepUi(); }
+  };
+  document.getElementById("infrNext").onclick = function () {
+    if (infrStep === 2 && !infrRes) { toast("请选择外链查询结果"); return; }
+    if (infrStep < 3) { infrStep++; updateInfrStepUi(); }
+  };
+
+  document.getElementById("infrRadio").addEventListener("change", function (e) {
+    if (e.target.name !== "infrRes") return;
+    infrRes = e.target.value;
+    document.querySelectorAll("#infrRadio label").forEach(function (lbl) {
+      lbl.classList.toggle("sel", lbl.querySelector("input").checked);
+    });
+  });
+
+  document.getElementById("infrAuthEntity").addEventListener("input", updateAuthCompare);
+  document.getElementById("infrUpload").onclick = function () {
+    if (!infrRow) return;
+    infrRow.authUploaded = true;
+    this.textContent = "✓ 品牌授权书.pdf（已上传 · 类型=品牌授权书）";
+    toast("已上传品牌授权书，将同步至报关管理");
+  };
+
+  document.getElementById("infrSaveAuth").onclick = function () {
+    if (!infrRow) return;
+    if (!infrRow.authUploaded) { toast("请先上传品牌授权书"); return; }
+    var entity = document.getElementById("infrAuthEntity").value.trim();
+    if (!entity) { toast("请填写授权主体"); return; }
+    var ok = normHeader(entity) === normHeader(infrRow.declHeader);
+    infrRow.authEntity = entity;
+    infrRow.infringeSt = ok ? "可放行" : "需授权";
+    if (!ok) { toast("授权主体与报关抬头不一致，请在报关环节再次核验"); return; }
+    closeInfrDrawer();
+    render();
+    toast("授权已保存并同步报关管理 · 可放行");
+  };
+
+  document.getElementById("infrConfirmHold").onclick = function () {
+    if (!infrRow) return;
+    var r = infrRow;
+    r.st = "查货扣件中";
+    r.hold = "止退件";
+    r.mark = "侵权扣件";
+    r.infringeSt = "确认侵权";
+    var dest = r.custType === "同行"
+      ? { status: "已加应收+成本", text: "客户应收 + 成本" }
+      : { status: "已加业务成本", text: "附加服务业务成本" };
+    r.costFee = dest.status;
+    r.costLabel = "侵权罚款 500 CNY";
+    var preview = buildNotifyText(r, "infr");
+    closeInfrDrawer();
+    render();
+    toast("已扣件 · 侵权罚款500/票 · 已通知客户+" + r.sales);
+    setTimeout(function () {
+      alert("通知预览（客户+业务员）：\n\n" + preview + "\n\n授权附件类型=品牌授权书 已关联报关编号 " + (r.decl || "—"));
+    }, 300);
+  };
+
+  /* —— 扣货风险告知 —— */
+  function openNotifyModal(idxs) {
+    notifyRowIdxs = idxs;
+    var rows = idxs.map(function (i) { return ROWS[i]; });
+    document.getElementById("notifyPreview").innerHTML =
+      "<b>发送预览</b> · 共 " + rows.length + " 票<br>" +
+      rows.map(function (r) { return buildNotifyText(r, "hold").replace(/\n/g, "<br>"); }).join("<hr style='border:none;border-top:1px dashed #d9d9d9;margin:8px 0'>");
+    document.getElementById("notifyMask").classList.add("open");
+  }
+
+  function closeNotifyModal() {
+    document.getElementById("notifyMask").classList.remove("open");
+    notifyRowIdxs = [];
+  }
+
+  document.getElementById("btnHoldNotify").onclick = function () {
+    var idxs = getSelectedIdxs();
+    if (!idxs.length) {
+      var hold = ROWS.findIndex(function (r) { return r.hold === "止退件" || r.mark === "扣件"; });
+      if (hold < 0) { toast("请勾选需告知的运单"); return; }
+      idxs = [hold];
+    }
+    openNotifyModal(idxs);
+  };
+  document.getElementById("notifyClose").onclick = closeNotifyModal;
+  document.getElementById("notifyCancel").onclick = closeNotifyModal;
+  document.getElementById("notifyMask").addEventListener("click", function (e) {
+    if (e.target === this) closeNotifyModal();
+  });
+  document.getElementById("notifySend").onclick = function () {
+    notifyRowIdxs.forEach(function (i) { ROWS[i].riskNotify = "已告知"; });
+    var n = notifyRowIdxs.length;
+    closeNotifyModal();
+    render();
+    toast("已发送扣货风险告知 · " + n + " 票标记「已告知」");
+  };
+
+  /* —— 产品确认 / 查货确认（对齐现网弹窗） —— */
+  var confirmPieces = [];
+  var confirmWayIdxs = [];
+
+  function pad3(n) {
+    return (n < 10 ? "00" : n < 100 ? "0" : "") + n;
+  }
+
+  function buildConfirmPieces(idxs) {
+    var pieces = [];
+    idxs.forEach(function (wi) {
+      var r = ROWS[wi];
+      var base = (r.decl || r.custNo || "WB").replace(/\s/g, "");
+      var pcs = Math.max(1, parseInt(r.pcs, 10) || 1);
+      var show = Math.min(pcs, 8);
+      for (var i = 0; i < show; i++) {
+        var inspected = i === 0 || (r.aiImg === "已识别" && i < 2);
+        var verified = inspected && (r.verifier ? i === 0 : false);
+        var nameSt = r.aiNameSt || "未识别";
+        var adopted = nameSt === "已确认";
+        pieces.push({
+          wayIdx: wi,
+          custNo: r.custNo,
+          waybill: base,
+          subNo: base + pad3(i + 1),
+          inspected: inspected,
+          checker: inspected ? (r.checker || "—") : "",
+          chkAt: inspected ? (r.lastChk || "") : "",
+          remark: inspected ? (r.remark || "") : "",
+          mark: r.mark || "",
+          verified: verified,
+          photos: r.photos || 0,
+          suggest: r.suggest || "—",
+          match: r.match,
+          nameSt: nameSt,
+          confirmName: adopted ? (r.nameCn || r.name || r.suggest) : (r.suggest && r.suggest !== "—" ? r.suggest : (r.name || "")),
+          nameAction: adopted ? "已采纳" : (nameSt === "待人工确认" ? "待确认" : "—"),
+          selected: inspected
+        });
+      }
+    });
+    return pieces;
+  }
+
+  function renderConfirmTable() {
+    var tb = document.getElementById("confirmTbody");
+    var html = "";
+    var inspectedN = 0;
+    var aiN = 0;
+    confirmPieces.forEach(function (p, i) {
+      if (p.inspected) inspectedN++;
+      if (p.nameAction === "待确认") aiN++;
+      var matchHtml = p.match == null
+        ? '<span class="tag-no">—</span>'
+        : ('<span class="' + (p.match >= 90 ? "tag-ok" : p.match >= 70 ? "tag-wait" : "tag-no") + '">' + p.match + "%</span>");
+      html +=
+        "<tr data-pi=\"" + i + "\">" +
+        "<td><input type=\"checkbox\" class=\"c-chk\"" + (p.selected ? " checked" : "") + " /></td>" +
+        "<td>" + (i + 1) + "</td>" +
+        "<td>" + p.waybill + "</td>" +
+        "<td>" + p.subNo + "</td>" +
+        "<td class=\"" + (p.inspected ? "tag-ok" : "tag-no") + "\">" + (p.inspected ? "已查货" : "未查货") + "</td>" +
+        "<td>" + (p.checker || "") + "</td>" +
+        "<td>" + (p.chkAt || "") + "</td>" +
+        "<td><input class=\"cell c-remark\" value=\"" + (p.remark || "").replace(/"/g, "&quot;") + "\" " + (p.inspected ? "" : "disabled") + " /></td>" +
+        "<td><input class=\"cell c-mark\" value=\"" + (p.mark || "").replace(/"/g, "&quot;") + "\" " + (p.inspected ? "" : "disabled") + " placeholder=\"可选\" /></td>" +
+        "<td class=\"" + (p.verified ? "tag-ok" : "tag-no") + "\">" + (p.verified ? "已核对" : "未核对") + "</td>" +
+        "<td class=\"core\"><span class=\"thumb " + (p.photos ? "has" : "") + "\" title=\"查货图 " + p.photos + " 张\">" + (p.photos ? ("图" + p.photos) : "无") + "</span></td>" +
+        "<td class=\"core\">" + (p.suggest || "—") + "</td>" +
+        "<td class=\"core\">" + matchHtml + "</td>" +
+        "<td class=\"core\">" +
+          "<select class=\"cell c-action\" " + (p.inspected ? "" : "disabled") + ">" +
+          "<option value=\"待确认\"" + (p.nameAction === "待确认" ? " selected" : "") + ">待确认</option>" +
+          "<option value=\"已采纳\"" + (p.nameAction === "已采纳" ? " selected" : "") + ">已采纳</option>" +
+          "<option value=\"手改\"" + (p.nameAction === "手改" ? " selected" : "") + ">手改</option>" +
+          "<option value=\"—\"" + (p.nameAction === "—" ? " selected" : "") + ">—</option>" +
+          "</select>" +
+        "</td>" +
+        "<td class=\"core\"><input class=\"cell c-name\" value=\"" + (p.confirmName || "").replace(/"/g, "&quot;") + "\" " + (p.inspected ? "" : "disabled") + " placeholder=\"确认品名\" /></td>" +
+        "</tr>";
+    });
+    tb.innerHTML = html;
+    document.getElementById("confirmSubHint").textContent =
+      "子单 " + confirmPieces.length + " · 已查货 " + inspectedN + " · 待AI确认 " + aiN;
+  }
+
+  function syncConfirmPieceFromDom(tr) {
+    var i = +tr.getAttribute("data-pi");
+    var p = confirmPieces[i];
+    if (!p) return;
+    var chk = tr.querySelector(".c-chk");
+    p.selected = !!(chk && chk.checked);
+    var rem = tr.querySelector(".c-remark");
+    var mk = tr.querySelector(".c-mark");
+    var act = tr.querySelector(".c-action");
+    var nm = tr.querySelector(".c-name");
+    if (rem) p.remark = rem.value;
+    if (mk) p.mark = mk.value;
+    if (act) p.nameAction = act.value;
+    if (nm) p.confirmName = nm.value;
+  }
+
+  function syncAllConfirmPieces() {
+    document.querySelectorAll("#confirmTbody tr").forEach(syncConfirmPieceFromDom);
+  }
+
+  function openConfirmModal(idxs) {
+    if (!idxs.length) {
+      toast("请先勾选需要产品确认的运单");
+      return;
+    }
+    confirmWayIdxs = idxs.slice();
+    confirmPieces = buildConfirmPieces(idxs);
+    document.getElementById("confirmTicketCount").value = String(idxs.length);
+    document.getElementById("confirmRemark").value = "";
+    renderConfirmTable();
+    document.getElementById("confirmMask").classList.add("open");
+    document.getElementById("confirmMask").setAttribute("aria-hidden", "false");
+  }
+
+  function closeConfirmModal() {
+    document.getElementById("confirmMask").classList.remove("open");
+    document.getElementById("confirmMask").setAttribute("aria-hidden", "true");
+    confirmPieces = [];
+    confirmWayIdxs = [];
+  }
+
+  document.getElementById("btnProductConfirm").onclick = function () {
+    var idxs = getSelectedIdxs();
+    startConfirmQueue(idxs.length ? idxs : null);
+  };
+
+  document.getElementById("btnSubBatch").onclick = function () {
+    var idxs = getSelectedIdxs();
+    if (!idxs.length) {
+      var fallback = ROWS.findIndex(function (r) { return r.st === "查货中" || needsProductConfirm(r); });
+      if (fallback < 0) { toast("请先勾选运单"); return; }
+      idxs = [fallback];
+    }
+    openConfirmModal(idxs);
+  };
+
+  document.getElementById("confirmClose").onclick = closeConfirmModal;
+  document.getElementById("confirmCancel").onclick = closeConfirmModal;
+  document.getElementById("confirmMask").addEventListener("click", function (e) {
+    if (e.target === this) closeConfirmModal();
+  });
+
+  document.getElementById("confirmChkAll").onchange = function () {
+    var on = this.checked;
+    document.querySelectorAll("#confirmTbody .c-chk").forEach(function (c) { c.checked = on; });
+  };
+
+  document.getElementById("confirmTbody").addEventListener("change", function (e) {
+    var tr = e.target.closest("tr");
+    if (!tr) return;
+    syncConfirmPieceFromDom(tr);
+    if (e.target.classList.contains("c-action") && e.target.value === "已采纳") {
+      var i = +tr.getAttribute("data-pi");
+      var p = confirmPieces[i];
+      if (p && p.suggest && p.suggest !== "—") {
+        p.confirmName = p.suggest;
+        var nm = tr.querySelector(".c-name");
+        if (nm) nm.value = p.suggest;
+      }
+    }
+  });
+
+  document.getElementById("confirmAdoptAi").onclick = function () {
+    syncAllConfirmPieces();
+    var n = 0;
+    confirmPieces.forEach(function (p) {
+      if (!p.selected || !p.inspected) return;
+      if (p.suggest && p.suggest !== "—") {
+        p.confirmName = p.suggest;
+        p.nameAction = "已采纳";
+        n++;
+      }
+    });
+    renderConfirmTable();
+    toast(n ? ("已采纳 AI 建议品名 ×" + n) : "请勾选已查货且有 AI 建议的子单");
+  };
+
+  document.getElementById("confirmMarkVerified").onclick = function () {
+    syncAllConfirmPieces();
+    var n = 0;
+    confirmPieces.forEach(function (p) {
+      if (!p.selected || !p.inspected) return;
+      p.verified = true;
+      n++;
+    });
+    renderConfirmTable();
+    toast(n ? ("已标已核对 ×" + n) : "请勾选已查货子单");
+  };
+
+  document.getElementById("confirmMarkViewed").onclick = function () {
+    confirmWayIdxs.forEach(function (i) { ROWS[i].viewed = true; });
+    toast("已标记主单已看图 ×" + confirmWayIdxs.length);
+  };
+
+  document.getElementById("confirmAddFee").onclick = function () {
+    if (!confirmWayIdxs.length) return;
+    openFeeModal(confirmWayIdxs.slice());
+  };
+
+  document.getElementById("confirmMultiFee").onclick = function () {
+    if (!confirmWayIdxs.length) {
+      toast("请先打开产品确认并选择运单");
+      return;
+    }
+    openMultiFeeModal(confirmWayIdxs.slice());
+  };
+
+  /* —— 多品名加费确认（确认后自动加费） —— */
+  var multiRowIdxs = [];
+  var multiNames = [];
+  var MULTI_FREE = 5;
+  var MULTI_UNIT = 30;
+
+  function seedMultiNames(row) {
+    if (row.names && row.names.length) return row.names.slice();
+    var base = [];
+    if (row.nameCn) base.push(row.nameCn);
+    else if (row.name) base.push(row.name);
+    if (row.suggest && row.suggest !== "—" && base.indexOf(row.suggest) < 0) base.push(row.suggest);
+    var extras = ["配件A", "配件B", "说明书", "包装袋", "贴纸", "赠品"];
+    var need = Math.max(0, 6 - base.length);
+    for (var i = 0; i < need; i++) base.push(extras[i]);
+    return base;
+  }
+
+  function calcMultiFee(count) {
+    var over = Math.max(0, count - MULTI_FREE);
+    return { count: count, over: over, amt: over * MULTI_UNIT };
+  }
+
+  function renderMultiChips() {
+    var box = document.getElementById("multiChips");
+    if (!multiNames.length) {
+      box.innerHTML = '<span class="muted">暂无品名，请添加或从 AI 建议填充</span>';
+    } else {
+      box.innerHTML = multiNames.map(function (n, i) {
+        return '<span class="multi-chip">' + n +
+          ' <button type="button" class="x" data-i="' + i + '" title="删除">×</button></span>';
+      }).join("");
+    }
+    updateMultiCalc();
+  }
+
+  function updateMultiCalc() {
+    var c = calcMultiFee(multiNames.length);
+    document.getElementById("multiCnt").textContent = String(c.count);
+    document.getElementById("multiOver").textContent = String(c.over);
+    document.getElementById("multiAmt").textContent = "¥" + c.amt;
+    var custType = document.getElementById("multiCustType").value;
+    var dest = resolveFeeTarget(custType, "auto");
+    var pack = (document.querySelector('input[name="multiPack"]:checked') || {}).value || "包装";
+    var n = multiRowIdxs.length;
+    var preview;
+    if (c.over <= 0) {
+      preview = "<strong>预览：</strong>品名 " + c.count + " 个 ≤ 免费额度 " + MULTI_FREE +
+        "，确认后<strong>不加费</strong>，仅落包装类型「" + pack + "」与实核品名清单 · 共 " + n + " 票";
+      document.getElementById("multiFtHint").textContent = "未超限 · 确认不加费";
+      document.getElementById("multiOk").textContent = "确认（不加费）";
+    } else {
+      preview = "<strong>预览自动加费：</strong>超品名费 " + c.amt + " CNY（超出 " + c.over +
+        " 个 × " + MULTI_UNIT + "）→ " + dest.text +
+        " · 包装「" + pack + "」· 共 " + n + " 票进业务数据统计";
+      document.getElementById("multiFtHint").textContent =
+        "超出 " + c.over + " 个 × " + MULTI_UNIT + " = " + c.amt + " CNY · 确认即自动落账";
+      document.getElementById("multiOk").textContent = "确认并自动加费";
+    }
+    document.getElementById("multiPreview").innerHTML = preview;
+  }
+
+  function openMultiFeeModal(idxs) {
+    multiRowIdxs = idxs && idxs.length ? idxs.slice() : [];
+    if (!multiRowIdxs.length) {
+      toast("请先勾选运单");
+      return;
+    }
+    var rows = multiRowIdxs.map(function (i) { return ROWS[i]; });
+    document.getElementById("multiWaybills").value = rows.map(function (r) { return r.custNo; }).join("、");
+    document.getElementById("multiCustType").value = rows[0].custType || "直客";
+    var pack = rows[0].packType || "包装";
+    document.querySelectorAll('input[name="multiPack"]').forEach(function (r) {
+      r.checked = r.value === pack;
+      r.parentElement.classList.toggle("on", r.checked);
+    });
+    // 多票时以首票实核清单为编辑底稿（原型）；正式可按票分表
+    multiNames = seedMultiNames(rows[0]);
+    document.getElementById("multiRemark").value = rows[0].mark === "多品名"
+      ? ("开箱核实多品名，共 " + multiNames.length + " 个")
+      : "";
+    document.getElementById("multiAddInput").value = "";
+    renderMultiChips();
+    document.getElementById("multiMask").classList.add("open");
+    document.getElementById("multiMask").setAttribute("aria-hidden", "false");
+  }
+
+  function closeMultiFeeModal() {
+    document.getElementById("multiMask").classList.remove("open");
+    document.getElementById("multiMask").setAttribute("aria-hidden", "true");
+    multiRowIdxs = [];
+    multiNames = [];
+  }
+
+  document.getElementById("btnMultiNameFee").onclick = function () {
+    var idxs = getSelectedIdxs();
+    if (!idxs.length) {
+      var hit = ROWS.findIndex(function (r) {
+        return r.mark === "多品名" || (r.names && r.names.length > MULTI_FREE);
+      });
+      if (hit < 0) { toast("请勾选需要多品名加费确认的运单"); return; }
+      idxs = [hit];
+    }
+    openMultiFeeModal(idxs);
+  };
+
+  document.getElementById("multiClose").onclick = closeMultiFeeModal;
+  document.getElementById("multiCancel").onclick = closeMultiFeeModal;
+  document.getElementById("multiMask").addEventListener("click", function (e) {
+    if (e.target === this) closeMultiFeeModal();
+  });
+
+  document.getElementById("multiPack").addEventListener("change", function (e) {
+    if (e.target.name !== "multiPack") return;
+    document.querySelectorAll("#multiPack label").forEach(function (lab) {
+      lab.classList.toggle("on", lab.querySelector("input").checked);
+    });
+    updateMultiCalc();
+  });
+  document.getElementById("multiCustType").addEventListener("change", updateMultiCalc);
+
+  document.getElementById("multiChips").addEventListener("click", function (e) {
+    var btn = e.target.closest(".x");
+    if (!btn) return;
+    var i = +btn.getAttribute("data-i");
+    multiNames.splice(i, 1);
+    renderMultiChips();
+  });
+
+  function addMultiName() {
+    var v = (document.getElementById("multiAddInput").value || "").trim();
+    if (!v) { toast("请输入品名"); return; }
+    if (multiNames.indexOf(v) >= 0) { toast("品名已存在"); return; }
+    multiNames.push(v);
+    document.getElementById("multiAddInput").value = "";
+    renderMultiChips();
+  }
+  document.getElementById("multiAddBtn").onclick = addMultiName;
+  document.getElementById("multiAddInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); addMultiName(); }
+  });
+
+  document.getElementById("multiAiFill").onclick = function () {
+    if (!multiRowIdxs.length) return;
+    var r = ROWS[multiRowIdxs[0]];
+    var filled = seedMultiNames(r);
+    if (r.suggest && r.suggest !== "—" && filled.indexOf(r.suggest) < 0) filled.unshift(r.suggest);
+    multiNames = filled;
+    renderMultiChips();
+    toast("已从 AI / 主品名填充实核清单（可再增删）");
+  };
+
+  document.getElementById("multiOk").onclick = function () {
+    if (!multiRowIdxs.length) return;
+    if (!multiNames.length) { toast("请至少保留 1 个实核品名"); return; }
+    var packEl = document.querySelector('input[name="multiPack"]:checked');
+    if (!packEl) { toast("请选择包装类型"); return; }
+    var pack = packEl.value;
+    var custType = document.getElementById("multiCustType").value;
+    var remark = (document.getElementById("multiRemark").value || "").trim();
+    var c = calcMultiFee(multiNames.length);
+    var dest = resolveFeeTarget(custType, "auto");
+    var label = "";
+    if (c.over > 0) {
+      label = "超品名费 " + c.amt + " CNY（超出" + c.over + "个）" +
+        (remark ? (" · " + remark) : (" · " + pack));
+    }
+
+    multiRowIdxs.forEach(function (i) {
+      var r = ROWS[i];
+      r.names = multiNames.slice();
+      r.packType = pack;
+      if (custType) r.custType = custType;
+      if (c.count > MULTI_FREE) {
+        var parts = String(r.mark || "").split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+        if (parts.indexOf("多品名") < 0) parts.push("多品名");
+        r.mark = parts.join(",");
+        if (r.svc && r.svc.indexOf("多品名加收") < 0) r.svc = r.svc + ",多品名加收";
+        else if (!r.svc) r.svc = "多品名加收";
+      }
+      if (c.over > 0) {
+        r.costFee = dest.status;
+        r.costLabel = label;
+      }
+      if (multiNames[0]) {
+        r.name = multiNames[0];
+        r.nameCn = multiNames[0];
+      }
+      if (remark) r.remark = remark;
+    });
+
+    var n = multiRowIdxs.length;
+    closeMultiFeeModal();
+    render();
+    if (c.over > 0) {
+      toast("已确认多品名 · 自动加费 " + label + " ×" + n + " 票 → " + dest.text);
+    } else {
+      toast("已确认实核品名 " + c.count + " 个（未超限）· 不加费 ×" + n + " 票");
+    }
+  };
+
+  document.getElementById("confirmOk").onclick = function () {
+    syncAllConfirmPieces();
+    var selected = confirmPieces.filter(function (p) { return p.selected; });
+    if (!selected.length) { toast("请勾选要确认的子单"); return; }
+    var notInsp = selected.filter(function (p) { return !p.inspected; });
+    if (notInsp.length) {
+      toast("存在未查货子单，仅已查货可确认（已忽略 " + notInsp.length + " 条）");
+    }
+    var ok = selected.filter(function (p) { return p.inspected; });
+    if (!ok.length) return;
+
+    var unviewed = confirmWayIdxs.filter(function (i) { return !ROWS[i].viewed; });
+    if (unviewed.length && !window.confirm("有 " + unviewed.length + " 票尚未标记已看图，仍强制确认？")) {
+      return;
+    }
+
+    var now = "2026-08-14 23:05:00";
+    var productRemark = (document.getElementById("confirmRemark").value || "").trim();
+    var byWay = {};
+    ok.forEach(function (p) {
+      if (!byWay[p.wayIdx]) byWay[p.wayIdx] = [];
+      byWay[p.wayIdx].push(p);
+    });
+    Object.keys(byWay).forEach(function (k) {
+      var wi = +k;
+      var list = byWay[wi];
+      var r = ROWS[wi];
+      var namePiece = list.find(function (p) { return p.nameAction === "已采纳" || p.nameAction === "手改"; }) || list[0];
+      if (namePiece && namePiece.confirmName) {
+        r.name = namePiece.confirmName;
+        r.nameCn = namePiece.confirmName;
+        if (namePiece.nameAction === "已采纳" || namePiece.nameAction === "手改") {
+          r.aiNameSt = "已确认";
+          r.suggest = namePiece.confirmName;
+        }
+      }
+      r.st = "产品已确认";
+      r.verifier = r.verifier || "产品确认";
+      r.verifyAt = now;
+      if (productRemark) r.verifyRm = productRemark;
+      var mk = list.map(function (p) { return p.mark; }).filter(Boolean)[0];
+      if (mk) r.mark = mk;
+      var rm = list.map(function (p) { return p.remark; }).filter(Boolean)[0];
+      if (rm) r.remark = rm;
+      r.viewed = true;
+    });
+
+    var wayN = Object.keys(byWay).length;
+    var wayIdxList = Object.keys(byWay).map(Number);
+    closeConfirmModal();
+    render();
+    toast("产品确认完成 · " + wayN + " 票 / " + ok.length + " 子单 → 产品已确认");
+
+    var needFee = wayIdxList.filter(function (i) {
+      var r = ROWS[i];
+      var names = r.names && r.names.length ? r.names : seedMultiNames(r);
+      var over = Math.max(0, names.length - MULTI_FREE);
+      var already = r.costLabel && r.costLabel.indexOf("超品名费") >= 0;
+      return over > 0 && !already;
+    });
+    if (needFee.length && window.confirm(
+      "检测到 " + needFee.length + " 票疑似多品名超限，是否继续「多品名加费确认」？（确认后自动加费）"
+    )) {
+      openMultiFeeModal(needFee);
+    }
+  };
+
+  render();
+})();
+  </script>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+</body>
+</html>
