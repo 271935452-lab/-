@@ -1,0 +1,2397 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>询价报价（报价员）· 列表 MVP</title>
+  <style>
+    :root {
+      --sidebar: #001529;
+      --sidebar-active: #fa8c16;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0,0,0,.85);
+      --sub: rgba(0,0,0,.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --red: #ff4d4f;
+      --orange: #fa8c16;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    .layout { min-height: 100vh; display: flex; flex-direction: column; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .page-tabs {
+      background: #fff; border-bottom: 1px solid var(--line);
+      padding: 0 12px; display: flex; gap: 0; overflow-x: auto;
+    }
+    .page-tab {
+      padding: 10px 16px; border: none; background: none;
+      font: inherit; font-size: 13px; color: var(--sub);
+      cursor: pointer; white-space: nowrap;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .page-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .page-body { padding: 12px; flex: 1; }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 2px; margin-bottom: 10px;
+    }
+    .filter-bd { padding: 14px 16px 10px; }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px 16px;
+    }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .filter-item label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px;
+    }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .filter-actions {
+      padding: 0 16px 14px;
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .btn {
+      height: 32px; padding: 0 14px; border-radius: 2px;
+      border: 1px solid #d9d9d9; background: #fff;
+      font: inherit; font-size: 13px; cursor: pointer;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    .tab-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
+      padding: 0 16px; border-bottom: 1px solid var(--line); background: #fafafa;
+    }
+    .dim-tabs, .status-tabs { display: flex; flex-wrap: wrap; }
+    .dim-tab, .status-tab {
+      padding: 10px 14px; border: none; background: none;
+      font: inherit; font-size: 13px; color: var(--sub); cursor: pointer; position: relative;
+    }
+    .dim-tab.active { color: var(--blue); font-weight: 600; }
+    .dim-tab.active::after {
+      content: ""; position: absolute; left: 14px; right: 14px; bottom: 0;
+      height: 2px; background: var(--blue);
+    }
+    .dim-badge {
+      display: inline-block; margin-left: 6px; min-width: 18px; padding: 0 6px;
+      border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 18px;
+      text-align: center; color: #fff; background: #f97316; vertical-align: middle;
+    }
+    .dim-tab.active .dim-badge { display: none; }
+    .dim-badge[data-zero="1"] { display: none; }
+    .tag-lcl {
+      display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 10px;
+      margin-right: 4px; background: #e6f7ff; color: var(--blue); border: 1px solid #91d5ff;
+    }
+.status-tab.active { color: var(--blue); }
+    .status-tab .cnt { color: var(--sub); font-size: 12px; margin-left: 2px; }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%; border-collapse: collapse; min-width: 1680px; font-size: 12px;
+    }
+    th, td {
+      padding: 8px 6px; border-bottom: 1px solid #f0f0f0;
+      text-align: left; white-space: nowrap;
+    }
+    th { background: #fafafa; color: var(--sub); font-weight: 500; }
+    tr:hover td { background: #fafafa; }
+    .col-check { width: 36px; text-align: center; }
+    .col-ops {
+      position: sticky; right: 0; background: #fff;
+      box-shadow: -4px 0 8px rgba(0,0,0,.04); min-width: 220px;
+    }
+    .col-bind { min-width: 110px; }
+    .tag-new {
+      display: inline-block; margin-left: 4px; padding: 0 4px; border-radius: 2px;
+      font-size: 10px; font-weight: 700; line-height: 14px;
+      color: #cf1322; background: #fff1f0; border: 1px solid #ffa39e; vertical-align: middle;
+    }
+    .tag-chg {
+      display: inline-block; margin-left: 4px; padding: 0 4px; border-radius: 2px;
+      font-size: 10px; font-weight: 700; line-height: 14px;
+      color: #d46b08; background: #fff7e6; border: 1px solid #ffd591; vertical-align: middle;
+    }
+    .mark-legend { font-size: 12px; color: var(--sub); font-weight: 400; margin-left: 8px; }
+    .mark-legend .tag-new, .mark-legend .tag-chg { margin-left: 0; margin-right: 2px; }
+    .bind-ok { color: var(--green); }
+    .bind-none { color: var(--sub); }
+    .link.bind-act { font-weight: 600; }
+    .link.muted { color: #bfbfbf; pointer-events: none; }
+
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+    }
+    .mask.show { display: flex; }
+    .modal {
+      width: min(820px, 96vw); max-height: 90vh; background: #fff;
+      border-radius: 2px; box-shadow: 0 8px 28px rgba(0,0,0,.22);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal.modal-confirm, .modal.modal-bind { width: min(980px, 96vw); }
+    .ch-hint { margin: 0 0 8px; font-size: 11px; color: #8c8c8c; line-height: 1.55; }
+    .ch-list { border: 1px solid #e8e8e8; border-radius: 4px; overflow: hidden; margin: 0 0 10px; }
+    .ch-list-readonly .ch-item-readonly {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      padding: 8px 10px; border-top: 1px solid #f0f0f0; font-size: 12px;
+    }
+    .ch-list-readonly .ch-item-readonly:first-child { border-top: 0; }
+    .ch-item {
+      display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: start;
+      padding: 8px 10px; border-top: 1px solid #f0f0f0; font-size: 12px; cursor: pointer;
+    }
+    .ch-item:first-child { border-top: 0; }
+    .ch-item.on { background: #f6ffed; }
+    .ch-item.cur { background: #e6f7ff; outline: 1px solid #91d5ff; outline-offset: -1px; }
+    .ch-item.chk { box-shadow: inset 3px 0 0 #52c41a; }
+    .ch-detail-hint { margin: 0 0 8px; font-size: 11px; color: #8c8c8c; line-height: 1.5; }
+    .ch-detail .form-row:last-child { margin-bottom: 0; }
+    .ch-item .cheap { display: inline-block; margin-left: 6px; color: #389e0d; font-size: 11px; font-weight: 600; }
+    .ch-item .nm { font-weight: 600; line-height: 1.4; }
+    .ch-item .sub { color: #8c8c8c; font-size: 11px; margin-top: 2px; line-height: 1.45; }
+    .ch-item .fee { font-weight: 700; color: #cf1322; white-space: nowrap; padding-top: 0; text-align: right; }
+    .ch-item .fee-lab { display: block; font-size: 10px; color: #8c8c8c; font-weight: 500; letter-spacing: .04em; }
+    .unit-hero {
+      margin: 0 0 12px; padding: 12px 14px;
+      background: #fff7ed; border: 2px solid #f97316; border-radius: 6px; text-align: center;
+    }
+    .unit-hero .uh-k { font-size: 12px; font-weight: 700; color: #9a3412; }
+    .unit-hero .uh-v { font-size: 30px; font-weight: 800; color: #c2410c; line-height: 1.15; margin: 4px 0 2px; }
+    .unit-hero .uh-s { font-size: 11px; color: #9a3412; line-height: 1.5; }
+    .ch-item .other { display: inline-block; margin-left: 6px; color: #d46b08; font-size: 10px; font-weight: 600; }
+    .valid-hint { margin: 0 0 8px; font-size: 11px; color: #8c8c8c; line-height: 1.5; }
+    .price-diff { font-size: 11px; color: #d46b08; margin: -4px 0 8px 118px; }
+    .unit-hint { margin: -4px 0 8px 118px; font-size: 11px; color: #8c8c8c; line-height: 1.5; }
+    .audit-box {
+      margin-top: 8px; padding: 8px 10px; background: #fafafa; border: 1px dashed #d9d9d9;
+      border-radius: 2px; font-size: 11px; color: #595959; line-height: 1.55; white-space: pre-wrap;
+    }
+    .tag-exp { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .valid-ok { color: #389e0d; }
+    .valid-warn { color: #d46b08; }
+    .valid-exp { color: #cf1322; font-weight: 600; }
+    .fee-box {
+      margin-top: 8px; padding: 10px; border: 1px solid #ffd591; border-radius: 2px;
+      background: #fffbe6;
+    }
+    .fee-box h5 { margin: 0 0 8px; font-size: 12px; color: #ad6800; }
+    .fee-box .req { color: #cf1322; }
+    .fee-hint { margin: 6px 0 0; font-size: 11px; color: #8c8c8c; line-height: 1.5; }
+    .wb-item .ck {
+      display: inline-block; width: 14px; height: 14px; border: 1px solid #91d5ff;
+      border-radius: 2px; margin-right: 6px; vertical-align: -2px; background: #fff;
+    }
+    .wb-item.on .ck { background: #1890ff; border-color: #1890ff; box-shadow: inset 0 0 0 2px #fff; }
+    .sel-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; min-height: 22px; }
+    .sel-tag {
+      display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px;
+      background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; font-size: 11px; color: #096dd9;
+    }
+    .sel-tag button {
+      border: none; background: none; color: #8c8c8c; cursor: pointer; padding: 0; line-height: 1; font-size: 12px;
+    }
+    .tag-ai { background: #f9f0ff; color: #722ed1; border: 1px solid #d3adf7; }
+    .tag-wait { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .muted-link { color: #bfbfbf; pointer-events: none; }
+    .modal-hd {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 10px 14px; border-bottom: 1px solid var(--line); background: #fafafa;
+    }
+    .modal-hd h2 { margin: 0; font-size: 14px; font-weight: 600; white-space: nowrap; }
+    .modal-hd .mark-legend { flex: 1; margin-left: 0; }
+    .modal-hd .x {
+      width: 28px; height: 28px; border: none; background: transparent;
+      font-size: 18px; cursor: pointer; color: #8c8c8c;
+    }
+    .modal-chips {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px;
+      border-bottom: 1px solid var(--line); background: #fff;
+    }
+    .chip {
+      display: inline-block; padding: 2px 8px; border-radius: 2px;
+      font-size: 11px; font-weight: 600; border: 1px solid;
+    }
+    .chip.green { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .chip.blue { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .chip.orange { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .chip.red { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .chip.purple { color: #722ed1; background: #f9f0ff; border-color: #d3adf7; }
+    .modal-bd {
+      padding: 12px 14px; overflow: auto; flex: 1;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    @media (max-width: 720px) { .modal-bd { grid-template-columns: 1fr; } }
+    .modal-bd.modal-bd-log { display: block; }
+    .calc-log-hint { margin: 0 0 10px; font-size: 11px; color: var(--sub); line-height: 1.6; }
+    .calc-log-list { display: grid; gap: 10px; max-height: min(62vh, 520px); overflow: auto; }
+    .calc-log-card { border: 1px solid #e8e8e8; border-radius: 4px; overflow: hidden; background: #fff; }
+    .calc-log-card .hd {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 8px 10px; background: #fafafa; border-bottom: 1px solid #f0f0f0; font-size: 12px; font-weight: 600;
+    }
+    .calc-log-card .bd { padding: 10px; font-size: 11px; line-height: 1.65; color: #434343; }
+    .calc-log-card .row { display: grid; grid-template-columns: 84px 1fr; gap: 6px 8px; margin-bottom: 6px; }
+    .calc-log-card .row .k { color: var(--sub); font-weight: 600; }
+    .calc-log-card .rules { margin: 8px 0 0; padding: 8px 10px; background: #0f172a; color: #e2e8f0; border-radius: 4px; }
+    .calc-log-card .rules ol { margin: 4px 0 0; padding-left: 18px; }
+    .calc-log-card .result { margin-top: 8px; padding: 8px 10px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; color: #389e0d; font-weight: 600; }
+    .calc-log-card .zone { font-size: 10px; font-weight: 700; color: #d46b08; }
+    .modal-col h4 { margin: 0 0 8px; font-size: 13px; color: #003a8c; }
+    .form-row {
+      display: grid; grid-template-columns: 84px 1fr; gap: 6px; align-items: center;
+      margin-bottom: 8px; font-size: 12px;
+    }
+    .modal-confirm .form-row { grid-template-columns: 118px 1fr; }
+    .form-row > span { color: var(--sub); }
+    .form-row input, .form-row textarea, .form-row select {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .form-row input, .form-row select { height: 28px; }
+    .form-row textarea { min-height: 72px; padding: 6px 8px; resize: vertical; }
+    .form-row input[readonly], .form-row textarea[readonly], .form-row select[disabled] { background: #f5f5f5; color: rgba(0,0,0,.55); cursor: default; }
+    #rowOrigBind input { background: #fff7e6; border-color: #ffd591; color: #d46b08; font-weight: 600; }
+    .form-row.err input { border-color: #ff4d4f; background: #fff1f0; }
+    .wb-list {
+      border: 1px solid var(--line); border-radius: 2px; max-height: 200px; overflow: auto;
+      margin-top: 4px;
+    }
+    .wb-item {
+      padding: 7px 8px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 12px;
+    }
+    .wb-item:hover, .wb-item.on { background: #e6f7ff; }
+    .wb-item.match { border-left: 3px solid #52c41a; }
+    .wb-item.miss { opacity: .55; }
+    .wb-item .sub { color: var(--sub); font-size: 11px; margin-top: 2px; }
+    .wb-item .hit { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 2px; font-size: 10px; font-weight: 600; background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .wb-item .miss-tag { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 2px; font-size: 10px; font-weight: 600; background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .wb-item.taken { background: #fff7e6; }
+    .wb-item .taken-tag { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 2px; font-size: 10px; font-weight: 600; background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .sel-tag .ch-lab { color: #8c8c8c; font-weight: 600; }
+    .bind-match-tip {
+      margin: 0 0 8px; padding: 8px 10px;
+      background: #fff7e6; border: 1px solid #ffd591; border-radius: 2px;
+      font-size: 12px; color: #ad6800; line-height: 1.55;
+    }
+    .bind-match-tip .acts { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+    .bind-match-tip .btn { height: 26px; padding: 0 10px; font-size: 12px; }
+    .bind-sel-wrap { display: flex; align-items: center; gap: 8px; }
+    .bind-sel-wrap input { flex: 1; min-width: 0; }
+    .bind-rule-ico {
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 99px; padding: 0;
+      border: 1px solid #91d5ff; background: #e6f7ff; color: #096dd9;
+      font-size: 12px; font-weight: 700; font-style: italic; cursor: pointer; line-height: 1;
+    }
+    .bind-rule-ico[aria-expanded="true"] { background: #096dd9; color: #fff; border-color: #096dd9; }
+    .bind-rule-pop {
+      margin-top: 8px; padding: 10px 12px; background: #0f172a; color: #e2e8f0;
+      border-radius: 6px; font-size: 12px; line-height: 1.65; white-space: pre-wrap;
+    }
+    .bind-rule-pop[hidden] { display: none !important; }
+    .match-hint { color: #d46b08 !important; font-weight: 600; }
+    .modal-ft {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 10px 14px; border-top: 1px solid var(--line); background: #fafafa;
+    }
+    .toast {
+      position: fixed; left: 50%; top: 64px; transform: translateX(-50%) translateY(-12px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      z-index: 2000; opacity: 0; pointer-events: none; transition: .2s; font-size: 12px;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .btn-bind {
+      background: #fff7e6; border-color: #ffd591; color: #d46b08;
+    }
+    .btn-bind:disabled { opacity: .45; cursor: not-allowed; }
+    tr:hover .col-ops { background: #fafafa; }
+    th.col-ops { background: #fafafa; }
+    .col-filter input, .col-filter select {
+      width: 100%; height: 24px; border: 1px solid #e8e8e8;
+      border-radius: 2px; padding: 0 4px; font-size: 11px;
+    }
+    .col-filter { padding: 4px 6px 8px; background: #fff; border-bottom: 1px solid #f0f0f0; }
+
+    .link { color: var(--blue); text-decoration: none; cursor: pointer; }
+    .link:hover { text-decoration: underline; }
+    .ops { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag {
+      display: inline-block; padding: 1px 6px; border-radius: 2px;
+      font-size: 11px; line-height: 18px;
+    }
+    .tag-green { background: #f6ffed; color: var(--green); border: 1px solid #b7eb8f; }
+    .col-duration { white-space: nowrap; font-size: 12px; color: #475569; }
+    .tag-blue { background: #e6f7ff; color: var(--blue); border: 1px solid #91d5ff; }
+    .tag-gray { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+    .tag-orange { background: #fff7e6; color: var(--orange); border: 1px solid #ffd591; }
+    .tag-red { background: #fff1f0; color: var(--red); border: 1px solid #ffa39e; }
+    .tag-fcl { background: #fff7e6; color: #d48806; border: 1px solid #ffe58f; font-size: 10px; margin-left: 4px; }
+    .ellipsis { max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
+
+    .table-panel { display: none; }
+    .table-panel.active { display: block; }
+    .filter-panel { display: none; }
+    .filter-panel.active { display: contents; }
+
+    .pager {
+      display: flex; justify-content: flex-end; align-items: center;
+      gap: 8px; padding: 12px 16px; font-size: 12px; color: var(--sub);
+    }
+    .pager-btns { display: flex; gap: 4px; }
+    .pager-btns button {
+      min-width: 28px; height: 28px; border: 1px solid #d9d9d9;
+      background: #fff; border-radius: 2px; cursor: pointer; font-size: 12px;
+    }
+    .pager-btns button.active { border-color: var(--blue); color: var(--blue); }
+
+    .empty-tip {
+      padding: 48px 16px; text-align: center; color: var(--sub); font-size: 13px;
+    }
+
+    .role-badge {
+      display: inline-block; margin-left: 8px; padding: 1px 8px;
+      border-radius: 2px; font-size: 11px; font-weight: 600;
+      background: #fff7e6; color: #d46b08; border: 1px solid #ffd591;
+    }
+
+    /* 系统壳层（与业务员列表一致，支持角色页互跳） */
+    .sys-app { min-height: 100vh; display: flex; flex-direction: column; }
+    .sys-header {
+      background: #0b1f3a; color: #fff; display: flex; align-items: stretch; min-height: 48px;
+    }
+    .sys-logo {
+      width: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; background: rgba(255,255,255,.06);
+    }
+    .sys-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .sys-tab {
+      padding: 0 16px; display: flex; align-items: center;
+      background: #132d52; border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .sys-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .sys-header-right {
+      display: flex; align-items: center; gap: 12px; padding: 0 14px; flex-shrink: 0;
+      font-size: 12px; color: rgba(255,255,255,.85);
+    }
+    .sys-body { flex: 1; display: flex; min-height: 0; }
+    .sys-icon-nav {
+      width: 56px; flex-shrink: 0; background: #001529; color: rgba(255,255,255,.65);
+      display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 2px;
+    }
+    .sys-icon-item {
+      width: 48px; padding: 8px 4px 6px; border: none; background: none;
+      color: inherit; cursor: pointer; border-radius: 4px;
+      display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px;
+    }
+    .sys-icon-item:hover { background: #112240; color: #fff; }
+    .sys-icon-item.active { color: #1890ff; }
+    .sys-icon-item .ico {
+      width: 20px; height: 20px; border-radius: 4px; background: rgba(255,255,255,.12);
+    }
+    .sys-module-menu {
+      width: 168px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--line);
+      padding: 8px 0; overflow-y: auto;
+    }
+    .module-item {
+      position: relative; display: block; width: 100%; text-align: left;
+      padding: 10px 14px 10px 16px; border: none; background: none;
+      font: inherit; font-size: 13px; color: var(--text); cursor: pointer;
+      border-left: 3px solid transparent;
+    }
+    .module-item:hover { background: #fafafa; color: var(--blue); }
+    .module-item.active {
+      color: var(--orange); font-weight: 600;
+      background: #fff7e6; border-left-color: var(--orange);
+    }
+    a.module-item { text-decoration: none; color: inherit; }
+    .sys-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    a.page-tab { text-decoration: none; color: inherit; display: inline-block; }
+  
+    .bj-topbar {
+      height: 44px; background: #001529; color: #fff;
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; flex-wrap: wrap;
+    }
+    .bj-topbar .logo { font-weight: 700; font-size: 13px; margin-right: 8px; }
+    .bj-topbar a { color: rgba(255,255,255,.75); text-decoration: none; font-size: 12px; padding: 5px 8px; border-radius: 2px; }
+    .bj-topbar a.on, .bj-topbar a:hover { color: #fff; background: rgba(255,255,255,.12); }
+  </style>
+</head>
+<body data-ess-nav="off">
+  <div class="bj-topbar">
+    <div class="logo">报价组</div>
+    <a href="报价组-导航.html">← 报价组导航</a>
+    <a href="ESS我的报价-列表-MVP.html">我的询价</a>
+    <a href="ESS询价报价-报价员列表-MVP.html" class="on">报价员列表</a>
+    <a href="ESS询价编辑-MVP.html">询价编辑</a>
+    <a href="ESS散货询价方案详情-MVP.html" class="on">报价员详情</a>
+    <a href="ESS询价编辑-APP-散货-MVP.html#lcl">APP 散货</a>
+    <a href="私卡报价-AI报价规则配置-优化版-MVP.html">AI规则 / 有效期</a>
+    <a href="海外仓至本州地址报价系统.html">本州测算</a>
+    <a href="海外仓至外州地址报价系统.html">外州测算</a>
+  </div>
+  <div class="sys-app">
+    <header class="sys-header">
+      <div class="sys-logo">腾信物流</div>
+      <nav class="sys-tabs" aria-label="顶部页签">
+        <button type="button" class="sys-tab">控制台</button>
+        <button type="button" class="sys-tab active">运单管理</button>
+        <button type="button" class="sys-tab">收款管理</button>
+        <button type="button" class="sys-tab">员工管理</button>
+        <button type="button" class="sys-tab">客户管理</button>
+      </nav>
+      <div class="sys-header-right">IT(BT0022)</div>
+    </header>
+
+    <div class="sys-body">
+      <aside class="sys-icon-nav" aria-label="模块图标">
+        <button type="button" class="sys-icon-item"><span class="ico"></span>收藏</button>
+        <button type="button" class="sys-icon-item"><span class="ico"></span>企业</button>
+        <button type="button" class="sys-icon-item active"><span class="ico"></span>运单</button>
+        <button type="button" class="sys-icon-item"><span class="ico"></span>客服</button>
+        <button type="button" class="sys-icon-item"><span class="ico"></span>操作</button>
+        <button type="button" class="sys-icon-item"><span class="ico"></span>产品</button>
+      </aside>
+
+      <aside class="sys-module-menu" aria-label="运单子菜单">
+        <a class="module-item" href="ESS我的报价-列表-MVP.html">我的询价(业务员)</a>
+        <button type="button" class="module-item">传统订单录入</button>
+        <button type="button" class="module-item">网上订单查询</button>
+        <button type="button" class="module-item">FBA 录入</button>
+        <button type="button" class="module-item">业务员运单查询</button>
+        <a class="module-item active" href="ESS询价报价-报价员列表-MVP.html">询价报价(报价员)</a>
+        <a class="module-item" href="私卡报价-AI报价规则配置-优化版-MVP.html">AI报价规则</a>
+      </aside>
+
+      <div class="sys-main">
+  <div class="layout">
+    <div class="main">
+      <div class="page-tabs">
+        <button type="button" class="page-tab">控制台</button>
+        <a class="page-tab" href="ESS我的报价-列表-MVP.html">我的询价（业务员）</a>
+        <a class="page-tab active" href="ESS询价报价-报价员列表-MVP.html">询价报价（报价员）</a>
+        <a class="page-tab" href="私卡报价-AI报价规则配置-优化版-MVP.html">AI报价规则</a>
+      </div>
+
+      <div class="page-body">
+        <div class="panel">
+          <div class="filter-bd">
+            <div class="filter-grid">
+              <!-- 散货筛选 -->
+              <div class="filter-panel active" data-dim="lcl">
+                <div class="filter-item">
+                  <label>创建时间</label>
+                  <input type="date" />
+                </div>
+                <div class="filter-item">
+                  <label>询价单号</label>
+                  <input type="text" placeholder="XJ…" />
+                </div>
+                <div class="filter-item">
+                  <label>邮编</label>
+                  <input type="text" placeholder="目的邮编" />
+                </div>
+                <div class="filter-item">
+                  <label>交货仓</label>
+                  <select><option value="">全部</option><option>福永仓</option><option>义乌总仓</option><option>宁波仓</option></select>
+                </div>
+                <div class="filter-item">
+                  <label>询价人</label>
+                  <select><option value="">全部</option><option>张立明</option><option>李芳</option></select>
+                </div>
+              </div>
+              <!-- 整柜筛选 -->
+              <div class="filter-panel" data-dim="fcl">
+                <div class="filter-item">
+                  <label>创建时间</label>
+                  <input type="date" />
+                </div>
+                <div class="filter-item">
+                  <label>询价单号</label>
+                  <input type="text" placeholder="XJ…" />
+                </div>
+                <div class="filter-item">
+                  <label>起运港</label>
+                  <input type="text" placeholder="如 盐田" />
+                </div>
+                <div class="filter-item">
+                  <label>目的港</label>
+                  <input type="text" placeholder="如 洛杉矶" />
+                </div>
+                <div class="filter-item">
+                  <label>箱型 / 询价人</label>
+                  <input type="text" placeholder="40HQ 或 询价人" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn btn-primary">查询数据</button>
+            <button type="button" class="btn btn-primary">刷新数据</button>
+            <button type="button" class="btn btn-primary">修改报价人</button>
+            <button type="button" class="btn btn-bind" id="btnConfirmAi" disabled title="请勾选一条散货询价单">核对确认 <span class="tag-new">NEW</span></button>
+            <button type="button" class="btn btn-bind" id="btnBindWaybill" disabled title="请先勾选一条「已完结」单据">绑定运单 <span class="tag-new">NEW</span></button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="tab-bar">
+            <div class="dim-tabs">
+              <button type="button" class="dim-tab active" data-dim="lcl">散货（LCL）<span class="dim-badge" id="badgeLcl" title="待报价 + 报价中">0</span></button>
+              <button type="button" class="dim-tab" data-dim="fcl">整柜（FCL）<span class="dim-badge" id="badgeFcl" title="待报价 + 报价中">0</span></button>
+            </div>
+            <div class="status-tabs" id="statusTabs">
+              <button type="button" class="status-tab active" data-status="all">全部<span class="cnt" data-lcl="(128)" data-fcl="(36)">(128)</span></button>
+              <button type="button" class="status-tab" data-status="pending">待报价<span class="cnt" data-lcl="(12)" data-fcl="(8)">(12)</span></button>
+              <button type="button" class="status-tab" data-status="aiwait" title="AI 已出账，尚未返回业务员">AI待确认<span class="cnt" data-lcl="(6)" data-fcl="(0)">(6)</span></button>
+              <button type="button" class="status-tab" data-status="reject">已打回<span class="cnt" data-lcl="(3)" data-fcl="(1)">(3)</span></button>
+              <button type="button" class="status-tab" data-status="quoting">报价中<span class="cnt" data-lcl="(45)" data-fcl="(15)">(45)</span></button>
+              <button type="button" class="status-tab" data-status="bindwait">待绑运单 <span class="tag-chg">改</span><span class="cnt" data-lcl="(1)" data-fcl="(1)">(1)</span></button>
+              <button type="button" class="status-tab" data-status="quoted">已报价/已完结<span class="cnt" data-lcl="(68)" data-fcl="(12)">(68)</span></button>
+            </div>
+          </div>
+
+          <!-- ===== 散货列表 ===== -->
+          <div class="table-panel active" id="tableLcl">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="col-check"><input type="checkbox" aria-label="全选" /></th>
+                    <th>询价单号</th>
+                    <th>目的国</th>
+                    <th>交货仓</th>
+                    <th>总件数</th>
+                    <th>总方数(CBM)</th>
+                    <th>计费重(KG)</th>
+                    <th>邮编</th>
+                    <th>产品性质</th>
+                    <th>报价人</th>
+                    <th>报价状态</th>
+                    <th>单价 USD/KG（确认后给业务员） <span class="tag-new">NEW</span></th>
+                    <th>有效期 <span class="tag-new">NEW</span></th>
+                    <th>尾端派送费 <span class="tag-new">NEW</span></th>
+                    <th>创建时间</th>
+                    <th>更新时间</th>
+                    <th>报价耗时（工作时长）</th>
+                    <th>询价人</th>
+                    <th class="col-bind">绑定运单 <span class="tag-new">NEW</span></th>
+                    <th class="col-ops">操作</th>
+                  </tr>
+                  <tr class="col-filter">
+                    <td></td>
+                    <td><input type="text" placeholder="筛选" /></td>
+                    <td><input type="text" placeholder="筛选" /></td>
+                    <td><input type="text" placeholder="筛选" /></td>
+                    <td></td><td></td><td></td>
+                    <td><input type="text" placeholder="筛选" /></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td></td>
+                    <td class="col-ops"></td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="quote-row" data-dim="lcl" data-status="aiwait" data-demo-aiwait="1" data-xj="XJ1778800888123" data-bind=""
+                      data-country="US" data-wh="福永仓" data-zip="92374" data-product="中美快运私人卡派(洛杉矶)" data-valid=""
+                      data-amt="" data-ai-amt="USD 4" data-src="new-ai" data-lastmile="" data-zone="本州"
+                      data-model="洛杉矶仓 · 本地 · 26尺 · 30-50迈档"
+                      data-channels='[{"name":"中美快运私人卡派(洛杉矶)","wh":"洛杉矶仓","zone":"内州·26尺","ai":4,"cheap":true},{"name":"中美快运私人卡派(纽约)","wh":"纽约仓","zone":"外州·26尺","ai":6}]'>
+                    <td class="col-check"><input type="checkbox" class="row-ck" /></td>
+                    <td><a class="link" href="ESS散货询价方案详情-MVP.html#view">XJ1778800888123</a></td>
+                    <td>US/美国</td>
+                    <td>福永仓</td>
+                    <td>40</td>
+                    <td>3.20</td>
+                    <td>410</td>
+                    <td>92374</td>
+                    <td>普货</td>
+                    <td>新AI</td>
+                    <td class="st-cell"><span class="tag tag-wait">AI待确认</span></td>
+                    <td class="ai-amt-cell">USD 4 / KG · 未回业务员</td>
+                    <td class="valid-cell"><span class="bind-none">确认时写入</span></td>
+                    <td class="lastmile-cell"><span class="bind-none">待登记</span></td>
+                    <td>2026-08-06 10:12</td>
+                    <td>2026-08-06 10:45</td>
+                    <td class="col-duration">—</td>
+                    <td>陈业务</td>
+                    <td class="col-bind bind-cell"><span class="bind-none">确认后可绑</span></td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="ESS散货询价方案详情-MVP.html#view">核对确认</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="quote-row" data-dim="lcl" data-status="quoted" data-xj="XJ1778226168576" data-bind="ICBU26052201" data-locked="1"
+                      data-country="US" data-wh="福永仓" data-zip="92374" data-product="中美快运私人卡派(洛杉矶)" data-valid="2026-08-19"
+                      data-amt="USD 5" data-ai-amt="USD 5" data-src="new-ai" data-lastmile="286" data-zone="外州"
+                      data-model="洛杉矶仓 · 发外州 · 26尺"
+                      data-channels='[{"name":"中美快运私人卡派(洛杉矶)","wh":"洛杉矶仓","zone":"外州·26尺","ai":5,"cheap":true},{"name":"中美快运私人卡派(奥克兰)","wh":"奥克兰仓","zone":"外州·26尺","ai":7},{"name":"美国空派 LAX","wh":"洛杉矶仓","zone":"外州·53尺","ai":9}]'>
+                    <td class="col-check"><input type="checkbox" class="row-ck" /></td>
+                    <td><a class="link" href="ESS散货询价方案详情-MVP.html#view">XJ1778226168576</a></td>
+                    <td>US/美国</td>
+                    <td>福永仓</td>
+                    <td>200</td>
+                    <td>2.50</td>
+                    <td>625</td>
+                    <td>92374</td>
+                    <td>普货</td>
+                    <td>王报价</td>
+                    <td class="st-cell"><span class="tag tag-green">已完结</span></td>
+                    <td class="ai-amt-cell">USD 5 / KG</td>
+                    <td class="valid-cell"><span class="valid-ok">至 2026-08-19</span></td>
+                    <td class="lastmile-cell"><b>$286</b></td>
+                    <td>2026-05-22 09:15</td>
+                    <td>2026-08-15 16:20</td>
+                    <td class="col-duration">2960分钟</td>
+                    <td>张立明</td>
+                    <td class="col-bind bind-cell"><span class="bind-ok">ICBU26052201</span></td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="ESS散货询价方案详情-MVP.html#view">核对确认</a>
+                        <a class="link bind-act" href="#" data-bind-open="match" title="打开绑定并自动带出符合条件的运单">改绑运单</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="quote-row" data-dim="lcl" data-status="pending" data-xj="XJ1779516168576" data-bind=""
+                      data-country="US" data-wh="义乌总仓" data-zip="61604" data-product="美国海派" data-valid="" data-amt=""
+                      data-ai-amt="" data-src="" data-lastmile="" data-zone="" data-model=""
+                      data-freight="200" data-cw="1200">
+                    <td class="col-check"><input type="checkbox" class="row-ck" /></td>
+                    <td><a class="link" href="ESS散货询价方案详情-MVP.html#view">XJ1779516168576</a></td>
+                    <td>US/美国</td>
+                    <td>义乌总仓</td>
+                    <td>150</td>
+                    <td>8.00</td>
+                    <td>1200</td>
+                    <td>61604</td>
+                    <td>普货</td>
+                    <td>—</td>
+                    <td class="st-cell"><span class="tag tag-orange">待报价</span></td>
+                    <td class="ai-amt-cell"><span class="bind-none">—</span></td>
+                    <td class="valid-cell"><span class="bind-none">—</span></td>
+                    <td class="lastmile-cell"><span class="bind-none">—</span></td>
+                    <td>2026-05-23 08:30</td>
+                    <td>2026-05-23 08:30</td>
+                    <td class="col-duration">—</td>
+                    <td>李芳</td>
+                    <td class="col-bind bind-cell"><span class="bind-none">—</span></td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="ESS散货询价方案详情-MVP.html#view">报价</a>
+                        <a class="link" href="#">打回</a>
+                        <a class="link muted-link" href="#" title="需已完结且未过期">绑定运单</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="quote-row" data-dim="lcl" data-status="quoted" data-xj="XJ1777001234567" data-bind=""
+                      data-country="US" data-wh="宁波仓" data-zip="92374" data-product="美国空派 LAX" data-valid="2026-08-19"
+                      data-amt="USD 3" data-ai-amt="USD 3" data-src="new-ai" data-lastmile="168" data-zone="外州"
+                      data-model="洛杉矶仓 · 发外州 · 26尺" data-freight="90" data-cw="87">
+                    <td class="col-check"><input type="checkbox" class="row-ck" /></td>
+                    <td><a class="link" href="ESS散货询价方案详情-MVP.html#view">XJ1777001234567</a></td>
+                    <td>US/美国</td>
+                    <td>宁波仓</td>
+                    <td>80</td>
+                    <td>1.20</td>
+                    <td>87</td>
+                    <td>92374</td>
+                    <td>带电</td>
+                    <td>王报价</td>
+                    <td class="st-cell"><span class="tag tag-blue">已报价</span></td>
+                    <td class="ai-amt-cell">USD 3 / KG</td>
+                    <td class="valid-cell"><span class="valid-ok">至 2026-08-19</span></td>
+                    <td class="lastmile-cell"><b>$168</b></td>
+                    <td>2026-05-20 14:22</td>
+                    <td>2026-08-10 11:30</td>
+                    <td class="col-duration">335分钟</td>
+                    <td>王浩</td>
+                    <td class="col-bind bind-cell"><span class="bind-none">未绑定</span></td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="ESS散货询价方案详情-MVP.html#view">核对确认</a>
+                        <a class="link bind-act" href="#" data-bind-open="match" title="打开绑定并自动带出符合条件的运单">绑定运单</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="quote-row" data-dim="lcl" data-status="aiwait" data-demo-aiwait="1" data-xj="XJ1779900555001" data-bind=""
+                      data-country="US" data-wh="福永仓" data-zip="80202" data-product="美国卡派 DEN" data-valid=""
+                      data-amt="" data-ai-amt="USD 8" data-src="new-ai" data-lastmile="" data-zone="外州"
+                      data-model="洛杉矶仓 · 发外州 800迈 · $6.5/迈" data-freight="320" data-cw="7500">
+                    <td class="col-check"><input type="checkbox" class="row-ck" /></td>
+                    <td><a class="link" href="ESS散货询价方案详情-MVP.html#view">XJ1779900555001</a></td>
+                    <td>US/美国</td>
+                    <td>福永仓</td>
+                    <td>12</td>
+                    <td>28.00</td>
+                    <td>7500</td>
+                    <td>80202</td>
+                    <td>普货</td>
+                    <td>新AI</td>
+                    <td class="st-cell"><span class="tag tag-wait">AI待确认</span></td>
+                    <td class="ai-amt-cell">USD 8 / KG · 未回业务员</td>
+                    <td class="valid-cell"><span class="bind-none">确认时写入</span></td>
+                    <td class="lastmile-cell"><span class="bind-none">待登记</span></td>
+                    <td>2026-08-13 09:40</td>
+                    <td>2026-08-13 10:05</td>
+                    <td class="col-duration">—</td>
+                    <td>陈业务</td>
+                    <td class="col-bind bind-cell"><span class="bind-none">确认后可绑</span></td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="ESS散货询价方案详情-MVP.html#view">核对确认</a>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pager">
+              <span>共 128 条</span>
+              <div class="pager-btns"><button type="button" class="active">1</button><button type="button">2</button></div>
+            </div>
+          </div>
+
+          <!-- ===== 整柜列表 ===== -->
+          <div class="table-panel" id="tableFcl">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="col-check"><input type="checkbox" aria-label="全选" /></th>
+                    <th>询价单号</th>
+                    <th>起运港</th>
+                    <th>目的港</th>
+                    <th>箱型</th>
+                    <th>货物毛重(KG)</th>
+                    <th>喜好船司</th>
+                    <th>询价项</th>
+                    <th>收货邮编</th>
+                    <th>装柜地址</th>
+                    <th>报价人</th>
+                    <th>报价状态</th>
+                    <th>货好时间</th>
+                    <th>创建时间</th>
+                    <th>更新时间</th>
+                    <th>报价耗时（工作时长）</th>
+                    <th>询价人</th>
+                    <th class="col-bind">绑定运单 <span class="tag-new">NEW</span></th>
+                    <th class="col-ops">操作</th>
+                  </tr>
+                  <tr class="col-filter">
+                    <td></td>
+                    <td><input type="text" placeholder="筛选" /></td>
+                    <td><input type="text" placeholder="筛选" /></td>
+                    <td><input type="text" placeholder="筛选" /></td>
+                    <td><select><option value="">全部</option><option>40HQ</option></select></td>
+                    <td></td><td></td><td></td>
+                    <td><input type="text" placeholder="筛选" /></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td></td>
+                    <td class="col-ops"></td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="quote-row" data-dim="fcl" data-status="quoted" data-xj="XJ202605230019" data-bind=""
+                      data-pol="盐田" data-pod="洛杉矶" data-box="40HQ" data-valid="2026-08-19" data-amt="USD 1,286.00" data-mode="一口价">
+                    <td class="col-check"><input type="checkbox" class="row-ck" /></td>
+                    <td><a class="link" href="ESS整柜询价详情-MVP.html">XJ202605230019</a><span class="tag-fcl">FCL</span><span class="tag-fcl" style="background:#fff7ed;color:#b45309;border-color:#fde68a;">一口价</span></td>
+                    <td>盐田</td>
+                    <td>洛杉矶</td>
+                    <td>40HQ</td>
+                    <td>18,500</td>
+                    <td>COSCO/EMC</td>
+                    <td class="ellipsis" title="一口价全包">一口价</td>
+                    <td>92374</td>
+                    <td class="ellipsis" title="深圳宝安福永某某物流园">福永某某物流园</td>
+                    <td>王报价</td>
+                    <td><span class="tag tag-green">已完结</span></td>
+                    <td>2026-06-08</td>
+                    <td>2026-05-23 09:12</td>
+                    <td>2026-08-12 14:00</td>
+                    <td class="col-duration">200分钟</td>
+                    <td>张立明</td>
+                    <td class="col-bind bind-cell"><span class="bind-none">未绑定</span></td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="ESS整柜报价编辑-一口价-MVP.html">编辑</a>
+                        <a class="link bind-act" href="#" data-bind-open="match" title="打开绑定并自动带出符合条件的运单">绑定运单</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="quote-row" data-dim="fcl" data-status="pending" data-xj="XJ202605220056" data-bind=""
+                      data-pol="宁波" data-pod="长滩" data-box="40GP" data-valid="" data-amt="" data-mode="分段">
+                    <td class="col-check"><input type="checkbox" class="row-ck" /></td>
+                    <td><a class="link" href="ESS整柜报价编辑-MVP.html">XJ202605220056</a><span class="tag-fcl">FCL</span></td>
+                    <td>宁波</td>
+                    <td>长滩</td>
+                    <td>40GP</td>
+                    <td>22,000</td>
+                    <td>ONE</td>
+                    <td class="ellipsis">海运费</td>
+                    <td>90802</td>
+                    <td class="ellipsis">—</td>
+                    <td>—</td>
+                    <td><span class="tag tag-orange">待报价</span></td>
+                    <td>—</td>
+                    <td>2026-05-22 16:40</td>
+                    <td>2026-05-22 16:40</td>
+                    <td class="col-duration">—</td>
+                    <td>李芳</td>
+                    <td class="col-bind bind-cell"><span class="bind-none">—</span></td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="ESS整柜报价编辑-MVP.html">报价</a>
+                        <a class="link" href="#">打回</a>
+                        <a class="link muted" href="#" title="需已完结且未过期">绑定运单</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="quote-row" data-dim="fcl" data-status="quoted" data-xj="XJ202605180088" data-bind="RC266501" data-cost-audit="approved" data-account-locked="1"
+                      data-pol="上海" data-pod="纽约" data-box="20GP" data-valid="2026-08-19" data-amt="USD 2,450.00" data-mode="分段">
+                    <td class="col-check"><input type="checkbox" class="row-ck" /></td>
+                    <td><a class="link" href="ESS整柜询价详情-MVP.html">XJ202605180088</a><span class="tag-fcl">FCL</span></td>
+                    <td>上海</td>
+                    <td>纽约</td>
+                    <td>20GP</td>
+                    <td>12,800</td>
+                    <td>MSC</td>
+                    <td class="ellipsis">海+外拖</td>
+                    <td>10001</td>
+                    <td class="ellipsis" title="上海浦东某某仓库">浦东某某仓库</td>
+                    <td>王报价</td>
+                    <td><span class="tag tag-green">已完结</span></td>
+                    <td>2026-06-15</td>
+                    <td>2026-05-18 11:05</td>
+                    <td>2026-08-01 09:30</td>
+                    <td class="col-duration">2960分钟</td>
+                    <td>王浩</td>
+                    <td class="col-bind bind-cell"><span class="bind-ok">RC266501</span></td>
+                    <td class="col-ops">
+                      <div class="ops">
+                        <a class="link" href="ESS整柜报价编辑-MVP.html">编辑</a>
+                        <a class="link bind-act" href="#" data-bind-open="match" title="打开绑定并自动带出符合条件的运单">改绑运单</a>
+                        <a class="link" href="整柜询价与报价绑定-MVP.html">查看绑定</a>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pager">
+              <span>共 36 条</span>
+              <div class="pager-btns"><button type="button" class="active">1</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 散货核对确认改走报价员详情页，列表不再另开弹窗 -->
+        <div class="mask" id="confirmMask" hidden role="dialog" aria-modal="true">
+          <div class="modal modal-confirm">
+            <div class="modal-hd">
+              <h2 id="confirmTitle">核对确认</h2>
+              <button type="button" class="x" id="confirmClose">×</button>
+            </div>
+            <div class="modal-chips" id="confirmChips"></div>
+            <div class="modal-bd">
+              <div class="modal-col">
+                <h4 id="cCol1Title">① 核对销售产品报价</h4>
+                <p class="ch-hint">渠道 = 本票询价勾选的<strong>销售产品</strong>。外州小车若走万物智联，多价已在测算时取最优给报价员（本弹窗不展示品牌）。报价员核对确认后，价格返回业务员。</p>
+                <div class="ch-list" id="cChannelList"></div>
+                <div class="unit-hero">
+                  <div class="uh-k">给业务员的单价（USD/KG）</div>
+                  <div class="uh-v" id="cUnit">—</div>
+                  <div class="uh-s" id="cUnitHint">确认后业务员只看到这一条单价，看不到其余销售产品。</div>
+                </div>
+                <div class="form-row"><span>询价单号</span><input id="cXj" readonly /></div>
+                <div class="form-row"><span>当前产品</span><input id="cProduct" readonly /></div>
+                <div class="form-row"><span>713 命中</span><input id="cZone" readonly /></div>
+                <div class="form-row"><span>AI 单价 USD/KG</span><input id="cAiAmt" readonly /></div>
+                <div class="form-row" id="rowManualAmt"><span>人工改单价</span><input id="cManualAmt" type="number" min="1" max="9" step="1" placeholder="可空=采用 AI 单价（个位 USD/KG）；填写则覆盖，业务员收到新单价" /></div>
+                <p class="price-diff" id="cPriceDiff" hidden>改单价将覆盖 AI 价（个位 USD/KG），须选原因。业务员收到新单价。尾端派送费另登记，不是同一个数。</p>
+                <div class="form-row" id="rowPriceReason" hidden><span>改价原因 *</span>
+                  <select id="cPriceReason">
+                    <option value="">请选择</option>
+                    <option>海运费调整</option>
+                    <option>货物数据变化</option>
+                    <option>地址类型</option>
+                    <option>渠道变化</option>
+                    <option>AI报高</option>
+                    <option>AI报低</option>
+                  </select>
+                </div>
+                <div class="form-row" id="rowRemark"><span>核对备注</span><textarea id="cRemark" placeholder="异常说明 / 与客户约定"></textarea></div>
+                <div class="audit-box" id="cAudit">确认通过后写入：给业务员的单价（个位 USD/KG）+ 有效期至。尾端派送费在绑单时另挂，不是单价。</div>
+              </div>
+              <div class="modal-col">
+                <h4 id="cCol2Title">② 有效期（可改）</h4>
+                <div class="form-row"><span>建议天数</span><input id="cValidDays" value="默认 7 天含当日 · 遇 15/30 截断（可改）" readonly /></div>
+                <div class="form-row"><span>有效期从</span><input id="cValidFrom" type="date" /></div>
+                <div class="form-row"><span>有效期至</span><input id="cValid" type="date" /></div>
+                <p class="valid-hint" id="cValidHint">默认按 7 天含当日、遇 15/30 截断带出，确认台可改。</p>
+                <div class="form-row" style="margin-top:10px"><span>规则配置</span>
+                  <a class="link" href="私卡报价-AI报价规则配置-优化版-MVP.html" target="_blank">713 价表 / 有效期规则</a>
+                </div>
+              </div>
+            </div>
+            <div class="modal-ft">
+              <button type="button" class="btn" id="btnRecalcAi" style="margin-right:auto">重算</button>
+              <button type="button" class="btn" id="btnConfirmCancel">取消</button>
+              <button type="button" class="btn btn-primary" id="btnConfirmOk">确认价格</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 试算结果日志弹窗（仅报价员） -->
+        <div class="mask" id="calcLogMask" role="dialog" aria-modal="true" aria-labelledby="calcLogTitle">
+          <div class="modal modal-bind" style="width:min(720px,96vw)">
+            <div class="modal-hd">
+              <h2 id="calcLogTitle">试算结果日志</h2>
+              <span class="mark-legend" style="margin-right:auto"><span class="tag-new">NEW</span> 仅报价员可见</span>
+              <button type="button" class="x" id="calcLogClose">×</button>
+            </div>
+            <div class="modal-bd modal-bd-log">
+              <p class="calc-log-hint">后台 AI 试算明细：测距、海外仓地址、目的地、匹配规则与算价结果。询价页不展示上述内容。</p>
+              <div class="calc-log-list" id="calcLogList"></div>
+            </div>
+            <div class="modal-ft">
+              <button type="button" class="btn btn-primary" id="calcLogOk">关闭</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 绑定运单弹窗：散货多选 + 尾端派送费自动挂接 -->
+        <div class="mask" id="bindMask" role="dialog" aria-modal="true">
+          <div class="modal modal-bind">
+            <div class="modal-hd">
+              <h2 id="bindTitle">绑定运单</h2>
+              <span class="mark-legend" style="margin-right:auto"><span class="tag-new">NEW</span> 新增　<span class="tag-chg">改</span> 相对原绑单改动</span>
+              <button type="button" class="x" id="bindClose">×</button>
+            </div>
+            <div class="modal-chips" id="bindChips"></div>
+            <div class="modal-bd">
+              <div class="modal-col">
+                <h4>报价摘要</h4>
+                <div class="form-row"><span>询价单号</span><input id="bXj" readonly /></div>
+                <div class="form-row"><span>业务类型</span><input id="bDim" readonly /></div>
+                <div class="form-row lcl-only" id="rowOrigBind" hidden><span>原绑定运单</span><input id="bOrigBind" readonly /></div>
+                <div class="lcl-only" id="rowBChannels" style="margin-top:10px">
+                  <h4 style="margin:0 0 4px;font-size:13px;color:#1d4ed8">询价渠道 <span class="tag-new">NEW</span></h4>
+                  <p class="ch-hint">本票询价勾选的多个销售产品；下方列出各渠道单价（只读）。绑定时从右侧<strong>全部符合条件运单</strong>中<strong>选 1 张</strong>即可，不按渠道分别绑单。</p>
+                  <div class="ch-list ch-list-readonly" id="bChannelList"></div>
+                </div>
+                <div class="lcl-only bind-summary" id="bindSummary" style="margin-top:8px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+                  <p class="ch-detail-hint">本票摘要（只读）</p>
+                  <div class="form-row"><span>目的国/邮编</span><input id="bZip" readonly /></div>
+                  <div class="form-row"><span>交货仓</span><input id="bWh" readonly /></div>
+                  <div class="form-row"><span>有效期至</span><input id="bValid" readonly /></div>
+                  <div class="form-row" style="margin-bottom:0"><span>给业务员单价</span><input id="bUnit" readonly /></div>
+                </div>
+                <div class="form-row lcl-only" id="rowBProductLegacy" hidden><span>销售产品</span><input id="bProductLegacy" readonly /></div>
+                <div class="form-row fcl-only"><span>起运/目的</span><input id="bPort" readonly /></div>
+                <div class="form-row fcl-only"><span>柜型</span><input id="bBox" readonly /></div>
+                <div class="form-row fcl-only"><span>报价模式</span><input id="bMode" readonly /></div>
+                <div class="fee-box">
+                  <h5>尾端派送费 · 绑定时自动挂接 <span class="tag-new">NEW</span></h5>
+                  <div class="form-row" style="grid-template-columns:72px 1fr 64px">
+                    <span>金额</span>
+                    <input id="bLastmile" type="number" min="0" step="1" readonly />
+                    <select id="bLastmileCur" disabled><option>USD</option><option>CNY</option></select>
+                  </div>
+                  <p class="fee-hint">来自核对确认登记（取整、不可改）。整票仅绑 1 张运单。绑成功后报价锁定。</p>
+                </div>
+              </div>
+              <div class="modal-col">
+                <h4 id="wbPickTitle">选择运单（单选 · 整票 1 张）</h4>
+                <div class="bind-match-tip" id="bindMatchTip"></div>
+                <div class="form-row" id="wbSearchRow"><span>运单号</span><input id="bWb" placeholder="搜索后点击选择" autocomplete="off" /></div>
+                <div class="wb-list" id="wbList"></div>
+                <div class="sel-tags" id="selTags"></div>
+                <div class="form-row" style="margin-top:8px">
+                  <span>已选运单</span>
+                  <div class="bind-sel-wrap">
+                    <input id="bCust" readonly placeholder="未选择" />
+                    <button type="button" class="bind-rule-ico" id="btnBindRuleTip" aria-expanded="false" title="匹配规则说明">i</button>
+                  </div>
+                </div>
+                <div class="bind-rule-pop" id="bindRulePop" hidden role="region" aria-label="匹配规则说明"></div>
+                <div class="form-row"><span>通知业务员</span>
+                  <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="bNotify" checked /> 绑定成功后站内通知</label>
+                </div>
+              </div>
+            </div>
+            <div class="modal-ft">
+              <button type="button" class="btn" id="btnUnbind" hidden>解除绑定</button>
+              <button type="button" class="btn" id="btnBindCancel">取消</button>
+              <button type="button" class="btn btn-primary" id="btnBindOk">确认绑定</button>
+            </div>
+          </div>
+        </div>
+        <div class="toast" id="toast"></div>
+
+        </div>
+    </div>
+  </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var currentDim = "lcl";
+      var dimTabs = document.querySelectorAll(".dim-tab");
+      var filterPanels = document.querySelectorAll(".filter-panel");
+      var tableLcl = document.getElementById("tableLcl");
+      var tableFcl = document.getElementById("tableFcl");
+      var badgeLcl = document.getElementById("badgeLcl");
+      var badgeFcl = document.getElementById("badgeFcl");
+      var bindMask = document.getElementById("bindMask");
+      var calcLogMask = document.getElementById("calcLogMask");
+      var confirmMask = document.getElementById("confirmMask");
+      var activeRow = null;
+      var selectedWbs = [];
+      var confirmRow = null;
+      var confirmMode = "confirm";
+      var confirmChannels = [];
+      var confirmPick = 0;
+      var currentStatus = "all";
+      var TODAY = "2026-08-13";
+      var LCL_VALID_DAYS = 7;
+      var VALID_MIN = 1;
+      var VALID_MAX = 30;
+
+      var WAYBILLS = {
+        lcl: [
+          { no: "ICBU26052201", cust: "深圳XX贸易", zip: "92374", wh: "福永仓", country: "US", ok: true },
+          { no: "ICBU26080188", cust: "广州YY电商", zip: "92374", wh: "福永仓", country: "US", ok: true },
+          { no: "ICBU26080201", cust: "深圳XX贸易", zip: "92374", wh: "福永仓", country: "US", ok: true },
+          { no: "ICBU26079901", cust: "东莞ZZ供应链", zip: "61604", wh: "义乌总仓", country: "US", ok: false, reason: "邮编不一致" },
+          { no: "ICBU26070012", cust: "上海AA进口", zip: "92374", wh: "福永仓", country: "CA", ok: false, reason: "目的国不一致" }
+        ],
+        fcl: [
+          { no: "RC266501", cust: "上海AA进口", pol: "上海", pod: "纽约", box: "20GP", ok: true },
+          { no: "RC266888", cust: "深圳XX贸易", pol: "盐田", pod: "洛杉矶", box: "40HQ", ok: true },
+          { no: "RC266901", cust: "广州YY电商", pol: "盐田", pod: "长滩", box: "40HQ", ok: false, reason: "目的港不一致" },
+          { no: "RC267010", cust: "东莞ZZ供应链", pol: "宁波", pod: "洛杉矶", box: "40GP", ok: false, reason: "柜型不一致" }
+        ]
+      };
+
+      function $(id) { return document.getElementById(id); }
+      function toast(msg) {
+        var el = $("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function () { el.classList.remove("show"); }, 2400);
+      }
+
+      function parseCnt(text) {
+        var m = String(text || "").match(/\((\d+)\)/);
+        return m ? parseInt(m[1], 10) : 0;
+      }
+      function statusCnt(statusKey, dim) {
+        var tab = document.querySelector('.status-tab[data-status="' + statusKey + '"] .cnt');
+        return tab ? parseCnt(tab.getAttribute("data-" + dim)) : 0;
+      }
+      function renderDimBadge(el, n) {
+        if (!el) return;
+        el.textContent = String(n);
+        el.setAttribute("data-zero", n > 0 ? "0" : "1");
+      }
+      function updateDimBadges() {
+        renderDimBadge(badgeLcl, statusCnt("pending", "lcl") + statusCnt("quoting", "lcl") + statusCnt("aiwait", "lcl"));
+        renderDimBadge(badgeFcl, statusCnt("pending", "fcl") + statusCnt("quoting", "fcl") + statusCnt("aiwait", "fcl"));
+      }
+
+      function isBindWaitRow(row) {
+        if (row.getAttribute("data-status") !== "quoted") return false;
+        if ((row.getAttribute("data-bind") || "").trim()) return false;
+        var left = daysLeft(row.getAttribute("data-valid"));
+        if (left == null || left < 0) return false;
+        if (row.getAttribute("data-dim") === "lcl") {
+          var lm = row.getAttribute("data-lastmile");
+          if (lm === "" || lm == null) return false;
+        }
+        return true;
+      }
+      function updateBindWaitCounts() {
+        ["lcl", "fcl"].forEach(function (dim) {
+          var panel = dim === "lcl" ? tableLcl : tableFcl;
+          var n = 0;
+          panel.querySelectorAll("tbody .quote-row").forEach(function (row) {
+            if (row.getAttribute("data-dim") === dim && isBindWaitRow(row)) n += 1;
+          });
+          var tab = document.querySelector('.status-tab[data-status="bindwait"] .cnt');
+          if (tab) {
+            tab.setAttribute("data-" + dim, "(" + n + ")");
+            if (currentDim === dim) tab.textContent = "(" + n + ")";
+          }
+        });
+      }
+      function applyStatusFilter() {
+        var panel = currentDim === "lcl" ? tableLcl : tableFcl;
+        panel.querySelectorAll("tbody .quote-row").forEach(function (row) {
+          var st = row.getAttribute("data-status");
+          var show = currentStatus === "all"
+            || (currentStatus === "bindwait" ? isBindWaitRow(row) : st === currentStatus);
+          row.style.display = show ? "" : "none";
+        });
+      }
+
+      function syncToolbar() {
+        var panel = currentDim === "lcl" ? tableLcl : tableFcl;
+        var checked = panel.querySelectorAll(".row-ck:checked");
+        var btnBind = $("btnBindWaybill");
+        var btnAi = $("btnConfirmAi");
+        btnBind.disabled = true;
+        btnAi.disabled = true;
+        btnBind.title = "请先勾选一条「已完结」单据";
+        btnAi.title = currentDim === "lcl" ? "请勾选一条散货询价单" : "整柜无 AI 复核，请手报价";
+        btnAi.innerHTML = '核对确认 <span class="tag-new">NEW</span>';
+        if (checked.length !== 1) return;
+        var row = checked[0].closest(".quote-row");
+        if (!row) return;
+        var st = row.getAttribute("data-status");
+        var left = daysLeft(row.getAttribute("data-valid"));
+        if (currentDim === "lcl") {
+          if (st === "aiwait") {
+            btnAi.disabled = false;
+            btnAi.title = "打开报价员详情核对确认";
+            btnAi.innerHTML = '核对确认 <span class="tag-new">NEW</span>';
+          } else if (st === "quoted" && !isBoundRow(row)) {
+            btnAi.disabled = false;
+            btnAi.title = "打开报价员详情核对确认";
+            btnAi.innerHTML = '核对确认 <span class="tag-new">NEW</span>';
+          }
+        }
+        if (st === "quoted") {
+          var rebindBlock = isBoundRow(row) ? rebindBlockInfo(row) : null;
+          if (rebindBlock) {
+            btnBind.disabled = true;
+            btnBind.title = rebindBlock.toast;
+            return;
+          }
+          var lm = parseFloat(row.getAttribute("data-lastmile") || "");
+          var needLm = currentDim === "lcl";
+          if (left != null && left < 0) {
+            btnBind.disabled = true;
+            btnBind.title = "已过期，须重算后再绑";
+          } else if (left == null) {
+            btnBind.disabled = true;
+            btnBind.title = "报价无有效期，不可绑定";
+          } else if (needLm && !(lm >= 0) && row.getAttribute("data-lastmile") !== "0") {
+            btnBind.disabled = true;
+            btnBind.title = "请先核对确认并登记尾端派送费";
+          } else {
+            btnBind.disabled = false;
+            btnBind.title = (row.getAttribute("data-bind") ? "改绑运单" : "绑定运单（单选）")
+              + (listMatched(row).length ? " · 自动带出符合的 " + listMatched(row).length + " 票" : "");
+            btnBind.innerHTML = (row.getAttribute("data-bind") ? "改绑运单" : "绑定运单") + ' <span class="tag-new">NEW</span>';
+          }
+        }
+      }
+
+      function setDim(dim) {
+        if (dim !== "lcl" && dim !== "fcl") dim = "lcl";
+        currentDim = dim;
+        dimTabs.forEach(function (t) {
+          t.classList.toggle("active", t.getAttribute("data-dim") === dim);
+        });
+        filterPanels.forEach(function (p) {
+          p.classList.toggle("active", p.getAttribute("data-dim") === dim);
+        });
+        tableLcl.classList.toggle("active", dim === "lcl");
+        tableFcl.classList.toggle("active", dim === "fcl");
+        document.querySelectorAll(".status-tab .cnt").forEach(function (el) {
+          el.textContent = el.getAttribute("data-" + dim) || el.textContent;
+        });
+        var aiTab = document.querySelector('.status-tab[data-status="aiwait"]');
+        if (aiTab) aiTab.style.display = dim === "lcl" ? "" : "none";
+        $("btnConfirmAi").style.display = dim === "lcl" ? "" : "none";
+        if (dim === "fcl" && currentStatus === "aiwait") {
+          currentStatus = "all";
+          document.querySelectorAll(".status-tab").forEach(function (t) {
+            t.classList.toggle("active", t.getAttribute("data-status") === "all");
+          });
+        }
+        updateDimBadges();
+        updateBindWaitCounts();
+        applyStatusFilter();
+        syncToolbar();
+      }
+
+      dimTabs.forEach(function (tab) {
+        tab.addEventListener("click", function () { setDim(tab.getAttribute("data-dim")); });
+      });
+      document.querySelectorAll(".status-tab").forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          currentStatus = tab.getAttribute("data-status") || "all";
+          document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
+          tab.classList.add("active");
+          applyStatusFilter();
+        });
+      });
+      document.querySelectorAll(".row-ck").forEach(function (ck) {
+        ck.addEventListener("change", syncToolbar);
+      });
+
+      function ymd(d) {
+        var m = d.getMonth() + 1, day = d.getDate();
+        return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+      }
+      function defaultValidTo(startStr) {
+        var p = (startStr || TODAY).split("-");
+        var d = new Date(+p[0], +p[1] - 1, +p[2]);
+        d.setDate(d.getDate() + LCL_VALID_DAYS - 1);
+        var until = ymd(d);
+        var s = new Date(+p[0], +p[1] - 1, +p[2]);
+        var u = new Date(d.getTime());
+        var cur = new Date(s.getTime());
+        while (cur <= u) {
+          var day = cur.getDate();
+          if (day === 15 || day === 30) return ymd(cur);
+          cur.setDate(cur.getDate() + 1);
+        }
+        return until;
+      }
+      function daysLeft(validStr) {
+        if (!validStr) return null;
+        var end = new Date(validStr + "T23:59:59");
+        var now = new Date(TODAY + "T12:00:00");
+        return Math.ceil((end - now) / 86400000);
+      }
+      function validSpanDays(startStr, untilStr) {
+        var a = new Date(startStr + "T00:00:00");
+        var b = new Date(untilStr + "T00:00:00");
+        return Math.round((b - a) / 86400000) + 1;
+      }
+      function renderValidCell(row) {
+        var cell = row.querySelector(".valid-cell");
+        if (!cell) return;
+        var v = row.getAttribute("data-valid");
+        var left = daysLeft(v);
+        if (!v) {
+          var st0 = row.getAttribute("data-status");
+          cell.innerHTML = st0 === "aiwait"
+            ? '<span class="bind-none">确认时写入</span>'
+            : '<span class="bind-none">—</span>';
+          return;
+        }
+        if (left < 0) cell.innerHTML = '<span class="valid-exp">至 ' + v + " · 已过期</span>";
+        else if (left <= 2) cell.innerHTML = '<span class="valid-warn">至 ' + v + " · 剩" + left + "天</span>";
+        else cell.innerHTML = '<span class="valid-ok">至 ' + v + "</span>";
+      }
+      function isBoundRow(row) {
+        return !!(row.getAttribute("data-bind") || "").trim();
+      }
+      function isCostAuditBlocked(row) {
+        return row.getAttribute("data-cost-audit") === "approved";
+      }
+      function isAccountLocked(row) {
+        return row.getAttribute("data-account-locked") === "1";
+      }
+      function rebindBlockInfo(row) {
+        if (!isBoundRow(row)) return null;
+        if (isAccountLocked(row)) {
+          return {
+            text: "已锁账不可改绑",
+            title: "运单已锁账，不可改绑",
+            toast: "运单已锁账，不可改绑"
+          };
+        }
+        if (isCostAuditBlocked(row)) {
+          return {
+            text: "已审核不可改绑",
+            title: "业务员成本核销状态为已审核，不可改绑",
+            toast: "业务员成本核销状态为已审核，不可改绑"
+          };
+        }
+        return null;
+      }
+      function renderStatusCell(row) {
+        var cell = row.querySelector(".st-cell");
+        if (!cell && row.getAttribute("data-dim") === "fcl") {
+          cell = row.querySelector("td:nth-child(12)");
+        }
+        if (!cell) return;
+        var st = row.getAttribute("data-status");
+        if (st === "pending") cell.innerHTML = '<span class="tag tag-orange">待报价</span>';
+        else if (st === "aiwait") cell.innerHTML = '<span class="tag tag-wait">AI待确认</span>';
+        else if (st === "reject") cell.innerHTML = '<span class="tag tag-gray">已打回</span>';
+        else if (st === "quoted") {
+          cell.innerHTML = isBoundRow(row)
+            ? '<span class="tag tag-green">已完结</span>'
+            : '<span class="tag tag-blue">已报价</span>';
+        } else if (st === "quoting") cell.innerHTML = '<span class="tag tag-blue">报价中</span>';
+        else cell.innerHTML = cell.innerHTML;
+      }
+      function lclQuoteHref(row) {
+        return "ESS散货询价方案详情-MVP.html?xj=" + encodeURIComponent(row.getAttribute("data-xj") || "") + "#view";
+      }
+      function rejectOp() {
+        return '<a class="link" href="#" data-reject="1">打回</a>';
+      }
+      function calcLogOp(row) {
+        return '<a class="link" href="#" data-calc-log="1" title="查看后台测距与算价明细">试算日志</a>';
+      }
+      function lclHasCalcLog(row) {
+        var st = row.getAttribute("data-status");
+        return st === "aiwait" || st === "quoted";
+      }
+      var CALC_LOG_DEMO = [
+        { channel: "中美快运私人卡派(洛杉矶)", wh: "洛杉矶仓", whAddr: "1495 E Locust St, Ontario, CA 91761", whZip: "91761", dist: 800, zone: "外州",
+          rules: ["仓邮编 → 收货邮编 · 测距 800 迈", "800 迈 > 150 → 外州", "商业有卸货台 → 可 53 尺", "万物智联 8 品牌取最优"],
+          result: "尾程 USD 286 → 单价 USD 5/KG" },
+        { channel: "中美快运私人卡派(奥克兰)", wh: "奥克兰仓", whAddr: "1997 Davis St, San Leandro, CA 94577", whZip: "94577", dist: 812, zone: "外州",
+          rules: ["测距 812 迈 · 外州", "奥克兰内州含 3 托", "万物智联最优 Estes"],
+          result: "尾程 USD 390 → 单价 USD 7/KG" },
+        { channel: "美国空派 LAX", wh: "洛杉矶仓", whAddr: "1495 E Locust St, Ontario, CA 91761", whZip: "91761", dist: 800, zone: "外州",
+          rules: ["同洛杉矶仓测距 · 外州", "货量允许 53 尺 · 大车单迈价", "整车价 ÷ 计费重"],
+          result: "尾程 USD 580 → 单价 USD 9/KG" }
+      ];
+      function parseRowChannels(row) {
+        try {
+          var raw = row.getAttribute("data-channels");
+          if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return null;
+      }
+      function buildCalcLogHtmlForRow(row) {
+        var zip = row.getAttribute("data-zip") || "—";
+        var country = row.getAttribute("data-country") || "US";
+        var dest = country + " / 邮编 " + zip;
+        var channels = parseRowChannels(row);
+        var logs = CALC_LOG_DEMO.slice();
+        if (channels && channels.length) logs = logs.slice(0, channels.length);
+        return logs.map(function (log, i) {
+          var ch = channels && channels[i];
+          var channel = ch ? ch.name : log.channel;
+          var wh = ch ? (ch.wh || log.wh) : log.wh;
+          var result = ch && ch.ai != null
+            ? ("尾程按规则测算 → 单价 USD " + Math.round(ch.ai) + "/KG")
+            : log.result;
+          return '<article class="calc-log-card">' +
+            '<div class="hd"><span>' + channel + '</span><span class="zone">' + log.zone + " · " + log.dist + " 迈</span></div>" +
+            '<div class="bd">' +
+            '<div class="row"><span class="k">海外仓</span><span>' + wh + " · " + log.whZip + "</span></div>" +
+            '<div class="row"><span class="k">仓地址</span><span>' + log.whAddr + "</span></div>" +
+            '<div class="row"><span class="k">目的地</span><span>' + dest + "</span></div>" +
+            '<div class="row"><span class="k">配送距离</span><span><b>' + log.dist + "</b> 迈（后台测算）</span></div>" +
+            '<div class="rules"><b>匹配规则</b><ol>' + log.rules.map(function (r) { return "<li>" + r + "</li>"; }).join("") + "</ol></div>" +
+            '<div class="result">算价结果：' + result + "</div>" +
+            "</div></article>";
+        }).join("");
+      }
+      function openCalcLog(row) {
+        if (!row) return;
+        $("calcLogTitle").textContent = "试算结果日志 · " + (row.getAttribute("data-xj") || "");
+        $("calcLogList").innerHTML = buildCalcLogHtmlForRow(row);
+        calcLogMask.classList.add("show");
+      }
+      function closeCalcLog() {
+        calcLogMask.classList.remove("show");
+      }
+      function confirmOp(row) {
+        return '<a class="link" href="' + confirmDetailHref(row, "view") + '">核对确认</a>';
+      }
+      function bindOpLink(row) {
+        var bound = row.getAttribute("data-bind");
+        var n = listMatched(row).length;
+        var label = bound ? "改绑运单" : "绑定运单";
+        var mode = n ? "match" : "1";
+        var title = n ? "打开绑定并自动带出符合条件的运单" : "打开绑定运单";
+        return '<a class="link bind-act" href="#" data-bind-open="' + mode + '" title="' + title + '">' + label + "</a>";
+      }
+      function renderLclOps(row) {
+        var ops = row.querySelector(".ops");
+        if (!ops || row.getAttribute("data-dim") !== "lcl") return;
+        var st = row.getAttribute("data-status");
+        var left = daysLeft(row.getAttribute("data-valid"));
+        if (st === "pending") {
+          ops.innerHTML =
+            '<a class="link" href="' + lclQuoteHref(row) + '">报价</a>' +
+            rejectOp();
+          return;
+        }
+        if (st === "aiwait") {
+          ops.innerHTML = confirmOp(row) + calcLogOp(row);
+          return;
+        }
+        if (st !== "quoted") return;
+        if (isBoundRow(row)) {
+          var block = rebindBlockInfo(row);
+          var logLink = lclHasCalcLog(row) ? calcLogOp(row) : "";
+          if (block) {
+            ops.innerHTML = '<span class="muted-link" title="' + block.title + '">' + block.text + "</span>" + logLink;
+          } else {
+            ops.innerHTML = bindOpLink(row) + logLink;
+          }
+          return;
+        }
+        if (left != null && left < 0) {
+          ops.innerHTML =
+            confirmOp(row) +
+            calcLogOp(row) +
+            '<a class="link muted-link" href="#" title="已过期，须重算后再绑">绑定运单</a>';
+          return;
+        }
+        ops.innerHTML = bindOpLink(row) + confirmOp(row) + calcLogOp(row);
+      }
+      function renderFclOps(row) {
+        var ops = row.querySelector(".ops");
+        if (!ops || row.getAttribute("data-dim") !== "fcl") return;
+        var st = row.getAttribute("data-status");
+        var editHref = row.getAttribute("data-mode") === "一口价"
+          ? "ESS整柜报价编辑-一口价-MVP.html"
+          : "ESS整柜报价编辑-MVP.html";
+        if (st === "pending") {
+          ops.innerHTML =
+            '<a class="link" href="' + editHref + '">报价</a>' +
+            rejectOp();
+          return;
+        }
+        if (st !== "quoted") return;
+        if (isBoundRow(row)) {
+          var blockF = rebindBlockInfo(row);
+          if (blockF) {
+            ops.innerHTML = '<span class="muted-link" title="' + blockF.title + '">' + blockF.text + "</span>";
+          } else {
+            ops.innerHTML = bindOpLink(row);
+          }
+          return;
+        }
+        ops.innerHTML = bindOpLink(row) + confirmOp(row);
+      }
+      function syncBindOpLink(row) {
+        var act = row.querySelector(".bind-act");
+        if (!act) return;
+        var bound = row.getAttribute("data-bind");
+        var n = listMatched(row).length;
+        var label = bound ? "改绑运单" : "绑定运单";
+        act.textContent = label;
+        act.setAttribute("data-bind-open", n ? "match" : "1");
+        act.title = n ? "打开绑定并自动带出符合条件的运单" : "打开绑定运单";
+      }
+      function renderRowOps(row) {
+        renderStatusCell(row);
+        renderLclOps(row);
+        renderFclOps(row);
+        if (row.getAttribute("data-dim") === "fcl" && row.getAttribute("data-status") === "quoted") {
+          row.querySelectorAll(".match-hint").forEach(function (el) { el.remove(); });
+          syncBindOpLink(row);
+        }
+      }
+      function updateValidHint() {
+        var from = $("cValidFrom") && $("cValidFrom").value;
+        var until = $("cValid").value;
+        if (!until) { $("cValidHint").textContent = "请选择有效期至"; return; }
+        if (from && until < from) { $("cValidHint").textContent = "有效期至不能早于有效期从"; return; }
+        var n = validSpanDays(from || TODAY, until);
+        var left = daysLeft(until);
+        var msg = "默认按 7 天含当日、遇 15/30 截断带出，确认台可改。从 " + (from || TODAY) + " 至 " + until + " 23:59（约 " + n + " 天）。";
+        if (left != null && left < 0) msg += " 已过期，须重算。";
+        else if (left != null) msg += " 相对今天剩余 " + left + " 天。";
+        $("cValidHint").textContent = msg;
+      }
+      function parseMoney(s) {
+        var n = parseFloat(String(s || "").replace(/,/g, "").replace(/[^0-9.]/g, ""));
+        return isNaN(n) ? 0 : n;
+      }
+      function roundUsd(s) {
+        return Math.round(parseMoney(s));
+      }
+      function currentLastmile() {
+        var manual = ($("cManualAmt").value || "").trim();
+        if (manual) return roundUsd(manual);
+        return roundUsd($("cAiAmt").value);
+      }
+      function syncUnitPrice() {
+        var el = $("cUnit");
+        var hint = $("cUnitHint");
+        var hasAi = $("cAiAmt") && $("cAiAmt").value && $("cAiAmt").value !== "—";
+        var hasManual = !!($("cManualAmt") && ($("cManualAmt").value || "").trim());
+        var n = currentLastmile();
+        if (el) el.textContent = (hasAi || hasManual) ? ("USD " + n + " / KG") : "—";
+        if (hint) hint.textContent = "此单价返回给业务员（个位 USD/KG）。其余销售产品业务员不可见。尾端派送费另登记。";
+      }
+      function pushLastmileToOverseas(xj, lastmile, unit, reason) {
+        try {
+          var key = "ess-quote-lastmile";
+          var all = JSON.parse(localStorage.getItem(key) || "{}");
+          all[xj] = { lastmile: Math.round(Number(lastmile) || 0), unit: unit || String(Math.round(Number(lastmile) || 0)), reason: reason || "", at: Date.now() };
+          localStorage.setItem(key, JSON.stringify(all));
+        } catch (err) {}
+      }
+      function syncPriceReason() {
+        var manual = ($("cManualAmt").value || "").trim();
+        var show = !!manual;
+        $("cPriceDiff").hidden = !show;
+        $("rowPriceReason").hidden = !show;
+        syncUnitPrice();
+      }
+
+
+      var bindOnlyMatch = false;
+      var bindChannels = [];
+      var bindValidate = { pass: false, text: "" };
+
+      function primaryBindNo(raw) {
+        if (Array.isArray(raw)) raw = raw.join(",");
+        return String(raw || "").split(/[,，、\s]+/).map(function (s) { return s.trim(); }).filter(Boolean)[0] || "";
+      }
+      function rowBindNo(row) {
+        if (!row) return "";
+        var no = primaryBindNo(row.getAttribute("data-bind"));
+        if (no) return no;
+        try {
+          var xj = row.getAttribute("data-xj");
+          var all = JSON.parse(localStorage.getItem("ess-lcl-quote-detail") || "{}");
+          var saved = all[xj];
+          if (saved && saved.boundWbs && saved.boundWbs.length) return primaryBindNo(saved.boundWbs);
+        } catch (e) {}
+        return "";
+      }
+      function normalizeRowBind(row) {
+        if (!row) return;
+        var no = rowBindNo(row);
+        if (no) row.setAttribute("data-bind", no);
+        else row.removeAttribute("data-bind");
+        var cell = row.querySelector(".bind-cell");
+        if (cell) {
+          cell.innerHTML = no
+            ? '<span class="bind-ok">' + no + "</span>"
+            : '<span class="bind-none">未绑定</span>';
+        }
+      }
+      function migrateStorageBinds(all) {
+        var changed = false;
+        Object.keys(all || {}).forEach(function (xj) {
+          var s = all[xj];
+          if (!s || !s.boundWbs || !s.boundWbs.length) return;
+          var one = primaryBindNo(s.boundWbs);
+          if (s.boundWbs.length > 1 || s.boundWbs[0] !== one) {
+            s.boundWbs = one ? [one] : [];
+            changed = true;
+          }
+        });
+        return changed;
+      }
+      function syncBindToStore(row, nos) {
+        try {
+          var xj = row && row.getAttribute("data-xj");
+          if (!xj) return;
+          var key = "ess-lcl-quote-detail";
+          var all = JSON.parse(localStorage.getItem(key) || "{}");
+          if (!all[xj]) return;
+          all[xj].boundWbs = nos.length ? [nos[0]] : [];
+          all[xj].locked = nos.length > 0;
+          localStorage.setItem(key, JSON.stringify(all));
+        } catch (e) {}
+      }
+      function workingBindList() {
+        return selectedWbs.slice(0, 1);
+      }
+      function initBindChannels(row) {
+        bindChannels = [];
+        selectedWbs = [];
+        if (!row || row.getAttribute("data-dim") !== "lcl") return;
+        bindChannels = parseChannels(row);
+        var pool = WAYBILLS.lcl || [];
+        function findWb(no) { return pool.find(function (w) { return w.no === no; }); }
+        var firstNo = rowBindNo(row);
+        if (firstNo) {
+          var w = findWb(firstNo);
+          if (w) selectedWbs = [w];
+        }
+      }
+      function setSingleWb(wb) {
+        selectedWbs = wb ? [wb] : [];
+      }
+      function syncBindSummary() {
+        if (!activeRow) return;
+        var row = activeRow;
+        var cheap = bindChannels.find(function (c) { return c.cheap; }) || bindChannels[0];
+        if ($("bZip")) {
+          $("bZip").value = (row.getAttribute("data-country") || "") + " / " + (row.getAttribute("data-zip") || "");
+        }
+        if ($("bWh")) $("bWh").value = row.getAttribute("data-wh") || "";
+        if ($("bValid")) $("bValid").value = row.getAttribute("data-valid") || "—";
+        if ($("bUnit")) {
+          $("bUnit").value = cheap && cheap.ai != null ? ("USD " + roundUsd(cheap.ai) + " / KG（最优渠道）") :
+            (row.getAttribute("data-amt") ? row.getAttribute("data-amt") + " / KG" : "—");
+        }
+        if ($("wbPickTitle")) {
+          $("wbPickTitle").textContent = bindChannels.length
+            ? ("选择运单（单选 · 整票 1 张 · " + bindChannels.length + " 个渠道）")
+            : "选择运单（单选 · 整票 1 张）";
+        }
+      }
+      function renderBindChannels() {
+        var box = $("bChannelList");
+        if (!box) return;
+        if (!bindChannels.length) {
+          box.innerHTML = "";
+          syncBindSummary();
+          return;
+        }
+        box.innerHTML = bindChannels.map(function (ch, i) {
+          return '<div class="ch-item-readonly">' +
+            '<div><div class="nm">' + (i + 1) + ". " + ch.name +
+            (ch.cheap ? '<span class="cheap">本票最优</span>' : "") +
+            '</div><div class="sub">' + (ch.wh || "—") + (ch.zone ? " · " + ch.zone : "") + "</div></div>" +
+            '<div class="fee"><span class="fee-lab">单价</span>$' + roundUsd(ch.ai) + "/KG</div></div>";
+        }).join("");
+        syncBindSummary();
+      }
+      function renderBindChips(row) {
+        if (!row || !$("bindChips")) return;
+        var left = daysLeft(row.getAttribute("data-valid"));
+        var chips = [];
+        if (left != null && left >= 0) chips.push('<span class="chip green">有效期剩余 ' + left + " 天</span>");
+        else if (left != null) chips.push('<span class="chip red">已过期</span>');
+        chips.push('<span class="chip orange">尾端派送费将自动挂接到运单</span>');
+        if (bindChannels.length) {
+          chips.push('<span class="chip purple">询价 ' + bindChannels.length + " 个渠道</span>");
+        }
+        if (selectedWbs.length) chips.push('<span class="chip blue">已选运单 ' + selectedWbs[0].no + "</span>");
+        var hitN = listMatched(row).length;
+        if (hitN) chips.push('<span class="chip green">可选运单 ' + hitN + " 票</span>");
+        $("bindChips").innerHTML = chips.join("");
+      }
+      function saveBindMap(row) {
+        if (row) row.removeAttribute("data-bind-map");
+      }
+
+      function wbMatches(row, wb) {
+        if (!row || !wb) return false;
+        if (row.getAttribute("data-dim") === "lcl") {
+          return wb.country === row.getAttribute("data-country")
+            && wb.zip === row.getAttribute("data-zip")
+            && wb.wh === row.getAttribute("data-wh");
+        }
+        return wb.pol === row.getAttribute("data-pol")
+          && wb.pod === row.getAttribute("data-pod")
+          && wb.box === row.getAttribute("data-box");
+      }
+      function matchRuleText(dim) {
+        return dim === "lcl" ? "目的国 + 邮编 + 交货仓" : "起运港 + 目的港 + 柜型";
+      }
+      function listMatched(row) {
+        if (!row) return [];
+        var dim = row.getAttribute("data-dim");
+        return (WAYBILLS[dim] || []).filter(function (w) { return wbMatches(row, w); });
+      }
+      function renderMatchTip(row) {
+        var tip = $("bindMatchTip");
+        if (!tip || !row) return;
+        var dim = row.getAttribute("data-dim");
+        var hits = listMatched(row);
+        var assignedNos = workingBindList().map(function (w) { return w.no; });
+        var unbound = hits.filter(function (w) { return assignedNos.indexOf(w.no) < 0; });
+        if (!hits.length) {
+          tip.innerHTML = "暂无符合条件的运单（校验：" + matchRuleText(dim) + "）。<span class='tag-new'>NEW</span>";
+          return;
+        }
+        var extra = unbound.length
+          ? "请从中<strong>选 1 张</strong>绑定本票（" + (bindChannels.length ? bindChannels.length + " 个渠道共用" : "整票单绑") + "）。"
+          : "已选运单。";
+        var btnLab = "带出首条可选运单";
+        tip.innerHTML =
+          "发现 <b>" + hits.length + "</b> 票运单符合条件（" + matchRuleText(dim) + "）<span class='tag-new'>NEW</span>。" + extra +
+          '<div class="acts">' +
+          '<button type="button" class="btn btn-primary" id="btnFillMatch">' + btnLab + "</button>" +
+          "</div>";
+      }
+      function fillMatchedWbs() {
+        if (!activeRow) return;
+        var hits = listMatched(activeRow);
+        if (!hits.length) {
+          toast("没有符合条件的运单可带出");
+          return;
+        }
+        bindOnlyMatch = true;
+        var assignedNos = selectedWbs.map(function (w) { return w.no; });
+        var hit = hits.find(function (w) { return assignedNos.indexOf(w.no) < 0; }) || hits[0];
+        if (activeRow.getAttribute("data-dim") === "fcl") {
+          selectedWbs = hits.slice(0, 1);
+        } else if (hit) {
+          setSingleWb(hit);
+        } else {
+          setSingleWb(null);
+        }
+        if (bindChannels.length) {
+          renderBindChannels();
+          renderBindChips(activeRow);
+        }
+        $("bWb").value = "";
+        renderMatchTip(activeRow);
+        renderWbList(activeRow, "");
+        toast(hit ? ("已带出 " + hit.no) : "没有符合条件的运单可带出");
+      }
+
+      function validateOne(row, wb) {
+        var dim = row.getAttribute("data-dim");
+        var lines = [];
+        var pass = true;
+        if (dim === "lcl") {
+          if (wb.country === row.getAttribute("data-country")) lines.push("√ " + wb.no + " 目的国");
+          else { lines.push("× " + wb.no + " 目的国不一致"); pass = false; }
+          if (wb.zip === row.getAttribute("data-zip")) lines.push("√ " + wb.no + " 邮编");
+          else { lines.push("× " + wb.no + " 邮编不一致"); pass = false; }
+          if (wb.wh === row.getAttribute("data-wh")) lines.push("√ " + wb.no + " 交货仓");
+          else { lines.push("× " + wb.no + " 交货仓不一致"); pass = false; }
+        } else {
+          if (wb.pol === row.getAttribute("data-pol")) lines.push("√ 起运港");
+          else { lines.push("× 起运港不一致"); pass = false; }
+          if (wb.pod === row.getAttribute("data-pod")) lines.push("√ 目的港");
+          else { lines.push("× 目的港不一致"); pass = false; }
+          if (wb.box === row.getAttribute("data-box")) lines.push("√ 柜型");
+          else { lines.push("× 柜型不一致"); pass = false; }
+        }
+        return { pass: pass, lines: lines };
+      }
+
+      function validateAll(row, list) {
+        var left = daysLeft(row.getAttribute("data-valid"));
+        var lines = [];
+        var pass = true;
+        if (left == null) { lines.push("× 报价无有效期，不可绑定"); pass = false; }
+        else if (left < 0) { lines.push("× 报价已过期"); pass = false; }
+        else lines.push("√ 有效期剩余 " + left + " 天");
+
+        var lmRaw = ($("bLastmile").value || "").trim();
+        var lm = roundUsd(lmRaw);
+        if (lmRaw === "" || !(lm >= 0)) {
+          lines.push("× 请登记尾端派送费（绑定时自动挂接到运单）");
+          pass = false;
+        } else {
+          $("bLastmile").value = String(lm);
+          lines.push("√ 尾端派送费 " + $("bLastmileCur").value + " " + lm + " 将挂接到已选运单（取整、不做计算）");
+        }
+
+        if (!list.length) {
+          lines.push("· 请选择 1 张运单");
+          return { pass: false, text: lines.join("\n") };
+        }
+        if (list.length > 1) {
+          lines.push("× 整票仅可绑定 1 张运单");
+          pass = false;
+        }
+        if (bindChannels.length) {
+          lines.push("√ 本票询价 " + bindChannels.length + " 个渠道 · 绑定 1 张运单即可");
+        }
+        list.forEach(function (wb) {
+          var r = validateOne(row, wb);
+          lines = lines.concat(r.lines);
+          if (!r.pass) pass = false;
+        });
+        lines.push(pass
+          ? ("√ 校验通过，可绑定运单 " + list[0].no + " 并挂接尾端派送费")
+          : "× 校验未通过");
+        return { pass: pass, text: lines.join("\n") };
+      }
+
+      function renderSelTags() {
+        var tags = [];
+        selectedWbs.forEach(function (w) {
+          tags.push('<span class="sel-tag">' + w.no +
+            ' <button type="button" data-rm="' + w.no + '" title="移除">×</button></span>');
+        });
+        $("selTags").innerHTML = tags.join("");
+        $("bCust").value = selectedWbs.length ? (selectedWbs[0].cust + " · " + selectedWbs[0].no) : "";
+      }
+
+      function matchRuleIntro(row) {
+        if (!row) return "散货：目的国 + 邮编 + 交货仓";
+        return row.getAttribute("data-dim") === "lcl"
+          ? "散货匹配规则：目的国 + 邮编 + 交货仓须与询价一致。列表仅展示符合条件运单。\n整票一次只能绑定 1 张运单。"
+          : "整柜匹配规则：起运港 + 目的港 + 柜型须一致。列表仅展示符合条件运单。\n整票一次只能绑定 1 张运单。";
+      }
+      function buildBindRulePop(row, v) {
+        return matchRuleIntro(row) + "\n\n【当前状态】\n" + (v && v.text ? v.text : "—");
+      }
+      function closeBindRulePop() {
+        var pop = $("bindRulePop");
+        var btn = $("btnBindRuleTip");
+        if (pop) pop.hidden = true;
+        if (btn) btn.setAttribute("aria-expanded", "false");
+      }
+      function toggleBindRulePop() {
+        var pop = $("bindRulePop");
+        var btn = $("btnBindRuleTip");
+        if (!pop || !activeRow) return;
+        if (!pop.hidden) { closeBindRulePop(); return; }
+        var v = validateAll(activeRow, workingBindList());
+        bindValidate = v;
+        pop.textContent = buildBindRulePop(activeRow, v);
+        pop.hidden = false;
+        if (btn) btn.setAttribute("aria-expanded", "true");
+      }
+      function refreshBindCheck() {
+        if (!activeRow) return;
+        var v = validateAll(activeRow, workingBindList());
+        bindValidate = v;
+        $("btnBindOk").disabled = !v.pass;
+        var pop = $("bindRulePop");
+        if (pop && !pop.hidden) pop.textContent = buildBindRulePop(activeRow, v);
+      }
+
+      function renderWbList(row, keyword) {
+        var dim = row.getAttribute("data-dim");
+        var list = WAYBILLS[dim] || [];
+        var q = (keyword || "").trim().toLowerCase();
+        syncBindSummary();
+        var html = list.filter(function (w) {
+          if (!wbMatches(row, w)) return false;
+          return !q || w.no.toLowerCase().indexOf(q) >= 0 || w.cust.toLowerCase().indexOf(q) >= 0;
+        }).map(function (w) {
+          var sub = dim === "lcl"
+            ? (w.country + " · " + w.zip + " · " + w.wh + " · " + w.cust)
+            : (w.pol + " → " + w.pod + " · " + w.box + " · " + w.cust);
+          var on = selectedWbs.some(function (x) { return x.no === w.no; }) ? " on" : "";
+          return '<div class="wb-item' + on + ' match" data-no="' + w.no + '"><div><b>' + w.no +
+            '</b><span class="hit">符合</span></div><div class="sub">' + sub + "</div></div>";
+        }).join("");
+        $("wbList").innerHTML = html || '<div class="wb-item" style="cursor:default;color:#8c8c8c">无匹配运单</div>';
+        renderSelTags();
+        refreshBindCheck();
+      }
+
+      function toggleWb(no) {
+        if (!activeRow) return;
+        var dim = activeRow.getAttribute("data-dim");
+        var wb = (WAYBILLS[dim] || []).find(function (w) { return w.no === no; });
+        if (!wb) return;
+        if (selectedWbs.some(function (w) { return w.no === no; })) setSingleWb(null);
+        else setSingleWb(wb);
+        renderBindChips(activeRow);
+        renderWbList(activeRow, $("bWb").value);
+      }
+      function removeWb(no) {
+        toggleWb(no);
+      }
+
+      function openBind(row, autoFillMatch) {
+        if (!row || row.getAttribute("data-status") !== "quoted") {
+          toast("仅「已报价 / 已完结」可绑定运单");
+          return;
+        }
+        if (isBoundRow(row)) {
+          var blockOpen = rebindBlockInfo(row);
+          if (blockOpen) {
+            toast(blockOpen.toast);
+            return;
+          }
+        }
+        var left0 = daysLeft(row.getAttribute("data-valid"));
+        if (left0 == null) {
+          toast("报价无有效期，不可绑定");
+          return;
+        }
+        if (left0 < 0) {
+          toast("报价已过期，须重算后再绑（有效期不可改）");
+          return;
+        }
+        if (row.getAttribute("data-dim") === "lcl" && !row.getAttribute("data-lastmile")) {
+          toast("请先核对确认并登记尾端派送费");
+          openConfirm(row, "confirm");
+          return;
+        }
+        activeRow = row;
+        selectedWbs = [];
+        var dim = row.getAttribute("data-dim");
+        var bound = rowBindNo(row);
+        $("bindTitle").textContent = (bound ? "改绑运单" : "绑定运单") + " · " + row.getAttribute("data-xj");
+        $("bXj").value = row.getAttribute("data-xj");
+        var origRow = $("rowOrigBind");
+        if (origRow) {
+          if (bound && dim === "lcl") {
+            origRow.hidden = false;
+            $("bOrigBind").value = bound;
+          } else {
+            origRow.hidden = true;
+            if ($("bOrigBind")) $("bOrigBind").value = "";
+          }
+        }
+        $("bDim").value = dim === "lcl" ? "散货（LCL）· 多渠道询价" : "整柜（FCL）· 单选";
+        if (dim === "lcl") {
+          if ($("bLastmile")) $("bLastmile").value = row.getAttribute("data-lastmile") ? String(roundUsd(row.getAttribute("data-lastmile"))) : "";
+        } else {
+          if ($("bValid")) $("bValid").value = row.getAttribute("data-valid") || "—";
+          $("bPort").value = (row.getAttribute("data-pol") || "") + " → " + (row.getAttribute("data-pod") || "");
+          $("bBox").value = row.getAttribute("data-box") || "";
+          $("bMode").value = row.getAttribute("data-mode") || "";
+        }
+        document.querySelectorAll(".lcl-only").forEach(function (el) { el.style.display = dim === "lcl" ? "" : "none"; });
+        document.querySelectorAll(".fcl-only").forEach(function (el) { el.style.display = dim === "fcl" ? "" : "none"; });
+        $("bWb").value = "";
+        bindOnlyMatch = !!autoFillMatch;
+        $("btnUnbind").hidden = !bound;
+        $("btnBindOk").textContent = "确认绑定";
+        closeBindRulePop();
+        initBindChannels(row);
+        if (autoFillMatch && dim === "fcl") {
+          selectedWbs = listMatched(row).slice(0, 1);
+        } else if (autoFillMatch && !workingBindList().length) {
+          var firstHit = listMatched(row)[0];
+          if (firstHit) setSingleWb(firstHit);
+        }
+        renderBindChannels();
+        renderBindChips(row);
+        renderMatchTip(row);
+        renderWbList(row, "");
+        bindMask.classList.add("show");
+        if (autoFillMatch && workingBindList().length) {
+          toast("已带出运单 " + workingBindList()[0].no);
+        }
+      }
+
+      function closeBind() {
+        bindMask.classList.remove("show");
+        closeBindRulePop();
+        activeRow = null;
+        bindOnlyMatch = false;
+        selectedWbs = [];
+        bindChannels = [];
+      }
+
+      function applyBindToRow(row, nos) {
+        nos = (nos || []).slice(0, 1);
+        var text = nos[0] || "";
+        if (text) row.setAttribute("data-bind", text);
+        else row.removeAttribute("data-bind");
+        if (!nos.length) row.removeAttribute("data-bind-map");
+        else saveBindMap(row);
+        var lm = $("bLastmile").value;
+        var cur = $("bLastmileCur").value;
+        if (lm !== "") {
+          lm = String(roundUsd(lm));
+          $("bLastmile").value = lm;
+          row.setAttribute("data-lastmile", lm);
+          var lmCell = row.querySelector(".lastmile-cell");
+          if (lmCell) lmCell.innerHTML = "<b>" + (cur === "USD" ? "$" : "¥") + lm + "</b>";
+        }
+        var cell = row.querySelector(".bind-cell");
+        if (cell) {
+          if (!nos.length) cell.innerHTML = '<span class="bind-none">未绑定</span>';
+          else cell.innerHTML = '<span class="bind-ok">' + nos[0] + "</span>";
+        }
+        var act = row.querySelector(".bind-act");
+        if (act) syncBindOpLink(row);
+        renderRowOps(row);
+        updateBindWaitCounts();
+        applyStatusFilter();
+        syncToolbar();
+        syncBindToStore(row, nos);
+      }
+
+      function parseChannels(row) {
+        var raw = row.getAttribute("data-channels");
+        if (raw) {
+          try {
+            var arr = JSON.parse(raw);
+            if (arr && arr.length) return arr;
+          } catch (e) {}
+        }
+        return [{
+          name: row.getAttribute("data-product") || "销售产品",
+          wh: row.getAttribute("data-model") || "",
+          zone: row.getAttribute("data-zone") || "",
+          ai: roundUsd(row.getAttribute("data-ai-amt")),
+          cheap: true
+        }];
+      }
+      function saveChannels(row, arr) {
+        row.setAttribute("data-channels", JSON.stringify(arr));
+      }
+      function applyChannelPick(i) {
+        if (!confirmChannels.length) return;
+        if (i < 0 || i >= confirmChannels.length) i = 0;
+        confirmPick = i;
+        var ch = confirmChannels[i];
+        if ($("cProduct")) $("cProduct").value = ch.name || "";
+        $("cZone").value = ((ch.wh || "") + (ch.zone ? " · " + ch.zone : "") + "（旧AI已取消）").replace(/^ · /, "");
+        $("cAiAmt").value = ch.ai != null && ch.ai !== "" ? ("USD " + roundUsd(ch.ai) + " / KG") : "—";
+        $("cManualAmt").value = "";
+        syncPriceReason();
+        syncUnitPrice();
+        var list = $("cChannelList");
+        if (!list) return;
+        list.querySelectorAll(".ch-item").forEach(function (el, idx) {
+          el.classList.toggle("on", idx === i);
+          var ck = el.querySelector("input[type=radio]");
+          if (ck) ck.checked = idx === i;
+        });
+      }
+      function renderChannels() {
+        var box = $("cChannelList");
+        if (!box) return;
+        box.innerHTML = confirmChannels.map(function (ch, i) {
+          return '<label class="ch-item' + (i === confirmPick ? " on" : "") + '">' +
+            '<input type="radio" name="cCh" ' + (i === confirmPick ? "checked" : "") + ' data-ch="' + i + '" />' +
+            '<div><div class="nm">' + ch.name +
+            (ch.cheap ? '<span class="cheap">本票最优</span>' : "") + "</div>" +
+            '<div class="sub">' + (ch.wh || "—") + (ch.zone ? " · " + ch.zone : "") + " · 询价销售产品</div></div>" +
+            '<div class="fee"><span class="fee-lab">单价</span>$' + roundUsd(ch.ai) + "/KG</div></label>";
+        }).join("");
+      }
+
+      function confirmDetailHref(row, mode) {
+        var hash = "view";
+        if (row && isBindWaitRow(row)) hash = "bind";
+        else if (mode === "edit") hash = "edit";
+        var xj = row ? encodeURIComponent(row.getAttribute("data-xj") || "") : "";
+        return "ESS散货询价方案详情-MVP.html" + (xj ? "?xj=" + xj : "") + "#" + hash;
+      }
+      function openConfirm(row, mode) {
+        if (!row) return;
+        if (row.getAttribute("data-dim") !== "lcl") {
+          toast("整柜无 AI 复核，请走手报价");
+          return;
+        }
+        location.href = confirmDetailHref(row, mode);
+      }
+
+      function closeConfirm() {
+        confirmMask.classList.remove("show");
+        confirmRow = null;
+        confirmMode = "confirm";
+        if ($("btnConfirmOk")) $("btnConfirmOk").disabled = false;
+      }
+
+      function recalcAi(row) {
+        if (!row) return;
+        if (row.getAttribute("data-locked") === "1") {
+          toast("已绑运单，报价锁定，不可重算。解绑后才可重算。");
+          return;
+        }
+        var chs = parseChannels(row);
+        chs.forEach(function (ch) {
+          var n = Math.round(roundUsd(ch.ai) * 1.02);
+          ch.ai = Math.min(9, Math.max(1, n));
+        });
+        var cheapI = 0;
+        chs.forEach(function (ch, i) {
+          ch.cheap = false;
+          if (roundUsd(ch.ai) < roundUsd(chs[cheapI].ai)) cheapI = i;
+        });
+        chs[cheapI].cheap = true;
+        saveChannels(row, chs);
+        var next = "USD " + roundUsd(chs[cheapI].ai) + " / KG";
+        row.setAttribute("data-ai-amt", next);
+        row.setAttribute("data-product", chs[cheapI].name);
+        row.setAttribute("data-status", "aiwait");
+        row.setAttribute("data-amt", "");
+        row.setAttribute("data-valid", "");
+        var st = row.querySelector(".st-cell");
+        if (st) st.innerHTML = '<span class="tag tag-wait">AI待确认</span>';
+        var amt = row.querySelector(".ai-amt-cell");
+        if (amt) amt.textContent = next + " · 未回业务员";
+        renderValidCell(row);
+        renderRowOps(row);
+        toast("已重算 AI：" + next + "，状态 AI待确认，尚未返回业务员");
+        applyStatusFilter();
+        syncToolbar();
+      }
+
+      document.addEventListener("click", function (e) {
+        var recalcBtn = e.target.closest("[data-recalc]");
+        if (recalcBtn) {
+          e.preventDefault();
+          recalcAi(recalcBtn.closest(".quote-row"));
+          return;
+        }
+        var openBindBtn = e.target.closest("[data-bind-open]");
+        if (openBindBtn) {
+          e.preventDefault();
+          openBind(openBindBtn.closest(".quote-row"), openBindBtn.getAttribute("data-bind-open") === "match");
+          return;
+        }
+        var calcLogBtn = e.target.closest("[data-calc-log]");
+        if (calcLogBtn) {
+          e.preventDefault();
+          openCalcLog(calcLogBtn.closest(".quote-row"));
+          return;
+        }
+        if (e.target.id === "btnFillMatch" || e.target.closest("#btnFillMatch")) {
+          e.preventDefault();
+          fillMatchedWbs();
+          return;
+        }
+        var openConfirmBtn = e.target.closest("[data-confirm-open]");
+        if (openConfirmBtn) {
+          e.preventDefault();
+          var mode = openConfirmBtn.getAttribute("data-confirm-open") || "confirm";
+          openConfirm(openConfirmBtn.closest(".quote-row"), mode);
+          return;
+        }
+        var rejectBtn = e.target.closest("[data-reject]");
+        if (rejectBtn) {
+          e.preventDefault();
+          toast("已打回（原型演示）");
+          return;
+        }
+        var rm = e.target.closest("[data-rm]");
+        if (rm && activeRow) {
+          e.preventDefault();
+          removeWb(rm.getAttribute("data-rm"));
+        }
+      });
+
+      $("btnBindWaybill").addEventListener("click", function () {
+        var panel = currentDim === "lcl" ? tableLcl : tableFcl;
+        var ck = panel.querySelector(".row-ck:checked");
+        if (!ck) return;
+        var row = ck.closest(".quote-row");
+        openBind(row, listMatched(row).length > 0);
+      });
+      $("btnConfirmAi").addEventListener("click", function () {
+        var panel = tableLcl;
+        var ck = panel.querySelector(".row-ck:checked");
+        if (!ck) return;
+        var row = ck.closest(".quote-row");
+        openConfirm(row, "price");
+      });
+
+      $("wbList").addEventListener("click", function (e) {
+        var item = e.target.closest(".wb-item[data-no]");
+        if (!item) return;
+        toggleWb(item.getAttribute("data-no"));
+      });
+      $("bWb").addEventListener("input", function () {
+        if (!activeRow) return;
+        renderWbList(activeRow, $("bWb").value);
+      });
+      $("bLastmile").addEventListener("input", refreshBindCheck);
+      $("bLastmile").addEventListener("blur", function () {
+        if (this.value === "") return;
+        this.value = String(roundUsd(this.value));
+        refreshBindCheck();
+      });
+      $("cManualAmt").addEventListener("input", syncPriceReason);
+      $("cManualAmt").addEventListener("blur", function () {
+        if (this.value === "") return;
+        this.value = String(roundUsd(this.value));
+        syncPriceReason();
+      });
+      $("cChannelList").addEventListener("change", function (e) {
+        var r = e.target.closest("[data-ch]");
+        if (!r) return;
+        applyChannelPick(+r.getAttribute("data-ch"));
+      });
+      if ($("btnBindRuleTip")) {
+        $("btnBindRuleTip").addEventListener("click", function (e) {
+          e.stopPropagation();
+          toggleBindRulePop();
+        });
+      }
+      document.addEventListener("click", function (e) {
+        if (!$("bindRulePop") || $("bindRulePop").hidden) return;
+        if (e.target.closest("#btnBindRuleTip") || e.target.closest("#bindRulePop")) return;
+        if (e.target.closest("#bindMask")) closeBindRulePop();
+      });
+      $("cValid").addEventListener("change", updateValidHint);
+      $("cValid").addEventListener("input", updateValidHint);
+      if ($("cValidFrom")) {
+        $("cValidFrom").addEventListener("change", updateValidHint);
+        $("cValidFrom").addEventListener("input", updateValidHint);
+      }
+
+      $("btnBindOk").addEventListener("click", function () {
+        if (!activeRow) return;
+        var list = workingBindList();
+        if (!list.length) {
+          toast("请选择 1 张运单");
+          return;
+        }
+        if (list.length > 1) {
+          toast("一次只能绑定 1 张运单");
+          return;
+        }
+        var v = validateAll(activeRow, list);
+        if (!v.pass) { toast("校验未通过"); return; }
+        var nos = list.slice(0, 1).map(function (w) { return w.no; });
+        applyBindToRow(activeRow, nos);
+        var lm = $("bLastmile").value + " " + $("bLastmileCur").value;
+        activeRow.setAttribute("data-locked", "1");
+        var msg = "已绑定运单 " + nos[0] +
+          (bindChannels.length ? "（本票 " + bindChannels.length + " 个渠道共用）" : "") +
+          " 并挂接尾端派送费 " + lm + "。报价已锁定";
+        if ($("bNotify").checked) msg += "；已通知业务员（仅最优 1 条）";
+        toast(msg);
+        closeBind();
+      });
+
+      $("btnUnbind").addEventListener("click", function () {
+        if (!activeRow) return;
+        if (!confirm("确认解除运单绑定？（尾端派送费仍保留在报价单）")) return;
+        setSingleWb(null);
+        applyBindToRow(activeRow, []);
+        activeRow.setAttribute("data-locked", "");
+        toast("已解除绑定（报价锁定解除，改运单仍不自动改价，须报价员重核）");
+        closeBind();
+      });
+
+      $("btnRecalcAi").addEventListener("click", function () {
+        if (!confirmRow) return;
+        var row = confirmRow;
+        recalcAi(row);
+        openConfirm(row, "price");
+      });
+
+      $("btnConfirmOk").addEventListener("click", function () {
+        if (!confirmRow) return;
+        var until = $("cValid").value || defaultValidTo(TODAY);
+        var existing = confirmRow.getAttribute("data-valid");
+        var existingLeft = daysLeft(existing);
+        if (confirmMode === "edit" && existing && existingLeft != null && existingLeft >= 0) {
+          until = existing;
+        } else {
+          until = defaultValidTo(TODAY);
+        }
+        $("cValid").value = until;
+        if (daysLeft(existing) != null && daysLeft(existing) < 0) {
+          toast("已过期，请先点「重算」");
+          return;
+        }
+        var hasAi = $("cAiAmt").value && $("cAiAmt").value !== "—";
+        var hasManual = !!($("cManualAmt").value || "").trim();
+        var unit = currentLastmile();
+        if (!hasAi && !hasManual) {
+          toast("请确认 AI 单价，或填写人工改单价");
+          $("cManualAmt").focus();
+          return;
+        }
+        if (!(unit >= 1) || unit > 9) {
+          toast("单价须为个位 USD/KG（1–9）");
+          $("cManualAmt").focus();
+          return;
+        }
+        var manual = ($("cManualAmt").value || "").trim();
+        if (manual && !($("cPriceReason").value || "").trim()) {
+          toast("改价须选择原因");
+          $("cPriceReason").focus();
+          return;
+        }
+        var amt = "USD " + unit;
+        var picked = confirmChannels[confirmPick];
+        confirmRow.setAttribute("data-status", "quoted");
+        confirmRow.setAttribute("data-valid", until);
+        confirmRow.setAttribute("data-amt", amt);
+        confirmRow.setAttribute("data-src", "new-ai");
+        confirmRow.setAttribute("data-unit", String(unit));
+        if (picked) {
+          confirmRow.setAttribute("data-product", picked.name);
+          confirmRow.setAttribute("data-ai-amt", "USD " + roundUsd(picked.ai));
+          if (picked.wh) confirmRow.setAttribute("data-model", picked.wh + (picked.zone ? " · " + picked.zone : ""));
+        }
+        var stCell = confirmRow.querySelector(".st-cell");
+        if (stCell) stCell.innerHTML = '<span class="tag tag-blue">已报价</span>';
+        var amtCell = confirmRow.querySelector(".ai-amt-cell");
+        if (amtCell) amtCell.textContent = amt + " / KG";
+        var bindCell = confirmRow.querySelector(".bind-cell");
+        if (bindCell && !confirmRow.getAttribute("data-bind")) {
+          bindCell.innerHTML = '<span class="bind-none">未绑定</span>';
+        }
+        renderValidCell(confirmRow);
+        renderRowOps(confirmRow);
+        pushLastmileToOverseas(confirmRow.getAttribute("data-xj"), confirmRow.getAttribute("data-lastmile"), String(unit), $("cPriceReason").value);
+        var msg = (manual ? "已改单价 USD " + unit + " / KG" : "已核对通过，单价 USD " + unit + " / KG")
+          + "（" + ((picked && picked.name) || "已选销售产品") + "）"
+          + " → 已报价，已返回业务员；有效期至 " + until;
+        toast(msg);
+        closeConfirm();
+        updateBindWaitCounts();
+        applyStatusFilter();
+        syncToolbar();
+      });
+
+      $("bindClose").addEventListener("click", closeBind);
+      $("btnBindCancel").addEventListener("click", closeBind);
+      bindMask.addEventListener("click", function (e) { if (e.target === bindMask) closeBind(); });
+      $("confirmClose").addEventListener("click", closeConfirm);
+      $("btnConfirmCancel").addEventListener("click", closeConfirm);
+      confirmMask.addEventListener("click", function (e) { if (e.target === confirmMask) closeConfirm(); });
+      document.addEventListener("keydown", function (e) {
+        if (e.key !== "Escape") return;
+        if (bindMask.classList.contains("show")) closeBind();
+        else if (calcLogMask.classList.contains("show")) closeCalcLog();
+        else if (confirmMask.classList.contains("show")) closeConfirm();
+      });
+      $("calcLogClose").addEventListener("click", closeCalcLog);
+      $("calcLogOk").addEventListener("click", closeCalcLog);
+      calcLogMask.addEventListener("click", function (e) {
+        if (e.target === calcLogMask) closeCalcLog();
+      });
+
+      function hydrateDetailConfirm() {
+        var key = "ess-lcl-quote-detail";
+        var all;
+        try { all = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) { return; }
+        if (migrateStorageBinds(all)) {
+          try { localStorage.setItem(key, JSON.stringify(all)); } catch (e) {}
+        }
+        tableLcl.querySelectorAll(".quote-row").forEach(function (row) {
+          if (row.getAttribute("data-demo-aiwait") === "1") return;
+          var xj = row.getAttribute("data-xj");
+          var saved = all[xj];
+          if (!saved || saved.status !== "quoted") return;
+          var best = (saved.quotes || []).find(function (q) { return q.cheap; }) || (saved.quotes || [])[0];
+          if (!best) return;
+          row.setAttribute("data-status", "quoted");
+          row.setAttribute("data-valid", best.validTo || "");
+          row.setAttribute("data-amt", "USD " + Math.round(best.unit));
+          row.setAttribute("data-unit", String(Math.round(best.unit)));
+          row.setAttribute("data-lastmile", String(Math.round(best.lastmile)));
+          row.setAttribute("data-src", "new-ai");
+          if (best.channel) row.setAttribute("data-product", best.channel);
+          if ((saved.boundWbs || []).length) {
+            var bindNo = primaryBindNo(saved.boundWbs);
+            row.setAttribute("data-bind", bindNo);
+            if (saved.locked) row.setAttribute("data-locked", "1");
+          }
+          var bindCell = row.querySelector(".bind-cell");
+          if (bindCell && (saved.boundWbs || []).length) {
+            bindCell.innerHTML = '<span class="bind-ok">' + primaryBindNo(saved.boundWbs) + "</span>";
+          }
+          var stCell = row.querySelector(".st-cell");
+          renderStatusCell(row);
+          var amtCell = row.querySelector(".ai-amt-cell");
+          if (amtCell) amtCell.textContent = "USD " + Math.round(best.unit) + " / KG";
+          var lmCell = row.querySelector(".lastmile-cell");
+          if (lmCell) lmCell.innerHTML = "<b>$" + Math.round(best.lastmile) + "</b>";
+          renderValidCell(row);
+          renderRowOps(row);
+        });
+      }
+
+      hydrateDetailConfirm();
+      tableLcl.querySelectorAll(".quote-row").forEach(normalizeRowBind);
+      tableFcl.querySelectorAll(".quote-row").forEach(normalizeRowBind);
+      updateBindWaitCounts();
+      updateDimBadges();
+      document.querySelectorAll(".quote-row").forEach(function (r) {
+        renderValidCell(r);
+        renderRowOps(r);
+      });
+      if (location.hash === "#fcl") setDim("fcl");
+      else setDim("lcl");
+    })();
+  </script>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="散货AI询价报价-需求PRD.html">
+    <span class="ess-prd-chip">PRD · 散货 AI 询价报价</span>
+  </div>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <script src="../../二期/ess-prototype-prd.js" defer></script>
+</body>
+</html>

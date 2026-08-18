@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>风控 · 品名库 · 七类合规标记</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #eef1f6; --line: #f0f0f0; --text: #262626; --sub: #8c8c8c;
+      --orange: #fa8c16; --blue: #1890ff; --purple: #722ed1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 12px; color: var(--text); background: var(--bg);
+    }
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .brand { font-weight: 700; }
+    .topbar a { color: rgba(255,255,255,.75); text-decoration: none; font-size: 12px; }
+    .topbar a:hover, .topbar a.on { color: #fff; }
+    .layout { display: flex; min-height: calc(100vh - 40px); }
+    .sider {
+      width: 180px; background: #fff; border-right: 1px solid #e8e8e8; padding: 12px 0;
+    }
+    .sider .g { padding: 8px 16px; color: var(--sub); font-size: 11px; }
+    .sider a {
+      display: block; padding: 8px 16px; color: var(--text); text-decoration: none;
+    }
+    .sider a.on { background: #fff7e6; color: var(--orange); font-weight: 600; border-right: 2px solid var(--orange); }
+    .sider a:hover { background: #fafafa; }
+    .badge {
+      display: inline-block; font-size: 10px; padding: 0 4px; border-radius: 2px;
+      margin-left: 4px; vertical-align: middle;
+    }
+    .badge.new { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .badge.chg { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .main { flex: 1; padding: 16px; overflow: auto; }
+    .page-hd {
+      background: #fff; border: 1px solid #e8e8e8; border-radius: 4px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .page-hd h1 { margin: 0 0 6px; font-size: 18px; }
+    .page-hd p { margin: 0; color: var(--sub); line-height: 1.6; }
+    .panel {
+      background: #fff; border: 1px solid #e8e8e8; border-radius: 4px; margin-bottom: 12px;
+    }
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 10px 12px; padding: 12px 14px; align-items: flex-end;
+    }
+    .fi label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 3px; }
+    .fi input, .fi select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit; min-width: 140px;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer; font: inherit;
+    }
+    .btn.primary { background: var(--orange); border-color: var(--orange); color: #fff; }
+    .btn.new { border-color: #ffa39e; color: #cf1322; background: #fff1f0; }
+    .marks {
+      display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 12px;
+    }
+    .mark-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+      border: 1px solid #d9d9d9; border-radius: 14px; cursor: pointer; background: #fafafa;
+      user-select: none;
+    }
+    .mark-chip.on { border-color: #722ed1; background: #f9f0ff; color: #531dab; font-weight: 600; }
+    .mark-chip input { margin: 0; }
+    .hint {
+      padding: 8px 14px; font-size: 11px; color: #614700; background: #fffbe6;
+      border-top: 1px solid #ffe58f; line-height: 1.55;
+    }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 320px); }
+    table.grid { width: 100%; border-collapse: collapse; min-width: 1100px; font-size: 12px; }
+    table.grid th, table.grid td {
+      border: 1px solid var(--line); padding: 6px 8px; text-align: left; white-space: nowrap;
+    }
+    table.grid th { background: #fafafa; position: sticky; top: 0; z-index: 1; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; margin: 1px 2px 1px 0;
+    }
+    .tag.m0 { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag.mdot { background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; }
+    .tag.mfda { background: #fff0f6; color: #c41d7f; border: 1px solid #ffadd2; }
+    .tag.mepa { background: #f0f5ff; color: #2f54eb; border: 1px solid #adc6ff; }
+    .tag.mgcc { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .tag.mcpc { background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7; }
+    .tag.mad { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .drawer-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; z-index: 80;
+    }
+    .drawer-mask.open { display: block; }
+    .drawer {
+      position: fixed; top: 0; right: 0; width: min(440px, 96vw); height: 100%;
+      background: #fff; z-index: 81; transform: translateX(100%);
+      transition: transform .2s; display: flex; flex-direction: column;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-hd {
+      padding: 12px 16px; border-bottom: 1px solid #e8e8e8;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .drawer-hd h3 { margin: 0; font-size: 15px; }
+    .drawer-bd { padding: 14px 16px; overflow: auto; flex: 1; }
+    .drawer-bd h4 { margin: 12px 0 8px; font-size: 13px; }
+    .drawer-bd .kv { display: grid; grid-template-columns: 90px 1fr; gap: 6px 8px; }
+    .drawer-bd .kv span { color: var(--sub); }
+    .drawer-form label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 2px; }
+    .drawer-form input, .drawer-form select, .drawer-form textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 5px 8px; font: inherit; margin-bottom: 8px;
+    }
+    .drawer-form textarea { min-height: 56px; resize: vertical; }
+    .check-grid { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 8px 0; }
+    .check-grid label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid #e8e8e8; display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #111827; color: #fff; padding: 10px 16px; border-radius: 6px;
+      font-size: 12px; display: none; z-index: 99;
+    }
+    .flow-box {
+      margin: 12px 0 0; padding: 10px 12px; background: #f9f0ff; border: 1px solid #d3adf7;
+      border-radius: 4px; font-size: 12px; line-height: 1.65; color: #531dab;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">头程运营</span>
+    <a href="风控组-导航.html" title="返回风控组导航">← 返回导航</a>
+    <a href="风控组-查货操作-AI识图品名识别-原型.html">查货操作</a>
+    <a class="on" href="#">品名库</a>
+    <a href="风控组-操作查货率报表-MVP.html">查货率报表</a>
+    <div style="flex:1"></div>
+    <span style="opacity:.7">风控 · 品名库 · 七类合规标记</span>
+  </div>
+  <div class="layout">
+    <aside class="sider">
+      <div class="g">风控</div>
+      <a href="风控组-导航.html">本组导航</a>
+      <a href="风控组-查货操作-AI识图品名识别-原型.html">查货操作</a>
+      <a class="on" href="#">品名库 <span class="badge new">NEW</span></a>
+      <a href="风控组-操作查货率报表-MVP.html">操作查货率报表</a>
+      <a href="G2-风控-组流程图.html">组流程图</a>
+    </aside>
+    <div class="main">
+      <div class="page-hd">
+        <h1>品名库 · 七类合规标记 <span class="badge new">NEW</span></h1>
+        <p>
+          维护品名维度的合规属性：<strong>0税率、DOT、FDA、EPA、GCC、CPC、反倾销</strong>。
+          查货打标后可<strong>反向沉淀</strong>至本库，形成闭环；询价/查货时可引用库内标记。
+          客户咨询功能为<strong>二期</strong>，本期不做。
+        </p>
+        <div class="flow-box">
+          数据闭环：查货操作打标 → 确认后沉淀品名库 → 后续同品名自动带出合规标记 → 减少重复研判
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="filters">
+          <div class="fi">
+            <label>品名关键字</label>
+            <input id="qName" placeholder="中文/英文品名" />
+          </div>
+          <div class="fi">
+            <label>HS / 材质</label>
+            <input id="qHs" placeholder="HS 或材质" />
+          </div>
+          <div class="fi">
+            <label>来源</label>
+            <select id="qSrc">
+              <option value="">全部</option>
+              <option>人工维护</option>
+              <option>查货沉淀</option>
+            </select>
+          </div>
+          <button type="button" class="btn primary" id="btnSearch">查询</button>
+          <button type="button" class="btn" id="btnReset">重置</button>
+          <button type="button" class="btn new" id="btnAdd">+ 新增品名</button>
+        </div>
+        <div class="marks" id="markFilters"></div>
+        <div class="hint">
+          筛选可多选合规标记（并集）。正式清单与附加服务/快捷语由张珊珊提供配置后替换演示数据。
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="table-wrap">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>中文品名</th>
+                <th>英文品名</th>
+                <th>HS码</th>
+                <th>材质/用途</th>
+                <th>合规标记</th>
+                <th>来源</th>
+                <th>沉淀次数</th>
+                <th>更新时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-mask" id="mask"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-hd">
+      <h3 id="drawerTitle">编辑品名</h3>
+      <button type="button" class="btn" id="btnClose">关闭</button>
+    </div>
+    <div class="drawer-bd">
+      <div class="kv" id="drawerMeta"></div>
+      <h4>基础信息</h4>
+      <div class="drawer-form">
+        <label>中文品名 *</label>
+        <input id="fCn" />
+        <label>英文品名</label>
+        <input id="fEn" />
+        <label>HS码</label>
+        <input id="fHs" />
+        <label>材质 / 用途</label>
+        <input id="fMat" />
+        <label>备注</label>
+        <textarea id="fRm" placeholder="研判说明、适用客户类型等"></textarea>
+      </div>
+      <h4>七类合规标记 <span class="badge chg">改</span></h4>
+      <div class="check-grid" id="editMarks"></div>
+      <p style="font-size:11px;color:var(--sub);margin:8px 0 0">
+        查货侧打标「CPC / 反倾销」等可一键「沉淀到品名库」；本页维护后供查货/报价引用。
+      </p>
+    </div>
+    <div class="drawer-ft">
+      <button type="button" class="btn" id="btnCancel">取消</button>
+      <button type="button" class="btn primary" id="btnSave">保存</button>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast"></div>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="风控组-查货合规-需求PRD.html" data-prd-anchor="m5">
+    <span class="ess-prd-chip">PRD · 品名库</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+
+  <script>
+(function () {
+  var MARKS = [
+    { id: "0税率", cls: "m0" },
+    { id: "DOT", cls: "mdot" },
+    { id: "FDA", cls: "mfda" },
+    { id: "EPA", cls: "mepa" },
+    { id: "GCC", cls: "mgcc" },
+    { id: "CPC", cls: "mcpc" },
+    { id: "反倾销", cls: "mad" }
+  ];
+
+  var ROWS = [
+    { cn: "塑料包装袋", en: "Plastic packaging bag", hs: "3923.21", mat: "PE / 商品包装", marks: ["0税率"], src: "查货沉淀", hit: 12, at: "2026-08-14 22:10", rm: "" },
+    { cn: "运动卫衣", en: "Sports hoodie", hs: "6110.30", mat: "棉涤 / 穿着", marks: ["CPC"], src: "查货沉淀", hit: 5, at: "2026-08-14 21:40", rm: "童装需 CPC" },
+    { cn: "电源适配器", en: "Power adapter", hs: "8504.40", mat: "电子 / 充电", marks: ["DOT", "EPA"], src: "人工维护", hit: 3, at: "2026-08-12 16:00", rm: "" },
+    { cn: "不锈钢水杯", en: "Stainless steel cup", hs: "7323.93", mat: "不锈钢", marks: ["FDA", "0税率"], src: "查货沉淀", hit: 2, at: "2026-08-11 11:20", rm: "" },
+    { cn: "轮胎", en: "Tire", hs: "4011.10", mat: "橡胶", marks: ["DOT", "反倾销"], src: "人工维护", hit: 8, at: "2026-08-10 09:15", rm: "关注反倾销税则" },
+    { cn: "儿童玩具车", en: "Toy car", hs: "9503.00", mat: "塑胶", marks: ["CPC", "GCC"], src: "查货沉淀", hit: 6, at: "2026-08-09 18:30", rm: "" },
+    { cn: "空气净化器滤芯", en: "Air filter", hs: "8421.39", mat: "滤材", marks: ["EPA"], src: "人工维护", hit: 1, at: "2026-08-08 14:00", rm: "" }
+  ];
+
+  var filterMarks = {};
+  var editIdx = -1;
+
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.style.display = "none"; }, 2200);
+  }
+
+  function markTags(arr) {
+    return (arr || []).map(function (m) {
+      var meta = MARKS.find(function (x) { return x.id === m; });
+      var cls = meta ? meta.cls : "m0";
+      return '<span class="tag ' + cls + '">' + m + '</span>';
+    }).join("") || '<span style="color:#8c8c8c">—</span>';
+  }
+
+  function renderMarkFilters() {
+    document.getElementById("markFilters").innerHTML = MARKS.map(function (m) {
+      var on = !!filterMarks[m.id];
+      return '<label class="mark-chip' + (on ? " on" : "") + '">' +
+        '<input type="checkbox" data-m="' + m.id + '"' + (on ? " checked" : "") + " /> " + m.id +
+        "</label>";
+    }).join("");
+  }
+
+  function filtered() {
+    var q = (document.getElementById("qName").value || "").trim().toLowerCase();
+    var hs = (document.getElementById("qHs").value || "").trim().toLowerCase();
+    var src = document.getElementById("qSrc").value;
+    var need = Object.keys(filterMarks).filter(function (k) { return filterMarks[k]; });
+    return ROWS.filter(function (r) {
+      if (q && (r.cn + r.en).toLowerCase().indexOf(q) < 0) return false;
+      if (hs && (r.hs + r.mat).toLowerCase().indexOf(hs) < 0) return false;
+      if (src && r.src !== src) return false;
+      if (need.length && !need.every(function (m) { return r.marks.indexOf(m) >= 0; })) return false;
+      return true;
+    });
+  }
+
+  function render() {
+    var rows = filtered();
+    document.getElementById("tbody").innerHTML = rows.map(function (r, i) {
+      var idx = ROWS.indexOf(r);
+      return "<tr>" +
+        "<td>" + (i + 1) + "</td>" +
+        "<td><b>" + r.cn + "</b></td>" +
+        "<td>" + (r.en || "—") + "</td>" +
+        "<td>" + (r.hs || "—") + "</td>" +
+        "<td>" + (r.mat || "—") + "</td>" +
+        "<td>" + markTags(r.marks) + "</td>" +
+        "<td>" + r.src + "</td>" +
+        "<td>" + r.hit + "</td>" +
+        "<td>" + r.at + "</td>" +
+        '<td><button type="button" class="btn" data-edit="' + idx + '" style="height:24px;padding:0 8px">编辑</button> ' +
+        '<button type="button" class="btn" data-sink="' + idx + '" style="height:24px;padding:0 8px" title="模拟从查货沉淀+1">沉淀+1</button></td>' +
+        "</tr>";
+    }).join("") || '<tr><td colspan="10" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+  }
+
+  function openDrawer(idx) {
+    editIdx = idx;
+    var r = idx >= 0 ? ROWS[idx] : { cn: "", en: "", hs: "", mat: "", marks: [], src: "人工维护", hit: 0, at: "", rm: "" };
+    document.getElementById("drawerTitle").textContent = idx >= 0 ? "编辑品名 · " + r.cn : "新增品名";
+    document.getElementById("drawerMeta").innerHTML =
+      idx >= 0
+        ? ("<span>来源</span><b>" + r.src + "</b><span>沉淀次数</span><b>" + r.hit + "</b>")
+        : "<span>来源</span><b>人工维护</b><span>沉淀次数</span><b>0</b>";
+    document.getElementById("fCn").value = r.cn || "";
+    document.getElementById("fEn").value = r.en || "";
+    document.getElementById("fHs").value = r.hs || "";
+    document.getElementById("fMat").value = r.mat || "";
+    document.getElementById("fRm").value = r.rm || "";
+    document.getElementById("editMarks").innerHTML = MARKS.map(function (m) {
+      var on = (r.marks || []).indexOf(m.id) >= 0;
+      return '<label><input type="checkbox" class="em" value="' + m.id + '"' + (on ? " checked" : "") + " /> " + m.id + "</label>";
+    }).join("");
+    document.getElementById("mask").classList.add("open");
+    document.getElementById("drawer").classList.add("open");
+  }
+
+  function closeDrawer() {
+    document.getElementById("mask").classList.remove("open");
+    document.getElementById("drawer").classList.remove("open");
+    editIdx = -1;
+  }
+
+  document.getElementById("markFilters").addEventListener("change", function (e) {
+    var c = e.target.closest("input[data-m]");
+    if (!c) return;
+    filterMarks[c.getAttribute("data-m")] = c.checked;
+    renderMarkFilters();
+    render();
+  });
+
+  document.getElementById("btnSearch").onclick = render;
+  document.getElementById("btnReset").onclick = function () {
+    document.getElementById("qName").value = "";
+    document.getElementById("qHs").value = "";
+    document.getElementById("qSrc").value = "";
+    filterMarks = {};
+    renderMarkFilters();
+    render();
+  };
+  document.getElementById("btnAdd").onclick = function () { openDrawer(-1); };
+  document.getElementById("btnClose").onclick = closeDrawer;
+  document.getElementById("btnCancel").onclick = closeDrawer;
+  document.getElementById("mask").onclick = closeDrawer;
+
+  document.getElementById("tbody").addEventListener("click", function (e) {
+    var ed = e.target.closest("[data-edit]");
+    if (ed) { openDrawer(+ed.getAttribute("data-edit")); return; }
+    var sk = e.target.closest("[data-sink]");
+    if (sk) {
+      var i = +sk.getAttribute("data-sink");
+      ROWS[i].hit += 1;
+      ROWS[i].src = "查货沉淀";
+      ROWS[i].at = "2026-08-15 18:40";
+      render();
+      toast("已模拟查货沉淀 +1 · 「" + ROWS[i].cn + "」");
+    }
+  });
+
+  document.getElementById("btnSave").onclick = function () {
+    var cn = document.getElementById("fCn").value.trim();
+    if (!cn) { toast("请填写中文品名"); return; }
+    var marks = [];
+    document.querySelectorAll("#editMarks .em:checked").forEach(function (c) { marks.push(c.value); });
+    var payload = {
+      cn: cn,
+      en: document.getElementById("fEn").value.trim(),
+      hs: document.getElementById("fHs").value.trim(),
+      mat: document.getElementById("fMat").value.trim(),
+      rm: document.getElementById("fRm").value.trim(),
+      marks: marks,
+      at: "2026-08-15 18:45"
+    };
+    if (editIdx >= 0) {
+      Object.assign(ROWS[editIdx], payload);
+      toast("已保存 · 品名库已更新（可供查货引用）");
+    } else {
+      ROWS.unshift(Object.assign({ src: "人工维护", hit: 0 }, payload));
+      toast("已新增品名");
+    }
+    closeDrawer();
+    render();
+  };
+
+  renderMarkFilters();
+  render();
+})();
+  </script>
+</body>
+</html>

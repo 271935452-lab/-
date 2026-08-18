@@ -1,0 +1,2513 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI报价规则配置 · 优化版 · 维护与试算同屏</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8; --text: rgba(0,0,0,.85);
+      --sub: rgba(0,0,0,.45); --blue: #1890ff; --green: #52c41a; --orange: #fa8c16;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    .topbar {
+      height: 48px; background: #001529; color: #fff;
+      display: flex; align-items: center; padding: 0 16px; gap: 14px; flex-wrap: wrap;
+    }
+    .topbar .logo { font-weight: 700; }
+    .topbar a { color: rgba(255,255,255,.75); text-decoration: none; font-size: 12px; padding: 6px 8px; border-radius: 2px; }
+    .topbar a.on, .topbar a:hover { color: #fff; background: rgba(255,255,255,.12); }
+    .topbar .right { margin-left: auto; color: rgba(255,255,255,.55); font-size: 12px; }
+    .sys-app { min-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+    .sys-header {
+      background: #0b1f3a; color: #fff; display: flex; align-items: stretch; min-height: 48px;
+    }
+    .sys-logo {
+      width: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; background: rgba(255,255,255,.06);
+    }
+    .sys-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .sys-tab {
+      padding: 0 16px; display: flex; align-items: center;
+      background: #132d52; border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .sys-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .sys-header-right {
+      display: flex; align-items: center; gap: 12px; padding: 0 14px; flex-shrink: 0;
+      font-size: 12px; color: rgba(255,255,255,.85);
+    }
+    .sys-body { flex: 1; display: flex; min-height: 0; }
+    .sys-icon-nav {
+      width: 56px; flex-shrink: 0; background: #001529; color: rgba(255,255,255,.65);
+      display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 2px;
+    }
+    .sys-icon-item {
+      width: 48px; padding: 8px 4px 6px; border: none; background: none;
+      color: inherit; cursor: pointer; border-radius: 4px;
+      display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px;
+    }
+    .sys-icon-item:hover { background: #112240; color: #fff; }
+    .sys-icon-item.active { color: #1890ff; }
+    .sys-icon-item .ico {
+      width: 20px; height: 20px; border-radius: 4px; background: rgba(255,255,255,.12);
+    }
+    .sys-module-menu {
+      width: 168px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--line);
+      padding: 8px 0; overflow-y: auto;
+    }
+    .module-item {
+      position: relative; display: block; width: 100%; text-align: left;
+      padding: 10px 14px 10px 16px; border: none; background: none;
+      font: inherit; font-size: 13px; color: var(--text); cursor: pointer;
+      border-left: 3px solid transparent;
+    }
+    .module-item:hover { background: #fafafa; color: var(--blue); }
+    .module-item.active {
+      color: #d46b08; font-weight: 600;
+      background: #fff7e6; border-left-color: #fa8c16;
+    }
+    a.module-item { text-decoration: none; color: inherit; }
+    .sys-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: auto; }
+    .page-tabs {
+      background: #fff; border-bottom: 1px solid var(--line);
+      padding: 0 12px; display: flex; gap: 0; overflow-x: auto; flex-shrink: 0;
+    }
+    .page-tab {
+      padding: 10px 16px; border: none; background: none;
+      font: inherit; font-size: 13px; color: var(--sub);
+      cursor: pointer; white-space: nowrap; text-decoration: none;
+      border-bottom: 2px solid transparent; margin-bottom: -1px; display: inline-block;
+    }
+    .page-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .layout { max-width: none; margin: 0; padding: 8px 12px 16px; }
+    .ver-switch {
+      display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; font-size: 12px; font-weight: 400;
+    }
+    .ver-switch a { color: var(--blue); }
+    .sticky-bar {
+      position: sticky; top: 0; z-index: 8;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin: 0 0 10px; padding: 8px 10px;
+      background: #fff7e6; border: 1px solid #ffd591; border-radius: 2px;
+      font-size: 12px; line-height: 1.45;
+    }
+    .sticky-bar b { color: #d46b08; }
+    .sticky-bar .grow { flex: 1; min-width: 8px; }
+    .workbench {
+      display: grid; grid-template-columns: 132px minmax(0, 1fr) minmax(300px, 360px);
+      gap: 0; background: #fff; border: 1px solid var(--line); border-radius: 2px; min-height: 640px;
+    }
+    @media (max-width: 1280px) {
+      .workbench { grid-template-columns: 132px minmax(0, 1fr); }
+      .trial-dock { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: none; }
+    }
+    .rail { background: #fafafa; border-right: 1px solid var(--line); padding: 8px 0; }
+    .rail .tab {
+      display: block; width: 100%; text-align: left; padding: 10px 12px;
+      border: none; background: none; font: inherit; color: var(--sub); cursor: pointer;
+    }
+    .rail .tab.active { color: var(--blue); font-weight: 600; background: #e6f7ff; }
+    .rail .tab.active::after { display: none; }
+    .rail-main { padding: 12px 14px 20px; overflow: auto; max-height: calc(100vh - 168px); }
+    .rail-main .bd { padding: 0; display: none; }
+    .rail-main .bd.active { display: block; }
+    .trial-dock {
+      border-left: 1px solid var(--line); background: #f8fafc;
+      padding: 12px; overflow: auto; max-height: calc(100vh - 168px);
+      position: sticky; top: 52px;
+    }
+    .trial-dock h3 { margin: 0 0 8px; font-size: 14px; }
+    .trial-dock .grid2 { grid-template-columns: 1fr; }
+    .trial-dock .form-grid { grid-template-columns: 1fr 1fr; }
+    .trial-dock .result { max-height: 280px; overflow: auto; }
+    .page-hd { margin-bottom: 8px; }
+    .page-hd { margin-bottom: 12px; }
+    .page-hd h1 { margin: 0; font-size: 18px; }
+    .page-hd .sub { margin: 6px 0 0; color: var(--sub); font-size: 12px; line-height: 1.65; }
+    .badge {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 10px;
+      font-weight: 600; line-height: 18px; margin-left: 4px;
+      background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f;
+    }
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 2px; margin-bottom: 12px; }
+    .tabs { display: flex; border-bottom: 1px solid var(--line); background: #fafafa; padding: 0 8px; flex-wrap: wrap; }
+    .tab {
+      padding: 12px 14px; border: none; background: none; font: inherit; color: var(--sub);
+      cursor: pointer; position: relative; white-space: nowrap;
+    }
+    .tab.active { color: var(--blue); font-weight: 600; }
+    .tab.active::after {
+      content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 2px; background: var(--blue);
+    }
+    .bd { padding: 16px; display: none; }
+    .bd.active { display: block; }
+    .tip {
+      margin: 0 0 14px; padding: 10px 12px; font-size: 12px; line-height: 1.65;
+      background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; color: #003a8c;
+    }
+    .warn {
+      margin: 0 0 14px; padding: 10px 12px; font-size: 12px; line-height: 1.65;
+      background: #fffbe6; border: 1px solid #ffe58f; border-radius: 2px; color: #614700;
+    }
+    .grid2 { display: grid; grid-template-columns: 220px 1fr; gap: 14px; }
+    @media (max-width: 960px) { .grid2 { grid-template-columns: 1fr; } }
+    .wh-list { border: 1px solid var(--line); border-radius: 2px; overflow: hidden; max-height: 520px; overflow-y: auto; }
+    .wh-item { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 12px; }
+    .wh-item:hover, .wh-item.on { background: #e6f7ff; }
+    .wh-item b { display: block; margin-bottom: 2px; }
+    .wh-item span { color: var(--sub); font-size: 11px; }
+    .sec { margin-bottom: 16px; }
+    .sec h3 { margin: 0 0 8px; font-size: 14px; }
+    .sec h4 { margin: 0 0 8px; font-size: 13px; color: #003a8c; }
+    table.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.tbl th, table.tbl td { border: 1px solid var(--line); padding: 6px 8px; text-align: center; }
+    table.tbl th { background: #fafafa; color: var(--sub); font-weight: 500; }
+    table.tbl td.left { text-align: left; }
+    table.tbl input {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font: inherit; text-align: center;
+    }
+    #prodBindTbl select[data-f="wh"] { height: 28px; min-width: 140px; font: inherit; }
+    #prodBindTbl input[data-f="origin"] { text-align: left; min-width: 180px; }
+    #prodBindTbl input[data-f="city"] { min-width: 88px; }
+    #prodBindTbl input[data-f="st"] { width: 52px; text-transform: uppercase; }
+    #prodBindTbl input[data-f="zip"] { width: 72px; }
+    .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 14px; }
+    @media (max-width: 960px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+    .fi label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 3px; }
+    .fi input, .fi select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .fi input[readonly], .fi select:disabled, .fi input:disabled {
+      background: #f5f5f5; color: #8c8c8c; cursor: not-allowed;
+    }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 12px; }
+    .btn {
+      height: 32px; padding: 0 14px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; font: inherit; cursor: pointer;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .toast {
+      position: fixed; top: 64px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 50; display: none;
+    }
+    .steps {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;
+    }
+    @media (max-width: 960px) { .steps { grid-template-columns: 1fr 1fr; } }
+    .step {
+      border: 1px solid var(--line); border-radius: 2px; padding: 10px 12px; background: #fafafa;
+      font-size: 12px; line-height: 1.55;
+    }
+    .step .n {
+      display: inline-flex; width: 20px; height: 20px; border-radius: 50%;
+      background: var(--blue); color: #fff; font-size: 11px; font-weight: 700;
+      align-items: center; justify-content: center; margin-right: 6px;
+    }
+    .step b { display: block; margin: 4px 0; }
+    .mode-switch { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
+    .mode-switch button { pointer-events: none; opacity: .55; }
+    .mode-switch button.on { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; font-weight: 600; opacity: 1; }
+    .mode-hint { margin: 0 0 12px; font-size: 12px; color: #64748b; line-height: 1.55; }
+    .result {
+      margin-top: 10px; padding: 10px 12px; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 2px; font-size: 12px; line-height: 1.65; white-space: pre-wrap;
+      font-family: Consolas, "Courier New", monospace;
+    }
+    .tag {
+      display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 11px;
+      background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; margin-left: 4px;
+    }
+    .refs { font-size: 12px; line-height: 1.7; }
+    .refs a { color: var(--blue); }
+    .ex-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ex-btns .btn { height: auto; padding: 6px 10px; font-size: 11px; line-height: 1.4; text-align: left; }
+    .muted { color: var(--sub); }
+    table.tbl td.empty { color: #bfbfbf; }
+    table.tbl td.dist-col, table.tbl th.dist-col {
+      background: #fff7e6; color: #d46b08; font-weight: 600; white-space: nowrap;
+    }
+    table.tbl tr.home-st td { background: #f6ffed; }
+    .note-sm { font-size: 11px; color: var(--sub); margin: 6px 0 0; line-height: 1.5; }
+    .edit-bar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin: 0 0 12px; padding: 8px 10px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 2px;
+      font-size: 12px; line-height: 1.55;
+    }
+    .edit-bar b { color: #d46b08; }
+    .lock-tag { color: #8c8c8c; font-size: 11px; }
+    .tbl td.op { width: 64px; white-space: nowrap; }
+    .tbl .link-btn { border: none; background: none; color: #1890ff; cursor: pointer; font: inherit; padding: 0; }
+    .edit-bar .eff-lab { color: #595959; white-space: nowrap; }
+    .edit-bar input[type="datetime-local"] {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font: inherit;
+    }
+    .st-pending { color: #d46b08; font-weight: 600; }
+    .sec-hd-inline { display: flex; align-items: center; gap: 8px; position: relative; margin: 0 0 8px; }
+    .sec-hd-inline h3 { margin: 0; }
+    .info-ico {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 99px; padding: 0;
+      border: 1px solid #91d5ff; background: #e6f7ff; color: #096dd9;
+      font-size: 12px; font-weight: 700; font-style: italic; cursor: pointer; line-height: 1;
+    }
+    .info-pop {
+      display: none; position: absolute; left: 0; top: 28px; z-index: 20;
+      width: min(520px, 92vw); padding: 10px 12px;
+      background: #0f172a; color: #e2e8f0; border-radius: 8px;
+      font-size: 12px; line-height: 1.7; box-shadow: 0 8px 22px rgba(15, 23, 42, .18);
+    }
+    .info-pop.show { display: block; }
+    .info-pop b { color: #fff; }
+    .info-pop .row { display: grid; grid-template-columns: 148px 1fr; gap: 6px 10px; margin-top: 6px; }
+    .info-pop .k { color: #93c5fd; font-weight: 600; }
+    .prod-cell { min-width: 280px; vertical-align: top; }
+    .ms { position: relative; text-align: left; }
+    .ms-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .ms-chip {
+      display: inline-flex; align-items: center; gap: 2px;
+      padding: 1px 6px; background: #e6f7ff; border: 1px solid #91d5ff;
+      border-radius: 10px; font-size: 11px; color: #0050b3; line-height: 18px;
+    }
+    .ms-chip .ms-x {
+      border: none; background: none; color: #0050b3; cursor: pointer;
+      padding: 0 2px; font: inherit; line-height: 1;
+    }
+    .ms-empty { color: #bfbfbf; font-size: 11px; }
+    .ms-toggle {
+      height: 24px; padding: 0 8px; border: 1px dashed #91d5ff; background: #fff;
+      color: #1890ff; border-radius: 2px; cursor: pointer; font: inherit; font-size: 11px;
+    }
+    .ms-panel {
+      position: absolute; z-index: 8; left: 0; min-width: 260px; top: 100%;
+      margin-top: 4px; background: #fff; border: 1px solid #d9d9d9;
+      border-radius: 4px; box-shadow: 0 6px 16px rgba(0,0,0,.12);
+      max-height: 260px; overflow: auto; padding: 6px 8px; text-align: left;
+    }
+    .ms-opt { display: flex; align-items: flex-start; gap: 6px; padding: 4px 2px; font-size: 12px; cursor: pointer; }
+    .ms-opt.dim { color: #bfbfbf; cursor: not-allowed; }
+    .ms-opt em { font-style: normal; font-size: 10px; color: #8c8c8c; margin-left: 4px; }
+    .ms-add { display: flex; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f0f0f0; }
+    .ms-add input { flex: 1; height: 26px; text-align: left; }
+    .ms-add button { height: 26px; padding: 0 8px; font-size: 11px; cursor: pointer; }
+  </style>
+</head>
+<body data-ess-nav="off">
+  <div class="topbar">
+    <div class="logo">报价组</div>
+    <a href="报价组-导航.html">← 报价组导航</a>
+    <a href="ESS我的报价-列表-MVP.html">我的询价</a>
+    <a href="ESS询价报价-报价员列表-MVP.html">报价员列表</a>
+    <a href="ESS询价编辑-MVP.html">询价编辑</a>
+    <a class="on" href="私卡报价-AI报价规则配置-优化版-MVP.html">AI报价规则</a>
+    <a href="私卡报价-AI报价规则配置-MVP.html">原版</a>
+    <a href="私卡报价-0731-AI报价有效期运单绑定-大致方案.html">0731 方案</a>
+    <a href="按照距离测价的逻辑-6月27号讨论版-基础上完善其他海外仓的713.xls">713 测价表</a>
+    <a href="海外仓至本州地址报价系统.html">本州测算</a>
+    <a href="海外仓至外州地址报价系统.html">外州测算</a>
+    <div class="right">新 AI · 713 六仓距离测价</div>
+  </div>
+
+  <div class="sys-app">
+    <header class="sys-header">
+      <div class="sys-logo">腾信物流</div>
+      <nav class="sys-tabs" aria-label="顶部页签">
+        <button type="button" class="sys-tab">控制台</button>
+        <button type="button" class="sys-tab active">运单管理</button>
+        <button type="button" class="sys-tab">收款管理</button>
+        <button type="button" class="sys-tab">员工管理</button>
+        <button type="button" class="sys-tab">客户管理</button>
+      </nav>
+      <div class="sys-header-right">IT(BT0022)</div>
+    </header>
+    <div class="sys-body">
+      <aside class="sys-icon-nav" aria-label="模块图标">
+        <button type="button" class="sys-icon-item"><span class="ico"></span>收藏</button>
+        <button type="button" class="sys-icon-item"><span class="ico"></span>企业</button>
+        <button type="button" class="sys-icon-item active"><span class="ico"></span>运单</button>
+        <button type="button" class="sys-icon-item"><span class="ico"></span>客服</button>
+        <button type="button" class="sys-icon-item"><span class="ico"></span>操作</button>
+        <button type="button" class="sys-icon-item"><span class="ico"></span>产品</button>
+      </aside>
+      <aside class="sys-module-menu" aria-label="运单子菜单">
+        <a class="module-item" href="ESS我的报价-列表-MVP.html">我的询价(业务员)</a>
+        <button type="button" class="module-item">传统订单录入</button>
+        <button type="button" class="module-item">网上订单查询</button>
+        <button type="button" class="module-item">FBA 录入</button>
+        <button type="button" class="module-item">业务员运单查询</button>
+        <a class="module-item" href="ESS询价报价-报价员列表-MVP.html">询价报价(报价员)</a>
+        <a class="module-item active" href="私卡报价-AI报价规则配置-优化版-MVP.html">AI报价规则</a>
+      </aside>
+      <div class="sys-main">
+        <div class="page-tabs">
+          <button type="button" class="page-tab">控制台</button>
+          <a class="page-tab" href="ESS询价报价-报价员列表-MVP.html">询价报价（报价员）</a>
+          <a class="page-tab active" href="私卡报价-AI报价规则配置-优化版-MVP.html">AI报价规则</a>
+        </div>
+  <div class="layout">
+    <div class="page-hd">
+      <h1>AI 报价规则配置 <span class="badge">优化版</span>
+        <span class="ver-switch">同一套规则 · <a href="私卡报价-AI报价规则配置-MVP.html">打开原版（6 Tab）</a></span>
+      </h1>
+      <p class="sub">
+        左边改规则，右边立刻试算；保存草稿 / 发布钉在顶栏，不用切 Tab。完整口径点右侧 <b>PRD</b>。
+      </p>
+    </div>
+
+    <div class="sticky-bar" id="stickyBar">
+      当前：<span id="ruleStatus" class="st-live">生效中 v2026.08.17-maintain</span>
+      <span id="ruleDraftHint" class="lock-tag">无未发布草稿</span>
+      <label class="eff-lab" for="ruleEffAt">生效时间</label>
+      <input id="ruleEffAt" type="datetime-local" value="2026-08-18T00:00" />
+      <span class="grow"></span>
+      <button type="button" class="btn" id="btnSaveDraft">保存草稿</button>
+      <button type="button" class="btn" id="btnCalc">试算</button>
+      <button type="button" class="btn btn-primary" id="btnPublish">发布（到点生效）</button>
+    </div>
+
+    <div class="workbench">
+      <nav class="rail" id="mainTabs" aria-label="规则分区">
+        <button type="button" class="tab active" data-tab="local">内州价表</button>
+        <button type="button" class="tab" data-tab="out">外州规则</button>
+        <button type="button" class="tab" data-tab="maintain">仓绑定</button>
+        <button type="button" class="tab" data-tab="common">有效期</button>
+        <button type="button" class="tab" data-tab="version">版本</button>
+      </nav>
+      <div class="rail-main">
+
+      <!-- 规则维护 -->
+      <div class="bd" id="tab-maintain">
+        <div class="sec">
+          <div class="sec-hd-inline">
+            <h3>销售产品 ↔ 海外仓</h3>
+            <button type="button" class="info-ico" id="btnLockTip" aria-expanded="false" title="不在本页改的说明">i</button>
+            <div class="info-pop" id="lockTip" hidden>
+              <b>不在本页改</b>
+              <div class="row"><span class="k">询价手切内外州</span><span>询价/试算仍按距离自动切轨，不能手选内州或外州</span></div>
+              <div class="row"><span class="k">有效期 7 天 + 15/30 截断</span><span>规则本身不改；确认台可改这一票有效期</span></div>
+              <div class="row"><span class="k">尾端派送费</span><span>报价员确认台按票取整登记，不做计算</span></div>
+              <div class="row"><span class="k">万物智联附加费</span><span>对接已返回含附加费总价，本页不维护、不本地叠加</span></div>
+              <div class="row"><span class="k">返回业务员的单价</span><span>（AI规则配置 + 头程运价）÷ 计费重，个位 USD/KG</span></div>
+            </div>
+          </div>
+          <p class="note-sm">改完点顶栏「保存草稿」，右边试算立刻用草稿。发布并填生效时间后，到点询价才走新版。</p>
+          <table class="tbl" id="prodBindTbl">
+            <thead>
+              <tr>
+                <th>销售产品（可多选）</th>
+                <th>海外仓</th>
+                <th>仓地址</th>
+                <th>城市</th>
+                <th>州</th>
+                <th>仓邮编</th>
+                <th class="op">操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="acts" style="justify-content:flex-start">
+            <button type="button" class="btn" id="btnAddProd">新增绑定</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 六仓本地价表 -->
+      <div class="bd active" id="tab-local">
+        <div class="tip" id="localTip">
+          数据摘自 713 各仓「本地」价表，用于<strong>配送距离 ≤ 内州上限迈</strong>（默认 150，含等于）。超过改走外州，不再用本表。
+          拆车默认对齐本州测算页：小车 24 方/4500kg，大车 68 方/18000kg，托数 = max(⌈方÷2⌉, ⌈kg÷450⌉)。下方数字均可改。26 尺须标尾板限制。
+        </div>
+        <div class="grid2">
+          <div>
+            <h4>起发仓</h4>
+            <div class="wh-list" id="localWhList"></div>
+          </div>
+          <div>
+            <div class="edit-bar">
+              <b>改数字即进草稿</b>。点顶栏「保存草稿」会写入并立刻重算右侧；「发布」才对询价生效。
+            </div>
+            <div class="sec">
+              <h3 id="localWhTitle">洛杉矶海外仓 · CA 本地</h3>
+              <div class="form-grid">
+                <div class="fi"><label>起步含托数（可改）</label><input id="lInclTray" type="number" min="0" step="1" /></div>
+                <div class="fi"><label>内州上限迈（默认 150）</label><input id="lLocalMiles" type="number" min="1" step="1" /></div>
+                <div class="fi"><label>小车体积上限（方，默认 24）</label><input id="lSmallVol" type="number" min="0" step="0.1" /></div>
+                <div class="fi"><label>小车重量上限 kg（默认 4500）</label><input id="lSmallWt" type="number" min="0" step="1" /></div>
+                <div class="fi"><label>大车体积上限（方，默认 68）</label><input id="lLargeVol" type="number" min="0" step="0.1" /></div>
+                <div class="fi"><label>大车重量上限 kg（默认 18000）</label><input id="lLargeWt" type="number" min="0" step="1" /></div>
+                <div class="fi"><label>体积折板 · 方÷（默认 2）</label><input id="lVolDiv" type="number" min="0.1" step="0.1" /></div>
+                <div class="fi"><label>重量折板 · kg÷（默认 450）</label><input id="lWtDiv" type="number" min="0.1" step="1" /></div>
+                <div class="fi" style="grid-column:span 2"><label>内州判定（随上限迈带出）</label><input id="lLocalJudge" readonly /></div>
+                <div class="fi" id="lNyAddrWrap" style="display:none">
+                  <label>收货地址（州）</label>
+                  <select id="lNyAddr">
+                    <option value="all">全部对照</option>
+                    <option value="NJ">NJ · 按距离档</option>
+                    <option value="NY">NY · 一口价</option>
+                  </select>
+                </div>
+                <div class="fi" style="grid-column:span 2"><label>特殊说明</label><input id="lSpecial" readonly /></div>
+                <div class="fi" style="grid-column:span 2"><label>仓地址（测算页）</label><input id="lOrigin" readonly /></div>
+              </div>
+            </div>
+            <div class="sec">
+              <h4>本地距离价表（可改数字）</h4>
+              <p class="note-sm" id="localPriceHint">最后一档到 150 迈（含）为止；&gt;150 迈走外州规则。尾量 26 按该车实载（起步+续托）；53 不满也按整车价。</p>
+              <table class="tbl" id="localPriceTbl">
+                <thead>
+                  <tr>
+                    <th>适用地址</th>
+                    <th>距离区间</th>
+                    <th>上限迈</th>
+                    <th>26尺起步 $</th>
+                    <th>续托 $/板</th>
+                    <th>53尺整车 $</th>
+                    <th class="op">操作</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="acts">
+              <button type="button" class="btn" id="btnAddLocalBand">新增距离档</button>
+              <button type="button" class="btn btn-primary" id="btnSaveLocal">保存本地价表草稿</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 外州 -->
+      <div class="bd" id="tab-out">
+        <div class="tip" id="outTip">
+          适用<strong>距离超过内州上限迈</strong>（默认 &gt;150，含同州超上限）。8/14 袁华君：默认 150 英里以内算本州内，以外按外州单迈价（六仓共用，不再按目的州系数）。迈数与拆车上限有默认、可改。
+          小车默认 ≤16 方/4500kg/8 板，走<strong>万物智联</strong>：优先 8 个卡车品牌，<strong>每个品牌只取最便宜 1 条</strong>；8 个没有则再取其他最便宜的返回。<strong>仅报价员核对</strong>；业务员只收确认后的最优 1 条。
+          大车默认板数=max(方÷2, 重÷560)↑；<b>整车价 = 距离 × 该档 $/mile</b>（取整）；单车最多 32 板；尾量能改小车则改万物智联，否则 <b>整车价 × 板数 ÷ 32 × 1.2</b>。
+        </div>
+        <div class="edit-bar">
+          <b>维护外州规则</b>：小车/大车上限、折算、尾量系数有默认、可改。单迈价、品牌启用同样可改。尾量不够一辆车：能改小车则按量，否则整车价 × 板数 ÷ 大车板上限 × 尾量系数。
+        </div>
+        <div class="grid2">
+          <div>
+            <h4 id="outWhListTitle">起始仓（外州 · &gt;150迈）</h4>
+            <div class="wh-list" id="outWhList"></div>
+          </div>
+          <div>
+            <div class="sec">
+              <h3 id="outWhTitle">外州单迈价表（六仓共用）</h3>
+              <p class="note-sm" id="outOriginHint"></p>
+              <div class="form-grid" id="outLogicGrid">
+                <div class="fi"><label>内州上限迈（默认 150，超过走外州）</label><input id="oLocalMiles" type="number" min="1" step="1" /></div>
+                <div class="fi"><label>适用距离范围</label><input id="outDistRange" readonly title="由内州上限迈自动带出" /></div>
+                <div class="fi"><label>小车体积上限（方，默认 16）</label><input id="oSmallVol" type="number" min="0" step="0.1" /></div>
+                <div class="fi"><label>小车重量上限 kg（默认 4500）</label><input id="oSmallWt" type="number" min="0" step="1" /></div>
+                <div class="fi"><label>小车板数上限（默认 8）</label><input id="oSmallBoards" type="number" min="1" step="1" /></div>
+                <div class="fi"><label>大车板数上限（默认 32）</label><input id="oLargeBoards" type="number" min="1" step="1" /></div>
+                <div class="fi"><label>体积折板 · 方÷（默认 2）</label><input id="oVolDiv" type="number" min="0.1" step="0.1" /></div>
+                <div class="fi"><label>重量折板 · kg÷（默认 560）</label><input id="oWtDiv" type="number" min="0.1" step="1" /></div>
+                <div class="fi"><label>尾量上浮系数（默认 1.2）</label><input id="oTailMul" type="number" min="1" step="0.01" /></div>
+                <div class="fi"><label>大车计价</label><input value="距离 × 单迈单价（取整）" readonly /></div>
+              </div>
+            </div>
+            <div class="sec">
+              <h4>外州单迈价（大车；可改单价）</h4>
+              <p class="note-sm" id="outMileHint">默认 150 英里以内走内州价表。超过上限迈按下列档位 × 距离，<b>六仓同一张表</b>。尾量不够一辆大车：能改小车则按量走万物智联，否则整车价 × 板数 ÷ 大车板上限 × 尾量系数（按板折）。</p>
+              <table class="tbl" id="mileRateTbl">
+                <thead>
+                  <tr>
+                    <th class="dist-col">从（迈）</th>
+                    <th class="dist-col">到（迈）</th>
+                    <th>单价 $ / mile</th>
+                    <th>大车算法</th>
+                    <th class="op">操作</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <div class="acts" style="justify-content:flex-start;margin-top:8px">
+                <button type="button" class="btn" id="btnAddMile">新增距离档</button>
+              </div>
+            </div>
+            <div class="sec">
+              <h4>万物智联 · 优先卡车品牌（可启用/停用）</h4>
+              <p class="note-sm">本票只采用启用中的品牌；同一品牌只留最便宜 1 条。仅报价员核对。</p>
+              <table class="tbl" id="wwzlCarrierTbl">
+                <thead>
+                  <tr>
+                    <th>优先序</th>
+                    <th class="left">卡车品牌 / 渠道</th>
+                    <th>启用</th>
+                    <th>给谁看</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="warn">
+              外州 26 尺：板数先算，再按测算页密度折满载（8 板重 ≤4500kg 则满载 8 板，否则满载板=⌊4500/单板重⌋）。满载车复用平台价，尾量车独立再测。须标注尾板限制。住宅/无卸货台禁止 53 尺。
+            </div>
+            <div class="acts">
+              <button type="button" class="btn btn-primary" id="btnSaveOut">保存外州规则草稿</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 有效期 -->
+      <div class="bd" id="tab-common">
+        <div class="tip">
+          口径来源：0731 方案 + 8/6 确认 + 8/13 报价组评审。价格会动态变，报价必须带有效期。
+          <b>有效期规则已锁定，不可改</b>：散货 / 整柜默认各 7 天（含生效当日）；若窗口包含当月 <b>15 日或 30 日</b>，截止日卡在该 15 / 30（海运费月中月底易变）。确认台按规则写入「有效期至」，<b>不可改期、不可延期</b>。
+          过期不可硬用，须重算再生效。散货复核通过时写有效期；整柜手报价生效时写有效期。
+        </div>
+        <div class="steps">
+          <div class="step"><span class="n">1</span><b>写有效期</b>散货复核通过 / 整柜手报价生效 → 默认 7 天，遇 15 / 30 日截断</div>
+          <div class="step"><span class="n">2</span><b>确认台不可改</b>有效期至只读展示，不提供改期 / 延期</div>
+          <div class="step"><span class="n">3</span><b>在期使用</b>仅未过期报价可绑运单、给客户采用；到期前提醒</div>
+          <div class="step"><span class="n">4</span><b>过期回退 R1</b>禁止硬用；须重算再生效（不可改期续命）</div>
+        </div>
+
+        <div class="sec">
+          <h3>默认有效期（已锁定，不可改）</h3>
+          <div class="form-grid">
+            <div class="fi"><label>散货默认（天）</label><input id="vLclDays" type="number" min="1" value="7" readonly /></div>
+            <div class="fi"><label>整柜默认（天）</label><input id="vFclDays" type="number" min="1" value="7" readonly /></div>
+            <div class="fi"><label>起算点</label>
+              <select id="vStartRule" disabled>
+                <option value="confirm" selected>报价生效日（散货=复核通过；整柜=手报价生效）</option>
+              </select>
+            </div>
+            <div class="fi"><label>天数含生效当日？</label>
+              <select id="vIncludeStart" disabled>
+                <option value="1" selected>含（生效日为第 1 天，第 N 日 23:59 截止）</option>
+                <option value="0">不含（从次日起算满 N 天）</option>
+              </select>
+            </div>
+            <div class="fi"><label>最短天数</label><input id="vMinDays" type="number" min="1" value="7" readonly /></div>
+            <div class="fi"><label>最长天数</label><input id="vMaxDays" type="number" min="1" value="7" readonly /></div>
+            <div class="fi"><label>到期前提醒（天）</label><input id="vWarnDays" type="number" min="0" value="2" readonly /></div>
+            <div class="fi"><label>单票可否改</label>
+              <select id="vAllowOverride" disabled>
+                <option value="1">允许（确认台可改，必填有效期至，留痕）</option>
+                <option value="0" selected>不允许（仅用后台默认，确认台不可改期）</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <h3>过期与规则变更</h3>
+          <div class="form-grid">
+            <div class="fi"><label>过期后绑运单</label>
+              <select id="vExpireBind" disabled>
+                <option value="block" selected>禁止绑定（须重算）</option>
+                <option value="warn">仅警告，仍可绑</option>
+              </select>
+            </div>
+            <div class="fi"><label>过期后给客户采用</label>
+              <select id="vExpireUse" disabled>
+                <option value="block" selected>禁止直接采用</option>
+                <option value="warn">仅警告</option>
+              </select>
+            </div>
+            <div class="fi"><label>过期后允许动作</label>
+              <select id="vExpireAction" disabled>
+                <option value="recalc_only" selected>仅允许重算</option>
+                <option value="extend_recalc">延期留痕 / 重算再生效 / 作废重开</option>
+              </select>
+            </div>
+            <div class="fi"><label>713 价表变更 · 在期票</label>
+              <select id="vRuleChange" disabled>
+                <option value="hint" selected>提示可重算（不强制）</option>
+                <option value="force">强制重算后才可绑单</option>
+                <option value="ignore">不影响已生效未过期票</option>
+              </select>
+            </div>
+          </div>
+          <p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.65">
+            价表变更项 0731 仍标「待确认」；原型默认「提示不强制」，避免已给客户的在期价被静默作废。
+          </p>
+        </div>
+
+        <div class="sec">
+          <h3>有效期试算（按上面规则）</h3>
+          <div class="form-grid">
+            <div class="fi"><label>业务类型</label>
+              <select id="vPreviewDim">
+                <option value="lcl">散货（AI 复核通过）</option>
+                <option value="fcl">整柜（手报价生效）</option>
+              </select>
+            </div>
+            <div class="fi"><label>报价生效日</label><input id="vPreviewStart" type="date" value="2026-08-13" /></div>
+            <div class="fi"><label>单票改天数</label><input id="vPreviewOverride" type="number" min="1" placeholder="不可改，已锁定" disabled /></div>
+            <div class="fi"><label>&nbsp;</label><button type="button" class="btn btn-primary" id="btnPreviewValid" style="width:100%">计算有效期至</button></div>
+          </div>
+          <div class="result" id="validResult">填写生效日，点计算。散货默认 7 天（含生效当日）；8/13 本应到 8/19，但含 15 日 → 有效期至 2026-08-15 23:59。</div>
+        </div>
+
+        <div class="sec">
+          <h3>状态与卡控（确认台 / 绑运单）</h3>
+          <table class="tbl">
+            <thead><tr><th>状态</th><th>如何进入</th><th>可绑运单</th><th>系统动作</th></tr></thead>
+            <tbody>
+              <tr><td>待复核</td><td>散货 AI 已出价，未确认</td><td>否</td><td>不写有效期</td></tr>
+              <tr><td>已生效</td><td>散货复核通过 / 整柜手报价生效，已写有效期至</td><td>未过期才可</td><td>到期前提醒；散货多绑 / 整柜单绑</td></tr>
+              <tr><td>已过期</td><td>到达有效期至</td><td>否（默认）</td><td>回退 R1：须重算（不可改期）</td></tr>
+              <tr><td>已绑定</td><td>绑运单成功并挂尾端派送费</td><td>—</td><td>快照锁定；交船务安排订舱</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sec">
+          <h3>地址类型 → 车型锁（713 通用）</h3>
+          <table class="tbl">
+            <tr><th>类型</th><th>可用车型</th><th>超载追加</th></tr>
+            <tr><td>住宅</td><td>仅 26尺</td><td>仅可追加 26尺，禁 53尺</td></tr>
+            <tr><td>商业 · 无卸货平台</td><td>仅 26尺</td><td>仅可追加 26尺，禁 53尺</td></tr>
+            <tr><td>商业 · 有卸货平台</td><td>26尺 / 53尺</td><td>按货量触发大车或拆分</td></tr>
+          </table>
+        </div>
+        <div class="warn">
+          尾端派送费不在本页配单价，在
+          <a href="ESS询价报价-报价员列表-MVP.html">报价员确认台</a>按票<strong>取整登记、不做计算</strong>；绑运单时自动挂接。
+        </div>
+        <div class="acts">
+          <button type="button" class="btn" id="btnSaveCommon" disabled title="有效期规则已锁定">有效期规则已锁定，不可改</button>
+        </div>
+      </div>
+
+      <!-- 版本 -->
+      <div class="bd" id="tab-version">
+        <p class="note-sm">已归档 / 生效中版本均可点「查看」浏览发布快照（只读，不可编辑）。</p>
+        <table class="tbl" id="verTable">
+          <thead><tr><th>版本</th><th>内容</th><th>生效</th><th>状态</th><th class="op">操作</th></tr></thead>
+          <tbody>
+            <tr data-ver="v2026.08.17-maintain">
+              <td>v2026.08.17-maintain</td>
+              <td class="left">规则维护台：本地价表/外州单迈价/品牌/仓绑定可改；保存草稿后发布，须填生效时间，到点才切线上</td>
+              <td>2026-08-17</td>
+              <td style="color:#389e0d">生效中</td>
+              <td class="op"><button type="button" class="link-btn" data-ver-view="v2026.08.17-maintain">查看</button></td>
+            </tr>
+            <tr data-ver="v2026.08.15-meeting">
+              <td>v2026.08.15-meeting</td>
+              <td class="left">8/15：按仓邮编+收货邮编自动测距；7 渠道仅报价员核对，业务员只收确认后最优 1 条；确认+绑运单锁定</td>
+              <td>2026-08-15</td>
+              <td>已归档</td>
+              <td class="op"><button type="button" class="link-btn" data-ver-view="v2026.08.15-meeting">查看</button></td>
+            </tr>
+            <tr data-ver="v2026.08.14-outrate">
+              <td>v2026.08.14-outrate</td>
+              <td class="left">外州大车改单迈价表（袁华君 8/14）：&gt;150 迈按距离档 $/mile，六仓共用，不再按目的州系数</td>
+              <td>2026-08-14</td>
+              <td>已归档</td>
+              <td class="op"><button type="button" class="link-btn" data-ver-view="v2026.08.14-outrate">查看</button></td>
+            </tr>
+            <tr data-ver="v2026.08.14-lastmile">
+              <td>v2026.08.14-lastmile</td>
+              <td class="left">尾端派送费确认台取整登记、不做计算（不按头程÷计费重反推单价）</td>
+              <td>2026-08-14</td>
+              <td>已归档</td>
+              <td class="op"><button type="button" class="link-btn" data-ver-view="v2026.08.14-lastmile">查看</button></td>
+            </tr>
+            <tr data-ver="v2026.08.13-713">
+              <td>v2026.08.13-713</td>
+              <td class="left">有效期规则锁定：散货/整柜默认 7 天，确认台不可改期；过期须重算</td>
+              <td>2026-08-13</td>
+              <td>已归档</td>
+              <td class="op"><button type="button" class="link-btn" data-ver-view="v2026.08.13-713">查看</button></td>
+            </tr>
+            <tr data-ver="v2026.08.06-713">
+              <td>v2026.08.06-713</td>
+              <td class="left">并入 713 六仓本地/外州距离测价；旧 AI 下线；尾端派送费确认台登记</td>
+              <td>2026-08-06</td>
+              <td>已归档</td>
+              <td class="op"><button type="button" class="link-btn" data-ver-view="v2026.08.06-713">查看</button></td>
+            </tr>
+            <tr data-ver="v2026.06.27">
+              <td>v2026.06.27</td>
+              <td class="left">距离测价讨论版（洛杉矶基线）</td>
+              <td>2026-06-27</td>
+              <td>已归档</td>
+              <td class="op"><button type="button" class="link-btn" data-ver-view="v2026.06.27">查看</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="refs" style="margin-top:12px">
+          源表：<a href="按照距离测价的逻辑-6月27号讨论版-基础上完善其他海外仓的713.xls">713.xls</a> ·
+          测算页：<a href="海外仓至本州地址报价系统.html">本州</a> /
+          <a href="海外仓至外州地址报价系统.html">外州</a> ·
+          交互：<a href="ESS询价报价-报价员列表-MVP.html">报价员列表</a> ·
+          方案：<a href="私卡报价-0731-AI报价有效期运单绑定-大致方案.html">0731</a>
+        </p>
+      </div>
+      </div><!-- rail-main -->
+      <aside class="trial-dock" id="tab-engine">
+        <h3>试算 <span class="tag">草稿即时预览</span></h3>
+        <div class="grid2">
+          <div>
+            <h4>起发仓</h4>
+            <div class="wh-list" id="engineWhList"></div>
+          </div>
+          <div>
+            <div class="mode-switch">
+              <button type="button" class="btn on" data-mode="local">内州 · ≤150迈</button>
+              <button type="button" class="btn" data-mode="out">外州 · &gt;150迈</button>
+              <span class="tag" id="modeTag">内州 · 由距离自动判定</span>
+            </div>
+            <p class="mode-hint" id="modeHint">改「配送距离」后自动切轨：<strong>≤150 迈走内州价表</strong>（含 150），<strong>&gt;150 迈走外州</strong>（小车万物智联 / 大车单迈价）。不可手切。内州上限迈有默认、规则页可改。</p>
+            <div class="sec">
+              <h3 id="engineTitle">洛杉矶海外仓</h3>
+              <div class="form-grid">
+                <div class="fi"><label>地址类型</label>
+                  <select id="eAddr">
+                    <option value="res">住宅地址</option>
+                    <option value="com_no">商业 · 无卸货平台</option>
+                    <option value="com_dock" selected>商业 · 有卸货平台</option>
+                  </select>
+                </div>
+                <div class="fi"><label>配送距离（迈）</label><input id="eDist" type="number" value="45" min="0" step="0.1" title="≤150 内州，&gt;150 外州" /></div>
+                <div class="fi"><label>体积（方）</label><input id="eVol" type="number" value="30" min="0" step="0.01" /></div>
+                <div class="fi"><label>重量（公斤）</label><input id="eWt" type="number" value="5200" min="0" step="1" /></div>
+                <div class="fi" id="eStateWrap" style="display:none"><label>目的州（合规 / 展示）</label>
+                  <select id="eState"></select>
+                </div>
+                <div class="fi" id="eNyWrap" style="display:none"><label>收货地址（州）</label>
+                  <select id="eNySub">
+                    <option value="NJ">NJ · 按距离档</option>
+                    <option value="NY">NY · 一口价</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="sec">
+              <h4>当前仓关键参数</h4>
+              <div id="engineParams" style="font-size:12px;line-height:1.7;color:#334155"></div>
+            </div>
+            <div class="acts" style="justify-content:flex-start">
+              <p class="note-sm">改距离自动切内州/外州。点顶栏「试算」或保存草稿后自动重算。</p>
+            </div>
+            <div class="ex-btns" id="exBtns"></div>
+            <div class="result" id="calcResult">点击「试算」输出车型适配与费用拆分（原型）。</div>
+          </div>
+        </div>
+      </aside>
+
+    </div><!-- workbench -->
+  </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ver-mask" id="verMask" hidden aria-hidden="true">
+    <div class="ver-modal" role="dialog" aria-labelledby="verModalTitle">
+      <div class="ver-modal-hd">
+        <h3 id="verModalTitle">历史规则快照</h3>
+        <button type="button" class="btn" id="verModalClose">关闭</button>
+      </div>
+      <div class="ver-modal-bd" id="verModalBody"></div>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">PRD · AI报价规则 · 优化版交互</span>
+    <h3>优化版：维护与试算同屏</h3>
+    <ul>
+      <li>原 6 个 Tab 改成左侧分区（内州价表 / 外州 / 仓绑定 / 有效期 / 版本），<strong>试算固定在右侧</strong>。</li>
+      <li>保存草稿、试算、发布钉在顶栏，改完不用切页。</li>
+      <li>保存草稿后右侧按草稿立刻重算；询价仍走当前生效版，须填生效时间发布、到点才切线上。</li>
+      <li>规则口径与<a href="私卡报价-AI报价规则配置-MVP.html">原版</a>相同，只改交互。</li>
+    </ul>
+    <h3>新 AI 出价 = 713 六仓距离测价 + 头程运价 + 报价有效期</h3>
+    <h4>对齐 713 六仓距离测价表</h4>
+    <ul>
+      <li>覆盖仓：洛杉矶 / 纽约 / 萨凡纳 / 芝加哥 / 休斯顿 / 奥克兰。源表：<a href="按照距离测价的逻辑-6月27号讨论版-基础上完善其他海外仓的713.xls">713.xls</a>。</li>
+      <li><strong>内州</strong>：默认配送距离 ≤150 迈（含 150），走该仓本地价表。</li>
+      <li><strong>外州</strong>：默认 &gt;150 迈；小车万物智联，大车按距离档单迈价。</li>
+      <li>迈数与拆车上限有默认、本页可改。询价按仓邮编 + 收货邮编自动测距，按距离自动切轨，<strong>不可手切</strong>内外州。</li>
+      <li>小车报价须标注尾板限制。AI 过程与 7 渠道仅报价员可见；业务员只收确认后最优 1 条。</li>
+      <li>改完先保存草稿再发布并填生效时间；到点后新询价才走新版，不是改完/点发布立刻切。有效期 7 天（遇 15/30 截断）规则本身锁定。</li>
+      <li><strong>版本 Tab</strong>：已归档 / 生效中版本均可点「查看」浏览发布快照（只读）；发布生效时自动固化快照供日后查阅。</li>
+    </ul>
+    <h4>给业务员的单价（头程运价）</h4>
+    <ul>
+      <li>船务运价管理下发<strong>头程运价</strong>（H1），报价前就绪。</li>
+      <li><strong>总价 = AI 规则配置（本页 713 / 万物智联等）+ 头程运价</strong>。</li>
+      <li><strong>单价 = 总价 ÷ 计费重</strong>，给业务员取个位 USD/KG。</li>
+      <li>业务员不展示头程、计费重、万物智联品牌表。</li>
+      <li>尾端派送费仍在确认台按票<strong>取整登记、不做计算</strong>，不参与上式。</li>
+    </ul>
+    <h4>规则维护（本页可改）</h4>
+    <ul>
+      <li><strong>入口：</strong>运单模块独立菜单「AI报价规则」，与询价报价（报价员）并列。报价员 / 规则管理员可见，业务员菜单不展示。</li>
+      <li><strong>谁：</strong>报价组规则管理员。询价员 / 业务员只读已发布版本，不能在询价里改价表。</li>
+      <li><strong>流程：</strong>改价表或仓绑定 → 保存草稿（本页试算可用草稿）→ 发布时必填<strong>生效时间</strong> → 到点前询价仍走当前生效版；到点后新询价走新版。不是改完或点发布立刻切。在期未过期票默认仅提示可重算。</li>
+      <li><strong>可改：</strong>六仓本地距离档（起步价 / 续托 / 53 整车价 / 含托数）、内州拆车上限与折算、内州迈数、外州单迈价档、$ / mile、外州拆车上限与尾量系数、万物智联品牌启用、销售产品↔仓（产品、海外仓、仓地址、城市、州、邮编均可改）。</li>
+      <li><strong>锁定：</strong>询价/试算不可手切内外州（仍按距离自动切）、有效期 7 天+15/30 截断、尾端派送费（确认台按票登记）、万物智联附加费（<strong>对接返回已含，本页不维护、不本地叠加</strong>，见 <a href="散货AI询价报价-需求PRD.html#m2-fee">PRD 2.5.1</a>）。</li>
+    </ul>
+    <p>规则来源：713.xls 六仓价表 + 8/14 袁华君外州单迈价 + <a href="报价组-会议纪要_2026-08-15-AI报价.html">8/15 会议纪要</a> + <a href="海外仓至本州地址报价系统.html">本州测算页</a> / <a href="海外仓至外州地址报价系统.html">外州测算页</a>。内州/外州默认按 ≤150 / &gt;150 迈（规则页可改迈数与拆车上限）；纽约 NY/NJ 按收货地址；外州小车万物智联优先 8 品牌各取最便宜 1 条，<strong>没有则再取其他最便宜</strong>（<strong>仅报价员</strong>）；外州大车按距离档 × 单迈单价。报价员确认台仍登记<strong>尾端派送费（取整、不做计算）</strong>并绑运单。</p>
+
+    <h4>覆盖仓与本地范围</h4>
+    <ul>
+      <li><strong>内州 / 外州判定</strong>：按配送距离。默认 <strong>≤150 迈 = 内州</strong>（走该仓本地距离价表），<strong>&gt;150 迈 = 外州</strong>（小车万物智联、大车按距离档单迈价）。上限迈在「六仓本地价表 / 外州规则」可改，有默认。8/14 袁华君：150 英里以内算本州内，以外是外州单迈价格。不再按收货州是否等于仓本地州；询价/试算不可手切。同州但超过上限迈同样走外州。</li>
+      <li><strong>内州拆车（默认可改）</strong>：小车 24 方 / 4500kg，大车 68 方 / 18000kg，托数 = max(⌈方÷2⌉, ⌈kg÷450⌉)。</li>
+      <li><strong>外州拆车（默认可改）</strong>：小车 16 方 / 4500kg / 8 板；大车 32 板；板数 = max(⌈方÷2⌉, ⌈kg÷560⌉)；尾量系数 1.2。</li>
+      <li><strong>外州大车单迈价（8/14 袁华君，六仓共用）</strong>：整车价 = 距离 × 档位单价（取整）。151–200 $8.3/mile；201–250 $7.5；251–500 $6.5；501–999 $5.9；1000–1300 $5.3；1301–1600 $4.3；1601–2000 $4；≥2001 $3.6。不再按目的州系数、不再用（系数×距离）÷32。</li>
+      <li><strong>销售产品 → 海外仓</strong>：一仓可绑多个销售产品，一个产品只能绑一个仓。713 起发仓由绑定表带出（名称 + 地址 + 邮编），不用国内交货仓。询价勾选任一产品即带出该仓，用于和收货邮编测距。</li>
+      <li><strong>萨凡纳</strong>：内州按 ≤150 迈；仓址 Savannah GA 31407（测算页）。</li>
+      <li><strong>芝加哥</strong>：内州按 ≤150 迈；仓址 Joliet IL 60433。</li>
+      <li><strong>休斯顿</strong>：内州按 ≤150 迈；仓址 Houston TX 77051。</li>
+      <li><strong>奥克兰</strong>：内州按 ≤150 迈；仓址 San Leandro CA 94577；起步价<strong>含 3 板</strong>，第 4 板起续托。</li>
+      <li><strong>洛杉矶</strong>：内州按 ≤150 迈；仓址 Ontario CA 91761（测算页安大略仓）。续托统一 $10/板。</li>
+      <li><strong>纽约</strong>：内州仍按 ≤150 迈。<strong>价表按收货地址判断</strong>：地址在 NY → 一口价（小车 $230+$80/板，大车 $1400）；地址在 NJ → 按距离档。NJ 最后一档为 101–150 迈；&gt;150 迈走外州，不再写「州内」。仓址 Elizabeth NJ 07206。</li>
+    </ul>
+
+    <h4>四步（内州 / 外州骨架相同，由距离切轨）</h4>
+    <ol>
+      <li><strong>地址锁车型</strong>：住宅、商业无卸货台 → 仅 26 尺，超载只追加小车，禁 53 尺。商业有卸货台 → 26 / 53 均可。</li>
+      <li><strong>车型适配</strong>（含等于不算超）：内州默认小车 ≤24 方且 ≤4500kg，大车 ≤68 方且 ≤18 吨。外州小车另加 ≤8 板、体积上限默认 16 方。上限在规则页可改。有卸货台时：任一项<strong>大于</strong>小车上限才触发大车。</li>
+      <li><strong>锁价</strong>：内州（默认 ≤150 迈，可改）按距离档匹配起步价+续托 / 整车价。纽约仓另按<strong>收货地址</strong>选 NY 一口价或 NJ 距离档。外州（超过上限迈）小车进万物智联；大车整车价 = <strong>距离 × 该档单迈单价</strong>（取整）。</li>
+      <li><strong>核算</strong>：多车拆分后累加得到 AI 规则总价。给业务员单价 =（该总价 + 头程运价）÷ 计费重。小车报价必须同步标注<strong>尾板限制</strong>。</li>
+    </ol>
+
+    <h4>本地计费</h4>
+    <ul>
+      <li>小车：费用 = 距离档起步价（含 N 托，默认 1，奥克兰 3）+ 续托单价 × 超出托数。托数 = max(⌈方÷2⌉, ⌈kg÷450⌉)（规则页默认可改：方÷2、重÷450）。</li>
+      <li>多车：按小车上限拆（默认 24 方 / 4500kg，可改）。体积、重量<strong>各自扣上限</strong>。第 1 辆按该车实载，后续按剩余实载独立套公式。</li>
+      <li>大车（仅有卸货台）：未超大车上限（默认 68 方且 18 吨）→ 整车价。超出则每次扣 min(剩余体积, 上限方) 与 min(剩余重量, 上限 kg)。剩余同时 ≤ 小车上限 → 改小车；否则再追加大车，循环。例：70 方/17 吨 → 1 大车 68 方/17 吨 + 小车 2 方。</li>
+      <li>洛杉矶续托统一 $10/板。休斯顿第一档为 <strong>&lt;10 迈</strong>，10 迈（含）起下一档。26 尺报价须标注<strong>尾板限制</strong>。</li>
+    </ul>
+
+    <h4>外州计费</h4>
+    <ul>
+      <li>小车板数 = max(⌈方÷2⌉, ⌈kg÷560⌉)（规则页默认可改）。万物智联参数：板规 48×40×72、重量<strong>磅</strong>、货值默认 $500、品名 General、包装=货板、货运等级按密度建议、发货仓地址用测算页仓址（默认商业有卸货台）。</li>
+      <li><strong>万物智联优先品牌</strong>：XPO Logistics Freight, Inc. / Estes Express Lines / ABF Freight System Inc / FedEx Freight® Priority / FedEx Freight® Economy / TFORCE FREIGHT, INC / Saia Motor Freight Line, LLC / ROADRUNNER TRANSPORTATION SERVICES, INC.。每个有报价的品牌取<strong>最便宜 1 条</strong>，<strong>仅返回给报价员核对</strong>。8 个品牌如果没有（全部没有或部分没有），再从其他承运商里取最便宜的补上返回。业务员只收确认后的最优 1 条。</li>
+      <li>满载拆分对齐外州测算页：按密度算单板重；若 8 板重 ≤4500kg 则满载 8 板，否则满载板=⌊4500/单板重⌋。满载车复用平台价，尾量车独立再测。</li>
+      <li>附加费：外州 26 尺走万物智联时，<strong>以对接返回含附加费总价为准</strong>；ESS 不在 API 价上本地叠加。地址类型仍传入平台；尾端派送费另在确认台登记。</li>
+      <li>大车板数 = max(⌈方÷2⌉, ⌈kg÷560⌉)。<strong>整车价 = 距离 × 单迈单价</strong>（取整）。≤32 板：若板数仍 ≤ 小车满载阈值 → 改小车走万物智联；满载 32 板按整车价；不满 32 且不能改小车 → <strong>整车价 × 板数 ÷ 32 × 1.2</strong>（取整）。&gt;32：先按 32 板整车循环（每车同一迈价）；剩余 ≤ 小车满载阈值改小车，否则同样按板 ×1.2。</li>
+      <li>单迈价表六仓共用，不查出目的州系数。目的州仅用于合规附加（加州平台费率 / 德州 6.25%）与地址展示。</li>
+    </ul>
+
+    <h4>713 核算示例（引擎试算应对齐）</h4>
+    <ul>
+      <li>本地有卸货台 70 方/17 吨 → 1 大车（68 方/17 吨）+ 1 小车（2 方）。</li>
+      <li>本地有卸货台 95 方/25 吨 → 2 大车。</li>
+      <li>本地无卸货台 30 方/5200kg → 2 小车（满载 + 余 6 方/700kg）。</li>
+      <li>外州有卸货台 12 方/3800kg → 小车 7 板，万物智联 8 品牌各 1 条最便宜。</li>
+      <li>外州无卸货台 36 方/11000kg → 只拆小车（密度满载 + 尾量）。</li>
+      <li>外州有卸货台 28 方/7500kg · 800 迈 → 大车 1 车 × $6.5/mile = $5,200。</li>
+      <li>外州有卸货台 100 方/25 吨 · 800 迈 → 大车 50 板 = 32 板整车 $5,200 + 18 板按板 ×1.2（$5,200 × 18 ÷ 32 × 1.2 = $3,510）。</li>
+    </ul>
+
+    <h4>询价可见性 / 确认台 / 绑单锁定（8/15）</h4>
+    <ul>
+      <li>询价页按<strong>仓邮编 + 收货邮编自动测距</strong>（手填仅兜底）。真实测距上线后替换示意。万物智联实接在测算页；本页试算用示意价。不在本页保存账号密码。</li>
+      <li>业务员询价页<strong>不展示 AI 金额与渠道比价</strong>，只提交后台测算。报价员须核对确认才生效。</li>
+      <li>确认并成功绑运单后报价锁定；业务员改运单信息不回写已确认价。解绑后可重算。</li>
+      <li>旧 AI 下线。尾端派送费不在本页配单价，在报价员确认台按票<strong>取整登记、不做计算</strong>；给业务员的单价另按（AI规则 + 头程运价）÷ 计费重。散货可多绑运单。</li>
+    </ul>
+
+    <h4>报价有效期（本页「有效期规则」Tab）</h4>
+    <p>痛点：价格动态调整，过期价仍被使用。有效期按规则锁定写入，确认台不可改；过期须重算，不可硬用。</p>
+    <ul>
+      <li><strong>何时写入</strong>：散货 = 人工复核通过时刻；整柜 = 手报价生效时刻（整柜无 AI 复核）。待复核不写有效期。</li>
+      <li><strong>默认天数（锁定）</strong>：散货 / 整柜各 7 天，含生效当日。生效日为第 1 天，第 7 日 23:59:59 截止。本页与确认台均<strong>不可改</strong>天数 / 有效期至。</li>
+      <li><strong>月中月底截断（8/13）</strong>：海运费月中、月底易变。若「生效日～默认截止日」包含当月 15 日或 30 日，截止日卡在先碰到的那一天。例：8/13 确认、7 天本应到 8/19，含 15 日 → 有效期至 8/15。8/16 确认到 8/22 不含 15/30 → 仍 8/22。8/26 确认到 9/1 含 8/30 → 至 8/30。</li>
+      <li><strong>单票覆盖</strong>：不允许。确认台只读展示系统写入的「有效期至」，不提供改期、延期。</li>
+      <li><strong>到期提醒</strong>：距截止 ≤ 2 天标黄。</li>
+      <li><strong>过期卡控</strong>：禁止绑运单、禁止客户直接采用。只允许重算再生效（G1 回退 R1）。无有效期同样不可绑。不可改期续命。</li>
+      <li><strong>713 价表变更</strong>：发布须填生效时间，到点后新询价才用新表。对已生效未过期票，默认仅提示可重算、不强制。</li>
+      <li><strong>绑运单</strong>：必须已生效且未过期；散货一对多、整柜一对一；绑定时挂尾端派送费快照。</li>
+    </ul>
+  </div>
+
+  <script>
+(function () {
+  /** 713 表落地数据（与 xls 六仓 Sheet 对齐） */
+  var US_STATES = [
+    ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],["CA","California"],
+    ["CO","Colorado"],["CT","Connecticut"],["DC","District of Columbia"],["DE","Delaware"],["FL","Florida"],["GA","Georgia"],
+    ["HI","Hawaii"],["ID","Idaho"],["IL","Illinois"],["IN","Indiana"],["IA","Iowa"],
+    ["KS","Kansas"],["KY","Kentucky"],["LA","Louisiana"],["ME","Maine"],["MD","Maryland"],
+    ["MA","Massachusetts"],["MI","Michigan"],["MN","Minnesota"],["MS","Mississippi"],["MO","Missouri"],
+    ["MT","Montana"],["NE","Nebraska"],["NV","Nevada"],["NH","New Hampshire"],["NJ","New Jersey"],
+    ["NM","New Mexico"],["NY","New York"],["NC","North Carolina"],["ND","North Dakota"],["OH","Ohio"],
+    ["OK","Oklahoma"],["OR","Oregon"],["PA","Pennsylvania"],["RI","Rhode Island"],["SC","South Carolina"],
+    ["SD","South Dakota"],["TN","Tennessee"],["TX","Texas"],["UT","Utah"],["VT","Vermont"],
+    ["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],["WI","Wisconsin"],["WY","Wyoming"]
+  ];
+  var LA_COEFFS = {"AL":4.1,"AZ":6.0,"AR":4.2,"CO":7.0,"CT":3.5,"DE":3.8,"FL":3.7,"GA":3.6,"ID":6.0,"IL":3.5,"IN":3.5,"IA":4.5,"KS":4.5,"KY":3.7,"LA":4.5,"ME":3.5,"MD":3.8,"MA":3.8,"MI":3.8,"MN":4.5,"MS":4.0,"MO":4.3,"MT":6.5,"NE":5.0,"NV":11.7,"NH":3.7,"NJ":3.6,"NM":5.5,"NY":3.6,"NC":3.6,"ND":5.2,"OH":3.5,"OK":5.0,"OR":6.0,"PA":3.8,"RI":4.0,"SC":4.0,"SD":5.0,"TN":3.8,"TX":4.5,"UT":7.0,"VT":3.8,"VA":3.7,"DC":4.0,"WV":4.0,"WI":4.2,"WY":7.0};
+  var NY_COEFFS = {"MA":8.2,"ME":6.6,"CT":13.2,"NJ":16.9,"NY":14.3,"PA":8.8,"DC":7.3,"VA":6.0};
+  var SAV_COEFFS = {"AL":6.4,"FL":6.5,"GA":7.0,"MS":5.0,"NC":8.4,"SC":10.3,"TN":6.2};
+  var CHI_COEFFS = {"IL":7.6,"IN":8.0,"IA":5.5,"KS":4.4,"KY":4.9,"MI":7.8,"MN":4.0,"MO":5.0,"OH":6.0};
+  var HOU_COEFFS = {"CA":1.5,"AR":6.0,"OK":6.0,"TX":6.0};
+  var OAK_COEFFS = {"NV":3.5,"OR":5.9,"AZ":5.0,"WA":6.0};
+  var ACC_DEFAULT = { liftGate: 69.77, appoint: 5.81, residential: 69.77 };
+  var ACC_BY_CARRIER = {
+    "XPO Logistics Freight, Inc.": { liftGate: 80, appoint: 25, residential: 100 },
+    "Estes Express Lines": { liftGate: 75.58, appoint: 0, residential: 145.35 },
+    "ABF Freight System Inc": { liftGate: 82, appoint: 32, residential: 80 },
+    "FedEx Freight® Priority": { liftGate: 96, appoint: 0, residential: 120 },
+    "FedEx Freight® Economy": { liftGate: 96, appoint: 0, residential: 120 },
+    "TFORCE FREIGHT, INC": { liftGate: 69.77, appoint: 5.81, residential: 69.77 },
+    "Saia Motor Freight Line, LLC": { liftGate: 78, appoint: 28, residential: 85 },
+    "ROADRUNNER TRANSPORTATION SERVICES, INC.": { liftGate: 69.77, appoint: 5.81, residential: 69.77 }
+  };
+  var COMPLIANCE = { CA: "api", TX: 0.0625, GA: 0 };
+
+  function pickBand(dist, bands, incl) {
+    for (var i = 0; i < bands.length; i++) {
+      var b = bands[i];
+      var ok = b.inc === false ? dist < b.max : dist <= b.max;
+      if (ok) return { base: b.base, tray: b.tray, flat: b.flat, incl: incl, label: b.d };
+    }
+    var last = bands[bands.length - 1];
+    return { base: last.base, tray: last.tray, flat: last.flat, incl: incl, label: last.d };
+  }
+
+  var WH = {
+    LA: {
+      id: "LA", name: "洛杉矶海外仓", localLabel: "CA 内州价表（≤150迈）",
+      origin: "1495 E Locust St", zip: "91761", city: "Ontario", st: "CA",
+      localDef: "内州 = 距离 ≤150迈", special: "续托统一 $10/板；101–150迈用最后一档", inclTray: 1,
+      localPrices: [
+        { d: "1-30迈（含）", s: "150+续托10/板", l: 500 },
+        { d: "30-50迈（含）", s: "200+续托10/板", l: 700 },
+        { d: "50-60迈（含）", s: "250+续托10/板", l: 900 },
+        { d: "60-70迈（含）", s: "300+续托10/板", l: 900 },
+        { d: "70-90迈（含）", s: "350+续托10/板", l: 1000 },
+        { d: "90-100迈（含）", s: "400+续托10/板", l: 1200 },
+        { d: "101–150迈（内州）", s: "450+续托10/板", l: 1500 }
+      ],
+      parseLocal: function (dist) {
+        return pickBand(dist, [
+          { max: 30, d: "1-30迈（含）", base: 150, tray: 10, flat: 500 },
+          { max: 50, d: "30-50迈（含）", base: 200, tray: 10, flat: 700 },
+          { max: 60, d: "50-60迈（含）", base: 250, tray: 10, flat: 900 },
+          { max: 70, d: "60-70迈（含）", base: 300, tray: 10, flat: 900 },
+          { max: 90, d: "70-90迈（含）", base: 350, tray: 10, flat: 1000 },
+          { max: 100, d: "90-100迈（含）", base: 400, tray: 10, flat: 1200 },
+          { max: 150, d: "101–150迈（内州）", base: 450, tray: 10, flat: 1500 }
+        ], 1);
+      },
+      coeffs: LA_COEFFS
+    },
+    NY: {
+      id: "NY", name: "纽约海外仓", localLabel: "纽约内州（≤150迈，按收货地址）",
+      origin: "7 Slater Dr", zip: "07206", city: "Elizabeth", st: "NJ",
+      localDef: "内州 = 距离 ≤150迈；NY/NJ 价表按收货地址判断",
+      special: "收货地址=NJ → 按距离档；收货地址=NY → 一口价 $230+$80/板 / 大车 $1400", inclTray: 1,
+      localPrices: [
+        { d: "<10 Miles", s: "100+续板30/板", l: 450, addr: "NJ" },
+        { d: "<20 Miles", s: "120+续板35/板", l: 450, addr: "NJ" },
+        { d: "<30 Miles", s: "140+续板40/板", l: 450, addr: "NJ" },
+        { d: "31-40 Miles", s: "160+续板45/板", l: 600, addr: "NJ" },
+        { d: "41-50 Miles", s: "180+续板50/板", l: 600, addr: "NJ" },
+        { d: "51-60 Miles", s: "200+续板55/板", l: 600, addr: "NJ" },
+        { d: "61-70 Miles", s: "220+续板60/板", l: 700, addr: "NJ" },
+        { d: "71-80 Miles", s: "240+续板65/板", l: 700, addr: "NJ" },
+        { d: "81-100 Miles", s: "260+续板70/板", l: 900, addr: "NJ" },
+        { d: "101–150迈（内州）", s: "280+续板90/板", l: 1200, addr: "NJ", last: true },
+        { d: "一口价（≤150迈）", s: "230+续板80/板", l: 1400, addr: "NY" }
+      ],
+      parseLocal: function (dist, sub) {
+        if (sub === "NY") return { base: 230, tray: 80, flat: 1400, incl: 1, label: "NY 一口价（收货地址=NY）" };
+        return pickBand(dist, [
+          { max: 10, inc: false, d: "NJ <10", base: 100, tray: 30, flat: 450 },
+          { max: 20, inc: false, d: "NJ <20", base: 120, tray: 35, flat: 450 },
+          { max: 30, inc: false, d: "NJ <30", base: 140, tray: 40, flat: 450 },
+          { max: 40, d: "NJ 31-40", base: 160, tray: 45, flat: 600 },
+          { max: 50, d: "NJ 41-50", base: 180, tray: 50, flat: 600 },
+          { max: 60, d: "NJ 51-60", base: 200, tray: 55, flat: 600 },
+          { max: 70, d: "NJ 61-70", base: 220, tray: 60, flat: 700 },
+          { max: 80, d: "NJ 71-80", base: 240, tray: 65, flat: 700 },
+          { max: 100, d: "NJ 81-100", base: 260, tray: 70, flat: 900 },
+          { max: 150, d: "NJ 101–150迈（内州）", base: 280, tray: 90, flat: 1200 }
+        ], 1);
+      },
+      coeffs: NY_COEFFS
+    },
+    SAV: {
+      id: "SAV", name: "萨凡纳海外仓", localLabel: "萨凡纳本地区域（GA）",
+      origin: "248 Grange Rd", zip: "31407", city: "Savannah", st: "GA",
+      localDef: "内州 = 距离 ≤150迈 · 仓址 GA 31407", special: "续托随距离变化；最后一档 101–150迈", inclTray: 1,
+      localPrices: [
+        { d: "<10 Miles", s: "100+续托30/板", l: 450 },
+        { d: "<20 Miles", s: "120+续托35/板", l: 500 },
+        { d: "<30 Miles", s: "140+续托40/板", l: 550 },
+        { d: "31-40 Miles", s: "160+续托50/板", l: 600 },
+        { d: "41-50 Miles", s: "180+续托55/板", l: 650 },
+        { d: "51-60 Miles", s: "200+续托60/板", l: 700 },
+        { d: "61-70 Miles", s: "220+续托65/板", l: 750 },
+        { d: "71-80 Miles", s: "240+续托70/板", l: 850 },
+        { d: "81-100 Miles", s: "260+续托75/板", l: 950 },
+        { d: "101–150迈（内州）", s: "280+85/板", l: 1200 }
+      ],
+      parseLocal: function (dist) {
+        return pickBand(dist, [
+          { max: 10, inc: false, d: "<10", base: 100, tray: 30, flat: 450 },
+          { max: 20, inc: false, d: "<20", base: 120, tray: 35, flat: 500 },
+          { max: 30, inc: false, d: "<30", base: 140, tray: 40, flat: 550 },
+          { max: 40, d: "31-40", base: 160, tray: 50, flat: 600 },
+          { max: 50, d: "41-50", base: 180, tray: 55, flat: 650 },
+          { max: 60, d: "51-60", base: 200, tray: 60, flat: 700 },
+          { max: 70, d: "61-70", base: 220, tray: 65, flat: 750 },
+          { max: 80, d: "71-80", base: 240, tray: 70, flat: 850 },
+          { max: 100, d: "81-100", base: 260, tray: 75, flat: 950 },
+          { max: 150, d: "101–150迈（内州）", base: 280, tray: 85, flat: 1200 }
+        ], 1);
+      },
+      coeffs: SAV_COEFFS
+    },
+    CHI: {
+      id: "CHI", name: "芝加哥海外仓", localLabel: "IL 本地",
+      origin: "2750 Ellis Dr Unit D", zip: "60433", city: "Joliet", st: "IL",
+      localDef: "内州 = 距离 ≤150迈 · 坐标 IL 60433", special: "续托随距离变化；最后一档 101–150迈", inclTray: 1,
+      localPrices: [
+        { d: "<10 Miles", s: "100+续板35/板", l: 500 },
+        { d: "<20 Miles", s: "120+续板40/板", l: 530 },
+        { d: "<30 Miles", s: "130+续板45/板", l: 550 },
+        { d: "31-40 Miles", s: "140+续板50/板", l: 650 },
+        { d: "41-50 Miles", s: "150+续板55/板", l: 700 },
+        { d: "51-60 Miles", s: "180+续板60/板", l: 750 },
+        { d: "61-70 Miles", s: "200+续板70/板", l: 810 },
+        { d: "71-80 Miles", s: "220+续板75/板", l: 850 },
+        { d: "81-100 Miles", s: "230+续板80/板", l: 900 },
+        { d: "101–150迈（内州）", s: "250+续板90/板", l: 1200 }
+      ],
+      parseLocal: function (dist) {
+        return pickBand(dist, [
+          { max: 10, inc: false, d: "<10", base: 100, tray: 35, flat: 500 },
+          { max: 20, inc: false, d: "<20", base: 120, tray: 40, flat: 530 },
+          { max: 30, inc: false, d: "<30", base: 130, tray: 45, flat: 550 },
+          { max: 40, d: "31-40", base: 140, tray: 50, flat: 650 },
+          { max: 50, d: "41-50", base: 150, tray: 55, flat: 700 },
+          { max: 60, d: "51-60", base: 180, tray: 60, flat: 750 },
+          { max: 70, d: "61-70", base: 200, tray: 70, flat: 810 },
+          { max: 80, d: "71-80", base: 220, tray: 75, flat: 850 },
+          { max: 100, d: "81-100", base: 230, tray: 80, flat: 900 },
+          { max: 150, d: "101–150迈（内州）", base: 250, tray: 90, flat: 1200 }
+        ], 1);
+      },
+      coeffs: CHI_COEFFS
+    },
+    HOU: {
+      id: "HOU", name: "休斯顿海外仓", localLabel: "休斯顿本地（TX）",
+      origin: "9258 Park S View", zip: "77051", city: "Houston", st: "TX",
+      localDef: "内州 = 距离 ≤150迈（价表分区 TX）", special: "续托随距离变化；第一档 <10 迈；最后一档 101–150迈", inclTray: 1,
+      localPrices: [
+        { d: "< 10 Miles", s: "150+续托15/板", l: 450 },
+        { d: "10（含）-20 Miles", s: "180+续板20/板", l: 500 },
+        { d: "20（含）-30 Miles", s: "210+续板30/板", l: 550 },
+        { d: "30（含）-40 Miles", s: "230+续板45/板", l: 650 },
+        { d: "40（含）-50 Miles", s: "260+续板55/板", l: 750 },
+        { d: "50（含）-60 Miles", s: "290+续板60/板", l: 900 },
+        { d: "60（含）-70 Miles", s: "320+续板65/板", l: 1200 },
+        { d: "70（含）-80 Miles", s: "350+续板70/板", l: 1300 },
+        { d: "80（含）-90 Miles", s: "380+续板75/板", l: 1400 },
+        { d: "90（含）-100 Miles", s: "410+续板80/板", l: 1500 },
+        { d: "101–150迈（内州）", s: "450+续板85/板", l: 1700 }
+      ],
+      parseLocal: function (dist) {
+        return pickBand(dist, [
+          { max: 10, inc: false, d: "<10", base: 150, tray: 15, flat: 450 },
+          { max: 20, inc: false, d: "10含-20", base: 180, tray: 20, flat: 500 },
+          { max: 30, inc: false, d: "20含-30", base: 210, tray: 30, flat: 550 },
+          { max: 40, inc: false, d: "30含-40", base: 230, tray: 45, flat: 650 },
+          { max: 50, inc: false, d: "40含-50", base: 260, tray: 55, flat: 750 },
+          { max: 60, inc: false, d: "50含-60", base: 290, tray: 60, flat: 900 },
+          { max: 70, inc: false, d: "60含-70", base: 320, tray: 65, flat: 1200 },
+          { max: 80, inc: false, d: "70含-80", base: 350, tray: 70, flat: 1300 },
+          { max: 90, inc: false, d: "80含-90", base: 380, tray: 75, flat: 1400 },
+          { max: 100, d: "90含-100", base: 410, tray: 80, flat: 1500 },
+          { max: 150, d: "101–150迈（内州）", base: 450, tray: 85, flat: 1700 }
+        ], 1);
+      },
+      coeffs: HOU_COEFFS
+    },
+    OAK: {
+      id: "OAK", name: "奥克兰海外仓", localLabel: "奥克兰本地（起步含3板）",
+      origin: "1997 Davis St", zip: "94577", city: "San Leandro", st: "CA",
+      localDef: "内州 = 距离 ≤150迈（价表分区 CA）", special: "起步价含 3 托，第 4 托起续托；最后一档 81–150迈", inclTray: 3,
+      localPrices: [
+        { d: "0-10 Miles", s: "起步170（含三个板）第四个板起 $15/板", l: 400 },
+        { d: "11-20 Miles", s: "起步220（含三个板）第四个板起 $15/板", l: 400 },
+        { d: "21-30 Miles", s: "起步270（含三个板）第四个板起 $15/板", l: 500 },
+        { d: "31-40 Miles", s: "起步320（含三个板）第四个板起 $20/板", l: 500 },
+        { d: "41-50 Miles", s: "起步370（含三个板）第四个板起 $20/板", l: 600 },
+        { d: "51-80 Miles", s: "起步520（含三个板）第四个板起 $20/板", l: 700 },
+        { d: "81–150迈（内州）", s: "起步580（含三个板）第四个板起 $20/板", l: 900 }
+      ],
+      parseLocal: function (dist) {
+        return pickBand(dist, [
+          { max: 10, d: "0-10", base: 170, tray: 15, flat: 400 },
+          { max: 20, d: "11-20", base: 220, tray: 15, flat: 400 },
+          { max: 30, d: "21-30", base: 270, tray: 15, flat: 500 },
+          { max: 40, d: "31-40", base: 320, tray: 20, flat: 500 },
+          { max: 50, d: "41-50", base: 370, tray: 20, flat: 600 },
+          { max: 80, d: "51-80", base: 520, tray: 20, flat: 700 },
+          { max: 150, d: "81–150迈（内州）", base: 580, tray: 20, flat: 900 }
+        ], 3);
+      },
+      coeffs: OAK_COEFFS
+    }
+  };
+
+  var WH_ORDER = ["LA", "NY", "SAV", "CHI", "HOU", "OAK"];
+  var LOCAL_LOGIC = {
+    miles: 150,
+    smallVol: 24,
+    smallWt: 4500,
+    largeVol: 68,
+    largeWt: 18000,
+    volDiv: 2,
+    wtDiv: 450
+  };
+  var OUT_LOGIC = {
+    smallVol: 16,
+    smallWt: 4500,
+    smallBoards: 8,
+    largeBoards: 32,
+    tailMul: 1.2,
+    volDiv: 2,
+    wtDiv: 560
+  };
+  function localMiles() {
+    var n = Number(LOCAL_LOGIC.miles);
+    return n > 0 ? n : 150;
+  }
+  function outDistRange() { return ">" + localMiles() + "迈"; }
+  var OUT_MILE_RATES = [
+    { from: 151, to: 200, rate: 8.3 },
+    { from: 201, to: 250, rate: 7.5 },
+    { from: 251, to: 500, rate: 6.5 },
+    { from: 501, to: 999, rate: 5.9 },
+    { from: 1000, to: 1300, rate: 5.3 },
+    { from: 1301, to: 1600, rate: 4.3 },
+    { from: 1601, to: 2000, rate: 4 },
+    { from: 2001, to: 99999, rate: 3.6 }
+  ];
+  function outMileBand(d) {
+    if (!(d > localMiles())) return null;
+    for (var i = 0; i < OUT_MILE_RATES.length; i++) {
+      var r = OUT_MILE_RATES[i];
+      if (d >= r.from && d <= r.to) {
+        return { rate: r.rate, label: r.to >= 99999 ? ("≥" + r.from + "迈") : (r.from + "–" + r.to + "迈") };
+      }
+    }
+    var last = OUT_MILE_RATES[OUT_MILE_RATES.length - 1];
+    return last ? { rate: last.rate, label: "≥" + last.from + "迈" } : null;
+  }
+  function truckMileFee(dist, mul) {
+    var b = outMileBand(dist);
+    if (!b) return 0;
+    return Math.round(dist * b.rate * (mul || 1));
+  }
+  function outTailLargeFee(dist, boards) {
+    var cap = OUT_LOGIC.largeBoards > 0 ? OUT_LOGIC.largeBoards : 32;
+    var mul = OUT_LOGIC.tailMul > 0 ? OUT_LOGIC.tailMul : 1.2;
+    return Math.round(truckMileFee(dist, 1) * boards * mul / cap);
+  }
+  var HOME_STATES = { LA: ["CA"], NY: ["NY", "NJ"], SAV: ["GA"], CHI: ["IL"], HOU: ["TX"], OAK: ["CA"] };
+  var WWZL_CHANNELS = [
+    { name: "XPO Logistics Freight, Inc.", fee: 355, days: 5, on: true },
+    { name: "Estes Express Lines", fee: 328, days: 4, on: true },
+    { name: "ABF Freight System Inc", fee: 368, days: 5, on: true },
+    { name: "FedEx Freight® Priority", fee: 412, days: 3, on: true },
+    { name: "FedEx Freight® Economy", fee: 379, days: 6, on: true },
+    { name: "TFORCE FREIGHT, INC", fee: 341, days: 4, on: true },
+    { name: "Saia Motor Freight Line, LLC", fee: 312, days: 5, on: true },
+    { name: "ROADRUNNER TRANSPORTATION SERVICES, INC.", fee: 348, days: 5, on: true }
+  ];
+  function wwzlCheapest(list) {
+    var copy = (list || []).filter(function (c) { return c.on !== false; }).slice().sort(function (a, b) { return a.fee - b.fee; });
+    return copy[0];
+  }
+  var EX_ALL = [
+    { t: "内州例1 · 45迈 有卸货台 70方/17吨 → 1大+1小", addr: "com_dock", vol: 70, wt: 17000, dist: 45 },
+    { t: "内州例2 · 45迈 有卸货台 95方/25吨 → 2大车", addr: "com_dock", vol: 95, wt: 25000, dist: 45 },
+    { t: "内州例3 · 35迈 无卸货台 30方/5200kg → 2小车", addr: "com_no", vol: 30, wt: 5200, dist: 35 },
+    { t: "内州边界 · 150迈仍走内州价表", addr: "com_dock", vol: 12, wt: 2800, dist: 150 },
+    { t: "外州刚出 · 151迈走外州算法", addr: "com_dock", vol: 12, wt: 3800, dist: 151, st: "CO" },
+    { t: "外州例1 · 800迈 有台 12方/3800kg → 小车7板", addr: "com_dock", vol: 12, wt: 3800, dist: 800, st: "CO" },
+    { t: "外州例2 · 800迈 无台 36方/11000kg → 2满载+尾量", addr: "com_no", vol: 36, wt: 11000, dist: 800, st: "CO" },
+    { t: "外州例3 · 800迈 有台 28方/7500kg → 大车×$6.5/mile", addr: "com_dock", vol: 28, wt: 7500, dist: 800, st: "CO" },
+    { t: "外州例4 · 800迈 有台 100方/25吨 → 整车+18板×1.2/32", addr: "com_dock", vol: 100, wt: 25000, dist: 800, st: "CO" }
+  ];
+
+  var curWh = "LA";
+  var mode = "local";
+  var ruleState = { draft: false, live: "v2026.08.17-maintain", pending: null };
+  var SALES_PRODUCTS = [
+    "中美快运私人卡派(洛杉矶)",
+    "中美快运私人卡派(奥克兰)",
+    "中美快运私人卡派(纽约)",
+    "美国空派 LAX",
+    "美西私人卡派",
+    "美中私人卡派",
+    "美东私人卡派",
+    "美加私人卡派",
+    "美西加班卡派(COSCO)",
+    "美中加班卡派(MAX/EXX)",
+    "美东加班卡派"
+  ];
+  var PROD_BINDS = [
+    { prods: ["中美快运私人卡派(洛杉矶)", "美国空派 LAX"], wh: "LA" },
+    { prods: ["中美快运私人卡派(奥克兰)"], wh: "OAK" },
+    { prods: ["中美快运私人卡派(纽约)"], wh: "NY" }
+  ];
+  var openMsI = -1;
+
+  function normalizeBand(r) {
+    if (r.base == null || r.tray == null) {
+      var m = String(r.s || "").match(/(\d+)\D+(\d+)/);
+      r.base = m ? +m[1] : 0;
+      r.tray = m ? +m[2] : 0;
+    }
+    if (r.max == null) {
+      var nums = String(r.d || "").match(/\d+/g);
+      r.max = nums ? +nums[nums.length - 1] : 150;
+    }
+    if (r.inc == null) r.inc = !/^</.test(String(r.d || "").trim());
+    r.l = Number(r.l) || 0;
+  }
+  function rebuildParseLocal(w) {
+    w.parseLocal = function (dist, sub) {
+      if (w.id === "NY" && sub === "NY") {
+        var ny = (w.localPrices || []).filter(function (r) { return r.addr === "NY"; })[0];
+        if (ny) return { base: +ny.base, tray: +ny.tray, flat: +ny.l, incl: w.inclTray, label: ny.d };
+      }
+      var bands = (w.localPrices || []).filter(function (r) { return r.addr !== "NY"; }).map(function (r) {
+        return { max: +r.max, inc: r.inc, d: r.d, base: +r.base, tray: +r.tray, flat: +r.l };
+      });
+      return pickBand(dist, bands, w.inclTray);
+    };
+  }
+  WH_ORDER.forEach(function (id) {
+    (WH[id].localPrices || []).forEach(normalizeBand);
+    rebuildParseLocal(WH[id]);
+  });
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg) {
+    var el = $("toast");
+    el.textContent = msg;
+    el.style.display = "block";
+    setTimeout(function () { el.style.display = "none"; }, 2000);
+  }
+  function money(n) {
+    if (n == null || isNaN(n)) return "—";
+    return "$" + (Math.round(n * 100) / 100).toLocaleString();
+  }
+  function ceilPallet(vol, wt, volDiv, wtDiv) {
+    return Math.ceil(Math.max(vol / volDiv, wt / wtDiv) - 1e-9);
+  }
+  function kgToLb(kg) { return Math.round(kg * 2.20462); }
+  function smallFullLoadPallets(vol, wt) {
+    var capB = OUT_LOGIC.smallBoards > 0 ? OUT_LOGIC.smallBoards : 8;
+    var capW = OUT_LOGIC.smallWt > 0 ? OUT_LOGIC.smallWt : 4500;
+    var vDiv = OUT_LOGIC.volDiv > 0 ? OUT_LOGIC.volDiv : 2;
+    if (!(vol > 0)) return capB;
+    var per = (wt / vol) * vDiv;
+    if (!(per > 0)) return capB;
+    return (per * capB <= capW) ? capB : Math.max(1, Math.floor(capW / per));
+  }
+  function suggestFreightClass(pallets, wtLb) {
+    var ft3 = pallets * (48 * 40 * 72) / 1728;
+    var dens = ft3 > 0 ? wtLb / ft3 : 0;
+    var cls = dens >= 50 ? 50 : dens >= 35 ? 55 : dens >= 30 ? 60 : dens >= 22.5 ? 65
+      : dens >= 15 ? 70 : dens >= 12 ? 85 : dens >= 10 ? 92.5 : dens >= 8 ? 100
+      : dens >= 6 ? 125 : dens >= 4 ? 175 : dens >= 2 ? 250 : dens >= 1 ? 400 : 500;
+    return { cls: cls, dens: dens };
+  }
+  function accessorialFor(addr, carrier) {
+    var acc = ACC_BY_CARRIER[carrier] || ACC_DEFAULT;
+    var lift = (addr === "res" || addr === "com_no") ? acc.liftGate : 0;
+    var appoint = addr !== "com_dock" ? acc.appoint : 0;
+    var resi = addr === "res" ? acc.residential : 0;
+    return { lift: lift, appoint: appoint, resi: resi, extra: lift + appoint + resi };
+  }
+
+  function ymd(d) {
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+  }
+  function parseYmd(s) {
+    var p = (s || "").split("-");
+    if (p.length !== 3) return null;
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function validCfg() {
+    return {
+      lcl: parseInt($("vLclDays").value, 10) || 7,
+      fcl: parseInt($("vFclDays").value, 10) || 7,
+      include: $("vIncludeStart").value !== "0",
+      min: parseInt($("vMinDays").value, 10) || 1,
+      max: parseInt($("vMaxDays").value, 10) || 30,
+      warn: parseInt($("vWarnDays").value, 10) || 0,
+      allow: false,
+      expireBind: $("vExpireBind").value,
+      expireUse: $("vExpireUse").value,
+      expireAction: $("vExpireAction").value,
+      ruleChange: $("vRuleChange").value
+    };
+  }
+  function clipMidMonth(startStr, untilStr) {
+    var s = parseYmd(startStr), u = parseYmd(untilStr);
+    if (!s || !u) return untilStr;
+    var d = new Date(s.getTime());
+    while (d <= u) {
+      var day = d.getDate();
+      if (day === 15 || day === 30) return ymd(d);
+      d.setDate(d.getDate() + 1);
+    }
+    return untilStr;
+  }
+  function validUntil(startStr, days, includeStart) {
+    var d = parseYmd(startStr);
+    if (!d) return null;
+    var n = Math.max(1, days);
+    d.setDate(d.getDate() + (includeStart ? n - 1 : n));
+    return clipMidMonth(startStr, ymd(d));
+  }
+  function describeValid(dim, startStr, overrideDays) {
+    var cfg = validCfg();
+    var def = dim === "fcl" ? cfg.fcl : cfg.lcl;
+    var days = overrideDays != null && overrideDays !== "" ? parseInt(overrideDays, 10) : def;
+    var usedOverride = overrideDays != null && overrideDays !== "";
+    var notes = [];
+    if (usedOverride && !cfg.allow) {
+      notes.push("单票改天数未启用，仍用默认 " + def + " 天");
+      days = def;
+    } else if (usedOverride) {
+      if (days < cfg.min || days > cfg.max) {
+        notes.push("改天数 " + days + " 超出 " + cfg.min + "～" + cfg.max + "，已夹回");
+        days = Math.min(cfg.max, Math.max(cfg.min, days));
+      } else {
+        notes.push("单票覆盖默认 " + def + " 天 → " + days + " 天（须留痕）");
+      }
+    }
+    var rawUntil = (function () {
+      var d = parseYmd(startStr);
+      if (!d) return null;
+      var n = Math.max(1, days);
+      d.setDate(d.getDate() + (cfg.include ? n - 1 : n));
+      return ymd(d);
+    })();
+    var until = validUntil(startStr, days, cfg.include);
+    if (!until) return { err: "生效日无效" };
+    if (rawUntil && rawUntil !== until) notes.push("窗口含 15/30 日，截止已卡到 " + until + "（按 7 天本应到 " + rawUntil + "）");
+    var untilDate = parseYmd(until);
+    var today = parseYmd("2026-08-13");
+    var left = Math.round((untilDate - today) / 86400000);
+    var status = left < 0 ? "已过期" : (left <= cfg.warn ? "临期提醒" : "在期");
+    var bind = left < 0 && cfg.expireBind === "block" ? "禁止绑运单" : (left < 0 ? "警告后可绑" : "可绑运单");
+    return {
+      dim: dim === "fcl" ? "整柜" : "散货",
+      days: days,
+      def: def,
+      include: cfg.include,
+      until: until,
+      left: left,
+      status: status,
+      bind: bind,
+      notes: notes,
+      cfg: cfg
+    };
+  }
+
+  /** 本州测算：体积、重量各自扣上限（与测算页 calculate 一致） */
+  function takeLoad(remV, remW, limV, limW) {
+    var takeV = Math.min(remV, limV);
+    var takeW = Math.min(remW, limW);
+    return {
+      takeV: takeV,
+      takeW: takeW,
+      remV: Math.max(0, remV - takeV),
+      remW: Math.max(0, remW - takeW)
+    };
+  }
+
+  function renderWhList(listId, onPick, subtitleFn) {
+    var box = $(listId);
+    box.innerHTML = WH_ORDER.map(function (id) {
+      var w = WH[id];
+      var sub = subtitleFn ? subtitleFn(w) : w.localDef;
+      return '<div class="wh-item' + (id === curWh ? " on" : "") + '" data-id="' + id + '"><b>' +
+        w.name + "</b><span>" + sub + "</span></div>";
+    }).join("");
+    box.onclick = function (e) {
+      var item = e.target.closest(".wh-item");
+      if (!item) return;
+      curWh = item.getAttribute("data-id");
+      onPick();
+    };
+  }
+
+  function syncModeFromDist() {
+    var dist = parseFloat($("eDist").value);
+    if (isNaN(dist) || dist < 0) dist = 0;
+    mode = dist <= localMiles() ? "local" : "out";
+  }
+
+  function syncModeUi() {
+    syncModeFromDist();
+    document.querySelectorAll(".mode-switch button").forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-mode") === mode);
+    });
+    $("modeTag").textContent = mode === "local"
+      ? "内州 · ≤" + localMiles() + "迈 · 小车 " + LOCAL_LOGIC.smallVol + "方/" + LOCAL_LOGIC.smallWt + "kg"
+      : "外州 · >" + localMiles() + "迈 · 小车 " + OUT_LOGIC.smallVol + "方/" + OUT_LOGIC.smallBoards + "板 · 大车单迈价";
+    $("eStateWrap").style.display = mode === "out" ? "" : "none";
+    $("eNyWrap").style.display = mode === "local" && curWh === "NY" ? "" : "none";
+  }
+
+  function renderExBtns() {
+    $("exBtns").innerHTML = EX_ALL.map(function (ex, i) {
+      return '<button type="button" class="btn" data-ex="' + i + '">' + ex.t + "</button>";
+    }).join("");
+  }
+
+  function renderEngineParams() {
+    var w = WH[curWh];
+    var lm = localMiles();
+    $("engineTitle").textContent = w.name + (mode === "local" ? " · 内州（≤" + lm + "迈）" : " · 外州（>" + lm + "迈）");
+    if (mode === "local") {
+      $("engineParams").innerHTML =
+        "判定：配送距离 <b>≤" + lm + " 迈 = 内州</b>，走本地距离价表（最后一档到 " + lm + " 迈）<br/>" +
+        (curWh === "NY" ? "纽约仓价表 <b>按收货地址（州）判断</b>：NY → 一口价；NJ → 距离档<br/>" : "") +
+        "仓参数：<b>" + w.localDef + "</b><br/>" +
+        "小车上限：<b>" + LOCAL_LOGIC.smallVol + "方 / " + LOCAL_LOGIC.smallWt + "kg</b>（含等于）· 大车：" + LOCAL_LOGIC.largeVol + "方 / " + LOCAL_LOGIC.largeWt + "kg<br/>" +
+        "托数 = max(⌈方÷" + LOCAL_LOGIC.volDiv + "⌉, ⌈kg÷" + LOCAL_LOGIC.wtDiv + "⌉)<br/>" +
+        "起步含托：<b>" + w.inclTray + "</b> · " + w.special + "<br/>" +
+        "有卸货台触发大车：体积 &gt;" + LOCAL_LOGIC.smallVol + "方 或 重量 &gt;" + LOCAL_LOGIC.smallWt + "kg（不含等于）";
+    } else {
+      var band = outMileBand(parseFloat($("eDist").value) || 0);
+      $("engineParams").innerHTML =
+        "判定：配送距离 <b>&gt;" + lm + " 迈 = 外州</b>（同州超 " + lm + " 也走外州）<br/>" +
+        "小车上限：<b>" + OUT_LOGIC.smallVol + "方 / " + OUT_LOGIC.smallWt + "kg / " + OUT_LOGIC.smallBoards + "板</b>（三项均含等于）· 走万物智联<br/>" +
+        "优先 " + WWZL_CHANNELS.length + " 品牌，<b>每渠道最便宜 1 条</b>；名单内没有再取其他最便宜。仅报价员核对；业务员只收确认后最优 1 条<br/>" +
+        "仓地址：<b>" + formatWhAddr(w) + "</b><br/>" +
+        "大车板数=max(方÷" + OUT_LOGIC.volDiv + ", 重÷" + OUT_LOGIC.wtDiv + ")↑ · <b>整车价=距离×单迈单价</b>（取整）· 满载" + OUT_LOGIC.largeBoards + "板 · 尾量能改小车则改，否则整车价×板数÷" + OUT_LOGIC.largeBoards + "×" + OUT_LOGIC.tailMul + "<br/>" +
+        (band ? ("当前档 <b>" + band.label + " · $" + band.rate + "/mile</b><br/>") : "") +
+        "有卸货台触发大车：体积 &gt;" + OUT_LOGIC.smallVol + "方 或 重量 &gt;" + OUT_LOGIC.smallWt + "kg<br/>" +
+        "单迈价表六仓共用，不按目的州系数";
+    }
+  }
+
+  function fillLogicForms() {
+    if ($("lLocalMiles")) $("lLocalMiles").value = LOCAL_LOGIC.miles;
+    if ($("lSmallVol")) $("lSmallVol").value = LOCAL_LOGIC.smallVol;
+    if ($("lSmallWt")) $("lSmallWt").value = LOCAL_LOGIC.smallWt;
+    if ($("lLargeVol")) $("lLargeVol").value = LOCAL_LOGIC.largeVol;
+    if ($("lLargeWt")) $("lLargeWt").value = LOCAL_LOGIC.largeWt;
+    if ($("lVolDiv")) $("lVolDiv").value = LOCAL_LOGIC.volDiv;
+    if ($("lWtDiv")) $("lWtDiv").value = LOCAL_LOGIC.wtDiv;
+    if ($("oLocalMiles")) $("oLocalMiles").value = LOCAL_LOGIC.miles;
+    if ($("outDistRange")) $("outDistRange").value = outDistRange();
+    if ($("oSmallVol")) $("oSmallVol").value = OUT_LOGIC.smallVol;
+    if ($("oSmallWt")) $("oSmallWt").value = OUT_LOGIC.smallWt;
+    if ($("oSmallBoards")) $("oSmallBoards").value = OUT_LOGIC.smallBoards;
+    if ($("oLargeBoards")) $("oLargeBoards").value = OUT_LOGIC.largeBoards;
+    if ($("oVolDiv")) $("oVolDiv").value = OUT_LOGIC.volDiv;
+    if ($("oWtDiv")) $("oWtDiv").value = OUT_LOGIC.wtDiv;
+    if ($("oTailMul")) $("oTailMul").value = OUT_LOGIC.tailMul;
+    if ($("lLocalJudge")) $("lLocalJudge").value = "内州 = 距离 ≤" + localMiles() + "迈（含）；超过走外州。询价不可手切。";
+  }
+  function numVal(el, fallback) {
+    var n = parseFloat(el && el.value);
+    return (n > 0 || n === 0) && !isNaN(n) ? n : fallback;
+  }
+  function readLogicForms(src) {
+    if (src === "local" || src === "miles") {
+      LOCAL_LOGIC.miles = numVal($("lLocalMiles") || $("oLocalMiles"), 150);
+      if (src === "local") {
+        LOCAL_LOGIC.smallVol = numVal($("lSmallVol"), 24);
+        LOCAL_LOGIC.smallWt = numVal($("lSmallWt"), 4500);
+        LOCAL_LOGIC.largeVol = numVal($("lLargeVol"), 68);
+        LOCAL_LOGIC.largeWt = numVal($("lLargeWt"), 18000);
+        LOCAL_LOGIC.volDiv = numVal($("lVolDiv"), 2);
+        LOCAL_LOGIC.wtDiv = numVal($("lWtDiv"), 450);
+      }
+    }
+    if (src === "out" || src === "miles") {
+      if ($("oLocalMiles")) LOCAL_LOGIC.miles = numVal($("oLocalMiles"), LOCAL_LOGIC.miles);
+      OUT_LOGIC.smallVol = numVal($("oSmallVol"), 16);
+      OUT_LOGIC.smallWt = numVal($("oSmallWt"), 4500);
+      OUT_LOGIC.smallBoards = numVal($("oSmallBoards"), 8);
+      OUT_LOGIC.largeBoards = numVal($("oLargeBoards"), 32);
+      OUT_LOGIC.volDiv = numVal($("oVolDiv"), 2);
+      OUT_LOGIC.wtDiv = numVal($("oWtDiv"), 560);
+      OUT_LOGIC.tailMul = numVal($("oTailMul"), 1.2);
+    }
+    if ($("lLocalMiles") && src !== "local") $("lLocalMiles").value = LOCAL_LOGIC.miles;
+    if ($("oLocalMiles") && src !== "out") $("oLocalMiles").value = LOCAL_LOGIC.miles;
+    if ($("outDistRange")) $("outDistRange").value = outDistRange();
+    refreshLogicLabels();
+  }
+
+  function refreshLogicLabels() {
+    var lm = localMiles();
+    var L = LOCAL_LOGIC, O = OUT_LOGIC;
+    document.querySelectorAll(".mode-switch button").forEach(function (b) {
+      var m = b.getAttribute("data-mode");
+      if (m === "local") b.textContent = "内州 · ≤" + lm + "迈";
+      if (m === "out") b.textContent = "外州 · >" + lm + "迈";
+    });
+    var hint = $("modeHint");
+    if (hint) {
+      hint.innerHTML = "改「配送距离」后自动切轨：<strong>≤" + lm + " 迈走内州价表</strong>（含 " + lm + "），<strong>&gt;" + lm + " 迈走外州</strong>（小车万物智联 / 大车单迈价）。不可手切。内州上限迈有默认、规则页可改。";
+    }
+    var distInp = $("eDist");
+    if (distInp) distInp.title = "≤" + lm + " 内州，>" + lm + " 外州";
+    var lt = $("localTip");
+    if (lt) {
+      lt.innerHTML = "数据摘自 713 各仓「本地」价表，用于<strong>配送距离 ≤" + lm + " 迈</strong>（默认 150，本页可改）。最后一档覆盖到 " + lm + " 迈（含）；超过改走外州，不再用本表。" +
+        " 拆车默认：小车 " + L.smallVol + " 方/" + L.smallWt + "kg，大车 " + L.largeVol + " 方/" + L.largeWt + "kg，托数 = max(⌈方÷" + L.volDiv + "⌉, ⌈kg÷" + L.wtDiv + "⌉)。下方数字均可改。26 尺须标尾板限制。";
+    }
+    var ot = $("outTip");
+    if (ot) {
+      ot.innerHTML = "适用<strong>距离范围 &gt;" + lm + " 迈</strong>（含同州超 " + lm + "）。默认 150 迈分界，本页可改。" +
+        " 小车默认 ≤" + O.smallVol + " 方/" + O.smallWt + "kg/" + O.smallBoards + " 板，走<strong>万物智联</strong>：优先 8 个卡车品牌，<strong>每个品牌只取最便宜 1 条</strong>；8 个没有则再取其他最便宜的返回。<strong>仅报价员核对</strong>。" +
+        " 大车板数=max(方÷" + O.volDiv + ", 重÷" + O.wtDiv + ")↑；<b>整车价 = 距离 × 该档 $/mile</b>（取整）；单车最多 " + O.largeBoards + " 板；尾量能改小车则改万物智联，否则 <b>整车价 × 板数 ÷ " + O.largeBoards + " × " + O.tailMul + "</b>。";
+    }
+    if ($("outWhListTitle")) $("outWhListTitle").textContent = "起始仓（外州 · >" + lm + "迈）";
+    if ($("outMileHint")) {
+      $("outMileHint").innerHTML = lm + " 英里以内走内州价表。&gt;" + lm + " 英里按下列档位 × 距离，<b>六仓同一张表</b>。尾量不够一辆 " + O.largeBoards + " 板：能改小车则按量走万物智联，否则整车价 × 板数 ÷ " + O.largeBoards + " × " + O.tailMul + "（按板折）。";
+    }
+    if ($("lLocalJudge")) $("lLocalJudge").value = "内州 = 距离 ≤" + lm + "迈（含）；超过走外州。询价不可手切。";
+    if ($("localPriceHint")) {
+      $("localPriceHint").textContent = curWh === "NY"
+        ? "一口价还是距离档，按收货地址（州）判断：NY → 一口价；NJ → 距离档。最后一档到 " + lm + " 迈（含）。尾量 26 按实载，53 按整车。"
+        : "最后一档到 " + lm + " 迈（含）为止；>" + lm + " 迈走外州。尾量 26 按该车实载（起步+续托）；53 不满也按整车价。";
+    }
+    refreshWhLists();
+  }
+
+  function refreshWhLists() {
+    if (!$("engineWhList")) return;
+    renderWhList("engineWhList", onWhChange, function () { return "内州≤" + localMiles() + "迈 / 外州" + outDistRange(); });
+    renderWhList("localWhList", onWhChange, function (w) {
+      return w.id === "NY" ? "内州≤" + localMiles() + "迈 · 按收货地址" : "内州 ≤" + localMiles() + "迈";
+    });
+    renderWhList("outWhList", onWhChange, function () { return "外州 " + outDistRange(); });
+  }
+
+  function renderLocalTab() {
+    var w = WH[curWh];
+    $("localWhTitle").textContent = w.name + " · " + w.localLabel;
+    $("lInclTray").value = w.inclTray;
+    fillLogicForms();
+    $("lSpecial").value = w.special;
+    if ($("lOrigin")) $("lOrigin").value = formatWhAddr(w);
+    $("lNyAddrWrap").style.display = curWh === "NY" ? "" : "none";
+    var filter = curWh === "NY" ? $("lNyAddr").value : "all";
+    $("localPriceHint").textContent = curWh === "NY"
+      ? "一口价还是距离档，按收货地址（州）判断：NY → 一口价；NJ → 距离档。最后一档到 " + localMiles() + " 迈（含）。尾量 26 按实载，53 按整车。"
+      : "最后一档到 " + localMiles() + " 迈（含）为止；>" + localMiles() + " 迈走外州。尾量 26 按该车实载（起步+续托）；53 不满也按整车价。";
+    var home = (HOME_STATES[curWh] || []).join("/") || "—";
+    var html = "";
+    (w.localPrices || []).forEach(function (r, i) {
+      if (filter !== "all" && r.addr && r.addr !== filter) return;
+      var addr = r.addr || home;
+      var last = r.last || /150迈/.test(r.d);
+      html += "<tr" + (last ? " class='home-st'" : "") + " data-i='" + i + "'>";
+      html += "<td>" + addr + "</td>";
+      html += "<td><input data-f='d' value='" + String(r.d || "").replace(/'/g, "") + "' /></td>";
+      html += "<td><input data-f='max' type='number' min='1' value='" + r.max + "' /></td>";
+      html += "<td><input data-f='base' type='number' min='0' step='1' value='" + r.base + "' /></td>";
+      html += "<td><input data-f='tray' type='number' min='0' step='1' value='" + r.tray + "' /></td>";
+      html += "<td><input data-f='l' type='number' min='0' step='1' value='" + r.l + "' /></td>";
+      html += "<td class='op'><button type='button' class='link-btn' data-del-local='" + i + "'>删除</button></td></tr>";
+    });
+    $("localPriceTbl").querySelector("tbody").innerHTML = html || "<tr><td colspan='7'>暂无档位</td></tr>";
+  }
+
+  function renderOutTab() {
+    var w = WH[curWh];
+    $("outWhTitle").textContent = "外州单迈价表 · " + w.name + "（" + outDistRange() + "，六仓共用）";
+    if ($("outOriginHint")) {
+      $("outOriginHint").textContent = "仓地址 " + formatWhAddr(w) + " · 发货默认商业有卸货台 · 大车不按本仓系数，按单迈档";
+    }
+    fillLogicForms();
+    var mileBody = $("mileRateTbl") && $("mileRateTbl").querySelector("tbody");
+    if (mileBody) {
+      mileBody.innerHTML = OUT_MILE_RATES.map(function (r, i) {
+        var lab = r.to >= 99999 ? ("≥" + r.from) : (r.from + "–" + r.to);
+        return "<tr data-i='" + i + "'><td class='dist-col'><input data-f='from' type='number' min='1' value='" + r.from + "' /></td>" +
+          "<td class='dist-col'><input data-f='to' type='number' min='1' value='" + r.to + "' /></td>" +
+          "<td><input data-f='rate' type='number' min='0' step='0.1' value='" + r.rate + "' /></td>" +
+          "<td class='left'>整车价 = 距离 × 单价（取整）。尾量能改小车则按量，否则整车价 × 板数 ÷ " + OUT_LOGIC.largeBoards + " × " + OUT_LOGIC.tailMul + "</td>" +
+          "<td class='op'><button type='button' class='link-btn' data-del-mile='" + i + "'>删除</button></td></tr>";
+      }).join("");
+    }
+    var carBody = $("wwzlCarrierTbl") && $("wwzlCarrierTbl").querySelector("tbody");
+    if (carBody) {
+      carBody.innerHTML = WWZL_CHANNELS.map(function (c, i) {
+        return "<tr><td>" + (i + 1) + "</td><td class='left'>" + c.name + "</td>" +
+          "<td><input type='checkbox' data-wwzl='" + i + "'" + (c.on !== false ? " checked" : "") + " /></td>" +
+          "<td>仅报价员</td></tr>";
+      }).join("");
+    }
+  }
+
+  function escHtml(s) {
+    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function formatWhAddr(w) {
+    if (!w) return "—";
+    var line = [w.origin, w.city, w.st].filter(Boolean).join(", ");
+    return w.zip ? line + " " + w.zip : line;
+  }
+  function prodList(p) {
+    if (!p) return [];
+    if (Array.isArray(p.prods)) return p.prods.slice();
+    return p.prod ? [p.prod] : [];
+  }
+  function prodUsedElse(name, exceptI) {
+    return PROD_BINDS.some(function (p, i) {
+      return i !== exceptI && prodList(p).indexOf(name) >= 0;
+    });
+  }
+  function unbindProd(name) {
+    PROD_BINDS.forEach(function (p) {
+      p.prods = prodList(p).filter(function (n) { return n !== name; });
+    });
+  }
+  function renderMs(p, i) {
+    var selected = prodList(p);
+    var chips = selected.map(function (n) {
+      return "<span class='ms-chip'>" + escHtml(n) + "<button type='button' class='ms-x' data-unpick='" + escHtml(n) + "' title='移除'>×</button></span>";
+    }).join("") || "<span class='ms-empty'>未选产品</span>";
+    var items = SALES_PRODUCTS.map(function (n) {
+      var on = selected.indexOf(n) >= 0;
+      var other = prodUsedElse(n, i);
+      return "<label class='ms-opt" + (other && !on ? " dim" : "") + "'>" +
+        "<input type='checkbox' data-pick='" + escHtml(n) + "'" + (on ? " checked" : "") + (other && !on ? " disabled" : "") + " />" +
+        "<span>" + escHtml(n) + (other && !on ? " <em>已绑其他仓</em>" : "") + "</span></label>";
+    }).join("");
+    return "<div class='ms'><div class='ms-chips'>" + chips +
+      "<button type='button' class='ms-toggle' data-ms-open>选择 ▾</button></div>" +
+      "<div class='ms-panel'" + (openMsI === i ? "" : " hidden") + ">" + items +
+      "<div class='ms-add'><input data-new-prod placeholder='新增产品名，回车添加' /><button type='button' data-add-prod>添加</button></div>" +
+      "</div></div>";
+  }
+  function renderProdBind() {
+    var box = $("prodBindTbl");
+    if (!box) return;
+    box.querySelector("tbody").innerHTML = PROD_BINDS.map(function (p, i) {
+      p.prods = prodList(p);
+      var w = WH[p.wh] || {};
+      var opts = WH_ORDER.map(function (id) {
+        return "<option value='" + id + "'" + (p.wh === id ? " selected" : "") + ">" + WH[id].name + "</option>";
+      }).join("");
+      return "<tr data-i='" + i + "'><td class='left prod-cell'>" + renderMs(p, i) + "</td>" +
+        "<td><select data-f='wh'>" + opts + "</select></td>" +
+        "<td class='left'><input data-f='origin' value='" + escHtml(w.origin || "") + "' placeholder='街道地址' /></td>" +
+        "<td><input data-f='city' value='" + escHtml(w.city || "") + "' placeholder='城市' /></td>" +
+        "<td><input data-f='st' value='" + escHtml(w.st || "") + "' placeholder='州' maxlength='2' /></td>" +
+        "<td><input data-f='zip' value='" + escHtml(w.zip || "") + "' placeholder='邮编' /></td>" +
+        "<td class='op'><button type='button' class='link-btn' data-del-prod='" + i + "'>删除</button></td></tr>";
+    }).join("");
+  }
+
+  function cloneJson(o) { return JSON.parse(JSON.stringify(o)); }
+  function captureRuleSnapshot(ver, note, eff, st) {
+    var binds = PROD_BINDS.map(function (p) {
+      var w = WH[p.wh] || {};
+      return (p.prods || []).join("、") + " → " + (w.name || p.wh);
+    });
+    var whLocal = WH_ORDER.map(function (id) {
+      var w = WH[id];
+      return {
+        name: w.name,
+        bands: (w.localPrices || []).length,
+        sample: (w.localPrices || []).slice(0, 3).map(function (r) {
+          return (r.d || "") + " · " + (r.s || "");
+        }).join("；")
+      };
+    });
+    var vLcl = $("vLclDays"), vFcl = $("vFclDays");
+    return {
+      ver: ver,
+      note: note || "",
+      eff: eff || "",
+      st: st || "",
+      local: cloneJson(LOCAL_LOGIC),
+      out: cloneJson(OUT_LOGIC),
+      outMile: cloneJson(OUT_MILE_RATES),
+      prodBinds: binds,
+      wwzlOn: WWZL_CHANNELS.filter(function (c) { return c.on !== false; }).length,
+      valid: "散货 " + (vLcl ? vLcl.value : "7") + " 天 / 整柜 " + (vFcl ? vFcl.value : "7") + " 天 · 确认台不可改期",
+      whLocal: whLocal
+    };
+  }
+  var VERSION_HIST = {
+    "v2026.08.15-meeting": {
+      ver: "v2026.08.15-meeting",
+      note: "8/15：按仓邮编+收货邮编自动测距；7 渠道仅报价员核对，业务员只收确认后最优 1 条；确认+绑运单锁定",
+      eff: "2026-08-15",
+      st: "已归档",
+      local: { miles: 150, smallVol: 24, smallWt: 4500, largeVol: 68, largeWt: 18000, volDiv: 2, wtDiv: 450 },
+      out: { smallVol: 16, smallWt: 4500, smallBoards: 8, largeBoards: 32, tailMul: 1.2, volDiv: 2, wtDiv: 560 },
+      outMile: [
+        { from: 151, to: 200, rate: 8.3 }, { from: 201, to: 250, rate: 7.5 },
+        { from: 251, to: 500, rate: 6.5 }, { from: 501, to: 999, rate: 5.9 },
+        { from: 1000, to: 1300, rate: 5.3 }, { from: 1301, to: 1600, rate: 4.3 },
+        { from: 1601, to: 2000, rate: 4 }, { from: 2001, to: 99999, rate: 3.6 }
+      ],
+      prodBinds: ["中美快运私人卡派(洛杉矶)、美国空派 LAX → 洛杉矶海外仓", "中美快运私人卡派(奥克兰) → 奥克兰海外仓", "中美快运私人卡派(纽约) → 纽约海外仓"],
+      wwzlOn: 8,
+      valid: "散货 7 天 / 整柜 7 天 · 确认台不可改期",
+      whLocal: WH_ORDER.map(function (id) {
+        return { name: WH[id].name, bands: (WH[id].localPrices || []).length, sample: "713 六仓完整价表" };
+      }),
+      extra: "测距：仓邮编 + 收货邮编；AI待确认不返回业务员。"
+    },
+    "v2026.08.14-outrate": {
+      ver: "v2026.08.14-outrate",
+      note: "外州大车改单迈价表（袁华君 8/14）：>150 迈按距离档 $/mile，六仓共用，不再按目的州系数",
+      eff: "2026-08-14",
+      st: "已归档",
+      local: { miles: 150, smallVol: 24, smallWt: 4500, largeVol: 68, largeWt: 18000, volDiv: 2, wtDiv: 450 },
+      out: { smallVol: 16, smallWt: 4500, smallBoards: 8, largeBoards: 32, tailMul: 1.2, volDiv: 2, wtDiv: 560 },
+      outMile: [
+        { from: 151, to: 300, rate: 9.2 }, { from: 301, to: 600, rate: 7.8 },
+        { from: 601, to: 1200, rate: 6.1 }, { from: 1201, to: 99999, rate: 4.5 }
+      ],
+      prodBinds: ["销售产品 → 海外仓绑定（六仓）"],
+      wwzlOn: 8,
+      valid: "散货 7 天 / 整柜 7 天",
+      whLocal: [{ name: "六仓本地价表", bands: "713", sample: "内州 ≤150 迈" }],
+      extra: "旧版外州大车曾按目的州系数；本版起六仓共用单迈价档，整车价 = 距离 × 单价。"
+    },
+    "v2026.08.14-lastmile": {
+      ver: "v2026.08.14-lastmile",
+      note: "尾端派送费确认台取整登记、不做计算（不按头程÷计费重反推单价）",
+      eff: "2026-08-14",
+      st: "已归档",
+      local: { miles: 150, smallVol: 24, smallWt: 4500, largeVol: 68, largeWt: 18000, volDiv: 2, wtDiv: 450 },
+      out: { smallVol: 16, smallWt: 4500, smallBoards: 8, largeBoards: 32, tailMul: 1.2, volDiv: 2, wtDiv: 560 },
+      outMile: [
+        { from: 151, to: 200, rate: 8.3 }, { from: 201, to: 250, rate: 7.5 },
+        { from: 251, to: 500, rate: 6.5 }, { from: 501, to: 999, rate: 5.9 },
+        { from: 1000, to: 99999, rate: 5.3 }
+      ],
+      prodBinds: ["销售产品 → 海外仓绑定（六仓）"],
+      wwzlOn: 8,
+      valid: "散货 7 天 / 整柜 7 天",
+      whLocal: [{ name: "713 六仓", bands: "—", sample: "价表同 8/14-outrate" }],
+      extra: "尾端派送费：报价员确认台按票取整登记，不参与 AI 单价公式。"
+    },
+    "v2026.08.13-713": {
+      ver: "v2026.08.13-713",
+      note: "有效期规则锁定：散货/整柜默认 7 天，确认台不可改期；过期须重算",
+      eff: "2026-08-13",
+      st: "已归档",
+      local: { miles: 150, smallVol: 24, smallWt: 4500, largeVol: 68, largeWt: 18000, volDiv: 2, wtDiv: 450 },
+      out: { smallVol: 16, smallWt: 4500, smallBoards: 8, largeBoards: 32, tailMul: 1.2, volDiv: 2, wtDiv: 560 },
+      outMile: [{ from: 151, to: 99999, rate: 6.5 }],
+      prodBinds: ["销售产品 → 海外仓（初版绑定表）"],
+      wwzlOn: 7,
+      valid: "散货 7 天 / 整柜 7 天 · 遇 15/30 截断 · 确认台不可改期（本版起锁定）",
+      whLocal: [{ name: "713 六仓", bands: "完整", sample: "内州距离档 + 外州万物智联" }],
+      extra: "单票有效期不可改、不可延期；过期回退 R1 须重算。"
+    },
+    "v2026.08.06-713": {
+      ver: "v2026.08.06-713",
+      note: "并入 713 六仓本地/外州距离测价；旧 AI 下线；尾端派送费确认台登记",
+      eff: "2026-08-06",
+      st: "已归档",
+      local: { miles: 150, smallVol: 24, smallWt: 4500, largeVol: 68, largeWt: 18000, volDiv: 2, wtDiv: 450 },
+      out: { smallVol: 16, smallWt: 4500, smallBoards: 8, largeBoards: 32, tailMul: 1.15, volDiv: 2, wtDiv: 560 },
+      outMile: [{ from: 151, to: 500, rate: 7.2 }, { from: 501, to: 99999, rate: 5.8 }],
+      prodBinds: ["洛杉矶 / 纽约 / 萨凡纳 / 芝加哥 / 休斯顿 / 奥克兰"],
+      wwzlOn: 6,
+      valid: "散货 7 天 / 整柜 7 天（确认台仍可改期）",
+      whLocal: WH_ORDER.map(function (id) { return { name: WH[id].name, bands: (WH[id].localPrices || []).length, sample: "713 并入" }; }),
+      extra: "旧 AI 出价下线；尾端派送费改在确认台登记。"
+    },
+    "v2026.06.27": {
+      ver: "v2026.06.27",
+      note: "距离测价讨论版（洛杉矶基线）",
+      eff: "2026-06-27",
+      st: "已归档",
+      local: { miles: 100, smallVol: 20, smallWt: 4000, largeVol: 60, largeWt: 16000, volDiv: 2, wtDiv: 450 },
+      out: { smallVol: 14, smallWt: 4000, smallBoards: 6, largeBoards: 28, tailMul: 1.1, volDiv: 2, wtDiv: 500 },
+      outMile: [{ from: 101, to: 99999, rate: 8.5 }],
+      prodBinds: ["洛杉矶海外仓（单仓试点）"],
+      wwzlOn: 4,
+      valid: "未纳入 7 天 + 15/30 锁定",
+      whLocal: [{ name: "洛杉矶海外仓", bands: 5, sample: "0–10 / 11–20 / … / 81–100 迈（讨论稿）" }],
+      extra: "仅 LA 基线讨论版，尚未扩展六仓与 713 正式价表。"
+    }
+  };
+  function getVersionSnapshot(ver, row) {
+    if (ver === ruleState.live) {
+      var note = row ? (row.querySelector("td.left") || {}).textContent || "" : "";
+      var eff = row ? (row.children[2] || {}).textContent || "" : "";
+      var st = row ? (row.children[3] || {}).textContent || "" : "";
+      return captureRuleSnapshot(ver, note, eff, st);
+    }
+    return VERSION_HIST[ver] || null;
+  }
+  function renderOutMileRows(list) {
+    return (list || []).map(function (r) {
+      var range = r.to >= 99999 ? ("≥" + r.from + " 迈") : (r.from + "–" + r.to + " 迈");
+      return "<tr><td>" + range + "</td><td>$" + r.rate + " / mile</td><td class='left'>整车价 = 距离 × 单价（取整）</td></tr>";
+    }).join("");
+  }
+  function renderVerHistModal(snap) {
+    if (!snap) return "<p>未找到该版本快照。</p>";
+    var archived = snap.st === "已归档";
+    var banner = archived
+      ? "<p class='ver-ro-banner arch'><strong>只读 · 历史归档快照</strong> — 发布时已固化，仅供查阅，不可编辑或恢复。</p>"
+      : "<p class='ver-ro-banner'><strong>只读 · 当前生效版快照</strong> — 展示此刻生效规则参数（草稿未计入）。</p>";
+    var L = snap.local, O = snap.out;
+    var whRows = (snap.whLocal || []).map(function (w) {
+      return "<tr><td class='left'>" + escHtml(w.name) + "</td><td>" + escHtml(w.bands) + "</td><td class='left'>" + escHtml(w.sample) + "</td></tr>";
+    }).join("");
+    var bindLines = (snap.prodBinds || []).map(function (b) { return "<li>" + escHtml(b) + "</li>"; }).join("");
+    return banner
+      + "<div class='ver-sect'><h4>版本信息</h4><div class='ver-kv'>"
+      + "<span class='k'>版本号</span><span>" + escHtml(snap.ver) + "</span>"
+      + "<span class='k'>生效日</span><span>" + escHtml(snap.eff) + "</span>"
+      + "<span class='k'>状态</span><span>" + escHtml(snap.st) + "</span>"
+      + "<span class='k'>说明</span><span>" + escHtml(snap.note) + "</span>"
+      + (snap.extra ? "<span class='k'>备注</span><span>" + escHtml(snap.extra) + "</span>" : "")
+      + "</div></div>"
+      + "<div class='ver-sect'><h4>内州 / 外州拆车</h4><div class='ver-kv'>"
+      + "<span class='k'>内州上限</span><span>≤ " + L.miles + " 迈</span>"
+      + "<span class='k'>内州小车</span><span>" + L.smallVol + " 方 / " + L.smallWt + " kg · 大车 " + L.largeVol + " 方 / " + L.largeWt + " kg</span>"
+      + "<span class='k'>外州小车</span><span>" + O.smallVol + " 方 / " + O.smallWt + " kg / " + O.smallBoards + " 板 · 万物智联</span>"
+      + "<span class='k'>外州大车</span><span>" + O.largeBoards + " 板 · 尾量系数 " + O.tailMul + "</span>"
+      + "<span class='k'>有效期</span><span>" + escHtml(snap.valid) + "</span>"
+      + "<span class='k'>万物智联</span><span>启用 " + snap.wwzlOn + " 个品牌</span>"
+      + "</div></div>"
+      + "<div class='ver-sect'><h4>外州单迈价档</h4><table class='tbl'><thead><tr><th>距离档</th><th>单价</th><th>说明</th></tr></thead><tbody>"
+      + renderOutMileRows(snap.outMile) + "</tbody></table></div>"
+      + "<div class='ver-sect'><h4>六仓本地价表（摘要）</h4><table class='tbl'><thead><tr><th>海外仓</th><th>档位数</th><th>样例 / 说明</th></tr></thead><tbody>"
+      + (whRows || "<tr><td colspan='3'>—</td></tr>") + "</tbody></table></div>"
+      + "<div class='ver-sect'><h4>销售产品 ↔ 海外仓</h4><ul style='margin:0;padding-left:18px;font-size:12px;line-height:1.7'>"
+      + (bindLines || "<li>—</li>") + "</ul></div>";
+  }
+  function openVerHist(ver) {
+    var row = document.querySelector('#tab-version tr[data-ver="' + ver + '"]');
+    var snap = getVersionSnapshot(ver, row);
+    if (!snap) { toast("未找到 " + ver + " 的历史快照"); return; }
+    $("verModalTitle").textContent = "规则快照 · " + ver;
+    $("verModalBody").innerHTML = renderVerHistModal(snap);
+    var mask = $("verMask");
+    mask.hidden = false;
+    mask.classList.add("show");
+    mask.setAttribute("aria-hidden", "false");
+  }
+  function closeVerHist() {
+    var mask = $("verMask");
+    mask.classList.remove("show");
+    mask.hidden = true;
+    mask.setAttribute("aria-hidden", "true");
+  }
+  function verOpsHtml(ver) {
+    return '<button type="button" class="link-btn" data-ver-view="' + escHtml(ver) + '">查看</button>';
+  }
+  function wireVersionTable() {
+    var tb = document.querySelector("#tab-version tbody");
+    if (!tb) return;
+    tb.onclick = function (e) {
+      var btn = e.target.closest("[data-ver-view]");
+      if (!btn) return;
+      e.preventDefault();
+      openVerHist(btn.getAttribute("data-ver-view"));
+    };
+  }
+  function markDraft() {
+    ruleState.draft = true;
+    updateRuleStatus();
+  }
+  function fmtEff(iso) {
+    if (!iso) return "";
+    return String(iso).replace("T", " ").slice(0, 16);
+  }
+  function updateRuleStatus() {
+    if (!$("ruleStatus")) return;
+    if (ruleState.pending) {
+      $("ruleStatus").textContent = "生效中 " + ruleState.live + " · 已预约 " + ruleState.pending.ver + " 于 " + fmtEff(ruleState.pending.at) + " 生效";
+      $("ruleStatus").className = "st-pending";
+    } else {
+      $("ruleStatus").textContent = "生效中 " + ruleState.live;
+      $("ruleStatus").className = "st-live";
+    }
+    $("ruleDraftHint").textContent = ruleState.draft ? "有未发布草稿（试算已用草稿价）" : "无未发布草稿";
+    $("ruleDraftHint").className = ruleState.draft ? "st-draft" : "lock-tag";
+  }
+  function appendVersion(ver, txt, at, st) {
+    var tb = document.querySelector("#tab-version tbody");
+    if (!tb) return;
+    var tr = document.createElement("tr");
+    tr.setAttribute("data-ver", ver);
+    var color = st === "生效中" ? "#389e0d" : (st === "待生效" ? "#d46b08" : "");
+    tr.innerHTML = "<td>" + ver + "</td><td class='left'>" + txt + "</td><td>" + fmtEff(at) + "</td><td" + (color ? " style='color:" + color + "'" : "") + ">" + st + "</td><td class='op'>" + verOpsHtml(ver) + "</td>";
+    var first = tb.querySelector("tr");
+    if (first && st === "生效中") {
+      first.querySelector("td:nth-child(4)").textContent = "已归档";
+      first.querySelector("td:nth-child(4)").style.color = "";
+    }
+    if (first) tb.insertBefore(tr, first);
+    else tb.appendChild(tr);
+    if (st === "生效中") {
+      VERSION_HIST[ver] = captureRuleSnapshot(ver, txt, fmtEff(at), st);
+      ruleState.live = ver;
+    }
+  }
+  function gotoTab(id) {
+    var tab = document.querySelector('.tab[data-tab="' + id + '"]');
+    if (tab) tab.click();
+  }
+
+  function fillStateSelect() {
+    var opts = US_STATES.map(function (s) {
+      return '<option value="' + s[0] + '">' + s[1] + " (" + s[0] + ")</option>";
+    }).join("");
+    $("eState").innerHTML = opts;
+    $("eState").value = "CO";
+  }
+
+  function calcSmallFee(price, trays) {
+    var incl = price.incl || 1;
+    return price.base + price.tray * Math.max(0, trays - incl);
+  }
+
+  function runCalc() {
+    syncModeUi();
+    renderEngineParams();
+    var w = WH[curWh];
+    var addr = $("eAddr").value;
+    var dist = parseFloat($("eDist").value) || 0;
+    var vol = parseFloat($("eVol").value) || 0;
+    var wt = parseFloat($("eWt").value) || 0;
+    var onlySmall = addr === "res" || addr === "com_no";
+    var lines = [];
+    lines.push("【" + w.name + " · " + (mode === "local"
+      ? "内州 ≤" + localMiles() + "迈 · 价表 " + w.localDef
+      : "外州 >" + localMiles() + "迈") + "】");
+    lines.push("判定：距离 " + dist + " 迈 → " + (mode === "local" ? "内州（走本地价表）" : "外州（小车万物智联 / 大车单迈价）"));
+    if (mode === "local" && curWh === "NY") {
+      var nyAddr = $("eNySub").value;
+      lines.push("收货地址=" + nyAddr + " → " + (nyAddr === "NY" ? "一口价（不分距离档）" : "NJ 距离档"));
+    }
+    lines.push("地址类型=" + $("eAddr").selectedOptions[0].text + " · " + vol + "方 / " + wt + "kg");
+
+    if (mode === "local") {
+      var smallVol = LOCAL_LOGIC.smallVol, smallWt = LOCAL_LOGIC.smallWt, largeVol = LOCAL_LOGIC.largeVol, largeWt = LOCAL_LOGIC.largeWt;
+      var vDiv = LOCAL_LOGIC.volDiv, wDiv = LOCAL_LOGIC.wtDiv;
+      var useLarge = !onlySmall && (vol > smallVol || wt > smallWt);
+      var sub = curWh === "NY" ? $("eNySub").value : "";
+      var price = w.parseLocal(dist, sub);
+      lines.push("① 车型锁：" + (onlySmall ? "仅26尺（超载只追加小车）" : "可26/53尺"));
+      lines.push("② 适配：" + (useLarge ? ("触发53尺（>" + smallVol + "方或>" + smallWt + "kg）") : ("适用26尺（≤" + smallVol + "方且≤" + smallWt + "kg，或地址禁大车）")));
+      lines.push("③ 价表档：" + (price.label || "") + " · 起步$" + price.base + "（含" + price.incl + "托）+ 续托$" + price.tray + "/板 · 大车整车$" + price.flat);
+
+      if (!useLarge) {
+        var remV = vol, remW = wt, total = 0, n = 0, detail = [];
+        while (remV > 0.0001 || remW > 0.0001) {
+          n++;
+          var load = takeLoad(remV, remW, smallVol, smallWt);
+          var tTrays = Math.max(price.incl, ceilPallet(load.takeV, load.takeW, vDiv, wDiv));
+          var f = calcSmallFee(price, tTrays);
+          total += f;
+          detail.push("  第" + n + "辆26尺：" + load.takeV.toFixed(1) + "方/" + Math.round(load.takeW) + "kg · " + tTrays + "板 → " + money(f));
+          remV = load.remV;
+          remW = load.remW;
+          if (n > 20) break;
+        }
+        lines.push("④ 核算（小车拆分，第1辆按该车实载/满载标准）：");
+        lines = lines.concat(detail);
+        lines.push("合计 ≈ " + money(total) + "（须标注尾板限制）");
+      } else {
+        var remV2 = vol, remW2 = wt, total2 = 0, detail2 = [];
+        while (remV2 > 0.0001 || remW2 > 0.0001) {
+          if (remV2 <= smallVol && remW2 <= smallWt) {
+            var t2 = Math.max(price.incl, ceilPallet(remV2, remW2, vDiv, wDiv));
+            var f2 = calcSmallFee(price, t2);
+            total2 += f2;
+            detail2.push("  尾量26尺：" + remV2.toFixed(1) + "方/" + Math.round(remW2) + "kg · " + t2 + "板 → " + money(f2));
+            break;
+          }
+          var loadL = takeLoad(remV2, remW2, largeVol, largeWt);
+          total2 += price.flat;
+          detail2.push("  53尺满载：" + loadL.takeV.toFixed(1) + "方/" + (loadL.takeW / 1000).toFixed(2) + "吨 → 整车 " + money(price.flat));
+          remV2 = loadL.remV;
+          remW2 = loadL.remW;
+          if (detail2.length > 20) break;
+        }
+        lines.push("④ 核算（大车循环；剩余同时≤" + smallVol + "方且≤" + smallWt + "kg 改小车；体积重量各自扣上限）");
+        lines = lines.concat(detail2);
+        lines.push("合计 ≈ " + money(total2));
+      }
+    } else {
+      var smallVolO = OUT_LOGIC.smallVol, smallWtO = OUT_LOGIC.smallWt;
+      var oVDiv = OUT_LOGIC.volDiv, oWDiv = OUT_LOGIC.wtDiv;
+      var capB = OUT_LOGIC.largeBoards;
+      var tailMul = OUT_LOGIC.tailMul;
+      var useLargeO = !onlySmall && (vol > smallVolO || wt > smallWtO);
+      var ab = $("eState").value;
+      var mile = outMileBand(dist);
+      var oneTruck = truckMileFee(dist, 1);
+      lines.push("① 车型锁：" + (onlySmall ? "仅26尺（超载只追加小车）" : "可26/53尺"));
+      lines.push("② 适配：" + (useLargeO ? ("触发53尺（>" + smallVolO + "方或>" + smallWtO + "kg）") : "适用26尺"));
+      lines.push("发货仓：" + formatWhAddr(w) + " · 发货默认商业有卸货台");
+      if (!useLargeO) {
+        var boards = ceilPallet(vol, wt, oVDiv, oWDiv);
+        var fullP = smallFullLoadPallets(vol, wt);
+        var full = Math.floor(boards / fullP);
+        var remB = boards % fullP;
+        var fullW = vol > 0 ? Math.round((wt / vol) * oVDiv * fullP) : smallWtO;
+        var tailWt = Math.max(0, wt - full * fullW);
+        var fc = suggestFreightClass(Math.min(boards, fullP) || boards, kgToLb(Math.min(wt, fullW)));
+        lines.push("③ 小车板数=" + boards + "（max(⌈方/" + oVDiv + "⌉,⌈kg/" + oWDiv + "⌉)）· 密度满载 " + fullP + " 板/车 · 满载车" + full + " · 尾量板" + remB);
+        lines.push("   货运等级建议 " + fc.cls + "（密度 " + fc.dens.toFixed(1) + " lb/ft³）· 板规 48×40×72 · 货值$500 · 品名 General · 重量磅");
+        lines.push("④ 万物智联：优先 " + WWZL_CHANNELS.length + " 品牌，每渠道取最便宜 1 条（示意，未接平台）");
+        var cheap = wwzlCheapest(WWZL_CHANNELS);
+        WWZL_CHANNELS.forEach(function (c, i) {
+          var acc = accessorialFor(addr, c.name);
+          lines.push("   " + (i + 1) + ". " + c.name + "  →  " + money(c.fee) + " / " + c.days + "天" +
+            (acc.extra ? " +附加 " + money(acc.extra) : "") +
+            (c === cheap ? "  ★本票最便宜" : ""));
+        });
+        lines.push("   → 以上优先 " + WWZL_CHANNELS.length + " 条给报价员；某品牌没有则补其他最便宜；确认后最优 1 条给业务员");
+        if (full === 0) {
+          lines.push("   单车：板数 " + boards + " · 货重 " + kgToLb(wt) + " lb");
+        } else {
+          lines.push("   满载车 ×" + full + "：各 " + fullP + " 板 / " + fullW + "kg → 满载标准费 ×" + full + "（平台测一次复用）");
+          if (remB > 0 || tailWt > 0) {
+            lines.push("   尾量车：板数 " + remB + " · 尾量重 " + tailWt + "kg = " + kgToLb(tailWt) + " lb → 独立再测");
+          }
+        }
+        var cs = COMPLIANCE[ab];
+        if (cs === "api") lines.push("   合规附加：加州从平台费率取 California Compliance Surcharge");
+        else if (typeof cs === "number" && cs > 0) lines.push("   合规附加：" + ab + " × " + (cs * 100) + "%");
+        lines.push("备注：须标注尾板限制；目的州=" + ab + "（小车走万物智联，不走单迈价）");
+      } else {
+        var boardsL = ceilPallet(vol, wt, oVDiv, oWDiv);
+        var fullSmall = smallFullLoadPallets(vol, wt);
+        lines.push("③ 大车板数=" + boardsL + "（max(⌈方/" + oVDiv + "⌉,⌈kg/" + oWDiv + "⌉)）· 小车满载板阈值 " + fullSmall);
+        if (!mile) {
+          lines.push("④ 距离未超过 " + localMiles() + " 迈，应走内州价表，不出外州单迈价。");
+        } else {
+          lines.push("   单迈档 " + mile.label + " · $" + mile.rate + "/mile · 整车价=" + dist + " × " + mile.rate + " = " + money(oneTruck) + "（取整）");
+          var totalL = 0, det = [], left = boardsL;
+          if (boardsL <= capB) {
+            if (boardsL <= fullSmall) {
+              det.push("  总板 " + boardsL + " ≤ 小车满载阈值 → 改 26 尺，走万物智联（大车部分 $0）");
+            } else if (boardsL < capB) {
+              totalL = outTailLargeFee(dist, boardsL);
+              det.push("  单车" + boardsL + "板 → 整车价 × " + boardsL + " ÷ " + capB + " × " + tailMul + " = " + money(totalL));
+            } else {
+              totalL = oneTruck;
+              det.push("  单车" + capB + "板满载 → 整车 " + money(oneTruck));
+            }
+          } else {
+            while (left > capB) {
+              totalL += oneTruck;
+              det.push("  满载" + capB + "板 → 整车 " + money(oneTruck));
+              left -= capB;
+            }
+            if (left > 0) {
+              if (left <= fullSmall) {
+                det.push("  尾量" + left + "板 → 改 26 尺，走万物智联");
+              } else if (left === capB) {
+                totalL += oneTruck;
+                det.push("  满载" + capB + "板 → 整车 " + money(oneTruck));
+              } else {
+                var tailFee = outTailLargeFee(dist, left);
+                totalL += tailFee;
+                det.push("  尾量" + left + "板 → 整车价 × " + left + " ÷ " + capB + " × " + tailMul + " = " + money(tailFee));
+              }
+            }
+          }
+          lines.push("④ 核算：");
+          lines = lines.concat(det);
+          lines.push("合计（大车部分）≈ " + money(totalL) + "（取整）");
+        }
+      }
+    }
+    var vHint = describeValid("lcl", "2026-08-13");
+    if (!vHint.err) {
+      lines.push("⑤ 有效期（散货默认，复核通过后写入）：" + vHint.days + " 天" +
+        (vHint.include ? "含生效当日" : "不含生效当日") +
+        " → 有效期至 " + vHint.until + " 23:59 · " + vHint.status + " · " + vHint.bind);
+    }
+    $("calcResult").textContent = lines.join("\n");
+  }
+
+  $("mainTabs").onclick = function (e) {
+    var tab = e.target.closest(".tab");
+    if (!tab) return;
+    document.querySelectorAll("#mainTabs .tab").forEach(function (t) { t.classList.remove("active"); });
+    document.querySelectorAll(".bd").forEach(function (b) { b.classList.remove("active"); });
+    tab.classList.add("active");
+    $("tab-" + tab.getAttribute("data-tab")).classList.add("active");
+    if (tab.getAttribute("data-tab") === "local") renderLocalTab();
+    if (tab.getAttribute("data-tab") === "out") renderOutTab();
+    if (tab.getAttribute("data-tab") === "maintain") renderProdBind();
+  };
+
+  $("eDist").oninput = function () {
+    syncModeUi();
+    renderEngineParams();
+    runCalc();
+  };
+
+  $("exBtns").onclick = function (e) {
+    var b = e.target.closest("button[data-ex]");
+    if (!b) return;
+    var ex = EX_ALL[parseInt(b.getAttribute("data-ex"), 10)];
+    if (!ex) return;
+    $("eAddr").value = ex.addr;
+    $("eVol").value = ex.vol;
+    $("eWt").value = ex.wt;
+    $("eDist").value = ex.dist;
+    if (ex.st) $("eState").value = ex.st;
+    runCalc();
+  };
+
+  function onWhChange() {
+    syncModeUi();
+    renderEngineParams();
+    fillStateSelect();
+    renderLocalTab();
+    renderOutTab();
+    renderExBtns();
+    ["engineWhList", "localWhList", "outWhList"].forEach(function (id) {
+      var box = $(id);
+      if (!box) return;
+      box.querySelectorAll(".wh-item").forEach(function (x) {
+        x.classList.toggle("on", x.getAttribute("data-id") === curWh);
+      });
+    });
+  }
+
+  renderWhList("engineWhList", onWhChange, function () { return "内州≤" + localMiles() + "迈 / 外州" + outDistRange(); });
+  renderWhList("localWhList", onWhChange, function (w) {
+    return w.id === "NY" ? "内州≤" + localMiles() + "迈 · 按收货地址" : "内州 ≤" + localMiles() + "迈";
+  });
+  renderWhList("outWhList", onWhChange, function () { return "外州 " + outDistRange(); });
+  fillStateSelect();
+  syncModeUi();
+  renderEngineParams();
+  renderLocalTab();
+  renderOutTab();
+  renderExBtns();
+  renderProdBind();
+  refreshLogicLabels();
+  updateRuleStatus();
+  runCalc();
+
+  $("lNyAddr").onchange = renderLocalTab;
+  $("btnCalc").onclick = runCalc;
+  $("lInclTray").onchange = function () {
+    WH[curWh].inclTray = parseInt(this.value, 10) || 0;
+    rebuildParseLocal(WH[curWh]);
+    markDraft();
+  };
+  function onLocalLogicInput() {
+    readLogicForms("local");
+    markDraft();
+    syncModeUi();
+    renderEngineParams();
+  }
+  function onOutLogicInput() {
+    readLogicForms("out");
+    markDraft();
+    syncModeUi();
+    renderEngineParams();
+  }
+  ["lLocalMiles", "lSmallVol", "lSmallWt", "lLargeVol", "lLargeWt", "lVolDiv", "lWtDiv"].forEach(function (id) {
+    if ($(id)) $(id).addEventListener("input", onLocalLogicInput);
+  });
+  ["oLocalMiles", "oSmallVol", "oSmallWt", "oSmallBoards", "oLargeBoards", "oVolDiv", "oWtDiv", "oTailMul"].forEach(function (id) {
+    if ($(id)) $(id).addEventListener("input", onOutLogicInput);
+  });
+  $("localPriceTbl").addEventListener("input", function (e) {
+    var inp = e.target.closest("input[data-f]");
+    if (!inp) return;
+    var tr = inp.closest("tr");
+    var i = +tr.getAttribute("data-i");
+    var r = WH[curWh].localPrices[i];
+    if (!r) return;
+    var f = inp.getAttribute("data-f");
+    r[f] = (f === "d") ? inp.value : (parseFloat(inp.value) || 0);
+    r.s = r.base + "+续托" + r.tray + "/板";
+    rebuildParseLocal(WH[curWh]);
+    markDraft();
+  });
+  $("localPriceTbl").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-del-local]");
+    if (!btn) return;
+    WH[curWh].localPrices.splice(+btn.getAttribute("data-del-local"), 1);
+    rebuildParseLocal(WH[curWh]);
+    markDraft();
+    renderLocalTab();
+  });
+  $("btnAddLocalBand").onclick = function () {
+    WH[curWh].localPrices.push({ d: "新档", max: 150, base: 0, tray: 0, l: 0, s: "0+续托0/板", inc: true });
+    markDraft();
+    renderLocalTab();
+  };
+  $("mileRateTbl").addEventListener("input", function (e) {
+    var inp = e.target.closest("input[data-f]");
+    if (!inp) return;
+    var i = +inp.closest("tr").getAttribute("data-i");
+    var r = OUT_MILE_RATES[i];
+    if (!r) return;
+    r[inp.getAttribute("data-f")] = parseFloat(inp.value) || 0;
+    markDraft();
+  });
+  $("mileRateTbl").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-del-mile]");
+    if (!btn) return;
+    OUT_MILE_RATES.splice(+btn.getAttribute("data-del-mile"), 1);
+    markDraft();
+    renderOutTab();
+  });
+  $("btnAddMile").onclick = function () {
+    var last = OUT_MILE_RATES[OUT_MILE_RATES.length - 1] || { to: 150, rate: 3.6 };
+    OUT_MILE_RATES.push({ from: last.to + 1, to: last.to + 100, rate: last.rate });
+    markDraft();
+    renderOutTab();
+  };
+  $("wwzlCarrierTbl").addEventListener("change", function (e) {
+    var ck = e.target.closest("[data-wwzl]");
+    if (!ck) return;
+    WWZL_CHANNELS[+ck.getAttribute("data-wwzl")].on = ck.checked;
+    markDraft();
+  });
+  $("prodBindTbl").addEventListener("input", function (e) {
+    var inp = e.target.closest("input[data-f='origin'], input[data-f='city'], input[data-f='st'], input[data-f='zip']");
+    if (!inp) return;
+    var tr0 = inp.closest("tr[data-i]");
+    if (!tr0) return;
+    var row0 = PROD_BINDS[+tr0.getAttribute("data-i")];
+    var w0 = row0 && WH[row0.wh];
+    if (!w0) return;
+    var f0 = inp.getAttribute("data-f");
+    if (f0 === "origin") w0.origin = inp.value.trim();
+    else if (f0 === "city") w0.city = inp.value.trim();
+    else if (f0 === "st") w0.st = inp.value.trim().toUpperCase();
+    else w0.zip = inp.value.trim();
+    markDraft();
+  });
+  $("prodBindTbl").addEventListener("change", function (e) {
+    var tr = e.target.closest("tr[data-i]");
+    if (!tr) return;
+    var i = +tr.getAttribute("data-i");
+    var row = PROD_BINDS[i];
+    if (!row) return;
+    var whSel = e.target.closest("select[data-f='wh']");
+    if (whSel) {
+      row.wh = whSel.value;
+      markDraft();
+      renderProdBind();
+      return;
+    }
+    var ck = e.target.closest("input[data-pick]");
+    if (!ck) return;
+    var name = ck.getAttribute("data-pick");
+    var cur = prodList(row);
+    if (ck.checked) {
+      unbindProd(name);
+      if (cur.indexOf(name) < 0) cur.push(name);
+    } else {
+      cur = cur.filter(function (n) { return n !== name; });
+    }
+    row.prods = cur;
+    markDraft();
+    renderProdBind();
+  });
+  $("prodBindTbl").addEventListener("click", function (e) {
+    if (e.target.closest(".ms-panel") && !e.target.closest("[data-unpick],[data-add-prod],[data-ms-open]")) {
+      e.stopPropagation();
+    }
+    var openBtn = e.target.closest("[data-ms-open]");
+    if (openBtn) {
+      e.stopPropagation();
+      var i = +openBtn.closest("tr").getAttribute("data-i");
+      openMsI = openMsI === i ? -1 : i;
+      renderProdBind();
+      return;
+    }
+    var x = e.target.closest("[data-unpick]");
+    if (x) {
+      e.stopPropagation();
+      var i2 = +x.closest("tr").getAttribute("data-i");
+      var row = PROD_BINDS[i2];
+      if (!row) return;
+      var name = x.getAttribute("data-unpick");
+      row.prods = prodList(row).filter(function (n) { return n !== name; });
+      markDraft();
+      renderProdBind();
+      return;
+    }
+    var addBtn = e.target.closest("[data-add-prod]");
+    if (addBtn) {
+      e.stopPropagation();
+      addProdFromRow(addBtn.closest("tr"));
+      return;
+    }
+    var del = e.target.closest("[data-del-prod]");
+    if (!del) return;
+    PROD_BINDS.splice(+del.getAttribute("data-del-prod"), 1);
+    openMsI = -1;
+    markDraft();
+    renderProdBind();
+  });
+  $("prodBindTbl").addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var inp = e.target.closest("[data-new-prod]");
+    if (!inp) return;
+    e.preventDefault();
+    addProdFromRow(inp.closest("tr"));
+  });
+  function addProdFromRow(tr) {
+    if (!tr) return;
+    var i = +tr.getAttribute("data-i");
+    var row = PROD_BINDS[i];
+    var inp = tr.querySelector("[data-new-prod]");
+    var name = (inp && inp.value || "").trim();
+    if (!name) return;
+    if (SALES_PRODUCTS.indexOf(name) < 0) SALES_PRODUCTS.push(name);
+    unbindProd(name);
+    var cur = prodList(row);
+    if (cur.indexOf(name) < 0) cur.push(name);
+    row.prods = cur;
+    openMsI = i;
+    markDraft();
+    renderProdBind();
+  }
+  document.addEventListener("click", function (e) {
+    var lockTip = $("lockTip");
+    var lockBtn = $("btnLockTip");
+    if (lockTip && lockBtn && !e.target.closest("#btnLockTip") && !e.target.closest("#lockTip")) {
+      lockTip.classList.remove("show");
+      lockTip.hidden = true;
+      lockBtn.setAttribute("aria-expanded", "false");
+    }
+    if (openMsI < 0) return;
+    if (e.target.closest("#prodBindTbl .ms")) return;
+    openMsI = -1;
+    renderProdBind();
+  });
+  if ($("btnLockTip") && $("lockTip")) {
+    $("btnLockTip").onclick = function (e) {
+      e.stopPropagation();
+      var pop = $("lockTip");
+      var on = !pop.classList.contains("show");
+      pop.classList.toggle("show", on);
+      pop.hidden = !on;
+      this.setAttribute("aria-expanded", on ? "true" : "false");
+    };
+  }
+  $("btnAddProd").onclick = function () {
+    var used = {};
+    PROD_BINDS.forEach(function (p) { used[p.wh] = true; });
+    var wh = WH_ORDER.filter(function (id) { return !used[id]; })[0] || "LA";
+    PROD_BINDS.push({ prods: [], wh: wh });
+    openMsI = PROD_BINDS.length - 1;
+    markDraft();
+    renderProdBind();
+  };
+  document.querySelectorAll("[data-goto]").forEach(function (b) {
+    b.onclick = function () { gotoTab(b.getAttribute("data-goto")); };
+  });
+  $("btnSaveDraft").onclick = function () {
+    readLogicForms("local");
+    readLogicForms("out");
+    rebuildParseLocal(WH[curWh]);
+    ruleState.draft = true;
+    updateRuleStatus();
+    runCalc();
+    toast("已保存草稿，右侧已按草稿重算。询价仍走当前生效版；发布并到点后才切线上。");
+  };
+  $("btnPublish").onclick = function () {
+    var at = ($("ruleEffAt").value || "").trim();
+    if (!at) { toast("请填写生效时间。内州/外州价表不是改完或点发布立刻切线上。"); return; }
+    var note = window.prompt("发布说明（将写入版本）", "价表/仓绑定调整");
+    if (note === null) return;
+    var ver = "v2026.08.17-" + (Date.now() % 10000);
+    var now = "2026-08-17T13:34";
+    var immediate = at <= now;
+    ruleState.draft = false;
+    if (immediate) {
+      ruleState.live = ver;
+      ruleState.pending = null;
+      appendVersion(ver, note || "规则发布", at, "生效中");
+      toast("生效时间已到，已切换 " + ver + "。新询价走此版本；在期票仅提示可重算。");
+    } else {
+      ruleState.pending = { ver: ver, at: at, note: note || "规则发布" };
+      appendVersion(ver, (note || "规则发布") + "（预约）", at, "待生效");
+      toast("已预约 " + ver + " 于 " + fmtEff(at) + " 生效。到点前询价仍走 " + ruleState.live + "。");
+    }
+    updateRuleStatus();
+  };
+  $("btnSaveLocal").onclick = function () {
+    readLogicForms("local");
+    rebuildParseLocal(WH[curWh]);
+    markDraft();
+    runCalc();
+    toast("已写入「" + WH[curWh].name + "」本地价表草稿，右侧已重算。询价仍走生效版，顶栏发布后到点才切。");
+  };
+  $("btnSaveOut").onclick = function () {
+    readLogicForms("out");
+    markDraft();
+    runCalc();
+    toast("已写入外州规则草稿，右侧已重算。询价仍走生效版，顶栏发布后到点才切。");
+  };
+  $("btnSaveCommon").onclick = function () {
+    var cfg = validCfg();
+    if (cfg.min > cfg.max) {
+      toast("最短天数不能大于最长天数");
+      return;
+    }
+    toast("原型：已保存有效期规则（散货" + cfg.lcl + "天 / 整柜" + cfg.fcl + "天）");
+  };
+  $("btnPreviewValid").onclick = function () {
+    var dim = $("vPreviewDim").value;
+    var start = $("vPreviewStart").value;
+    var ov = $("vPreviewOverride").value;
+    var r = describeValid(dim, start, ov);
+    if (r.err) {
+      $("validResult").textContent = r.err;
+      return;
+    }
+    var lines = [];
+    lines.push("【" + r.dim + "】生效日 " + start);
+    lines.push("起算：报价生效日 · 天数" + (r.include ? "含生效当日（第1天）" : "不含生效当日（次日起算）"));
+    lines.push("默认 " + r.def + " 天 → 本票 " + r.days + " 天");
+    if (r.notes.length) lines.push(r.notes.join("；"));
+    lines.push("有效期至 " + r.until + " 23:59:59");
+    lines.push("相对 2026-08-13：" + r.status + (r.left >= 0 ? "（剩余 " + r.left + " 天）" : "（已过 " + (-r.left) + " 天）"));
+    lines.push("绑运单：" + r.bind);
+    if (r.cfg.ruleChange === "hint") lines.push("713 价表变更：在期票仅提示可重算，不强制");
+    if (r.cfg.ruleChange === "force") lines.push("713 价表变更：在期票须重算后才可绑单");
+    if (r.cfg.ruleChange === "ignore") lines.push("713 价表变更：不影响已生效未过期票");
+    $("validResult").textContent = lines.join("\n");
+  };
+  wireVersionTable();
+  $("verModalClose").onclick = closeVerHist;
+  $("verMask").onclick = function (e) { if (e.target === $("verMask")) closeVerHist(); };
+})();
+  </script>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+</body>
+</html>

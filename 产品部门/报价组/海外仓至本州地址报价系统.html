@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>配送报价测算系统（统一版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; color: #2d3436; padding: 20px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #636e72; font-size: 13px; margin-bottom: 20px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #eee; color: #0984e3; }
+  .card-highlight { border-left: 3px solid #e17055; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 140px; flex: 1; }
+  .field label { font-size: 12px; color: #636e72; font-weight: 600; }
+  .field input, .field select { padding: 7px 10px; border: 1px solid #dfe6e9; border-radius: 6px; font-size: 13px; outline: none; }
+  .field input:focus, .field select:focus { border-color: #0984e3; box-shadow: 0 0 0 2px rgba(9,132,227,0.12); }
+  .field input[readonly] { background: #f1f2f6; color: #2d3436; }
+  .field small { font-size: 11px; color: #b2bec3; }
+  .btn { padding: 8px 22px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: #0984e3; color: #fff; }
+  .btn-primary:hover { background: #0773c5; }
+  .btn-outline { background: #fff; color: #0984e3; border: 1px solid #0984e3; }
+  .btn-outline:hover { background: #eef6fd; }
+  .result-box { background: linear-gradient(135deg, #f0f7ff, #e8f4fd); border: 1px solid #74b9ff; border-radius: 8px; padding: 14px 18px; margin-top: 12px; }
+  .result-box h3 { font-size: 14px; color: #0984e3; margin-bottom: 8px; }
+  .result-line { font-size: 13px; line-height: 1.8; }
+  .result-line b { color: #d63031; }
+  .result-line .highlight { background: #ffeaa7; padding: 1px 6px; border-radius: 3px; font-weight: 700; }
+  .param-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .param-table th, .param-table td { border: 1px solid #dfe6e9; padding: 6px 10px; text-align: center; }
+  .param-table th { background: #f1f2f6; font-weight: 600; }
+  .param-table td input { width: 80px; text-align: center; border: 1px solid #dfe6e9; border-radius: 4px; padding: 4px; font-size: 12px; }
+  .step-badge { display: inline-block; background: #0984e3; color: #fff; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; font-size: 11px; font-weight: 700; margin-right: 6px; }
+  .step-badge-0 { background: #e17055; }
+  .warning { color: #e17055; font-weight: 600; font-size: 12px; margin-top: 4px; }
+  .test-group { margin-bottom: 10px; }
+  .test-group .test-title { font-size: 13px; font-weight: 700; color: #636e72; margin-bottom: 4px; }
+  .test-item { display: inline-block; background: #dfe6e9; color: #2d3436; padding: 4px 12px; border-radius: 4px; font-size: 12px; margin: 2px 4px 2px 0; cursor: pointer; transition: all 0.15s; }
+  .test-item:hover { background: #0984e3; color: #fff; }
+  .collapsible { cursor: pointer; user-select: none; }
+  .collapsible::after { content: ' ▼'; font-size: 10px; }
+  .collapsible.collapsed::after { content: ' ▶'; }
+  .hidden { display: none; }
+  .breakdown-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .breakdown-table th, .breakdown-table td { border: 1px solid #dfe6e9; padding: 5px 8px; text-align: center; }
+  .breakdown-table th { background: #f1f2f6; }
+  .total-row { font-weight: 700; background: #ffeaa7; }
+  .origin-tag { display: inline-block; background: #e17055; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+  .dest-tag { display: inline-block; background: #00b894; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+</style>
+</head>
+<body>
+<div class="container">
+<p style="margin:0 0 12px;font-size:13px;"><a href="报价组-导航.html" style="color:#0984e3;text-decoration:none;">← 报价组导航</a></p>
+<h1>海外仓至本州报价测算系统 <span class="origin-tag" id="originTag">OT_CA</span></h1>
+<p class="subtitle" id="subtitleLine">起发地筛选 → 目的地判定 → 车型适配 → 基础价格 → 费用核算</p>
+
+<!-- Step 0: Origin Selection -->
+<div class="card card-highlight">
+  <div class="card-title"><span class="step-badge step-badge-0">0</span> 起发地选择</div>
+  <div class="row">
+    <div class="field" style="min-width:260px;">
+      <label>起发仓库 / 地区</label>
+      <select id="origin" onchange="onOriginChange()">
+        <option value="OT_CA">1. 安大略-加州（CA）本地</option>
+        <option value="GA_GA">2. 萨凡纳-佐治亚州（GA）本地</option>
+        <option value="IL_IL">3. 芝加哥-伊利诺伊州（IL）本地</option>
+        <option value="OK_CA">4. 奥克兰-加州（CA）本地</option>
+        <option value="NY_NYNJ">5. 纽约-纽约州（NY）/新泽西州（NJ）本地</option>
+        <option value="TX_TX">6. 休斯顿-德克萨斯州（TX）本地</option>
+      </select>
+    </div>
+    <div class="field" id="destField" style="min-width:180px;display:none;">
+      <label>目的地州</label>
+      <select id="destination" onchange="onDestChange()">
+        <option value="NJ" selected>NJ（新泽西）— 分段计费</option>
+        <option value="NY">NY（纽约）— 一口价</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- Step 1: Address & Cargo -->
+<div class="card">
+  <div class="card-title"><span class="step-badge">1</span> 地址类型判定 <span class="origin-tag" id="includedTag"></span></div>
+  <div class="row">
+    <div class="field" style="min-width:220px;">
+      <label>地址类型</label>
+      <select id="addrType">
+        <option value="residential">住宅地址（仅26尺小车）</option>
+        <option value="commercial_no_dock" selected>商业地址 - 无卸货平台（仅26尺小车）</option>
+        <option value="commercial_dock">商业地址 - 带卸货平台（26尺/53尺均可）</option>
+      </select>
+    </div>
+    <div class="field" style="min-width:140px;">
+      <label>配送距离（迈）</label>
+      <input type="number" id="distance" value="35" min="1" step="0.1">
+    </div>
+    <div class="field" style="min-width:140px;">
+      <label>货物体积（立方米/方）</label>
+      <input type="number" id="volume" value="30" min="0" step="0.01">
+    </div>
+    <div class="field" style="min-width:140px;">
+      <label>货物重量（公斤）</label>
+      <input type="number" id="weight" value="5200" min="0" step="1">
+    </div>
+    <div class="field" style="justify-content:flex-end;">
+      <button class="btn btn-primary" onclick="calculate()">计算报价</button>
+    </div>
+  </div>
+</div>
+
+<!-- Step 2: Configurable Limits -->
+<div class="card">
+  <div class="card-title collapsible" onclick="toggleSection('limitsCard')">车辆载重上限 &amp; 其余可配参数（点击展开/收起）</div>
+  <div id="limitsCard">
+    <table class="param-table">
+      <tr><th>参数</th><th>26尺小车</th><th>53尺大车</th></tr>
+      <tr>
+        <td>单车体积上限</td>
+        <td><input id="limSmallVol" value="24" type="number" min="1" step="0.1"> 方</td>
+        <td><input id="limLargeVol" value="68" type="number" min="1" step="0.1"> 方</td>
+      </tr>
+      <tr>
+        <td>单车重量上限</td>
+        <td><input id="limSmallWt" value="4500" type="number" min="1" step="1"> 公斤</td>
+        <td><input id="limLargeWt" value="18000" type="number" min="1" step="1"> 公斤</td>
+      </tr>
+      <tr>
+        <td>托盘折算系数</td>
+        <td>方数 / <input id="palletDivVol" value="2" type="number" min="0.1" step="0.1"></td>
+        <td>重量 / <input id="palletDivWt" value="450" type="number" min="1" step="1"></td>
+      </tr>
+    </table>
+    <p style="font-size:11px;color:#b2bec3;margin-top:6px;" id="limitsFootnote">托盘数 = max(ceil(方数/系数1), ceil(重量/系数2))。</p>
+  </div>
+</div>
+
+<!-- Step 3: Pricing Table -->
+<div class="card">
+  <div class="card-title collapsible collapsed" onclick="toggleSection('priceCard')" id="priceCardTitle">收费标准表（可编辑，点击展开）</div>
+  <div id="priceCard" class="hidden">
+    <table class="param-table" id="priceTable">
+      <tr><th>距离区间（迈）</th><th>26尺起步价($)</th><th>续托费($/板)</th><th>53尺整车价($)</th></tr>
+    </table>
+    <p style="font-size:11px;color:#b2bec3;margin-top:4px;" id="priceFootnote"></p>
+  </div>
+</div>
+
+<!-- Step 4: Result -->
+<div class="card" id="resultCard" style="display:none;">
+  <div class="card-title"><span class="step-badge">4</span> 核算结果</div>
+  <div id="resultContent"></div>
+</div>
+
+<!-- Step T: Test Examples -->
+<div class="card">
+  <div class="card-title"><span class="step-badge">T</span> 快速测试示例</div>
+  <div id="testExamples"></div>
+</div>
+</div>
+
+<script>
+// ═══════════ Origin Configurations ═══════════
+const ORIGINS = {
+  OT_CA: {
+    label: '安大略 → CA',
+    tag: 'OT_CA',
+    subtitle: '安大略发 CA 本州，续托费统一 $10/板',
+    includedTrays: 1,
+    hasDestination: false,
+    priceFootnote: '26尺起步价含1个标准托盘，续托费统一 $10/板；区间为「含上限」。',
+    limitsFootnote: '托盘数 = max(ceil(方数/系数1), ceil(重量/系数2))。续托费统一 $10/板。',
+    priceTableHeader: '收费标准表 — OT_CA 安大略 → CA（可编辑，点击展开）',
+    priceData: [
+      { range: '0-29', maxDist: 29, smallBase: 170, trayFee: 10, largeFlat: 450 },
+      { range: '29-50', maxDist: 50, smallBase: 220, trayFee: 10, largeFlat: 700 },
+      { range: '51-60', maxDist: 60, smallBase: 270, trayFee: 10, largeFlat: 800 },
+      { range: '61-70', maxDist: 70, smallBase: 320, trayFee: 10, largeFlat: 800 },
+      { range: '71-80', maxDist: 80, smallBase: 370, trayFee: 10, largeFlat: 1000 },
+      { range: '81-90', maxDist: 90, smallBase: 420, trayFee: 10, largeFlat: 1000 },
+      { range: '>90 CA州内', maxDist: Infinity, smallBase: 480, trayFee: 10, largeFlat: 1400 }
+    ],
+    tests: [
+      { title: '示例1：商业带卸货平台，70方 17吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 70, wt: 17000 },
+      { title: '示例2：商业带卸货平台，95方 25吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 95, wt: 25000 },
+      { title: '示例3：商业无卸货平台，30方 5200公斤（距离35迈）', addrType: 'commercial_no_dock', dist: 35, vol: 30, wt: 5200 }
+    ]
+  },
+  GA_GA: {
+    label: '萨凡纳 GA',
+    tag: 'GA_GA',
+    subtitle: 'SAV仓库 GA 31408，续托费随距离区间变化',
+    includedTrays: 1,
+    hasDestination: false,
+    priceFootnote: '26尺起步价含1个标准托盘；续托费随距离区间变化。以 SAV仓库 GA 31408 为坐标。',
+    limitsFootnote: '托盘数 = max(ceil(方数/系数1), ceil(重量/系数2))。续托费按距离区间变化。',
+    priceTableHeader: '收费标准表 — GA_GA 萨凡纳（可编辑，点击展开）',
+    priceData: [
+      { range: '<10', maxDist: 10, smallBase: 100, trayFee: 30, largeFlat: 450 },
+      { range: '<20', maxDist: 20, smallBase: 120, trayFee: 35, largeFlat: 500 },
+      { range: '<30', maxDist: 30, smallBase: 140, trayFee: 40, largeFlat: 550 },
+      { range: '31-40', maxDist: 40, smallBase: 160, trayFee: 50, largeFlat: 600 },
+      { range: '41-50', maxDist: 50, smallBase: 180, trayFee: 55, largeFlat: 650 },
+      { range: '51-60', maxDist: 60, smallBase: 200, trayFee: 60, largeFlat: 700 },
+      { range: '61-70', maxDist: 70, smallBase: 220, trayFee: 65, largeFlat: 750 },
+      { range: '71-80', maxDist: 80, smallBase: 240, trayFee: 70, largeFlat: 850 },
+      { range: '81-100', maxDist: 100, smallBase: 260, trayFee: 75, largeFlat: 950 },
+      { range: '>100 GA州内', maxDist: Infinity, smallBase: 280, trayFee: 85, largeFlat: 1200 }
+    ],
+    tests: [
+      { title: '示例1：商业带卸货平台，70方 17吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 70, wt: 17000 },
+      { title: '示例2：商业带卸货平台，95方 25吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 95, wt: 25000 },
+      { title: '示例3：商业无卸货平台，30方 5200公斤（距离35迈）', addrType: 'commercial_no_dock', dist: 35, vol: 30, wt: 5200 }
+    ]
+  },
+  IL_IL: {
+    label: '芝加哥 IL',
+    tag: 'IL_IL',
+    subtitle: 'IL 60433，续托费随距离区间变化',
+    includedTrays: 1,
+    hasDestination: false,
+    priceFootnote: '26尺起步价含1个标准托盘；续托费随距离区间变化。以 IL 60433 为坐标。',
+    limitsFootnote: '托盘数 = max(ceil(方数/系数1), ceil(重量/系数2))。续托费按距离区间变化。',
+    priceTableHeader: '收费标准表 — IL_IL 芝加哥（可编辑，点击展开）',
+    priceData: [
+      { range: '<10', maxDist: 10, smallBase: 100, trayFee: 35, largeFlat: 500 },
+      { range: '<20', maxDist: 20, smallBase: 120, trayFee: 40, largeFlat: 530 },
+      { range: '<30', maxDist: 30, smallBase: 130, trayFee: 45, largeFlat: 550 },
+      { range: '31-40', maxDist: 40, smallBase: 140, trayFee: 50, largeFlat: 650 },
+      { range: '41-50', maxDist: 50, smallBase: 150, trayFee: 55, largeFlat: 700 },
+      { range: '51-60', maxDist: 60, smallBase: 180, trayFee: 60, largeFlat: 750 },
+      { range: '61-70', maxDist: 70, smallBase: 200, trayFee: 70, largeFlat: 810 },
+      { range: '71-80', maxDist: 80, smallBase: 220, trayFee: 75, largeFlat: 850 },
+      { range: '81-100', maxDist: 100, smallBase: 230, trayFee: 80, largeFlat: 900 },
+      { range: '>100 IL州内', maxDist: Infinity, smallBase: 250, trayFee: 90, largeFlat: 1200 }
+    ],
+    tests: [
+      { title: '示例1：商业带卸货平台，70方 17吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 70, wt: 17000 },
+      { title: '示例2：商业带卸货平台，95方 25吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 95, wt: 25000 },
+      { title: '示例3：商业无卸货平台，30方 5200公斤（距离35迈）', addrType: 'commercial_no_dock', dist: 35, vol: 30, wt: 5200 }
+    ]
+  },
+  OK_CA: {
+    label: '奥克兰-加州（CA）本地',
+    tag: 'OK_CA',
+    subtitle: '奥克兰发 CA 本州，起步价含 3 托，第 4 托起收续托费',
+    includedTrays: 3,
+    hasDestination: false,
+    priceFootnote: '26尺起步价含 3 个标准托盘；第 4 托起按续托费计收。区间为「含上限」。',
+    limitsFootnote: '托盘数 = max(ceil(方数/系数1), ceil(重量/系数2))。起步价含 3 托，第 4 托起收续托费。',
+    priceTableHeader: '收费标准表 — OK_CA 奥克兰 → CA（可编辑，点击展开）',
+    priceData: [
+      { range: '0-10', maxDist: 10, smallBase: 170, trayFee: 15, largeFlat: 400 },
+      { range: '11-20', maxDist: 20, smallBase: 220, trayFee: 15, largeFlat: 400 },
+      { range: '21-30', maxDist: 30, smallBase: 270, trayFee: 15, largeFlat: 500 },
+      { range: '31-40', maxDist: 40, smallBase: 320, trayFee: 20, largeFlat: 500 },
+      { range: '41-50', maxDist: 50, smallBase: 370, trayFee: 20, largeFlat: 600 },
+      { range: '51-80', maxDist: 80, smallBase: 520, trayFee: 20, largeFlat: 700 },
+      { range: '>80 CA州内', maxDist: Infinity, smallBase: 580, trayFee: 20, largeFlat: 900 }
+    ],
+    tests: [
+      { title: '示例1：商业带卸货平台，70方 17吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 70, wt: 17000 },
+      { title: '示例2：商业带卸货平台，95方 25吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 95, wt: 25000 },
+      { title: '示例3：商业无卸货平台，30方 5200公斤（距离35迈）', addrType: 'commercial_no_dock', dist: 35, vol: 30, wt: 5200 }
+    ]
+  },
+  NY_NYNJ: {
+    label: '纽约 NY → NY/NJ',
+    tag: 'NY_NYNJ',
+    subtitle: 'NY 仓库发 NY/NJ，NJ 分段计费 / NY 一口价',
+    includedTrays: 1,
+    hasDestination: true,
+    priceFootnote: 'NJ 分段计费，下表可编辑。NY 一口价：首托 $230 + 续托 $80/板，53尺整车 $1,400。',
+    limitsFootnote: '托盘数 = max(ceil(方数/系数1), ceil(重量/系数2))。续托费按距离区间变化（NY一口价除外）。',
+    priceTableHeaderNJ: '收费标准表 — NJ 新泽西（可编辑，点击展开）',
+    priceTableHeaderNY: '收费标准表 — NY 纽约 一口价（可编辑，点击展开）',
+    priceDataNJ: [
+      { range: '<10', maxDist: 10, smallBase: 100, trayFee: 30, largeFlat: 450 },
+      { range: '<20', maxDist: 20, smallBase: 120, trayFee: 35, largeFlat: 450 },
+      { range: '<30', maxDist: 30, smallBase: 140, trayFee: 40, largeFlat: 450 },
+      { range: '31-40', maxDist: 40, smallBase: 160, trayFee: 45, largeFlat: 600 },
+      { range: '41-50', maxDist: 50, smallBase: 180, trayFee: 50, largeFlat: 600 },
+      { range: '51-60', maxDist: 60, smallBase: 200, trayFee: 55, largeFlat: 600 },
+      { range: '61-70', maxDist: 70, smallBase: 220, trayFee: 60, largeFlat: 700 },
+      { range: '71-80', maxDist: 80, smallBase: 240, trayFee: 65, largeFlat: 700 },
+      { range: '81-100', maxDist: 100, smallBase: 260, trayFee: 70, largeFlat: 900 },
+      { range: '>100 NJ州内', maxDist: Infinity, smallBase: 280, trayFee: 90, largeFlat: 1200 }
+    ],
+    priceDataNY: [
+      { range: '所有距离', maxDist: Infinity, smallBase: 230, trayFee: 80, largeFlat: 1400 }
+    ],
+    tests: [
+      { title: 'NJ — 商业带卸货平台，70方 17吨（距离35迈）', dest: 'NJ', addrType: 'commercial_dock', dist: 35, vol: 70, wt: 17000 },
+      { title: 'NJ — 商业无卸货平台，30方 5200公斤（距离35迈）', dest: 'NJ', addrType: 'commercial_no_dock', dist: 35, vol: 30, wt: 5200 },
+      { title: 'NY — 商业带卸货平台，70方 17吨（一口价）', dest: 'NY', addrType: 'commercial_dock', dist: 35, vol: 70, wt: 17000 },
+      { title: 'NY — 商业无卸货平台，30方 5200公斤（一口价）', dest: 'NY', addrType: 'commercial_no_dock', dist: 35, vol: 30, wt: 5200 }
+    ]
+  },
+  TX_TX: {
+    label: '休斯顿 TX',
+    tag: 'TX_TX',
+    subtitle: 'TX 州内，续托费随距离区间变化',
+    includedTrays: 1,
+    hasDestination: false,
+    priceFootnote: '26尺起步价含1个标准托盘；续托费随距离区间变化。以 TX 州内为坐标。',
+    limitsFootnote: '托盘数 = max(ceil(方数/系数1), ceil(重量/系数2))。续托费按距离区间变化。',
+    priceTableHeader: '收费标准表 — TX_TX 休斯顿（可编辑，点击展开）',
+    priceData: [
+      { range: '<10', maxDist: 10, smallBase: 150, trayFee: 15, largeFlat: 450 },
+      { range: '10-20', maxDist: 20, smallBase: 180, trayFee: 20, largeFlat: 500 },
+      { range: '20-30', maxDist: 30, smallBase: 210, trayFee: 30, largeFlat: 550 },
+      { range: '30-40', maxDist: 40, smallBase: 230, trayFee: 45, largeFlat: 650 },
+      { range: '40-50', maxDist: 50, smallBase: 260, trayFee: 55, largeFlat: 750 },
+      { range: '50-60', maxDist: 60, smallBase: 290, trayFee: 60, largeFlat: 900 },
+      { range: '60-70', maxDist: 70, smallBase: 320, trayFee: 65, largeFlat: 1200 },
+      { range: '70-80', maxDist: 80, smallBase: 350, trayFee: 70, largeFlat: 1300 },
+      { range: '80-90', maxDist: 90, smallBase: 380, trayFee: 75, largeFlat: 1400 },
+      { range: '90-100', maxDist: 100, smallBase: 410, trayFee: 80, largeFlat: 1500 },
+      { range: '>100 TX州内', maxDist: Infinity, smallBase: 450, trayFee: 85, largeFlat: 1700 }
+    ],
+    tests: [
+      { title: '示例1：商业带卸货平台，70方 17吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 70, wt: 17000 },
+      { title: '示例2：商业带卸货平台，95方 25吨（距离35迈）', addrType: 'commercial_dock', dist: 35, vol: 95, wt: 25000 },
+      { title: '示例3：商业无卸货平台，30方 5200公斤（距离35迈）', addrType: 'commercial_no_dock', dist: 35, vol: 30, wt: 5200 }
+    ]
+  }
+};
+
+// ═══════════ Global State ═══════════
+let currentOrigin = 'OT_CA';
+let currentDest = 'NJ'; // Only used for NY_NYNJ
+
+// ═══════════ Getters ═══════════
+function getConfig() { return ORIGINS[currentOrigin]; }
+
+function getActivePriceData() {
+  const cfg = getConfig();
+  if (currentOrigin === 'NY_NYNJ') {
+    return currentDest === 'NY' ? cfg.priceDataNY : cfg.priceDataNJ;
+  }
+  return cfg.priceData;
+}
+
+function getIncludedTrays() {
+  return getConfig().includedTrays;
+}
+
+// ═══════════ UI Updates ═══════════
+function onOriginChange() {
+  currentOrigin = document.getElementById('origin').value;
+  const cfg = getConfig();
+
+  // Update tags
+  document.getElementById('originTag').textContent = cfg.tag;
+  document.getElementById('subtitleLine').textContent =
+    '起发地筛选 → ' + (cfg.hasDestination ? '目的地判定 → ' : '') + '车型适配 → 基础价格 → 费用核算';
+  document.getElementById('includedTag').textContent =
+    '起步含' + cfg.includedTrays + '托';
+  document.getElementById('limitsFootnote').textContent = cfg.limitsFootnote;
+
+  // Show/hide destination field
+  const destField = document.getElementById('destField');
+  if (cfg.hasDestination) {
+    destField.style.display = '';
+    document.getElementById('destination').value = 'NJ';
+    currentDest = 'NJ';
+  } else {
+    destField.style.display = 'none';
+  }
+
+  // Rebuild pricing table
+  buildPriceTable();
+  // Rebuild test examples
+  buildTestExamples();
+  // Recalculate
+  calculate();
+}
+
+function onDestChange() {
+  currentDest = document.getElementById('destination').value;
+  buildPriceTable();
+  calculate();
+}
+
+function buildPriceTable() {
+  const cfg = getConfig();
+  const priceData = getActivePriceData();
+  const tbody = document.getElementById('priceTable');
+  tbody.innerHTML = '<tr><th>距离区间（迈）</th><th>26尺起步价($)</th><th>续托费($/板)</th><th>53尺整车价($)</th></tr>';
+
+  priceData.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.range} 迈</td>
+      <td><input id="sb_${i}" value="${p.smallBase}" type="number" min="0" onchange="updatePrice(${i},'smallBase')"></td>
+      <td><input id="tf_${i}" value="${p.trayFee}" type="number" min="0" onchange="updatePrice(${i},'trayFee')"></td>
+      <td><input id="lf_${i}" value="${p.largeFlat}" type="number" min="0" onchange="updatePrice(${i},'largeFlat')"></td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Update card title and footnote
+  if (currentOrigin === 'NY_NYNJ') {
+    if (currentDest === 'NY') {
+      document.getElementById('priceCardTitle').innerHTML =
+        '收费标准表 — NY 纽约 一口价（可编辑，点击展开）';
+      document.getElementById('priceFootnote').textContent =
+        'NY 一口价：首托 $230 + 续托 $80/板，53尺整车 $1,400，不分距离。';
+    } else {
+      document.getElementById('priceCardTitle').innerHTML =
+        '收费标准表 — NJ 新泽西（可编辑，点击展开）';
+      document.getElementById('priceFootnote').textContent =
+        'NJ 分段计费，下表可编辑。NY 一口价：首托 $230 + 续托 $80/板，53尺整车 $1,400。';
+    }
+  } else {
+    document.getElementById('priceCardTitle').innerHTML = cfg.priceTableHeader;
+    document.getElementById('priceFootnote').textContent = cfg.priceFootnote;
+  }
+}
+
+function updatePrice(i, field) {
+  const priceData = getActivePriceData();
+  let elId;
+  if (field === 'smallBase') elId = 'sb_' + i;
+  else if (field === 'trayFee') elId = 'tf_' + i;
+  else elId = 'lf_' + i;
+  priceData[i][field] = parseInt(document.getElementById(elId).value) || 0;
+}
+
+function buildTestExamples() {
+  const cfg = getConfig();
+  const container = document.getElementById('testExamples');
+  let html = '';
+
+  cfg.tests.forEach((t, idx) => {
+    html += `<div class="test-group">
+      <div class="test-title">示例${idx + 1}：${t.title}</div>
+      <span class="test-item" onclick="loadTest(${idx})">运行</span>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function loadTest(idx) {
+  const cfg = getConfig();
+  const t = cfg.tests[idx];
+
+  document.getElementById('addrType').value = t.addrType;
+  document.getElementById('distance').value = t.dist;
+  document.getElementById('volume').value = t.vol;
+  document.getElementById('weight').value = t.wt;
+
+  if (cfg.hasDestination && t.dest) {
+    document.getElementById('destination').value = t.dest;
+    currentDest = t.dest;
+    buildPriceTable();
+  }
+
+  calculate();
+}
+
+// ═══════════ Core Functions ═══════════
+function getPrice(dist) {
+  const priceData = getActivePriceData();
+  for (const p of priceData) {
+    if (dist <= p.maxDist) return p;
+  }
+  return priceData[priceData.length - 1];
+}
+
+function calcPallets(volume, weight, palletDivVol, palletDivWt) {
+  const byVol = Math.ceil(volume / palletDivVol);
+  const byWt = Math.ceil(weight / palletDivWt);
+  return Math.max(byVol, byWt);
+}
+
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  const title = el.previousElementSibling;
+  if (el.classList.contains('hidden')) {
+    el.classList.remove('hidden');
+    title.classList.remove('collapsed');
+  } else {
+    el.classList.add('hidden');
+    title.classList.add('collapsed');
+  }
+}
+
+function calculate() {
+  const cfg = getConfig();
+  const addrType = document.getElementById('addrType').value;
+  const dist = parseFloat(document.getElementById('distance').value);
+  const totalVol = parseFloat(document.getElementById('volume').value);
+  const totalWt = parseFloat(document.getElementById('weight').value);
+
+  const limSmallVol = parseFloat(document.getElementById('limSmallVol').value);
+  const limSmallWt = parseFloat(document.getElementById('limSmallWt').value);
+  const limLargeVol = parseFloat(document.getElementById('limLargeVol').value);
+  const limLargeWt = parseFloat(document.getElementById('limLargeWt').value);
+  const palletDivVol = parseFloat(document.getElementById('palletDivVol').value);
+  const palletDivWt = parseFloat(document.getElementById('palletDivWt').value);
+
+  const includedTrays = getIncludedTrays();
+  const priceRow = getPrice(dist);
+  const canUseLarge = addrType === 'commercial_dock';
+
+  let html = '';
+  html += `<div class="result-line"><b>起发地：</b>${cfg.label} <span class="origin-tag">${cfg.tag}</span>（起步含${includedTrays}托）</div>`;
+
+  if (currentOrigin === 'NY_NYNJ') {
+    html += `<div class="result-line"><b>目的地：</b>${currentDest}（${currentDest === 'NY' ? '一口价，不分距离' : '分段计费'}）<span class="dest-tag">${currentDest}</span></div>`;
+  }
+
+  html += `<div class="result-line"><b>地址类型：</b>${addrType === 'residential' ? '住宅地址' : addrType === 'commercial_no_dock' ? '商业地址（无卸货平台）' : '商业地址（带卸货平台）'}</div>`;
+
+  if (currentOrigin === 'NY_NYNJ' && currentDest === 'NY') {
+    html += `<div class="result-line"><b>配送距离：</b>${dist} 迈（NY 一口价，不分距离）</div>`;
+  } else {
+    html += `<div class="result-line"><b>配送距离：</b>${dist} 迈 → 匹配区间「${priceRow.range} 迈」</div>`;
+  }
+
+  html += `<div class="result-line"><b>货物：</b>${totalVol} 方 / ${totalWt} 公斤</div>`;
+
+  // Vehicle selection
+  let vehicles = [];
+  let remainingVol = totalVol;
+  let remainingWt = totalWt;
+  let explanation = [];
+
+  if (!canUseLarge) {
+    explanation.push('地址不允许使用53尺大车 → 仅用26尺小车拆分');
+    while (remainingVol > 0 || remainingWt > 0) {
+      const v = Math.min(remainingVol, limSmallVol);
+      const w = Math.min(remainingWt, limSmallWt);
+      const p = calcPallets(v, w, palletDivVol, palletDivWt);
+      vehicles.push({ type: 'small', volume: v, weight: w, pallets: p });
+      remainingVol -= v;
+      remainingWt -= w;
+      if (remainingVol <= 0 && remainingWt <= 0) break;
+    }
+  } else {
+    explanation.push('地址带卸货平台 → 根据货量判定车型');
+    const triggerLarge = totalVol > limSmallVol || totalWt > limSmallWt;
+    if (!triggerLarge) {
+      explanation.push(`体积≤${limSmallVol}方 且 重量≤${limSmallWt}公斤 → 适用26尺小车`);
+      vehicles.push({ type: 'small', volume: totalVol, weight: totalWt, pallets: calcPallets(totalVol, totalWt, palletDivVol, palletDivWt) });
+    } else {
+      explanation.push(`体积${totalVol > limSmallVol ? '>' : '≤'}${limSmallVol}方 ${totalWt > limSmallWt ? '或 重量>' + limSmallWt + '公斤' : (totalVol > limSmallVol ? '(触发)' : '')} → 触发53尺大车`);
+      while (remainingVol > 0 || remainingWt > 0) {
+        const fitsSmall = remainingVol <= limSmallVol && remainingWt <= limSmallWt;
+        if (fitsSmall) {
+          const p = calcPallets(remainingVol, remainingWt, palletDivVol, palletDivWt);
+          vehicles.push({ type: 'small', volume: remainingVol, weight: remainingWt, pallets: p });
+          remainingVol = 0; remainingWt = 0;
+          explanation.push(`剩余${vehicles[vehicles.length - 1].volume}方/${vehicles[vehicles.length - 1].weight}公斤 → 符合小车标准 → 追加1辆26尺小车`);
+          break;
+        } else {
+          const v = Math.min(remainingVol, limLargeVol);
+          const w = Math.min(remainingWt, limLargeWt);
+          vehicles.push({ type: 'large', volume: v, weight: w, pallets: '-' });
+          remainingVol -= v;
+          remainingWt -= w;
+          explanation.push(`追加1辆53尺大车（承载${v}方/${w}公斤）`);
+        }
+      }
+    }
+  }
+
+  html += `<div class="result-line"><b>车型判定：</b>${explanation.join('<br>')}</div>`;
+  html += `<div class="result-line"><b>总车辆：</b>${vehicles.length} 辆</div>`;
+
+  // Pricing
+  const destLabel = (currentOrigin === 'NY_NYNJ') ? `（${currentDest} 收费标准）` : '';
+  html += `<h3 style="margin-top:12px;font-size:13px;">费用明细${destLabel}</h3>`;
+  html += `<table class="breakdown-table"><tr><th>#</th><th>车型</th><th>承载体积</th><th>承载重量</th><th>托盘数</th><th>计费方式</th><th>费用($)</th></tr>`;
+
+  let totalFee = 0;
+  let largeCount = 0;
+  const perTrayFee = priceRow.trayFee;
+
+  vehicles.forEach((v, idx) => {
+    let fee = 0;
+    let method = '';
+    if (v.type === 'large') {
+      largeCount++;
+      fee = priceRow.largeFlat;
+      method = `整车价 $${fee}`;
+      totalFee += fee;
+      html += `<tr><td>${idx + 1}</td><td>53尺大车</td><td>${v.volume} 方</td><td>${v.weight} 公斤</td><td>—</td><td>${method}</td><td>$${fee.toLocaleString()}</td></tr>`;
+    } else {
+      const base = priceRow.smallBase;
+      const extraTrays = Math.max(0, v.pallets - includedTrays);
+      const trayFee = extraTrays * perTrayFee;
+      fee = base + trayFee;
+      if (extraTrays === 0) {
+        method = `起步价 $${base}（含${includedTrays}托）`;
+      } else {
+        method = `起步价 $${base} + ${extraTrays}托×$${perTrayFee}`;
+      }
+      totalFee += fee;
+      html += `<tr><td>${idx + 1}</td><td>26尺小车</td><td>${v.volume} 方</td><td>${v.weight} 公斤</td><td>${v.pallets}</td><td>${method}</td><td>$${fee.toLocaleString()}</td></tr>`;
+    }
+  });
+
+  html += `<tr class="total-row"><td colspan="6">合计</td><td>$${totalFee.toLocaleString()}</td></tr>`;
+  html += `</table>`;
+
+  const hasSmall = vehicles.some(v => v.type === 'small');
+  if (hasSmall) {
+    html += `<p class="warning">⚠ 26尺小车配送可能受尾板限制性条件约束，最终以系统载明为准。</p>`;
+  }
+
+  html += `<div class="result-box" style="margin-top:10px;">`;
+  html += `<b>最终报价：$${totalFee.toLocaleString()}</b>`;
+  html += `（${addrType === 'commercial_dock' && largeCount > 0 ? largeCount + '辆53尺大车 + ' : ''}${vehicles.filter(v => v.type === 'small').length}辆26尺小车）`;
+  html += `</div>`;
+
+  document.getElementById('resultContent').innerHTML = html;
+  document.getElementById('resultCard').style.display = 'block';
+}
+
+// ═══════════ Initialize ═══════════
+function init() {
+  currentOrigin = 'OT_CA';
+  const cfg = getConfig();
+  document.getElementById('origin').value = 'OT_CA';
+  document.getElementById('originTag').textContent = cfg.tag;
+  document.getElementById('includedTag').textContent = '起步含' + cfg.includedTrays + '托';
+  document.getElementById('limitsFootnote').textContent = cfg.limitsFootnote;
+  if (!cfg.hasDestination) {
+    document.getElementById('destField').style.display = 'none';
+  }
+  buildPriceTable();
+  buildTestExamples();
+  // Run default test
+  const dt = cfg.tests[cfg.tests.length - 1]; // last test = example 3
+  document.getElementById('addrType').value = dt.addrType;
+  document.getElementById('distance').value = dt.dist;
+  document.getElementById('volume').value = dt.vol;
+  document.getElementById('weight').value = dt.wt;
+  if (cfg.hasDestination && dt.dest) {
+    document.getElementById('destination').value = dt.dest;
+    currentDest = dt.dest;
+    buildPriceTable();
+  }
+  calculate();
+}
+
+init();
+</script>
+</body>
+</html>

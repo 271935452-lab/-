@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>提单创建(批量) · AI识别提单信息（MVP）</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --orange: #fa8c16;
+      --red: #ff4d4f;
+      --ai: #f5222d;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 14px; flex-shrink: 0; font-size: 12px;
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 180px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.75);
+      padding: 12px 0;
+    }
+    .side-title { padding: 8px 16px; font-size: 12px; color: rgba(255,255,255,.45); }
+    .side-item { padding: 8px 16px; cursor: default; font-size: 13px; }
+    .side-item.on { background: rgba(24,144,255,.25); color: #fff; border-right: 3px solid var(--blue); }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 12px; gap: 10px; }
+    .proto-link { margin: 0; font-size: 12px; color: var(--sub); }
+    .badge-new {
+      display: inline-block; margin-left: 2px; padding: 0 4px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .tip-bar {
+      margin: 0; padding: 8px 10px; font-size: 12px; line-height: 1.55;
+      background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; color: #0050b3;
+    }
+    .tip-bar strong { color: #003a8c; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+      flex: 1; display: flex; flex-direction: column; min-height: 0;
+    }
+    .card-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+    }
+    .card-hd h2 {
+      margin: 0; font-size: 14px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-hd-actions { display: flex; align-items: center; gap: 10px; }
+
+    .ai-fab {
+      width: 40px; height: 40px; border-radius: 50%; border: none;
+      background: linear-gradient(145deg, #ff4d4f, #cf1322);
+      color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .5px;
+      cursor: pointer; box-shadow: 0 4px 12px rgba(245,34,45,.35);
+      position: relative;
+    }
+    .ai-fab:hover { transform: scale(1.04); }
+    .ai-fab .fab-tip {
+      position: absolute; right: 48px; top: 50%; transform: translateY(-50%);
+      white-space: nowrap; background: #fff; color: #cf1322;
+      border: 1px solid #ffa39e; border-radius: 4px; padding: 4px 8px;
+      font-size: 11px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      pointer-events: none;
+    }
+    .ai-fab .fab-tip::after {
+      content: ""; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+      border: 5px solid transparent; border-left-color: #ffa39e;
+    }
+
+    .tool-btn {
+      height: 28px; padding: 0 12px; border-radius: 2px; border: 1px solid transparent;
+      background: var(--blue); color: #fff; cursor: pointer; font-size: 12px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .tool-btn.outline { background: #fff; color: var(--blue); border-color: #91d5ff; }
+    .tool-btn.ok { background: var(--green); }
+    .tool-btn.warn { background: var(--orange); }
+    .tool-btn.danger { background: var(--red); }
+    .tool-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .table-wrap { flex: 1; overflow: auto; padding: 0 0 8px; }
+    table.grid {
+      width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1480px;
+    }
+    table.grid th, table.grid td {
+      border: 1px solid #f0f0f0; padding: 6px 6px; vertical-align: middle;
+      white-space: nowrap;
+    }
+    table.grid th {
+      background: #fafafa; color: var(--sub); font-weight: 600;
+      position: sticky; top: 0; z-index: 2;
+    }
+    table.grid th .req { color: var(--red); margin-right: 2px; }
+    table.grid td input, table.grid td select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 6px; background: #fff;
+    }
+    table.grid td input.ai-fill, table.grid td select.ai-fill {
+      background: #fff7e6; border-color: #ffd591;
+    }
+    table.grid td input:focus, table.grid td select:focus {
+      outline: none; border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,.15);
+    }
+    .row-ops { display: flex; gap: 4px; align-items: center; }
+    .icon-btn {
+      width: 26px; height: 26px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer; color: var(--sub); font-size: 14px; line-height: 1;
+    }
+    .icon-btn.add { color: var(--blue); border-color: #91d5ff; }
+    .icon-btn.del { color: var(--red); border-color: #ffa39e; }
+    .icon-btn.save { color: var(--green); border-color: #b7eb8f; }
+    .ai-tag {
+      display: inline-block; padding: 0 5px; height: 18px; line-height: 16px;
+      font-size: 10px; border-radius: 2px; border: 1px solid #ffd591;
+      background: #fff7e6; color: #d46b08; font-weight: 700; margin-left: 4px;
+    }
+
+    .footer-bar {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 10px 12px; border-top: 1px solid var(--line); background: #fafafa;
+    }
+
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 1000; align-items: center; justify-content: center; padding: 24px;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      width: min(1080px, 100%); max-height: calc(100vh - 48px);
+      background: #fff; border-radius: 4px; display: flex; flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    }
+    .modal.wide { width: min(1180px, 100%); }
+    .modal-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+    }
+    .modal-hd h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .modal-bd { padding: 14px 16px; overflow: auto; flex: 1; }
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px; background: #fafafa;
+    }
+    .alert {
+      padding: 8px 10px; border-radius: 2px; font-size: 12px; line-height: 1.55; margin-bottom: 12px;
+    }
+    .alert.info { background: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; }
+    .alert.warn { background: #fff7e6; border: 1px solid #ffd591; color: #ad6800; }
+    .alert.ok { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+
+    .ai-steps {
+      display: flex; gap: 0; margin-bottom: 14px; border-bottom: 1px solid var(--line);
+    }
+    .ai-step {
+      flex: 1; text-align: center; padding: 8px 4px 10px; font-size: 12px; color: var(--sub);
+      border-bottom: 2px solid transparent; position: relative;
+    }
+    .ai-step.on { color: var(--ai); border-bottom-color: var(--ai); font-weight: 700; }
+    .ai-step.done { color: var(--green); }
+    .ai-step b { display: inline-block; width: 18px; height: 18px; line-height: 18px;
+      border-radius: 50%; background: #f5f5f5; font-size: 11px; margin-right: 4px; }
+    .ai-step.on b { background: #fff1f0; color: var(--ai); }
+    .ai-step.done b { background: #f6ffed; color: var(--green); }
+
+    .upload-zone {
+      border: 1.5px dashed #ffa39e; border-radius: 4px; background: #fffafa;
+      padding: 28px 16px; text-align: center; cursor: pointer; transition: .15s;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: var(--ai); background: #fff1f0; }
+    .upload-zone .big { font-size: 28px; margin-bottom: 6px; }
+    .upload-zone p { margin: 0 0 4px; color: var(--sub); font-size: 12px; }
+    .upload-zone strong { color: var(--ai); }
+    .file-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 0; }
+    .file-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 8px; background: #fff; border: 1px solid #ffccc7; border-radius: 2px;
+      font-size: 12px; color: #a8071a;
+    }
+    .file-chip button {
+      border: none; background: none; color: #cf1322; cursor: pointer; padding: 0; font-size: 14px;
+    }
+
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 12px;
+    }
+    .form-item label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px;
+    }
+    .form-item input, .form-item select, .form-item textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px;
+    }
+    .form-item textarea { min-height: 72px; resize: vertical; }
+    .form-item.full { grid-column: 1 / -1; }
+
+    .scan-panel {
+      display: none; align-items: center; gap: 14px;
+      padding: 36px 20px; justify-content: center; flex-direction: column;
+    }
+    .scan-panel.show { display: flex; }
+    .scan-ring {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 4px solid #ffccc7; border-top-color: var(--ai);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .preview-table th, .preview-table td {
+      border: 1px solid var(--line); padding: 6px 8px; text-align: left;
+    }
+    .preview-table th { background: #fafafa; color: var(--sub); white-space: nowrap; }
+    .preview-table td input, .preview-table td select {
+      width: 100%; height: 26px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 4px;
+    }
+    .conf {
+      display: inline-block; padding: 0 5px; height: 18px; line-height: 16px;
+      font-size: 10px; border-radius: 2px; border: 1px solid; font-weight: 700;
+    }
+    .conf.hi { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .conf.mid { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .conf.lo { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .map-list { margin: 0; padding-left: 18px; font-size: 12px; color: var(--sub); line-height: 1.7; }
+    .map-list b { color: var(--text); }
+
+    .toast {
+      position: fixed; top: 72px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; z-index: 2000;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .panel-block { display: none; }
+    .panel-block.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">ESS</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab">卡派跟进(新)</button>
+        <button type="button" class="nav-tab">整柜下单</button>
+        <button type="button" class="nav-tab" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</button>
+        <button type="button" class="nav-tab active">提单创建(批量)</button>
+        <button type="button" class="nav-tab" onclick="location.href='船务组-运价管理-我司与代理订舱-MVP.html'">运价管理</button>
+        <button type="button" class="nav-tab">待配仓</button>
+      </div>
+      <div class="header-right">原型 · 船务 · AI识别</div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-title">提单</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</div>
+        <div class="side-item on">提单创建(批量)</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-运价管理-我司与代理订舱-MVP.html'">运价 · 点价订舱</div>
+        <div class="side-item">待配仓</div>
+        <div class="side-item">舱位播报</div>
+      </aside>
+
+      <main class="main">
+        <p class="proto-link">
+          原型 · 对齐现网 <code>/Scan/BillAddBatch</code> ·
+          <a href="船务组-运价管理-我司与代理订舱-MVP.html">运价管理 · 点价订舱</a> ·
+          <a href="船务组-提单管理-按周分组与分配-MVP.html">提单管理</a> ·
+          <a href="船务组-0730-费用节点提单配仓-大致方案.html">0730 方案</a> ·
+          <a href="../产品部门-导航.html">导航</a>
+        </p>
+
+        <div class="tip-bar" id="rateBanner" style="display:none;background:#f6ffed;border-color:#b7eb8f;color:#135200">
+          <strong>来自运价 · 点价订舱：</strong>
+          <span id="rateBannerText"></span>
+          · <a href="船务组-运价管理-我司与代理订舱-MVP.html">返回运价</a>
+          · <button type="button" class="tool-btn danger" id="btnRateAi" style="height:24px;padding:0 8px;margin-left:4px">继续 AI 识别</button>
+        </div>
+
+        <p class="tip-bar">
+          <strong>本期增量：</strong>
+          运价<strong>点价订舱</strong>可带入船司/港口/柜型/海运费；
+          右上角 <strong>AI</strong> → 上传订舱确认 PDF/截图 → 识别提单号·柜号等 →
+          预览校对后<strong>写入表格</strong>（AI 回填格橙色高亮）。
+          <strong>提单号非必填</strong>（可先落柜号/船司/航次，后补 B/L）。
+        </p>
+
+        <section class="card">
+          <div class="card-hd">
+            <h2>基本信息</h2>
+            <div class="card-hd-actions">
+              <button type="button" class="tool-btn outline" id="btnAddRow">+ 增行</button>
+              <button type="button" class="ai-fab" id="btnAi" title="AI识别提单信息">
+                AI
+                <span class="fab-tip">AI识别提单信息 <span class="badge-new">NEW</span></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="grid">
+              <thead>
+                <tr>
+                  <th style="width:48px">序号</th>
+                  <th><span class="req">*</span>运输方式</th>
+                  <th>提单号</th>
+                  <th><span class="req">*</span>海运费</th>
+                  <th><span class="req">*</span>国内/国外免用箱时间</th>
+                  <th>开船时间</th>
+                  <th>柜号</th>
+                  <th><span class="req">*</span>柜型</th>
+                  <th><span class="req">*</span>国内出发港口</th>
+                  <th><span class="req">*</span>国外到达港口</th>
+                  <th><span class="req">*</span>船公司(航运)</th>
+                  <th><span class="req">*</span>船名航次</th>
+                  <th><span class="req">*</span>订柜供应商</th>
+                  <th style="width:100px">操作</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="footer-bar">
+            <button type="button" class="tool-btn outline" id="btnClear">清空</button>
+            <button type="button" class="tool-btn ok" id="btnSaveAll">批量保存</button>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- AI 识别弹窗 -->
+  <div class="mask" id="aiMask" aria-hidden="true">
+    <div class="modal wide" role="dialog">
+      <div class="modal-hd">
+        <h3>AI 识别提单信息 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="aiClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="ai-steps" id="aiSteps">
+          <div class="ai-step on" data-step="1"><b>1</b>上传 / 粘贴</div>
+          <div class="ai-step" data-step="2"><b>2</b>识别中</div>
+          <div class="ai-step" data-step="3"><b>3</b>校对回填</div>
+        </div>
+
+        <div class="panel-block show" id="panelUpload">
+          <div class="alert info">
+            支持：<strong>订舱确认 PDF / 邮件截图 / 提单副本 / Excel 舱单摘录</strong>。
+            一次可多文件；多柜会拆成多行。与「改单」无关——此处仅服务<strong>批量创建</strong>录入。
+          </div>
+          <div class="upload-zone" id="uploadZone">
+            <div class="big">📄</div>
+            <p><strong>点击选择</strong>或拖拽文件到此处</p>
+            <p>PDF / PNG / JPG / Excel · 单文件建议 ≤ 20MB</p>
+            <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.eml" hidden />
+          </div>
+          <div class="file-chips" id="fileChips"></div>
+          <div class="form-grid">
+            <div class="form-item">
+              <label>识别模式</label>
+              <select id="aiMode">
+                <option value="booking">订舱确认 / Booking Confirmation（推荐）</option>
+                <option value="bl">提单副本 / B/L Copy</option>
+                <option value="mix">混合材料（自动判断）</option>
+              </select>
+            </div>
+            <div class="form-item">
+              <label>写入方式</label>
+              <select id="aiWriteMode">
+                <option value="append">追加新行（保留已填）</option>
+                <option value="replace">覆盖当前空表 / 替换全部</option>
+              </select>
+            </div>
+            <div class="form-item full">
+              <label>或粘贴文本（订舱确认正文 / 邮件）</label>
+              <textarea id="aiPaste" placeholder="例：&#10;B/L No: COSU1234567890&#10;Container: CSNU6688123 / 40HQ&#10;POL: CNSHA  POD: USLAX&#10;Vessel: COSCO SHIPPING 088E&#10;ETD: 2026-08-12&#10;Ocean Freight: USD 2850"></textarea>
+            </div>
+          </div>
+          <div class="alert warn" style="margin-top:12px;margin-bottom:0">
+            示意：点「开始识别」将用样例结果演示字段映射；正式版接 OCR + 字段抽取模型。
+          </div>
+        </div>
+
+        <div class="scan-panel" id="panelScan">
+          <div class="scan-ring"></div>
+          <div style="font-size:14px;font-weight:600;color:#cf1322">正在识别提单信息…</div>
+          <div style="font-size:12px;color:var(--sub)" id="scanHint">解析 PDF 结构 · 抽取关键字段 · 匹配港口/船司主数据</div>
+        </div>
+
+        <div class="panel-block" id="panelPreview">
+          <div class="alert ok" id="previewSummary">识别完成</div>
+          <p style="margin:0 0 8px;font-size:12px;color:var(--sub)">
+            低置信度字段请人工校对（红色）。确认后写入左侧批量表格，单元格橙色 = AI 回填。
+          </p>
+          <div style="overflow:auto;max-height:360px;border:1px solid var(--line)">
+            <table class="preview-table" id="previewTable">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="pvChkAll" checked /></th>
+                  <th>置信度</th>
+                  <th>运输方式</th>
+                  <th>提单号</th>
+                  <th>海运费</th>
+                  <th>免用箱</th>
+                  <th>开船时间</th>
+                  <th>柜号</th>
+                  <th>柜型</th>
+                  <th>出发港</th>
+                  <th>目的港</th>
+                  <th>船公司</th>
+                  <th>船名航次</th>
+                  <th>订柜供应商</th>
+                </tr>
+              </thead>
+              <tbody id="previewBody"></tbody>
+            </table>
+          </div>
+          <details style="margin-top:12px">
+            <summary style="cursor:pointer;font-size:12px;color:var(--blue)">字段映射说明</summary>
+            <ul class="map-list">
+              <li><b>B/L No / Booking No</b> → 提单号</li>
+              <li><b>Container / Seal</b> → 柜号（多柜拆多行，同提单号）</li>
+              <li><b>Size/Type</b> → 柜型（20GP/40HQ…）</li>
+              <li><b>POL / POD</b> → 国内出发港口 / 国外到达港口（码表匹配）</li>
+              <li><b>Carrier / Vessel / Voyage</b> → 船公司、船名航次</li>
+              <li><b>ETD / Sailing</b> → 开船时间（= 预计出发时间，0730 口径）</li>
+              <li><b>Ocean Freight</b> → 海运费；免用箱天数可从 Free time 抽取，缺省需手补</li>
+            </ul>
+          </details>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="aiCancel">取消</button>
+        <button type="button" class="tool-btn outline" id="aiBack" style="display:none">上一步</button>
+        <button type="button" class="tool-btn danger" id="aiStart">开始识别</button>
+        <button type="button" class="tool-btn ok" id="aiApply" style="display:none">确认写入表格</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd" data-ess-prd>
+    <h3>产品说明 · 批量创建提单 · AI识别</h3>
+    <h4>背景（0730 船务）</h4>
+    <ul>
+      <li>调研明确：提单需 <strong>AI 识别</strong>信息，降低手工录入订舱确认/提单副本的差错与耗时。</li>
+      <li>落点：现网「提单创建(批量)」右上角 AI 入口（与页面红钮一致），不另开孤立菜单。</li>
+    </ul>
+    <h4>交互</h4>
+    <ul>
+      <li>上传 PDF/图片/Excel 或粘贴文本 → 识别 → 预览校对（置信度）→ 写入批量表格。</li>
+      <li>写入方式：追加新行 / 覆盖空表；AI 回填格橙色高亮，必填未识别到的仍标红须手补。</li>
+      <li><strong>提单号非必填</strong>（批注）：创建时可先填柜号/船司/航次等；B/L 可后续补录或 AI 识别回填。</li>
+      <li>多柜同提单号拆多行；港口/船司走主数据模糊匹配，低置信度强制人工确认。</li>
+      <li><b>点价订舱</b>：从运价管理点价进入，预填船司/港口/柜型/海运费/订舱口；可选直接打开 AI 补柜号（提单号可空）。</li>
+    </ul>
+    <h4>范围边界</h4>
+    <ul>
+      <li>仅服务<strong>创建录入</strong>；改单、改运抵、取消 IT、查验标记仍在提单管理。</li>
+      <li>海运费/免用箱若材料无则留空，不臆造金额。</li>
+    </ul>
+  </div>
+
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var emptyRow = function () {
+        return {
+          mode: "海运", bl: "", freight: "", free: "", etd: "",
+          cntr: "", type: "", pol: "", pod: "", carrier: "", voy: "",
+          supplier: "", ai: false
+        };
+      };
+
+      var ROWS = [emptyRow()];
+      var FILES = [];
+      var PREVIEW = [];
+      var step = 1;
+
+      var SAMPLE = [
+        {
+          conf: 96, mode: "海运", bl: "COSU1234567890", freight: "2850", free: "7/7",
+          etd: "2026-08-12T00:00", cntr: "CSNU6688123", type: "40HQ",
+          pol: "CNSHA 上海", pod: "USLAX 洛杉矶", carrier: "COSCO",
+          voy: "COSCO SHIPPING 088E", supplier: "我司订舱", pick: true
+        },
+        {
+          conf: 94, mode: "海运", bl: "COSU1234567890", freight: "2850", free: "7/7",
+          etd: "2026-08-12T00:00", cntr: "CSNU6688456", type: "40HQ",
+          pol: "CNSHA 上海", pod: "USLAX 洛杉矶", carrier: "COSCO",
+          voy: "COSCO SHIPPING 088E", supplier: "我司订舱", pick: true
+        },
+        {
+          conf: 78, mode: "海运", bl: "HLCUTS12698AZMK1", freight: "", free: "",
+          etd: "2026-08-14T00:00", cntr: "HLBU2877104", type: "20GP",
+          pol: "CNTJN 天津", pod: "USNYC 纽约", carrier: "Hapag",
+          voy: "YM MOVEMENT 0TH5FE1MA", supplier: "代理订舱", pick: true
+        },
+        {
+          conf: 62, mode: "海运", bl: "MEDU9988776655", freight: "3100", free: "5/7",
+          etd: "2026-08-18T00:00", cntr: "MEDU1122334", type: "40HQ",
+          pol: "CNNGB 宁波", pod: "USLGB 长滩", carrier: "MSC",
+          voy: "MSC OSCAR 12W", supplier: "", pick: true
+        }
+      ];
+
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        setTimeout(function () { el.classList.remove("show"); }, 2200);
+      }
+
+      function confTag(n) {
+        var cls = n >= 90 ? "hi" : n >= 75 ? "mid" : "lo";
+        return '<span class="conf ' + cls + '">' + n + "%</span>";
+      }
+
+      function cell(r, key, opts) {
+        var cls = r.ai ? ' class="ai-fill"' : "";
+        if (opts && opts.type === "select") {
+          var html = "<select" + cls + ' data-k="' + key + '">';
+          opts.options.forEach(function (o) {
+            html += '<option value="' + o + '"' + (r[key] === o ? " selected" : "") + ">" + o + "</option>";
+          });
+          return html + "</select>";
+        }
+        var ph = (opts && opts.ph) || "";
+        var t = (opts && opts.input) || "text";
+        return '<input type="' + t + '"' + cls + ' data-k="' + key + '" value="' +
+          (r[key] || "").replace(/"/g, "&quot;") + '" placeholder="' + ph + '" />';
+      }
+
+      function render() {
+        var html = "";
+        ROWS.forEach(function (r, i) {
+          html += "<tr data-i=\"" + i + "\">" +
+            "<td>" + (i + 1) + (r.ai ? '<span class="ai-tag">AI</span>' : "") + "</td>" +
+            "<td>" + cell(r, "mode", { type: "select", options: ["海运", "空运", "铁路"] }) + "</td>" +
+            "<td>" + cell(r, "bl", { ph: "非必填，可后补" }) + "</td>" +
+            "<td>" + cell(r, "freight", { ph: "金额" }) + "</td>" +
+            "<td>" + cell(r, "free", { ph: "如 7/7" }) + "</td>" +
+            "<td>" + cell(r, "etd", { input: "datetime-local" }) + "</td>" +
+            "<td>" + cell(r, "cntr", { ph: "柜号" }) + "</td>" +
+            "<td>" + cell(r, "type", { type: "select", options: ["", "20GP", "40GP", "40HQ", "45HQ"] }) + "</td>" +
+            "<td>" + cell(r, "pol", { ph: "搜索港口" }) + "</td>" +
+            "<td>" + cell(r, "pod", { ph: "搜索港口" }) + "</td>" +
+            "<td>" + cell(r, "carrier", { type: "select", options: ["", "COSCO", "Hapag", "MSC", "ONE", "EMC", "OOCL", "Matson", "ZIM"] }) + "</td>" +
+            "<td>" + cell(r, "voy", { ph: "船名航次" }) + "</td>" +
+            "<td>" + cell(r, "supplier", { type: "select", options: ["", "我司订舱", "代理订舱", "客户自订"] }) + "</td>" +
+            '<td><div class="row-ops">' +
+            '<button type="button" class="icon-btn add" data-act="add" title="增行">+</button>' +
+            '<button type="button" class="icon-btn save" data-act="save" title="保存">✓</button>' +
+            '<button type="button" class="icon-btn del" data-act="del" title="删除">×</button>' +
+            "</div></td></tr>";
+        });
+        document.getElementById("tbody").innerHTML = html;
+      }
+
+      function syncRowFromDom(tr) {
+        var i = Number(tr.getAttribute("data-i"));
+        var r = ROWS[i];
+        if (!r) return;
+        tr.querySelectorAll("[data-k]").forEach(function (el) {
+          r[el.getAttribute("data-k")] = el.value;
+        });
+      }
+
+      document.getElementById("tbody").addEventListener("change", function (e) {
+        var tr = e.target.closest("tr");
+        if (tr) syncRowFromDom(tr);
+      });
+      document.getElementById("tbody").addEventListener("input", function (e) {
+        var tr = e.target.closest("tr");
+        if (tr) syncRowFromDom(tr);
+      });
+      document.getElementById("tbody").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-act]");
+        if (!btn) return;
+        var tr = btn.closest("tr");
+        var i = Number(tr.getAttribute("data-i"));
+        syncRowFromDom(tr);
+        var act = btn.getAttribute("data-act");
+        if (act === "add") {
+          ROWS.splice(i + 1, 0, emptyRow());
+          render();
+        } else if (act === "del") {
+          if (ROWS.length === 1) { ROWS[0] = emptyRow(); }
+          else ROWS.splice(i, 1);
+          render();
+        } else if (act === "save") {
+          toast("原型：第 " + (i + 1) + " 行已保存（示意）");
+        }
+      });
+
+      document.getElementById("btnAddRow").onclick = function () {
+        ROWS.push(emptyRow());
+        render();
+      };
+      document.getElementById("btnClear").onclick = function () {
+        ROWS = [emptyRow()];
+        render();
+        toast("已清空");
+      };
+      function rowReady(r) {
+        /* 提单号非必填：有船司/航次/柜型/港口等之一即可落库示意 */
+        return !!(r.carrier || r.voy || r.type || r.pol || r.pod || r.cntr || r.freight || r.bl);
+      }
+
+      document.getElementById("btnSaveAll").onclick = function () {
+        document.querySelectorAll("#tbody tr").forEach(syncRowFromDom);
+        var ok = ROWS.filter(rowReady).length;
+        var noBl = ROWS.filter(function (r) { return rowReady(r) && !r.bl; }).length;
+        toast("原型：批量保存 " + ok + " 行" +
+          (noBl ? "（其中 " + noBl + " 行提单号待补，已允许）" : "") + "（示意）");
+      };
+
+      /* —— AI 弹窗 —— */
+      function setStep(n) {
+        step = n;
+        document.querySelectorAll(".ai-step").forEach(function (el) {
+          var s = Number(el.getAttribute("data-step"));
+          el.classList.toggle("on", s === n);
+          el.classList.toggle("done", s < n);
+        });
+        document.getElementById("panelUpload").classList.toggle("show", n === 1);
+        document.getElementById("panelScan").classList.toggle("show", n === 2);
+        document.getElementById("panelPreview").classList.toggle("show", n === 3);
+        document.getElementById("aiStart").style.display = n === 1 ? "" : "none";
+        document.getElementById("aiApply").style.display = n === 3 ? "" : "none";
+        document.getElementById("aiBack").style.display = n === 3 ? "" : "none";
+      }
+
+      function renderChips() {
+        var box = document.getElementById("fileChips");
+        box.innerHTML = FILES.map(function (f, i) {
+          return '<span class="file-chip">' + f +
+            '<button type="button" data-rm="' + i + '" title="移除">×</button></span>';
+        }).join("");
+      }
+
+      document.getElementById("fileChips").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-rm]");
+        if (!btn) return;
+        FILES.splice(Number(btn.getAttribute("data-rm")), 1);
+        renderChips();
+      });
+
+      var zone = document.getElementById("uploadZone");
+      var fileInput = document.getElementById("fileInput");
+      zone.addEventListener("click", function () { fileInput.click(); });
+      fileInput.addEventListener("change", function () {
+        Array.prototype.forEach.call(fileInput.files || [], function (f) {
+          FILES.push(f.name);
+        });
+        fileInput.value = "";
+        renderChips();
+      });
+      zone.addEventListener("dragover", function (e) {
+        e.preventDefault(); zone.classList.add("drag");
+      });
+      zone.addEventListener("dragleave", function () { zone.classList.remove("drag"); });
+      zone.addEventListener("drop", function (e) {
+        e.preventDefault(); zone.classList.remove("drag");
+        Array.prototype.forEach.call(e.dataTransfer.files || [], function (f) {
+          FILES.push(f.name);
+        });
+        renderChips();
+      });
+
+      function renderPreview() {
+        var html = "";
+        PREVIEW.forEach(function (r, i) {
+          html += "<tr>" +
+            '<td><input type="checkbox" class="pv-ck"' + (r.pick ? " checked" : "") + ' data-i="' + i + '" /></td>' +
+            "<td>" + confTag(r.conf) + "</td>" +
+            "<td><select data-pk=\"mode\" data-i=\"" + i + "\"><option>海运</option><option>空运</option></select></td>" +
+            '<td><input data-pk="bl" data-i="' + i + '" value="' + r.bl + '" /></td>' +
+            '<td><input data-pk="freight" data-i="' + i + '" value="' + r.freight + '" /></td>' +
+            '<td><input data-pk="free" data-i="' + i + '" value="' + r.free + '" style="width:64px" /></td>' +
+            '<td><input type="datetime-local" data-pk="etd" data-i="' + i + '" value="' + r.etd + '" /></td>' +
+            '<td><input data-pk="cntr" data-i="' + i + '" value="' + r.cntr + '" /></td>' +
+            '<td><select data-pk="type" data-i="' + i + '"><option>20GP</option><option>40GP</option><option>40HQ</option><option>45HQ</option></select></td>' +
+            '<td><input data-pk="pol" data-i="' + i + '" value="' + r.pol + '" /></td>' +
+            '<td><input data-pk="pod" data-i="' + i + '" value="' + r.pod + '" /></td>' +
+            '<td><input data-pk="carrier" data-i="' + i + '" value="' + r.carrier + '" style="width:72px" /></td>' +
+            '<td><input data-pk="voy" data-i="' + i + '" value="' + r.voy + '" /></td>' +
+            '<td><input data-pk="supplier" data-i="' + i + '" value="' + r.supplier + '" style="width:88px" /></td>' +
+            "</tr>";
+        });
+        document.getElementById("previewBody").innerHTML = html;
+        PREVIEW.forEach(function (r, i) {
+          var tr = document.getElementById("previewBody").rows[i];
+          if (!tr) return;
+          tr.querySelector('[data-pk="mode"]').value = r.mode;
+          tr.querySelector('[data-pk="type"]').value = r.type || "40HQ";
+        });
+        var hi = PREVIEW.filter(function (r) { return r.conf >= 90; }).length;
+        var lo = PREVIEW.filter(function (r) { return r.conf < 75; }).length;
+        document.getElementById("previewSummary").innerHTML =
+          "识别到 <strong>" + PREVIEW.length + "</strong> 行（含多柜拆分）· 高置信 " + hi +
+          " · 需校对 " + lo + " · 来源：" +
+          (FILES.length ? FILES.join("、") : "粘贴文本 / 示意样例");
+      }
+
+      document.getElementById("previewBody").addEventListener("change", function (e) {
+        var el = e.target;
+        if (el.classList.contains("pv-ck")) {
+          PREVIEW[Number(el.getAttribute("data-i"))].pick = el.checked;
+          return;
+        }
+        var pk = el.getAttribute("data-pk");
+        if (!pk) return;
+        PREVIEW[Number(el.getAttribute("data-i"))][pk] = el.value;
+      });
+      document.getElementById("pvChkAll").onchange = function () {
+        var on = this.checked;
+        PREVIEW.forEach(function (r) { r.pick = on; });
+        document.querySelectorAll(".pv-ck").forEach(function (c) { c.checked = on; });
+      };
+
+      function openAi() {
+        setStep(1);
+        document.getElementById("aiMask").classList.add("open");
+      }
+      function closeAi() {
+        document.getElementById("aiMask").classList.remove("open");
+      }
+
+      document.getElementById("btnAi").onclick = openAi;
+      document.getElementById("aiClose").onclick = closeAi;
+      document.getElementById("aiCancel").onclick = closeAi;
+      document.getElementById("aiMask").addEventListener("click", function (e) {
+        if (e.target === this) closeAi();
+      });
+      document.getElementById("aiBack").onclick = function () { setStep(1); };
+
+      document.getElementById("aiStart").onclick = function () {
+        var paste = (document.getElementById("aiPaste").value || "").trim();
+        if (!FILES.length && !paste) {
+          toast("请先上传文件或粘贴订舱确认文本（示意也可直接点识别用样例）");
+        }
+        setStep(2);
+        var hints = [
+          "解析 PDF 结构 · 定位 Booking / B/L 区块",
+          "抽取提单号 / 柜号 / 柜型 / 港口",
+          "匹配船司与港口主数据 · 计算置信度"
+        ];
+        var i = 0;
+        document.getElementById("scanHint").textContent = hints[0];
+        var timer = setInterval(function () {
+          i += 1;
+          if (i < hints.length) {
+            document.getElementById("scanHint").textContent = hints[i];
+          } else {
+            clearInterval(timer);
+            PREVIEW = SAMPLE.map(function (r) {
+              return Object.assign({}, r);
+            });
+            if (paste && /B\/L|提单|COSU|HLCU|MEDU|ONEY/i.test(paste)) {
+              PREVIEW[0].bl = (paste.match(/[A-Z]{4}[A-Z0-9]{8,}/) || [PREVIEW[0].bl])[0];
+            }
+            renderPreview();
+            setStep(3);
+          }
+        }, 700);
+      };
+
+      document.getElementById("aiApply").onclick = function () {
+        var picked = PREVIEW.filter(function (r) { return r.pick; });
+        if (!picked.length) { toast("请至少勾选一行"); return; }
+        var writeMode = document.getElementById("aiWriteMode").value;
+        var mapped = picked.map(function (r) {
+          return {
+            mode: r.mode || "海运",
+            bl: r.bl || "",
+            freight: r.freight || "",
+            free: r.free || "",
+            etd: r.etd || "",
+            cntr: r.cntr || "",
+            type: r.type || "",
+            pol: r.pol || "",
+            pod: r.pod || "",
+            carrier: r.carrier || "",
+            voy: r.voy || "",
+            supplier: r.supplier || "",
+            ai: true
+          };
+        });
+        var onlyEmpty = ROWS.length === 1 && !ROWS[0].bl && !ROWS[0].cntr;
+        if (writeMode === "replace" || onlyEmpty) {
+          ROWS = mapped;
+        } else {
+          if (onlyEmpty) ROWS = [];
+          ROWS = ROWS.concat(mapped);
+        }
+        closeAi();
+        render();
+        toast("已写入 " + mapped.length + " 行 · AI 回填格已高亮，请核对必填项后保存");
+      };
+
+      /* —— 运价点价订舱接入 —— */
+      function applyRateBooking() {
+        var raw = null;
+        try { raw = sessionStorage.getItem("ess_book_from_rate"); } catch (e) { /* ignore */ }
+        var params = new URLSearchParams(location.search || "");
+        if (!raw && params.get("from") !== "rate") return null;
+        var p = null;
+        try { p = raw ? JSON.parse(raw) : null; } catch (e2) { p = null; }
+        if (!p) return null;
+        try { sessionStorage.removeItem("ess_book_from_rate"); } catch (e3) { /* ignore */ }
+
+        var etd = p.etd ? (p.etd.length === 10 ? p.etd + "T00:00" : p.etd) : "";
+        var qty = Math.max(1, Math.min(20, +p.qty || 1));
+        var rows = [];
+        for (var i = 0; i < qty; i++) {
+          rows.push({
+            mode: "海运",
+            bl: "",
+            freight: String(p.freight != null ? p.freight : ""),
+            free: "",
+            etd: etd,
+            cntr: "",
+            type: p.type || "",
+            pol: p.polCode || p.pol || "",
+            pod: p.podCode || p.pod || "",
+            carrier: p.carrierCode || p.carrier || "",
+            voy: "",
+            supplier: p.supplier || (p.src === "agent" ? "代理订舱" : "我司订舱"),
+            ai: false,
+            fromRate: true
+          });
+        }
+        ROWS = rows;
+
+        var banner = document.getElementById("rateBanner");
+        var txt = document.getElementById("rateBannerText");
+        if (banner && txt) {
+          banner.style.display = "block";
+          txt.textContent = (p.supplier || "") + " · " + (p.carrier || "") + " · " +
+            (p.pol || "") + "→" + (p.pod || "") + " · " + (p.type || "") + " · " +
+            (p.cur || "USD") + " " + (p.freight != null ? p.freight : "") +
+            (p.contract ? " · " + p.contract : "") + " · ×" + qty + " 柜" +
+            (p.note ? " · " + p.note : "");
+        }
+        var btn = document.getElementById("btnRateAi");
+        if (btn) btn.onclick = openAi;
+
+        var openAiFlag = p.openAi || params.get("ai") === "1";
+        return { openAi: openAiFlag, qty: qty };
+      }
+
+      var rateBoot = applyRateBooking();
+      render();
+      if (rateBoot) {
+        toast("已从运价带入 " + rateBoot.qty + " 行 · 可补柜号（提单号非必填），或点 AI 识别订舱确认");
+        if (rateBoot.openAi) {
+          setTimeout(openAi, 280);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

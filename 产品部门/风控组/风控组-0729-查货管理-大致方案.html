@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>风控组 · 0729 查货管理 · 大致方案</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --gap: #cf1322;
+      --c1: #722ed1; --c2: #d46b08; --c3: #08979c; --c4: #cf1322;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .page { max-width: 1200px; margin: 0 auto; padding: 14px 16px 56px; }
+
+    .hero {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 6px; padding: 14px 16px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+    .hero p { margin: 0; font-size: 12px; color: var(--sub); line-height: 1.65; }
+
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .toc a {
+      padding: 6px 12px; background: #fff; border: 1px solid var(--line);
+      border-radius: 2px; font-size: 12px; color: var(--text);
+    }
+    .toc a:hover { border-color: var(--blue); color: var(--blue); text-decoration: none; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 6px; padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+    .card h3 { margin: 14px 0 8px; font-size: 13px; color: #391085; }
+    .desc { margin: 0 0 14px; font-size: 12px; color: var(--sub); line-height: 1.6; }
+
+    .note {
+      padding: 10px 12px; background: #fffbe6; border: 1px solid #ffe58f;
+      border-radius: 4px; font-size: 12px; color: #614700; line-height: 1.65; margin: 10px 0;
+    }
+    .note strong { color: #874d00; }
+    .okbox {
+      padding: 10px 12px; background: #f9f0ff; border: 1px solid #d3adf7;
+      border-radius: 4px; font-size: 12px; color: #391085; line-height: 1.65; margin: 10px 0;
+    }
+
+    .badge {
+      display: inline-block; padding: 1px 8px; border-radius: 2px;
+      font-size: 11px; border: 1px solid; font-weight: 600; line-height: 18px;
+    }
+    .badge.p0 { color: var(--gap); background: #fff1f0; border-color: #ffa39e; }
+    .badge.p1 { color: var(--warn); background: #fff7e6; border-color: #ffd591; }
+    .badge.ok { color: var(--ok); background: #f6ffed; border-color: #95de64; }
+
+    .cards4 {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 8px;
+    }
+    @media (max-width: 1000px) { .cards4 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .cards4 { grid-template-columns: 1fr; } }
+    .sc {
+      border: 1px solid var(--line); border-radius: 6px; padding: 12px;
+      background: #fafafa;
+    }
+    .sc.c1 { border-top: 3px solid var(--c1); }
+    .sc.c2 { border-top: 3px solid var(--c2); }
+    .sc.c3 { border-top: 3px solid var(--c3); }
+    .sc.c4 { border-top: 3px solid var(--c4); }
+    .sc h4 { margin: 0 0 8px; font-size: 13px; }
+    .sc ul { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.65; }
+
+    .mermaid-wrap {
+      overflow-x: auto; background: #fafafa; border: 1px solid var(--line);
+      border-radius: 4px; padding: 12px;
+    }
+
+    .wf {
+      border: 1px solid var(--line); border-radius: 4px; overflow: hidden; margin-top: 10px;
+    }
+    .wf-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: #1b1035; color: #fff; font-size: 12px;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .wf-bar .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+    .wf-bar button {
+      border: 1px solid rgba(255,255,255,.35); background: transparent;
+      color: #fff; border-radius: 2px; padding: 3px 10px; font-size: 12px; cursor: default;
+    }
+    .wf-bar button.on { background: #722ed1; border-color: #722ed1; }
+    .wf-bar button.warn { background: #fa8c16; border-color: #fa8c16; }
+    .wf-bar button.danger { background: #ff4d4f; border-color: #ff4d4f; }
+    .wf-bar button.ok { background: #52c41a; border-color: #52c41a; }
+
+    .wf-tools {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 8px 12px; border-bottom: 1px solid var(--line); background: #fafafa;
+      font-size: 12px;
+    }
+    .chip {
+      display: inline-block; padding: 2px 8px; border-radius: 2px;
+      font-size: 11px; font-weight: 600; border: 1px solid;
+    }
+    .chip.red { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .chip.orange { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .chip.green { color: #389e0d; background: #f6ffed; border-color: #95de64; }
+    .chip.blue { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .chip.purple { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+
+    .wf-body { display: grid; grid-template-columns: 1.2fr 1fr; }
+    @media (max-width: 860px) { .wf-body { grid-template-columns: 1fr; } }
+    .wf-col { padding: 12px; border-right: 1px solid var(--line); }
+    .wf-col:last-child { border-right: none; }
+    .wf-col h4 { margin: 0 0 8px; font-size: 12px; color: #391085; }
+
+    .form-row {
+      display: grid; grid-template-columns: 100px 1fr; gap: 6px; align-items: start;
+      margin-bottom: 8px; font-size: 12px;
+    }
+    .form-row input, .form-row select, .form-row textarea {
+      border: 1px solid var(--line); border-radius: 2px; padding: 4px 8px; font: inherit;
+      background: #fff; width: 100%;
+    }
+    .form-row textarea { min-height: 52px; resize: vertical; }
+    .check-list { font-size: 12px; line-height: 1.8; }
+    .check-list label { display: flex; gap: 6px; align-items: center; }
+
+    .photo-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .photo {
+      aspect-ratio: 4/3; background: #f0f0f0; border: 1px dashed #bfbfbf;
+      border-radius: 4px; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: var(--sub); position: relative;
+    }
+    .photo .tag {
+      position: absolute; top: 4px; left: 4px; padding: 1px 6px;
+      background: #722ed1; color: #fff; border-radius: 2px; font-size: 10px;
+    }
+    .photo.warn-border { border: 2px solid #fa8c16; background: #fff7e6; }
+
+    .steps {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 10px 0;
+    }
+    @media (max-width: 900px) { .steps { grid-template-columns: 1fr 1fr; } }
+    .step {
+      border: 1px solid var(--line); border-radius: 4px; padding: 10px;
+      background: #fafafa; font-size: 12px; line-height: 1.55;
+    }
+    .step .n {
+      display: inline-block; width: 20px; height: 20px; line-height: 20px;
+      text-align: center; border-radius: 50%; background: #722ed1; color: #fff;
+      font-size: 11px; font-weight: 700; margin-right: 4px;
+    }
+    .step b { display: block; margin: 4px 0 2px; font-size: 12px; }
+
+    table.tbl {
+      width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px;
+    }
+    table.tbl th, table.tbl td {
+      border: 1px solid var(--line); padding: 8px 10px;
+      text-align: left; vertical-align: top; line-height: 1.55;
+    }
+    table.tbl th { background: #fafafa; color: var(--sub); font-weight: 600; white-space: nowrap; }
+    table.tbl tr.warn-row td { background: #fffbe6; }
+    table.tbl tr.err-row td { background: #fff1f0; }
+
+    .modal {
+      margin-top: 10px; border: 1px solid #d3adf7; border-radius: 4px;
+      background: #fff; overflow: hidden;
+    }
+    .modal-hd {
+      padding: 8px 12px; background: #f9f0ff; border-bottom: 1px solid #d3adf7;
+      font-size: 13px; font-weight: 600; color: #391085;
+    }
+    .modal-bd { padding: 12px; font-size: 12px; line-height: 1.65; }
+    .modal-ft {
+      padding: 8px 12px; border-top: 1px solid var(--line); background: #fafafa;
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .modal-ft button {
+      border: 1px solid var(--line); border-radius: 2px; padding: 4px 12px;
+      font-size: 12px; background: #fff; cursor: default;
+    }
+    .modal-ft button.primary { background: #722ed1; color: #fff; border-color: #722ed1; }
+    .modal-ft button.danger { background: #ff4d4f; color: #fff; border-color: #ff4d4f; }
+
+    .footer { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <p style="margin:0 0 10px">
+        <a href="风控组-导航.html" style="font-weight:600">← 返回导航</a>
+        ·
+        <a href="../产品部门-导航.html">产品导航</a>
+      </p>
+      <h1>0729 大致方案 · 风控查货 / 附加费 / 多品名 / 品牌侵权</h1>
+      <p>
+        调研日：2026-07-29 下午 · 风控组专场 · 大致方案（可评审、未定稿）。
+        口径：先看图再问；附加服务勾选后多收费进业务数据统计；品名超 5 每个 +30；品牌侵权看图→豆包→查站→要授权。
+        <br />
+        <strong style="color:#722ed1;">0806 评审回写：</strong>直客只加成本；产品库七类标记；免查保函同页；备注标准化 —
+        <a href="#review0806">⑧</a> /
+        <a href="风控组调研纪要_2026-08-06_查货原型评审.html">评审纪要</a>
+        （郭佳玉未过，待复审）。
+        关联：
+        <a href="关务组调研摘录_2026-07-29_查货管理.txt">0729 下午摘录</a> ·
+        <a href="风控组-查货操作-AI识图品名识别-原型.html">查货操作原型</a> ·
+        <a href="../产品部门-导航.html">产品导航</a>
+      </p>
+    </section>
+
+    <nav class="toc">
+      <a href="#scope">① 范围与 P0</a>
+      <a href="#ops">② 查货先看图</a>
+      <a href="#fee">③ 附加费 / 归属</a>
+      <a href="#review0806">⑧ 0806 评审</a>
+      <a href="#sku">④ 多品名</a>
+      <a href="#ip">⑤ 品牌侵权</a>
+      <a href="#p1">⑥ P1 附项</a>
+      <a href="#todo">⑦ 待确认</a>
+    </nav>
+
+    <!-- ① -->
+    <section class="card" id="scope">
+      <h2>① 方案范围 · 四件套优先</h2>
+      <p class="desc">先做能立刻规范仓库作业、堵住漏收费、拦住侵权硬过的四件事；其余挂 P1。</p>
+      <div class="cards4">
+        <div class="sc c1">
+          <h4><span class="badge p0">P0</span> 查货先看图</h4>
+          <ul>
+            <li>照片必看 / 已看标记</li>
+            <li>有疑问再问、可留痕</li>
+            <li>补仓库不规范卡点</li>
+          </ul>
+        </div>
+        <div class="sc c2">
+          <h4><span class="badge p0">P0</span> 附加费进统计</h4>
+          <ul>
+            <li>附加服务可勾选</li>
+            <li>多收费项写入业务数据统计</li>
+            <li>同行加客户 / 直客只加成本（0806）</li>
+          </ul>
+        </div>
+        <div class="sc c3">
+          <h4><span class="badge p0">P0</span> 多品名自动加收</h4>
+          <ul>
+            <li>超 5 个自动识别</li>
+            <li>每个加收 30</li>
+            <li>区分包装 / 分开包装</li>
+          </ul>
+        </div>
+        <div class="sc c4">
+          <h4><span class="badge p0">P0</span> 品牌侵权查询</h4>
+          <ul>
+            <li>看图 → 豆包识别</li>
+            <li>确认品牌 → 网站查</li>
+            <li>要授权 · 留痕提醒</li>
+          </ul>
+        </div>
+      </div>
+      <div class="okbox">
+        <strong>落点建议：</strong>查货作业台（看图 + 勾选 + 多品名）→ 业务数据统计（成本/应收）→ 侵权查询子流程（豆包辅助）→ 授权附件与关务抬头校验衔接。
+      </div>
+    </section>
+
+    <!-- ② 查货操作 -->
+    <section class="card" id="ops">
+      <h2>② 查货操作 · 先看图再问 <span class="badge p0">P0</span></h2>
+      <p class="desc">标准动作：先看查货照片 / 标识 → 有疑问再沟通。现状：系统有标识，仓库查货不规范，标识与现场动作脱节。</p>
+
+      <h3>2.1 作业流程</h3>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart LR
+  A["进入查货单"] --> B["先看照片 / 标识"]
+  B --> C{"是否有疑问？"}
+  C -->|"无"| D["勾选附加服务 / 多品名确认"]
+  C -->|"有"| E["提问留痕 · 问客户/业务"]
+  E --> F{"回复是否清晰？"}
+  F -->|"否"| E
+  F -->|"是"| D
+  D --> G{"疑似品牌 / 违禁？"}
+  G -->|"是"| H["走侵权查询链路"]
+  G -->|"否"| I["完结查货"]
+  H --> I
+  style B fill:#f9f0ff,stroke:#722ed1
+  style E fill:#fff7e6,stroke:#d46b08
+  style H fill:#fff1f0,stroke:#cf1322
+        </pre>
+      </div>
+
+      <p class="desc" style="margin-top:8px">列表页 To-Be（现网列+搜索全保留，叠加 AI识图/品名识别 NEW 标记）：
+        <a href="风控组-查货操作-AI识图品名识别-原型.html">打开查货操作 · AI识图 / 品名识别原型</a>
+      </p>
+      <h3>2.2 页面线框 · 查货作业台</h3>
+      <div class="wf">
+        <div class="wf-bar">
+          <span>查货管理 · W20260729018 / 客户：XX贸易</span>
+          <div class="acts">
+            <button class="on">标记已看图</button>
+            <button class="warn">有疑问·提问</button>
+            <button class="danger">疑似侵权</button>
+            <button class="ok">完结查货</button>
+          </div>
+        </div>
+        <div class="wf-tools">
+          <span class="chip purple">直客</span>
+          <span class="chip orange">照片：未看完（2/3）</span>
+          <span class="chip red">标识：多品名待确认</span>
+          <span class="chip blue">下单附件：已带入 2 份</span>
+          <span class="chip green">仓库：华南仓</span>
+        </div>
+        <div class="wf-body">
+          <div class="wf-col">
+            <h4>① 先看图（必看）</h4>
+            <div class="photo-grid">
+              <div class="photo"><span class="tag">已看</span>外箱整体</div>
+              <div class="photo warn-border"><span class="tag" style="background:#fa8c16">待看</span>开箱品名</div>
+              <div class="photo"><span class="tag">已看</span>品牌标识特写</div>
+            </div>
+            <p style="margin:8px 0 0;font-size:11px;color:var(--sub);">未全部「已看」时，「完结查货」置灰或强提示（卡仓库不规范）。</p>
+            <h4 style="margin-top:14px;">客户备注</h4>
+            <textarea style="width:100%;min-height:48px;border:1px solid var(--line);border-radius:2px;padding:6px 8px;font:inherit;" placeholder="查货管理新增字段：客户备注…">客户称箱内有样品，请注意核对件数。</textarea>
+          </div>
+          <div class="wf-col">
+            <h4>② 疑问沟通</h4>
+            <div class="form-row"><span>疑问点</span><textarea>开箱照片疑似有第 6 个品名未申报，请业务确认。</textarea></div>
+            <div class="form-row"><span>提问对象</span>
+              <select><option>业务员</option><option>客户</option><option>仓库</option></select>
+            </div>
+            <div class="form-row"><span>回复</span><input value="确认：第 6 个为赠品，需报多品名。" /></div>
+            <h4 style="margin-top:10px;">③ 附加服务勾选</h4>
+            <div class="check-list">
+              <label><input type="checkbox" checked /> 查货服务（加应收）</label>
+              <label><input type="checkbox" checked /> 多品名加收（自动算）</label>
+              <label><input type="checkbox" /> 分开包装</label>
+              <label><input type="checkbox" /> 其他附加服务…</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <strong>规范卡点：</strong>系统已有标识，但仓库执行不规范 → MVP 用「照片已看」门槛 + 疑问留痕，把「先看图再问」做成强制步骤，而不是口头 SOP。
+      </div>
+    </section>
+
+    <!-- ③ 附加费 -->
+    <section class="card" id="fee">
+      <h2>③ 附加服务 · 多收费进业务数据统计 <span class="badge p0">P0</span></h2>
+      <p class="desc">附加服务可以勾选；其中要多收费的，必须同步写入业务数据统计。勾选 ≠ 完成计费。</p>
+
+      <h3>3.1 费用归属</h3>
+      <table class="tbl">
+        <thead>
+          <tr><th>客户类型</th><th>费用加给谁</th><th>业务数据统计</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>同行</td>
+            <td><strong>客户</strong></td>
+            <td>对客应收 / 费用明细</td>
+            <td>查货费等附加费加客户</td>
+          </tr>
+          <tr class="warn-row">
+            <td>直客</td>
+            <td><strong>只加成本</strong>
+              <div style="font-size:11px;color:#722ed1;margin-top:4px;">0806 评审定调（原：业务员 + 应收，已收敛）</div></td>
+            <td>业务数据统计加成本</td>
+            <td>对客应收是否完全取消，复审再确认</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.2 写入链路</h3>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart TB
+  A["查货勾选附加服务"] --> B{"该项是否多收费？"}
+  B -->|"否 · 仅记录"| C["写查货日志"]
+  B -->|"是"| D{"客户类型"}
+  D -->|"同行"| E["费用加客户"]
+  D -->|"直客"| F["只加成本（0806）"]
+  F --> G["业务数据统计 · 成本"]
+  E --> I["业务数据统计落费用行"]
+  G --> I
+  I --> J["可核算 / 可报表"]
+  style F fill:#fff7e6,stroke:#d46b08
+  style G fill:#f9f0ff,stroke:#722ed1
+  style H fill:#fff1f0,stroke:#cf1322
+        </pre>
+      </div>
+
+      <div class="okbox">
+        <strong>产品原则：</strong>多收费项勾选保存时，自动生成业务数据统计写入任务（或弹确认清单）；禁止「只勾选、事后手工补统计」。
+        查货操作页另设独立入口「+ 添加成本费用」（含超品名费），见
+        <a href="风控组-查货操作-AI识图品名识别-原型.html">查货操作原型</a>。
+      </div>
+    </section>
+
+    <!-- ④ 多品名 -->
+    <section class="card" id="sku">
+      <h2>④ 多品名自动识别与计费 <span class="badge p0">P0</span></h2>
+      <p class="desc">品名数量超过 5 个 → 判定多品名；每个加收 30。支持自动识别；页面区分「包装 / 分开包装」。</p>
+
+      <table class="tbl">
+        <thead>
+          <tr><th>规则项</th><th>口径</th><th>系统行为</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>判定阈值</td><td>品名数 &gt; 5</td><td>自动打「多品名」标识</td></tr>
+          <tr class="warn-row"><td>加收</td><td>超 5 个，每个 +30</td><td>自动算费并勾选附加服务；进业务数据统计</td></tr>
+          <tr><td>包装类型</td><td>包装 / 分开包装</td><td>选项必选；影响作业说明（计费差待确认）</td></tr>
+          <tr><td>品名来源</td><td>下单品名 + 查货实核</td><td>实核可改数，改后重算</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.1 线框 · 多品名计费条</h3>
+      <div class="wf">
+        <div class="wf-bar">
+          <span>多品名 · 实核品名 8 个</span>
+          <div class="acts">
+            <button class="on">自动加收 ¥90</button>
+            <button>改实核数</button>
+          </div>
+        </div>
+        <div class="wf-tools">
+          <span class="chip red">多品名 · 超限 3 个</span>
+          <span class="chip orange">规则：超 5 每个 +30 → 3×30=90</span>
+          <span class="chip purple">包装类型：分开包装</span>
+        </div>
+        <div class="wf-body">
+          <div class="wf-col">
+            <h4>品名清单（示意）</h4>
+            <table class="tbl">
+              <thead><tr><th>#</th><th>品名</th><th>计费</th></tr></thead>
+              <tbody>
+                <tr><td>1–5</td><td>…（基础额度内）</td><td>不计超限费</td></tr>
+                <tr class="warn-row"><td>6</td><td>硅胶垫</td><td>+30</td></tr>
+                <tr class="warn-row"><td>7</td><td>收纳盒</td><td>+30</td></tr>
+                <tr class="warn-row"><td>8</td><td>赠品样品</td><td>+30</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="wf-col">
+            <h4>写入预览</h4>
+            <div class="form-row"><span>费用名称</span><input value="多品名加收" /></div>
+            <div class="form-row"><span>金额</span><input value="90" /></div>
+            <div class="form-row"><span>归属</span><input value="直客 → 业务员（同步附加服务业务成本）" /></div>
+            <p style="margin:0;font-size:11px;color:var(--sub);">保存后自动写入业务数据统计，无需再手工补。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑤ 品牌侵权 -->
+    <section class="card" id="ip">
+      <h2>⑤ 知识 · 品牌侵权查询 <span class="badge p0">P0</span></h2>
+      <p class="desc">作业路径：看图 → 问豆包 → 拿品牌 → 去网站查是否侵权 → 必要时要授权书。侵权留记录并提醒。</p>
+
+      <h3>5.1 五步引导</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><b>看图</b>查货照片 / 品牌特写</div>
+        <div class="step"><span class="n">2</span><b>问豆包</b>图片识别，辅助出品牌</div>
+        <div class="step"><span class="n">3</span><b>确认品牌</b>人工确认或修正</div>
+        <div class="step"><span class="n">4</span><b>网站查</b>官网/渠道核对侵权</div>
+        <div class="step"><span class="n">5</span><b>要授权</b>上传授权；与报关抬头一致</div>
+      </div>
+
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart TB
+  A["查货看图 · 疑似品牌"] --> B["调用豆包图片识别"]
+  B --> C["输出候选品牌"]
+  C --> D["人工确认品牌"]
+  D --> E["跳转官网 / 查询渠道"]
+  E --> F{"是否侵权？"}
+  F -->|"否 / 不确定"| G["记录查询结果 · 可继续"]
+  F -->|"是 / 高风险"| H["要求客户授权书"]
+  H --> I{"授权抬头 = 报关抬头？"}
+  I -->|"否"| J["打回 · 不可硬过"]
+  I -->|"是"| K["上传附件留底"]
+  F -->|"确认侵权且无法授权"| L["扣件 / 提醒 · 写侵权记录"]
+  K --> M["提醒相关角色"]
+  L --> M
+  style B fill:#f9f0ff,stroke:#722ed1
+  style J fill:#fff1f0,stroke:#cf1322
+  style L fill:#fff1f0,stroke:#cf1322
+        </pre>
+      </div>
+
+      <h3>5.2 页面线框 · 侵权查询抽屉</h3>
+      <div class="modal">
+        <div class="modal-hd">品牌侵权查询 · 豆包辅助（结果仅供参考）</div>
+        <div class="modal-bd">
+          <div class="wf-body" style="border:none;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <h4 style="margin:0 0 8px;font-size:12px;color:#391085;">识别结果</h4>
+              <div class="photo" style="margin-bottom:8px;aspect-ratio:16/9;">品牌特写（已选）</div>
+              <div class="form-row"><span>豆包建议</span><input value="疑似：Nike / 耐克（置信度中）" /></div>
+              <div class="form-row"><span>确认品牌</span><input value="Nike" /></div>
+              <div class="form-row"><span>查询入口</span><input value="品牌官网 / 官方维权查询页（外链）" /></div>
+            </div>
+            <div>
+              <h4 style="margin:0 0 8px;font-size:12px;color:#391085;">结论与动作</h4>
+              <div class="form-row"><span>查询结论</span>
+                <select>
+                  <option>未侵权 / 可放行</option>
+                  <option selected>需授权</option>
+                  <option>确认侵权 · 扣件</option>
+                </select>
+              </div>
+              <div class="form-row"><span>授权附件</span><input type="file" /></div>
+              <div class="form-row"><span>抬头校验</span><input value="授权主体 = 报关抬头 ✅" style="background:#f6ffed;border-color:#95de64;" /></div>
+              <div class="form-row"><span>提醒对象</span><input value="业务员 · 关务 · 客户" /></div>
+              <p style="margin:0;font-size:11px;color:var(--sub);">豆包仅辅助识别，不作唯一卡控依据；侵权记录可检索、可复盘。</p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-ft">
+          <button>取消</button>
+          <button class="primary">保存查询记录</button>
+          <button class="danger">确认侵权 · 扣件提醒</button>
+        </div>
+      </div>
+
+      <div class="note">
+        <strong>与关务衔接：</strong>授权附件、抬头一致性校验与
+        <a href="关务组-0729-查验分柜装授权-大致方案.html">关务 0729「授权 + 抬头」</a>
+        同一口径；风控在查货环节发起，关务在资料核准环节复核。
+      </div>
+    </section>
+
+    <!-- ⑥ P1 -->
+    <section class="card" id="p1">
+      <h2>⑥ P1 附项</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th>项</th><th>说明</th><th>优先级</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>客户备注字段</td><td>查货管理新增，对内对外对齐</td><td><span class="badge p0">建议随 P0 做</span></td></tr>
+          <tr><td>违禁品表对客可见</td><td>客户下单/改单自查</td><td><span class="badge p1">P1</span></td></tr>
+          <tr><td>下单附件带入查货</td><td>确认链路；缺则提示补传</td><td><span class="badge p1">P1</span></td></tr>
+          <tr><td>包装 / 分开包装计费差</td><td>字段先上，计费规则待确认</td><td><span class="badge p1">P1</span></td></tr>
+          <tr><td>侵权知识库沉淀</td><td>历史查询结果可复用、可投喂</td><td><span class="badge p1">P1</span></td></tr>
+          <tr>
+            <td>操作查货率 100% 报表</td>
+            <td>总票 / 查验空白 → 保函核对 → 漏查；查货率=实查/应查；导出模板 + 日报播报。见
+              <a href="风控组-操作查货率报表-MVP.html">操作查货率报表原型</a></td>
+            <td><span class="badge p1">P1</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ⑦ 待确认 -->
+    <section class="card" id="todo">
+      <h2>⑦ 待确认</h2>
+      <ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.8;">
+        <li>多品名「超 5 每个 +30」：是否仅超出部分（第 6 个起）计费？币种是否 RMB？是否含税？</li>
+        <li>「包装 / 分开包装」是否另有加收，还是仅作业标识？</li>
+        <li>侵权提醒推送对象默认：业务 / 关务 / 客户 / 仓库？</li>
+        <li>豆包识别：仅辅助提示，还是可作为「疑似侵权」自动标红依据？</li>
+        <li><s>直客「附加服务业务成本」与「查货费应收」是否允许部分项只落其一？</s>
+          → <strong>0806 评审已定：直客只加成本</strong>（应收是否完全取消，复审再确认）</li>
+      </ul>
+    </section>
+
+    <!-- ⑧ 0806 原型评审 -->
+    <section class="card" id="review0806">
+      <h2>⑧ 0806 原型评审结论（卢慧恒）</h2>
+      <p class="desc">
+        完整纪要：
+        <a href="../风控组调研纪要_2026-08-06_查货原型评审.html">HTML</a> ·
+        <a href="../调研纪要_2026-08-06_风控查货_原型评审_卢慧恒.txt">TXT</a>
+        · 评审状态：<span class="badge p0">郭佳玉未通过 · 待回改复审</span>
+      </p>
+      <div class="note">
+        <strong>须回改进原型：</strong>
+        ① 产品库标记：0税率 / DOT / FDA / EPA / GCC / CPC / 反倾销；
+        ② 免查声明页同显保函附件；
+        ③ 产品确认备注改为标准选项；
+        ④ 直客只加成本；
+        ⑤ 授权文件分国内/国外 + 导出模版；
+        ⑥ 清关 IT / 保税号标记（信号旗能否抓待确认）；申报金额、报关方式。
+        <br />
+        <strong>跨组：</strong>改配资料归关务；改配船务标记关务可见；华南预配舱（签入后手推预录）/ 华东终配。
+      </div>
+    </section>
+
+    <p class="footer">产品部门 · 风控组 · 2026-07-29 下午大致方案 · 含 2026-08-06 评审回写 · 未定稿</p>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

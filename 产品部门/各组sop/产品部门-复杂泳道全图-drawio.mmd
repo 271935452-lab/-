@@ -1,0 +1,146 @@
+%% 产品部门 · 复杂泳道全图
+%% 泳道底色：报价橙 / 风控紫 / 船务蓝 / 关务青
+%% 黄底文本框 = 重点系统介入；红框 = 物理堵点；紫虚框 = 流程外主数据（运价/出货要求/进口商/仓位装柜表均在船务区内）
+%% 用法：draw.io → 排列 → 插入 → 高级 → Mermaid… → 粘贴全文
+
+flowchart LR
+  TQ(["T1 询价"]) --> B1
+  TO(["T2 客户下单"]) --> C2
+  TO --> PUSH["推送资料·提前报关<br/>有资料即可·客户单号<br/>⏱0.2～0.5h"]
+  TO --> TW(["T3 到仓"])
+  TW --> E1
+  TW --> G1
+
+  subgraph BJ["报价组（私卡）← T1"]
+    direction LR
+    B1["AI/规则算价<br/>⏱≤20min"] --> B2{"有效期内?"}
+    B2 -->|是| B3["绑运单<br/>⏱0.1h"]
+    B2 -->|否| B1
+    NBJ["📌 系统重点·报价<br/>规则算价 · 有效期卡控 · 报价员绑运单<br/>砍手算+二次绑价"]
+    B1 -.-> NBJ
+  end
+
+  subgraph FK["风控组 ← T3"]
+    direction LR
+    F1["查货先看图<br/>⏱0.2h"] --> F1b["AI识别图片品牌"]
+    F1b --> F1c["品牌标记+数据沉淀"]
+    F1c --> F2{"附加费/侵权?"}
+    F2 -->|附加费| F3["入业务统计"]
+    F2 -->|侵权| F5["要授权"]
+    F2 -->|否| F6["查货完结"]
+    F3 --> F6
+    F5 --> F6
+    NFK["📌 系统重点·风控<br/>已看图卡点 · AI识品牌标记沉淀<br/>附加费分入口入账 · 侵权授权工单"]
+    F1c -.-> NFK
+  end
+
+  subgraph CW["船务组 ← T2 · 不含舱单"]
+    direction LR
+    CREQ["出货要求沉淀<br/>GCC·CPSC品名·反倾销<br/>流程外主数据"] -.->|出货卡控引用| C2
+    CREQ -.->|配舱卡控引用| C3
+    CIMP["进口商管理<br/>收发通·AN<br/>流程外主数据"] -.->|收发通可引用| C3
+    C2["播报/订舱<br/>⏱0.5～1h"] --> C3["配舱<br/>⏱0.5～1h"]
+    CTBL["仓位表·装柜计划表上系统<br/>三表一对象·告别先安排后录"] -.->|舱位/装柜协同| C3
+    C3 --> C4["提单AI<br/>⏱0.3～0.8h"]
+    C3 -.-> C0["运价上系统·价目维护<br/>不定期·流程外·配舱后维护<br/>⏱0.5～1h/次"]
+    C0 -.->|价目可引用回订舱/播报| C2
+    C4 --> C6["放行拉数<br/>⏱巡检3～4次/天"]
+    C6 --> C7{"未放行/甩柜?"}
+    C7 -->|未放行/甩柜| CN["未放行须通知客户"]
+    CN --> C8["甩柜+协同"]
+    C7 -->|否| C9["费用落账"]
+    C8 --> C9
+    C9 --> CIT["取消IT标记<br/>提醒关务清关"]
+    NCW["📌 系统重点·船务<br/>出货要求 · 进口商 · 仓位/装柜表上系统<br/>配舱后·运价上系统 · 价目回引用播报<br/>放行订阅 · 未放行通知 · 取消IT→清关"]
+    C0 -.-> NCW
+    CREQ -.-> NCW
+    CIMP -.-> NCW
+    CTBL -.-> NCW
+    C6 -.-> NCW
+    CIT -.-> NCW
+  end
+
+  subgraph GW["关务组（含资料员）← T3 · 出口+清关"]
+    direction LR
+    G1["资料员出单<br/>依赖到仓 · ⏱0.5～1h"] --> G2["分单号<br/>⏱0.2h"]
+    G2 --> G3["核准双通道<br/>⏱1～2h"]
+    G3 --> G4["授权=抬头硬拦"]
+    G4 --> G5["同柜确认"]
+    G5 --> G5b["发舱单/AMS/ISF<br/>⏱0.5～1h"]
+    G5b --> G6["推报关申报"]
+    G6 --> G7{"国内查验?"}
+    G7 -->|是| G8["查验·视情况通知客户"]
+    G8 --> G9["改配+改舱单"]
+    G7 -->|否| G6ok["出口申报完成"]
+    G6ok --> GC1["清关资料·税金核对"]
+    G8 --> GC1
+    GC1 --> GC2["通知清关行·卸船清关"]
+    GC2 --> GC3{"目的港查验?"}
+    GC3 -->|是| GC4["查验视情况通知·催放行"]
+    GC3 -->|否| GC5["清关放行"]
+    GC4 --> GC5
+    NGW["📌 系统重点·关务<br/>自动分单号 · 核准双通道 · 抬头硬拦<br/>舱单/AMS/ISF同岗直发 · 查验视情况通知 · 清关状态"]
+    G3 -.-> NGW
+    G5b -.-> NGW
+  end
+
+  subgraph HW["海外 · 未确认"]
+    direction LR
+    H1["指令接收"] --> H2["美库计划"]
+    H2 --> H3["派送"]
+    H3 --> H4["POD/定责"]
+  end
+
+  subgraph EXT["外部 · 仓 / 报关行 / 清关行 / 通知"]
+    direction LR
+    E1["仓库拍照<br/>⏱0.2h"]
+    BR["报关行对接<br/>欣扬/盛世通等·API"]
+    CLR["清关行"]
+    E3["客服业务通知"]
+    NBR["📌 系统重点·报关对接<br/>下单后有资料即推<br/>预录回传进核准 · 排柜关联不重推"]
+    BR -.-> NBR
+  end
+
+  PUSH --> BR
+  BR -->|预录回传#04| G3
+  CIT -->|提醒关务清关| GC1
+  GC1 -.-> CLR
+  CLR -.->|税金单/放行反馈| GC2
+  E1 --> F1
+
+  B3 -.->|报价挂运单| C2
+  CIMP -.->|收发通供资料/提单| G3
+  F5 -->|H1| G4
+  C2 -.->|订舱信息可供出单引用| G1
+  G5 -->|H3| C3
+  C4 -.->|配舱结果| G5b
+  G5b -.->|状态只读| C6
+  G6 -->|H5| C6
+  G6ok -->|H5| C6
+  G9 -->|H6| C8
+  C8 -->|H7| E3
+  GC5 --> H1
+  G9 --> H1
+  C9 --> H1
+  H4 --> ENDNODE(["交付闭环"])
+  C9 --> ENDNODE
+  GC5 --> ENDNODE
+
+  %% —— 泳道底色 ——
+  style BJ fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#BF360C
+  style FK fill:#F3E5F5,stroke:#6A1B9A,stroke-width:2px,color:#4A148C
+  style CW fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+  style GW fill:#E0F7FA,stroke:#00838F,stroke-width:2px,color:#006064
+  style HW fill:#E8F5E9,stroke:#2E7D32,stroke-width:1px
+  style EXT fill:#FAFAFA,stroke:#757575,stroke-width:1px
+
+  %% 黄底文本框 = 重点系统介入
+  classDef callout fill:#FFFDE7,stroke:#F9A825,stroke-width:2px,color:#F57F17
+  %% 物理堵点（红）
+  classDef bot fill:#FFEBEE,stroke:#C62828,stroke-width:3px,color:#B71C1C
+  %% 流程外主数据
+  classDef md fill:#EDE7F6,stroke:#5E35B1,stroke-width:2px,stroke-dasharray: 5 3,color:#4527A0
+
+  class NBJ,NFK,NCW,NGW,NBR callout
+  class G3,G5b,C6,CN,F5,PUSH bot
+  class C0,CREQ,CIMP,CTBL md

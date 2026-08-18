@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>尾程预估费用表 · 海外对接组 · MVP</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --header-tab: #132d52; --sidebar: #001529;
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --red: #cf1322; --green: #389e0d; --warn: #d46b08;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; flex: 1; overflow-x: auto; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .nav-tab .badge-new {
+      display: inline-block; padding: 0 4px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .header-right {
+      display: flex; align-items: center; gap: 10px; padding: 0 14px;
+      font-size: 12px; color: rgba(255,255,255,.65);
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 56px; background: var(--sidebar); color: rgba(255,255,255,.65);
+      display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px;
+    }
+    .side-ico {
+      width: 48px; padding: 8px 0 6px; text-align: center; font-size: 10px;
+      line-height: 1.2; border-radius: 2px;
+    }
+    .side-ico b { display: block; font-size: 16px; margin-bottom: 2px; font-weight: 400; }
+    .side-ico.on { background: rgba(24,144,255,.28); color: #fff; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .proto-bar {
+      padding: 6px 12px; font-size: 12px; color: var(--sub); background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .proto-bar a { margin-right: 10px; }
+
+    .page-hd {
+      background: #fff; border-bottom: 1px solid var(--line); padding: 10px 12px;
+    }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); font-size: 12px; line-height: 1.55; }
+
+    .rule-strip {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+      background: #e6f7ff; border-bottom: 1px solid #91d5ff; font-size: 12px; color: #0050b3;
+    }
+    .rule-strip span {
+      display: inline-flex; padding: 2px 8px; background: #fff;
+      border: 1px solid #91d5ff; border-radius: 3px;
+    }
+    .rule-strip b { color: #096dd9; }
+
+    .tabs {
+      display: flex; gap: 0; background: #fff; border-bottom: 1px solid var(--line);
+      padding: 0 12px; overflow-x: auto;
+    }
+    .tab {
+      padding: 10px 14px; border: none; background: transparent; cursor: pointer;
+      color: var(--sub); border-bottom: 2px solid transparent; white-space: nowrap;
+    }
+    .tab.on { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+    .panel { display: none; flex: 1; flex-direction: column; min-height: 0; }
+    .panel.on { display: flex; }
+
+    .kpi {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px;
+      padding: 10px 12px; background: #fff; border-bottom: 1px solid var(--line);
+    }
+    @media (max-width: 1200px) { .kpi { grid-template-columns: repeat(3, 1fr); } }
+    .kpi-card {
+      border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; background: #fafafa;
+    }
+    .kpi-card.warn { background: #fffbe6; border-color: #ffe58f; }
+    .kpi-card.bad { background: #fff1f0; border-color: #ffa39e; }
+    .kpi-card.ok { background: #f6ffed; border-color: #b7eb8f; }
+    .kpi-card .k { font-size: 11px; color: var(--sub); }
+    .kpi-card .v { margin-top: 4px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .kpi-card .v em { font-style: normal; font-size: 12px; font-weight: 400; color: var(--sub); margin-left: 4px; }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 12px; background: #fff; border-bottom: 1px solid var(--line);
+    }
+    .field { display: flex; align-items: center; gap: 6px; }
+    .field label { color: var(--sub); white-space: nowrap; font-size: 12px; }
+    .field input, .field select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; min-width: 120px;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer;
+    }
+    .btn:hover { color: var(--blue); border-color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { background: #40a9ff; }
+    .btn.warn { background: #fff7e6; border-color: #ffd591; color: #d46b08; }
+
+    .legend {
+      padding: 6px 12px; font-size: 12px; color: #595959; background: #fafafa;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .table-wrap {
+      flex: 1; overflow: auto; background: #fff;
+      margin: 0 12px 12px; border: 1px solid var(--line); border-radius: 4px;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 1400px; }
+    th, td {
+      border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left;
+      white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    th {
+      position: sticky; top: 0; z-index: 2;
+      background: #fafafa; color: var(--sub); font-weight: 600; font-size: 12px;
+    }
+    tr:hover td { background: #f5f9ff; }
+    tr.hi-bad td { background: #fff1f0; }
+    tr.hi-warn td { background: #fffbe6; }
+    .num, .money { text-align: right; font-family: Consolas, Monaco, monospace; }
+    .muted { color: var(--sub); }
+    .mono { font-family: Consolas, Monaco, monospace; font-size: 12px; }
+    .linkish { color: var(--blue); cursor: pointer; }
+    .linkish:hover { text-decoration: underline; }
+    .pos { color: var(--red); font-weight: 600; }
+    .neg { color: var(--green); font-weight: 600; }
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 20px;
+      border-radius: 2px; font-size: 11px; border: 1px solid transparent;
+    }
+    .tag.ok { background: #f6ffed; border-color: #b7eb8f; color: var(--green); }
+    .tag.warn { background: #fff7e6; border-color: #ffd591; color: var(--warn); }
+    .tag.bad { background: #fff1f0; border-color: #ffa39e; color: var(--red); }
+    .tag.info { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .tag.gray { background: #f5f5f5; border-color: #d9d9d9; color: #595959; }
+
+    .split {
+      display: grid; grid-template-columns: 1.2fr .8fr; gap: 12px;
+      padding: 0 12px 12px; flex: 1; min-height: 0;
+    }
+    @media (max-width: 1100px) { .split { grid-template-columns: 1fr; } }
+    .card {
+      background: #fff; border: 1px solid var(--line); border-radius: 4px;
+      display: flex; flex-direction: column; min-height: 360px; overflow: hidden;
+    }
+    .card-hd {
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .card-hd h3 { margin: 0; font-size: 14px; }
+    .card-bd { flex: 1; overflow: auto; padding: 12px; }
+    .hint {
+      margin: 0 0 10px; padding: 8px 10px; border-radius: 4px; font-size: 12px; line-height: 1.5;
+      background: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3;
+    }
+    .hint.warn { background: #fff7e6; border-color: #ffd591; color: #874d00; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .fg { display: flex; flex-direction: column; gap: 4px; }
+    .fg label { font-size: 12px; color: var(--sub); }
+    .fg input, .fg select, .fg textarea {
+      height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .fg textarea { height: 64px; padding: 6px 8px; resize: vertical; }
+
+    .fee-rows { display: flex; flex-direction: column; gap: 6px; }
+    .fee-row {
+      display: grid; grid-template-columns: 100px 1fr 90px; gap: 8px; align-items: center;
+      padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: #fafafa;
+    }
+    .fee-row.auto { border-color: #91d5ff; background: #e6f7ff; }
+    .fee-row .name { font-weight: 600; }
+    .fee-row .src { font-size: 11px; color: var(--sub); }
+    .fee-row .amt { text-align: right; font-family: Consolas, Monaco, monospace; font-weight: 700; }
+    .sum-bar {
+      margin-top: 10px; padding: 10px 12px; background: #001529; color: #fff; border-radius: 4px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sum-bar .big { font-size: 20px; font-weight: 700; }
+
+    .drawer-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40;
+      display: none; align-items: stretch; justify-content: flex-end;
+    }
+    .drawer-mask.show { display: flex; }
+    .drawer {
+      width: min(560px, 100%); background: #fff; display: flex; flex-direction: column;
+      box-shadow: -4px 0 24px rgba(0,0,0,.12);
+    }
+    .drawer-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .drawer-hd h2 { margin: 0; font-size: 15px; }
+    .drawer-bd { flex: 1; overflow: auto; padding: 14px 16px; }
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      background: #001529; color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 99; display: none;
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">TMS</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-港后-尾单单票跟踪-原型.html'">尾单单票跟踪</button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-卡派跟进新-MVP.html'">卡派跟进(新)</button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-主单跟进-MVP.html'">主单跟进</button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-提单主单预估费用表-MVP.html'">提单主单预估</button>
+        <button type="button" class="nav-tab active">尾程预估费用 <span class="badge-new">NEW</span></button>
+      </div>
+      <div class="header-right">海外对接组 · 运单维预估</div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-ico"><b>☰</b>菜单</div>
+        <div class="side-ico on"><b>＄</b>预估</div>
+        <div class="side-ico"><b>📦</b>运单</div>
+      </aside>
+
+      <div class="main">
+        <div class="proto-bar">
+          原型导航：
+          <a href="../产品部门-导航.html">产品导航</a>
+          <a href="海外对接组-提单主单预估费用表-MVP.html">提单预估（头程）</a>
+          <a href="海外对接组-港后-尾单单票跟踪-原型.html">尾单跟踪</a>
+          <span class="muted">口径：卢慧恒 8/7 10:20 · 海外仓费用录入进预估 · <b>按运单</b> · 海外实际费用可改</span>
+        </div>
+
+        <div class="page-hd">
+          <h1>尾程 / 海外费用预估（运单维）</h1>
+          <p>
+            <strong>按运单进预估</strong>，不是按柜汇总后才估。
+            <strong>海外仓费用录入</strong>后计入该运单预估合计。
+            「主单实际费用」里要改的，是<strong>海外费用</strong>，编辑粒度也是<strong>运单</strong>（主单仅作归集展示）。
+          </p>
+        </div>
+
+        <div class="rule-strip">
+          <span><b>维度</b> 运单（Waybill）</span>
+          <span><b>海外仓费用</b> 录入 → 进预估</span>
+          <span><b>派送预估</b> 取报价员核对确认的尾端派送费（取整、不做计算）</span>
+          <span><b>实际费用</b> 海外费用 · 运单可改</span>
+          <span><b>主单</b> 仅归集；改费不落在主单整单一笔</span>
+        </div>
+
+        <div class="tabs">
+          <button type="button" class="tab on" data-tab="list">运单预估清单</button>
+          <button type="button" class="tab" data-tab="wh">海外仓费用录入</button>
+          <button type="button" class="tab" data-tab="actual">实际费用修改（运单）</button>
+        </div>
+
+        <!-- 运单预估清单 -->
+        <section class="panel on" id="panel-list">
+          <div class="kpi" id="kpi"></div>
+          <div class="toolbar">
+            <div class="field"><label>运单号</label><input id="f-wb" placeholder="运单 / FBA" /></div>
+            <div class="field"><label>主单号</label><input id="f-bl" placeholder="MBL" /></div>
+            <div class="field">
+              <label>海外仓</label>
+              <select id="f-wh"><option value="">全部</option><option>4DS</option><option>美库</option><option>VMI</option></select>
+            </div>
+            <div class="field">
+              <label>状态</label>
+              <select id="f-st">
+                <option value="">全部</option>
+                <option>已预估</option>
+                <option>待录海外仓费</option>
+                <option>已对账</option>
+                <option>差额待核</option>
+              </select>
+            </div>
+            <button type="button" class="btn" onclick="renderList()">查询</button>
+            <button type="button" class="btn primary" onclick="toast('已按运单批量重算预估（演示）')">批量重算</button>
+            <button type="button" class="btn warn" onclick="switchTab('wh')">录入海外仓费</button>
+            <button type="button" class="btn" onclick="switchTab('actual')">改实际费用</button>
+            <span class="muted" style="margin-left:auto">预估合计 = 派送预估 + 附加 + 海外仓费</span>
+          </div>
+          <div class="legend">
+            卢慧恒 8/7：海外仓费用录入进预估；按运单进预估；主单实际费用（海外）按运单维度修改。
+            8/13 报价组：报表对比实际 vs 预估（例 800 / 630）；费用名称须同一套字典，名称不一致单独标红。
+            8/14：<b>派送预估取报价员核对确认的尾端派送费</b>（取整、不做计算；人工改价后取新价，不带出单价、不按头程÷计费重反推）。
+            Δ实际 = 运单实际海外费用 − 运单预估合计。
+            <span id="quote-feed-hint"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>运单号</th>
+                  <th>主单号</th>
+                  <th>柜号</th>
+                  <th>海外仓</th>
+                  <th>派送方式</th>
+                  <th>目的站</th>
+                  <th class="num">派送预估</th>
+                  <th class="num">附加</th>
+                  <th class="num">海外仓费</th>
+                  <th class="num">预估合计</th>
+                  <th class="num">实际（海外）</th>
+                  <th class="num">Δ实际</th>
+                  <th>费用名称比对</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="list-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 海外仓费用录入 -->
+        <section class="panel" id="panel-wh">
+          <div class="toolbar">
+            <span class="muted">海外仓费用按运单录入，保存后立即计入该运单预估合计。</span>
+            <button type="button" class="btn primary" style="margin-left:auto" onclick="saveWhFee()">保存并进预估</button>
+          </div>
+          <div class="split">
+            <div class="card">
+              <div class="card-hd"><h3>待录 / 已录运单</h3><span class="tag info">点选右侧编辑</span></div>
+              <div class="card-bd" style="padding:0">
+                <div class="table-wrap" style="margin:0;border:none;border-radius:0;min-height:320px">
+                  <table style="min-width:0">
+                    <thead>
+                      <tr>
+                        <th>运单号</th><th>主单</th><th>海外仓</th>
+                        <th class="num">仓费</th><th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody id="wh-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-hd"><h3>录入海外仓费用</h3><span class="tag ok" id="wh-edit-tag">未选</span></div>
+              <div class="card-bd">
+                <div class="hint">录入项进预估，不单独挂在主单上。一主单多运单时，各自录各自的仓费。</div>
+                <div class="form-grid" id="wh-form">
+                  <div class="fg"><label>运单号 *</label><input id="w-wb" readonly placeholder="从左侧点选" /></div>
+                  <div class="fg"><label>主单号</label><input id="w-bl" readonly /></div>
+                  <div class="fg"><label>海外仓 *</label>
+                    <select id="w-wh"><option>4DS</option><option>美库</option><option>VMI</option></select>
+                  </div>
+                  <div class="fg"><label>费项</label>
+                    <select id="w-type">
+                      <option>仓储费</option>
+                      <option>操作费</option>
+                      <option>贴标/换标</option>
+                      <option>库内拣货</option>
+                      <option>其他海外仓费</option>
+                    </select>
+                  </div>
+                  <div class="fg"><label>金额 USD *</label><input id="w-amt" type="number" step="0.01" value="0" /></div>
+                  <div class="fg"><label>币种</label><select id="w-cur"><option>USD</option><option>CNY</option></select></div>
+                  <div class="fg full"><label>说明</label><textarea id="w-note" placeholder="仓租天数、托盘数等"></textarea></div>
+                  <div class="full">
+                    <div class="fee-rows" id="w-preview"></div>
+                    <div class="sum-bar">
+                      <span>保存后运单预估合计</span>
+                      <span class="big" id="w-sum">$0</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 实际费用修改 -->
+        <section class="panel" id="panel-actual">
+          <div class="toolbar">
+            <span class="muted">「主单实际费用」要改的是海外费用 → 在运单上改，不在主单整单改一笔。</span>
+            <button type="button" class="btn primary" style="margin-left:auto" onclick="saveActual()">保存实际费用</button>
+          </div>
+          <div class="split">
+            <div class="card">
+              <div class="card-hd">
+                <h3>按主单归集 · 运单明细可改</h3>
+                <div class="field">
+                  <label>主单</label>
+                  <select id="a-bl" onchange="renderActual()"></select>
+                </div>
+              </div>
+              <div class="card-bd" style="padding:0">
+                <div class="table-wrap" style="margin:0;border:none">
+                  <table style="min-width:0">
+                    <thead>
+                      <tr>
+                        <th>运单号</th>
+                        <th class="num">预估合计</th>
+                        <th class="num">实际（海外）</th>
+                        <th class="num">差额</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="actual-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-hd"><h3>修改运单实际费用</h3><span class="tag warn" id="a-edit-tag">未选</span></div>
+              <div class="card-bd">
+                <div class="hint warn">口径澄清：系统里的「主单实际费用」入口，落库与编辑维度是运单上的海外费用。</div>
+                <div class="form-grid">
+                  <div class="fg"><label>运单号</label><input id="a-wb" readonly /></div>
+                  <div class="fg"><label>主单号</label><input id="a-bl-show" readonly /></div>
+                  <div class="fg"><label>当前预估合计</label><input id="a-est" readonly /></div>
+                  <div class="fg"><label>实际海外费用 USD *</label><input id="a-amt" type="number" step="0.01" /></div>
+                  <div class="fg full"><label>修改原因</label>
+                    <select id="a-reason">
+                      <option>账单差额 · 海外仓报价调整</option>
+                      <option>账单差额 · 派送实际与预估不符</option>
+                      <option>费用名称对不上 · 账单费项与预估费项不一致</option>
+                      <option>补录漏登费用</option>
+                      <option>冲销错录</option>
+                      <option>其他</option>
+                    </select>
+                  </div>
+                  <div class="fg full"><label>备注</label><textarea id="a-note" placeholder="对应海外账单号 / 沟通记录"></textarea></div>
+                </div>
+                <div class="fee-rows" style="margin-top:12px" id="a-breakdown"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 运单明细抽屉 -->
+  <div class="drawer-mask" id="detail-mask" onclick="if(event.target===this)closeDetail()">
+    <div class="drawer">
+      <div class="drawer-hd">
+        <h2 id="d-title">运单预估明细</h2>
+        <button type="button" class="btn" onclick="closeDetail()">关闭</button>
+      </div>
+      <div class="drawer-bd">
+        <div class="hint" id="d-hint">按运单汇总；海外仓费已计入预估。</div>
+        <div class="fee-rows" id="d-fees"></div>
+        <div class="sum-bar">
+          <span>运单预估合计</span>
+          <span class="big" id="d-sum">$0</span>
+        </div>
+      </div>
+      <div class="drawer-ft">
+        <button type="button" class="btn" onclick="closeDetail();switchTab('wh')">改海外仓费</button>
+        <button type="button" class="btn primary" onclick="closeDetail();switchTab('actual')">改实际费用</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const money = n => '$' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const moneyInt = n => '$' + Math.round(Number(n || 0)).toLocaleString('en-US');
+    const toast = (msg) => {
+      const el = $('toast');
+      el.textContent = msg; el.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove('show'), 2200);
+    };
+
+    /** 运单维数据：一主单多运单 */
+    let rows = [
+      { wb:'WB260807-001', bl:'COSU6508602300', cntr:'FFAU2424187', wh:'4DS', mode:'私卡派', dest:'ONT8',
+        xj:'XJ1778226168576', deliver:620, addon:25, whFee:80, actual:800, st:'差额待核',
+        feeNameEst:'尾程派送费', feeNameAct:'尾程派送费', note:'报价员核对确认 · 尾端派送费' },
+      { wb:'WB260807-002', bl:'COSU6508602300', cntr:'FFAU2424187', wh:'4DS', mode:'UPS', dest:'ONT8',
+        deliver:98, addon:0, whFee:40, actual:135, st:'已对账', note:'' },
+      { wb:'WB260807-003', bl:'COSU6509081870', cntr:'FCIU9145746', wh:'4DS', mode:'卡车派送', dest:'LGB8',
+        deliver:165, addon:0, whFee:55, actual:220, st:'已预估', note:'' },
+      { wb:'WB260807-004', bl:'WHLU260718001', cntr:'WHSU5725737', wh:'美库', mode:'UPS', dest:'BJC1',
+        deliver:98, addon:0, whFee:0, actual:null, st:'待录海外仓费', note:'仓费未录' },
+      { wb:'WB260807-005', bl:'MEDU20260804001', cntr:'MSCU3344556', wh:'VMI', mode:'整柜直送', dest:'私人NJ',
+        deliver:860, addon:0, whFee:120, actual:980, st:'已对账', note:'' },
+      { wb:'WB260807-006', bl:'ONEY5566778899', cntr:'NYKU4455667', wh:'4DS', mode:'UPS', dest:'SCK4',
+        deliver:120, addon:15, whFee:35, actual:88, st:'差额待核', note:'实际偏低待核' },
+      { wb:'WB260807-007', bl:'EGLV1426001234', cntr:'EGSU1025993', wh:'美库', mode:'FEDEX', dest:'SAV3',
+        deliver:145, addon:40, whFee:60, actual:null, st:'已预估', note:'待录实际' },
+      { wb:'WB260807-008', bl:'COSU6509081870', cntr:'FCIU9145746', wh:'4DS', mode:'自提', dest:'码头自提',
+        deliver:0, addon:0, whFee:25, actual:25, st:'已对账', note:'仅仓费',
+        feeNameEst:'海外仓费', feeNameAct:'海外仓费' },
+      { wb:'WB260813-009', bl:'COSU6508602300', cntr:'FFAU2424187', wh:'4DS', mode:'卡车派送', dest:'私人CA',
+        deliver:630, addon:0, whFee:0, actual:800, st:'差额待核',
+        feeNameEst:'尾程派送费', feeNameAct:'卡车派送费',
+        note:'8/13：实际 800 vs 预估 630；费用名称对不上' },
+    ];
+
+    let editWh = null;
+    let editActual = null;
+
+    function feeNameEst(r) { return r.feeNameEst || '尾程派送费'; }
+    function feeNameAct(r) { return r.feeNameAct || (r.actual == null ? '' : '尾程派送费'); }
+    function feeNameOk(r) {
+      if (r.actual == null) return null;
+      return feeNameEst(r) === feeNameAct(r);
+    }
+
+    function applyQuoteLastmiles() {
+      let all = {};
+      try { all = JSON.parse(localStorage.getItem('ess-quote-lastmile') || '{}'); } catch (e) {}
+      const map = { 'XJ1778226168576': 'WB260807-001' };
+      Object.keys(all).forEach(xj => {
+        const rec = all[xj];
+        const wb = map[xj];
+        rows.forEach(r => {
+          if (r.xj === xj || (wb && r.wb === wb)) {
+            r.deliver = Math.round(Number(rec.lastmile) || 0);
+            r.feeNameEst = '尾程派送费';
+            r.fromQuote = xj;
+            r.note = '报价员核对 · ' + xj + ' · 派送费取整、不做计算';
+            if (r.actual != null && Math.abs(r.actual - estTotal(r)) > 1) r.st = '差额待核';
+          }
+        });
+      });
+      const hint = $('quote-feed-hint');
+      if (hint) {
+        const n = Object.keys(all).length;
+        hint.textContent = n ? (' 已从报价员核对同步 ' + n + ' 条尾端派送费。') : '';
+      }
+    }
+
+    function estTotal(r) {
+      return Number(r.deliver || 0) + Number(r.addon || 0) + Number(r.whFee || 0);
+    }
+
+    function stTag(st) {
+      if (st === '已对账' || st === '已预估') return 'ok';
+      if (st === '待录海外仓费') return 'warn';
+      if (st === '差额待核') return 'bad';
+      return 'gray';
+    }
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => {
+        t.classList.toggle('on', t.dataset.tab === name);
+      });
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+      $('panel-' + name).classList.add('on');
+      if (name === 'wh') renderWh();
+      if (name === 'actual') renderActual();
+      if (name === 'list') renderList();
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+
+    function renderList() {
+      applyQuoteLastmiles();
+      const wb = ($('f-wb').value || '').trim().toUpperCase();
+      const bl = ($('f-bl').value || '').trim().toUpperCase();
+      const wh = $('f-wh').value;
+      const st = $('f-st').value;
+      const list = rows.filter(r => {
+        if (wb && !r.wb.includes(wb) && !(r.dest || '').toUpperCase().includes(wb)) return false;
+        if (bl && !r.bl.includes(bl)) return false;
+        if (wh && r.wh !== wh) return false;
+        if (st && r.st !== st) return false;
+        return true;
+      });
+
+      $('list-body').innerHTML = list.map(r => {
+        const est = estTotal(r);
+        const diff = r.actual == null ? null : (Number(r.actual) - est);
+        const dCls = diff == null ? '' : (diff === 0 ? 'neg' : 'pos');
+        return `<tr class="${r.st === '差额待核' ? 'hi-bad' : (r.st === '待录海外仓费' ? 'hi-warn' : '')}">
+          <td class="mono linkish" onclick="openDetail('${r.wb}')">${r.wb}</td>
+          <td class="mono">${r.bl}</td>
+          <td>${r.cntr}</td>
+          <td>${r.wh}</td>
+          <td>${r.mode}</td>
+          <td>${r.dest}</td>
+          <td class="num">${moneyInt(r.deliver)}</td>
+          <td class="num">${money(r.addon)}</td>
+          <td class="num">${r.whFee ? money(r.whFee) : '<span class="tag warn">未录</span>'}</td>
+          <td class="num"><strong>${money(est)}</strong></td>
+          <td class="num">${r.actual == null ? '<span class="muted">—</span>' : money(r.actual)}</td>
+          <td class="num ${dCls}">${diff == null ? '—' : ((diff > 0 ? '+' : '') + money(diff).slice(1))}</td>
+          <td>${r.actual == null ? '<span class="muted">—</span>' : (feeNameOk(r)
+            ? '<span class="tag ok">一致 · ' + feeNameEst(r) + '</span>'
+            : '<span class="tag bad">对不上</span><div class="muted">' + feeNameEst(r) + ' ≠ ' + feeNameAct(r) + '</div>')}</td>
+          <td><span class="tag ${stTag(r.st)}">${r.st}</span></td>
+          <td>
+            <span class="linkish" onclick="openDetail('${r.wb}')">明细</span>
+            · <span class="linkish" onclick="pickWh('${r.wb}');switchTab('wh')">仓费</span>
+            · <span class="linkish" onclick="pickActual('${r.wb}');switchTab('actual')">改实际</span>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="15" class="muted" style="text-align:center;padding:28px">无数据</td></tr>`;
+
+      const estAll = rows.reduce((s, r) => s + estTotal(r), 0);
+      const whAll = rows.reduce((s, r) => s + Number(r.whFee || 0), 0);
+      const actAll = rows.reduce((s, r) => s + (r.actual == null ? 0 : Number(r.actual)), 0);
+      const missWh = rows.filter(r => !r.whFee).length;
+      const missAct = rows.filter(r => r.actual == null).length;
+      const diffN = rows.filter(r => r.actual != null && Math.abs(r.actual - estTotal(r)) > 1).length;
+      $('kpi').innerHTML = `
+        <div class="kpi-card"><div class="k">运单数</div><div class="v">${rows.length}<em>票</em></div></div>
+        <div class="kpi-card ok"><div class="k">预估合计</div><div class="v">${estAll.toLocaleString()}<em>USD</em></div></div>
+        <div class="kpi-card"><div class="k">其中海外仓费</div><div class="v">${whAll.toLocaleString()}<em>USD</em></div></div>
+        <div class="kpi-card warn"><div class="k">待录海外仓费</div><div class="v">${missWh}<em>票</em></div></div>
+        <div class="kpi-card"><div class="k">已录实际</div><div class="v">${actAll.toLocaleString()}<em>(缺${missAct})</em></div></div>
+        <div class="kpi-card bad"><div class="k">差额待核</div><div class="v">${diffN}<em>票</em></div></div>`;
+    }
+
+    function openDetail(wb) {
+      const r = rows.find(x => x.wb === wb);
+      if (!r) return;
+      editWh = wb; editActual = wb;
+      $('d-title').textContent = wb + ' · 预估明细';
+      $('d-hint').textContent = `主单 ${r.bl} · 柜 ${r.cntr} · ${r.wh} · 费用按运单计` +
+        (r.actual != null ? ` · 实际 ${money(r.actual)} vs 预估 ${money(estTotal(r))}` : '') +
+        (feeNameOk(r) === false ? ' · 费用名称对不上：预估「' + feeNameEst(r) + '」/ 实际「' + feeNameAct(r) + '」' : '');
+      const items = [
+        { name: '派送预估', src: r.mode + ' · 报价员核对取整、不做计算', amt: r.deliver },
+        { name: '附加预估', src: 'live/drop/住宅等', amt: r.addon },
+        { name: '海外仓费', src: r.whFee ? '已录入进预估' : '未录入', amt: r.whFee },
+      ];
+      $('d-fees').innerHTML = items.map(it => `
+        <div class="fee-row auto">
+          <div class="name">${it.name}</div>
+          <div class="src">${it.src}</div>
+          <div class="amt">${it.name === '派送预估' ? moneyInt(it.amt) : money(it.amt)}</div>
+        </div>`).join('');
+      $('d-sum').textContent = money(estTotal(r));
+      $('detail-mask').classList.add('show');
+    }
+    function closeDetail() { $('detail-mask').classList.remove('show'); }
+
+    function renderWh() {
+      $('wh-body').innerHTML = rows.map(r => `
+        <tr style="cursor:pointer" onclick="pickWh('${r.wb}')">
+          <td class="mono">${r.wb}</td>
+          <td class="mono muted">${r.bl.slice(-6)}</td>
+          <td>${r.wh}</td>
+          <td class="num">${r.whFee ? money(r.whFee) : '—'}</td>
+          <td>${r.whFee ? '<span class="tag ok">已进预估</span>' : '<span class="tag warn">待录</span>'}</td>
+        </tr>`).join('');
+      if (editWh) pickWh(editWh);
+      else updateWhPreview();
+    }
+
+    function pickWh(wb) {
+      const r = rows.find(x => x.wb === wb);
+      if (!r) return;
+      editWh = wb;
+      $('w-wb').value = r.wb;
+      $('w-bl').value = r.bl;
+      $('w-wh').value = r.wh;
+      $('w-amt').value = r.whFee || 0;
+      $('w-note').value = r.note || '';
+      $('wh-edit-tag').textContent = '编辑中';
+      updateWhPreview();
+    }
+
+    function updateWhPreview() {
+      const r = rows.find(x => x.wb === editWh);
+      const fee = Number($('w-amt').value) || 0;
+      if (!r) {
+        $('w-preview').innerHTML = '';
+        $('w-sum').textContent = '$0';
+        return;
+      }
+      const next = Number(r.deliver || 0) + Number(r.addon || 0) + fee;
+      $('w-preview').innerHTML = `
+        <div class="fee-row auto"><div class="name">派送</div><div class="src">${r.mode}</div><div class="amt">${money(r.deliver)}</div></div>
+        <div class="fee-row auto"><div class="name">附加</div><div class="src">—</div><div class="amt">${money(r.addon)}</div></div>
+        <div class="fee-row auto"><div class="name">海外仓费</div><div class="src">${$('w-type').value}（将进预估）</div><div class="amt">${money(fee)}</div></div>`;
+      $('w-sum').textContent = money(next);
+    }
+    ['w-amt', 'w-type'].forEach(id => {
+      $(id).addEventListener('input', updateWhPreview);
+      $(id).addEventListener('change', updateWhPreview);
+    });
+
+    function saveWhFee() {
+      if (!editWh) { toast('请先选择运单'); return; }
+      const r = rows.find(x => x.wb === editWh);
+      const amt = Number($('w-amt').value) || 0;
+      r.whFee = amt;
+      r.wh = $('w-wh').value;
+      if ($('w-note').value) r.note = $('w-note').value;
+      if (r.st === '待录海外仓费' && amt > 0) r.st = '已预估';
+      toast('海外仓费已保存并计入运单预估：' + r.wb);
+      renderWh();
+      renderList();
+    }
+
+    function renderActual() {
+      const bls = [...new Set(rows.map(r => r.bl))];
+      const sel = $('a-bl');
+      const cur = sel.value || bls[0];
+      sel.innerHTML = bls.map(b => `<option value="${b}">${b}</option>`).join('');
+      if (bls.includes(cur)) sel.value = cur;
+      const bl = sel.value;
+      const list = rows.filter(r => r.bl === bl);
+      $('actual-body').innerHTML = list.map(r => {
+        const est = estTotal(r);
+        const diff = r.actual == null ? null : (Number(r.actual) - est);
+        return `<tr>
+          <td class="mono linkish" onclick="pickActual('${r.wb}')">${r.wb}</td>
+          <td class="num">${money(est)}</td>
+          <td class="num">${r.actual == null ? '—' : money(r.actual)}</td>
+          <td class="num ${diff == null ? '' : (diff === 0 ? 'neg' : 'pos')}">${diff == null ? '—' : ((diff > 0 ? '+' : '') + money(diff).slice(1))}</td>
+          <td><span class="linkish" onclick="pickActual('${r.wb}')">修改</span></td>
+        </tr>`;
+      }).join('');
+      const blEst = list.reduce((s, r) => s + estTotal(r), 0);
+      const blAct = list.reduce((s, r) => s + (r.actual == null ? 0 : Number(r.actual)), 0);
+      $('actual-body').insertAdjacentHTML('beforeend', `
+        <tr style="background:#fafafa;font-weight:600">
+          <td>主单归集合计</td>
+          <td class="num">${money(blEst)}</td>
+          <td class="num">${money(blAct)}</td>
+          <td class="num">${money(blAct - blEst)}</td>
+          <td class="muted">仅展示</td>
+        </tr>`);
+      if (editActual && list.some(r => r.wb === editActual)) pickActual(editActual);
+      else if (list[0]) pickActual(list[0].wb);
+    }
+
+    function pickActual(wb) {
+      const r = rows.find(x => x.wb === wb);
+      if (!r) return;
+      editActual = wb;
+      $('a-bl').value = r.bl;
+      $('a-wb').value = r.wb;
+      $('a-bl-show').value = r.bl;
+      $('a-est').value = money(estTotal(r));
+      $('a-amt').value = r.actual == null ? estTotal(r) : r.actual;
+      $('a-edit-tag').textContent = '编辑 ' + wb;
+      $('a-breakdown').innerHTML = `
+        <div class="fee-row auto"><div class="name">派送预估</div><div class="src">${r.mode}</div><div class="amt">${money(r.deliver)}</div></div>
+        <div class="fee-row auto"><div class="name">附加</div><div class="src">—</div><div class="amt">${money(r.addon)}</div></div>
+        <div class="fee-row auto"><div class="name">海外仓费</div><div class="src">已进预估</div><div class="amt">${money(r.whFee)}</div></div>`;
+    }
+
+    function saveActual() {
+      if (!editActual) { toast('请先选择运单'); return; }
+      const r = rows.find(x => x.wb === editActual);
+      const amt = Number($('a-amt').value);
+      if (Number.isNaN(amt)) { toast('请输入有效金额'); return; }
+      r.actual = amt;
+      const est = estTotal(r);
+      r.st = Math.abs(amt - est) > 1 ? '差额待核' : '已对账';
+      r.note = ($('a-reason').value + ($('a-note').value ? ' · ' + $('a-note').value : '')).slice(0, 80);
+      toast('已按运单保存海外实际费用：' + r.wb);
+      renderActual();
+      renderList();
+    }
+
+    renderList();
+  </script>
+</body>
+</html>

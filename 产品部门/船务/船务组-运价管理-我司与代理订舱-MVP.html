@@ -1,0 +1,1218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>船务 · 运价管理（我司订舱 / 代理订舱）· MVP</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --orange: #fa8c16;
+      --red: #ff4d4f;
+      --purple: #722ed1;
+      --teal: #08979c;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 14px; flex-shrink: 0; font-size: 12px;
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 180px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.75);
+      padding: 12px 0;
+    }
+    .side-title { padding: 8px 16px; font-size: 12px; color: rgba(255,255,255,.45); }
+    .side-item { padding: 8px 16px; cursor: default; font-size: 13px; }
+    .side-item.on { background: rgba(24,144,255,.25); color: #fff; border-right: 3px solid var(--blue); }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    .page-head {
+      padding: 10px 12px 0; background: var(--card); border-bottom: 1px solid var(--line);
+    }
+    .page-head h1 {
+      margin: 0 0 4px; font-size: 16px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .page-head p { margin: 0 0 10px; font-size: 12px; color: var(--sub); line-height: 1.55; }
+    .badge-new {
+      display: inline-block; padding: 0 5px; height: 18px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+
+    .mode-tabs {
+      display: flex; gap: 0; padding: 0 12px;
+      background: var(--card); border-bottom: 1px solid var(--line);
+    }
+    .mode-tab {
+      padding: 10px 18px; border: none; background: transparent;
+      cursor: pointer; font-size: 13px; color: var(--sub);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .mode-tab:hover { color: var(--blue); }
+    .mode-tab.on { color: var(--blue); font-weight: 600; border-bottom-color: var(--blue); }
+    .mode-tab .cnt {
+      display: inline-block; margin-left: 4px; padding: 0 6px; height: 18px; line-height: 18px;
+      border-radius: 9px; background: #f0f0f0; font-size: 11px; color: var(--sub); font-weight: 600;
+    }
+    .mode-tab.on .cnt { background: #e6f7ff; color: var(--blue); }
+
+    .filter-panel {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 10px 12px 6px;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+      gap: 6px 10px; align-items: end;
+    }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .filter-item label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px;
+    }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; font-size: 12px;
+    }
+    .filter-actions { display: flex; gap: 6px; }
+
+    .toolbar {
+      padding: 6px 12px; background: var(--card);
+      border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .tool-btn {
+      height: 28px; padding: 0 10px; border-radius: 2px; border: 1px solid transparent;
+      background: var(--blue); color: #fff; cursor: pointer; font-size: 12px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .tool-btn.outline { background: #fff; color: var(--blue); border-color: #91d5ff; }
+    .tool-btn.ok { background: var(--green); }
+    .tool-btn.warn { background: var(--orange); }
+    .tool-btn.purple { background: var(--purple); }
+    .tool-btn.teal { background: var(--teal); }
+    .tool-spacer { flex: 1; }
+    .stat-chips { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--sub); }
+    .stat-chips b { color: var(--text); }
+
+    .tip-bar {
+      margin: 8px 12px 0; padding: 8px 10px; font-size: 12px; line-height: 1.55;
+      background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; color: #0050b3;
+    }
+    .tip-bar.own { background: #f6ffed; border-color: #b7eb8f; color: #389e0d; }
+    .tip-bar.agent { background: #f9f0ff; border-color: #d3adf7; color: #531dab; }
+    .tip-bar.compare { background: #fff7e6; border-color: #ffd591; color: #ad6800; }
+    .tip-bar strong { color: inherit; }
+
+    .table-wrap { flex: 1; overflow: auto; padding: 8px 12px 24px; }
+    table.data {
+      width: 100%; border-collapse: collapse; background: var(--card);
+      font-size: 12px; min-width: 1100px;
+    }
+    table.data th, table.data td {
+      border: 1px solid var(--line); padding: 7px 8px;
+      text-align: left; vertical-align: middle; white-space: nowrap;
+    }
+    table.data th {
+      background: #fafafa; color: var(--sub); font-weight: 600;
+      position: sticky; top: 0; z-index: 1;
+    }
+    table.data tr:hover td { background: #f5f9ff; }
+    table.data tr.warn-row td { background: #fffbe6; }
+    table.data tr.expire-row td { background: #fff1f0; }
+    table.data .money { font-variant-numeric: tabular-nums; font-weight: 600; color: #003a8c; }
+    table.data .money.up { color: #cf1322; }
+    table.data .money.down { color: #389e0d; }
+    table.data .price-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid #91d5ff; background: #e6f7ff; color: #003a8c;
+      border-radius: 2px; padding: 2px 8px; height: 26px; cursor: pointer;
+      font: inherit; font-weight: 700; font-variant-numeric: tabular-nums;
+    }
+    table.data .price-btn:hover { background: #1890ff; color: #fff; border-color: #1890ff; }
+    table.data .price-btn:disabled {
+      opacity: .45; cursor: not-allowed; background: #f5f5f5; color: #8c8c8c; border-color: #d9d9d9;
+    }
+    table.data .price-btn .go { font-size: 10px; font-weight: 600; opacity: .85; }
+    .book-summary {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;
+      padding: 12px; background: #fafafa; border: 1px solid var(--line); border-radius: 2px;
+      font-size: 12px; margin-bottom: 12px;
+    }
+    .book-summary .k { color: var(--sub); }
+    .book-summary .v { font-weight: 600; }
+    .book-summary .price { font-size: 20px; color: #003a8c; font-variant-numeric: tabular-nums; }
+    .book-path {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .book-path .path-card {
+      border: 1px solid var(--line); border-radius: 2px; padding: 12px; background: #fff; cursor: pointer;
+      text-align: left; font: inherit; color: inherit;
+    }
+    .book-path .path-card:hover { border-color: #1890ff; background: #e6f7ff; }
+    .book-path .path-card.ai:hover { border-color: #ff4d4f; background: #fff1f0; }
+    .book-path .path-card h4 { margin: 0 0 4px; font-size: 13px; }
+    .book-path .path-card p { margin: 0; font-size: 11px; color: var(--sub); line-height: 1.5; }
+    table.data .muted { color: var(--sub); font-weight: 400; }
+    table.data .link-btn {
+      border: none; background: none; color: var(--blue); cursor: pointer; padding: 0 4px; font-size: 12px;
+    }
+
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; font-weight: 600; border: 1px solid;
+    }
+    .tag.ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.warn { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.gap { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.info { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.purple { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .tag.teal { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(80px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 10px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 2000; opacity: 0; transition: .25s; pointer-events: none;
+      max-width: 90vw;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 1300; align-items: center; justify-content: center; padding: 16px;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 6px; width: 720px; max-width: 96vw;
+      max-height: 90vh; overflow: auto; box-shadow: 0 8px 28px rgba(0,0,0,.18);
+    }
+    .modal.wide { width: 880px; }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 15px; font-weight: 600;
+    }
+    .modal-hd button {
+      border: none; background: none; font-size: 18px; cursor: pointer; color: var(--sub); line-height: 1;
+    }
+    .modal-bd { padding: 14px 16px; }
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-row label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px;
+    }
+    .form-row label .req { color: var(--red); }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 5px 8px; font-size: 12px;
+    }
+    .form-row textarea { min-height: 64px; resize: vertical; }
+    .form-hint { margin: 10px 0 0; font-size: 12px; color: var(--sub); line-height: 1.55; }
+    .price-box {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+      padding: 10px; background: #fafafa; border: 1px solid var(--line); border-radius: 4px;
+    }
+    .price-box .item b { display: block; font-size: 16px; color: #003a8c; margin-top: 2px; }
+    .price-box .item span { font-size: 11px; color: var(--sub); }
+
+    .local-tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .local-tbl th, .local-tbl td {
+      border: 1px solid var(--line); padding: 6px 8px; text-align: left;
+    }
+    .local-tbl th { background: #fafafa; color: var(--sub); }
+    .local-tbl input { width: 100%; height: 26px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; }
+
+    .ess-prd-side h3 { margin: 14px 0 6px; font-size: 13px; color: #0f172a; }
+    .ess-prd-side ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.65; color: #334155; }
+    .ess-prd-side p { font-size: 12px; line-height: 1.65; color: #475569; margin: 0 0 8px; }
+    .ess-prd-side .prd-tag {
+      display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 11px; font-weight: 700;
+      background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; margin-right: 4px;
+    }
+  </style>
+</head>
+<body class="ess-prd-page ess-prd-collapsed">
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">ESS</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab">仓位播报</button>
+        <button type="button" class="nav-tab">待配仓</button>
+        <button type="button" class="nav-tab" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</button>
+        <button type="button" class="nav-tab active">运价管理 <span class="badge-new">NEW</span></button>
+        <button type="button" class="nav-tab" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">提单创建(批量)</button>
+        <button type="button" class="nav-tab">费用节点</button>
+      </div>
+      <div class="header-right">
+        <span>船务 · 陈秋玉（价目）</span>
+        <a href="../产品部门-导航.html" style="color:#91d5ff;">产品导航</a>
+      </div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-title">船务作业</div>
+        <div class="side-item">舱位播报</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">舱位登记 / 点价订舱</div>
+        <div class="side-item">待配仓</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</div>
+        <div class="side-item on">运价管理</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">提单创建(批量)·AI</div>
+        <div class="side-item">费用 / Local</div>
+        <div class="side-item">放行盯控</div>
+      </aside>
+
+      <div class="main">
+        <div class="page-head">
+          <h1>运价管理 <span class="badge-new">NEW</span></h1>
+          <p>
+            维护<strong>我司订舱价</strong>与<strong>代理订舱价</strong>（代理价只维护海运费，不拆 Local）；
+            支持合约价导入、过期提醒、一键同步报价组。
+            <strong>生效价可点价直接订舱</strong> → 批量创建提单 / AI 识别订舱确认。口径：CW008 / CW010 / CW011。
+          </p>
+        </div>
+
+        <div class="mode-tabs" id="modeTabs">
+          <button type="button" class="mode-tab on" data-mode="own">我司订舱价 <span class="cnt" id="cntOwn">0</span></button>
+          <button type="button" class="mode-tab" data-mode="agent">代理订舱价 <span class="cnt" id="cntAgent">0</span></button>
+          <button type="button" class="mode-tab" data-mode="compare">价差对比 <span class="cnt" id="cntCmp">0</span></button>
+        </div>
+
+        <div class="tip-bar own" id="tipBar">
+          <strong>我司订舱：</strong>维护我司成交/合约价目（可对照船司官网参考价）。
+          <strong>点击蓝色价格</strong>或「点价订舱」→ 带价进批量创建提单，可接 AI 识别订舱确认补全柜号/提单号。不定期更新；超期未更标黄/红。
+        </div>
+
+        <div class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item">
+              <label>船司</label>
+              <select id="qCarrier">
+                <option value="">全部</option>
+                <option>美森</option>
+                <option>EMC</option>
+                <option>COSCO</option>
+                <option>OOCL</option>
+                <option>以星</option>
+                <option>ONE</option>
+              </select>
+            </div>
+            <div class="filter-item" id="fiAgent">
+              <label>订舱代理</label>
+              <select id="qAgent">
+                <option value="">全部</option>
+                <option>腾信</option>
+                <option>合德</option>
+                <option>美森直客</option>
+                <option>新洋</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>航线 / 起运港</label>
+              <input id="qRoute" placeholder="如 美西 / 盐田" />
+            </div>
+            <div class="filter-item">
+              <label>柜型</label>
+              <select id="qType">
+                <option value="">全部</option>
+                <option>20GP</option>
+                <option>40GP</option>
+                <option>40HQ</option>
+                <option>45HQ</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>状态</label>
+              <select id="qStatus">
+                <option value="">全部</option>
+                <option value="生效">生效</option>
+                <option value="即将过期">即将过期</option>
+                <option value="已失效">已失效</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>合约号 / 关键字</label>
+              <input id="qKw" placeholder="合约号、目的港…" />
+            </div>
+            <div class="filter-actions">
+              <button type="button" class="tool-btn" id="btnSearch">查询</button>
+              <button type="button" class="tool-btn outline" id="btnReset">重置</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar" id="toolbarOwn">
+          <button type="button" class="tool-btn" id="btnAdd">＋ 新增价目</button>
+          <button type="button" class="tool-btn teal" id="btnImport">导入合约价</button>
+          <button type="button" class="tool-btn outline" id="btnExport">导出</button>
+          <button type="button" class="tool-btn purple" id="btnSync">同步报价组</button>
+          <button type="button" class="tool-btn warn" id="btnExpire">批量失效</button>
+          <span class="tool-spacer"></span>
+          <div class="stat-chips" id="statChips"></div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data" id="tbl">
+            <thead id="thead"></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增 / 编辑 -->
+  <div class="mask" id="editMask">
+    <div class="modal wide">
+      <div class="modal-hd">
+        <span id="editTitle">新增 · 我司订舱价</span>
+        <button type="button" id="editClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="form-grid" id="editForm"></div>
+        <div id="localBlock" style="display:none;margin-top:12px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">代理 Local / 收费标准 <span class="badge-new">CW011</span></div>
+          <p class="form-hint" style="margin-top:0;">按财务录入口径维护；可与同航线我司价对比。</p>
+          <table class="local-tbl">
+            <thead>
+              <tr><th>费用项</th><th>金额</th><th>币种</th><th>计费单位</th></tr>
+            </thead>
+            <tbody id="localBody"></tbody>
+          </table>
+        </div>
+        <p class="form-hint" id="editHint"></p>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="editCancel">取消</button>
+        <button type="button" class="tool-btn" id="editSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导入 -->
+  <div class="mask" id="importMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <span>导入合约运价</span>
+        <button type="button" id="importClose">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="form-row full">
+          <label>价目类型</label>
+          <select id="importType">
+            <option value="own">我司订舱 · 合约价</option>
+            <option value="agent">代理订舱 · 报价</option>
+          </select>
+        </div>
+        <div class="form-row full" style="margin-top:10px;">
+          <label>选择文件（xlsx）</label>
+          <input type="file" accept=".xlsx,.xls,.csv" />
+        </div>
+        <p class="form-hint">
+          模版字段：船司、航线、起运港、目的港、柜型、合约号、有效起/止、海运费、币种；
+          代理类型另加：订舱代理（不导入订舱费/文件费/操作费）。导入后写入沉淀，支持同环比（CW010）。
+        </p>
+        <div class="price-box" style="margin-top:12px;">
+          <div class="item"><span>解析行数</span><b id="impRows">—</b></div>
+          <div class="item"><span>新增</span><b id="impNew">—</b></div>
+          <div class="item"><span>更新覆盖</span><b id="impUpd">—</b></div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="importCancel">取消</button>
+        <button type="button" class="tool-btn outline" id="importTpl">下载模版</button>
+        <button type="button" class="tool-btn teal" id="importOk">模拟导入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 点价订舱 -->
+  <div class="mask" id="bookMask">
+    <div class="modal wide">
+      <div class="modal-hd">
+        <span>点价订舱 <span class="badge-new">NEW</span></span>
+        <button type="button" id="bookClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert" style="margin:0 0 12px;padding:8px 10px;background:#e6f7ff;border:1px solid #91d5ff;border-radius:2px;font-size:12px;color:#0050b3;line-height:1.55;">
+          运价维护生效后可<strong>点价订舱</strong>：先锁定本条价目（船司/港口/柜型/金额），再进入
+          <strong>批量创建提单</strong>录入，或用 <strong>AI</strong> 识别订舱确认 PDF/截图回填提单号·柜号。
+        </div>
+        <div class="book-summary" id="bookSummary"></div>
+        <div class="form-grid" style="margin-bottom:12px;">
+          <div class="form-row">
+            <label>预计开船 / ETD</label>
+            <input type="date" id="bookEtd" value="2026-08-15" />
+          </div>
+          <div class="form-row">
+            <label>柜量（同价拆行）</label>
+            <input type="number" id="bookQty" min="1" max="20" value="1" />
+          </div>
+          <div class="form-row full">
+            <label>订舱备注</label>
+            <input id="bookNote" placeholder="例：合约 MS-2026-08-YT · 赶 W33 截单" />
+          </div>
+        </div>
+        <div style="font-weight:600;font-size:13px;margin-bottom:8px;">下一步</div>
+        <div class="book-path">
+          <button type="button" class="path-card" id="bookToBatch">
+            <h4>① 批量创建提单</h4>
+            <p>带入船司 / 港口 / 柜型 / 海运费 / 订舱口，手工补提单号与柜号后保存。</p>
+          </button>
+          <button type="button" class="path-card ai" id="bookToAi">
+            <h4>② AI 识别订舱确认</h4>
+            <p>先带入价目，再打开 AI：上传 Booking Confirmation / 截图，识别提单号·柜号后回填。</p>
+          </button>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="bookCancel">取消</button>
+        <button type="button" class="tool-btn outline" id="bookCopy">复制订舱摘要</button>
+        <button type="button" class="tool-btn ok" id="bookGoBatch">去批量创建</button>
+        <button type="button" class="tool-btn" id="bookGoAi" style="background:#cf1322;border-color:#cf1322;">AI 识别并创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 同步报价组 -->
+  <div class="mask" id="syncMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <span>同步报价组</span>
+        <button type="button" id="syncClose">×</button>
+      </div>
+      <div class="modal-bd">
+        <p style="margin:0 0 10px;font-size:13px;line-height:1.6;">
+          将勾选的<strong>生效</strong>价目推送至报价组价格表（需求：每次运价更新同步给报价组）。
+        </p>
+        <div class="form-row">
+          <label>同步范围</label>
+          <select id="syncScope">
+            <option value="checked">仅勾选行</option>
+            <option value="changed">仅「未同步 / 有变更」</option>
+            <option value="all">当前筛选下全部生效价</option>
+          </select>
+        </div>
+        <div class="form-row" style="margin-top:10px;">
+          <label>备注（可选）</label>
+          <textarea id="syncNote" placeholder="如：美森美西 8 月合约调价"></textarea>
+        </div>
+        <p class="form-hint" id="syncHint">将推送 0 条。</p>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="syncCancel">取消</button>
+        <button type="button" class="tool-btn purple" id="syncOk">确认同步</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <button type="button" class="ess-prd-fab" id="essPrdFab" title="打开需求说明">需求</button>
+  <div class="ess-prd-backdrop" id="essPrdBackdrop"></div>
+  <aside class="ess-prd-side" id="essPrdSide">
+    <button type="button" class="ess-prd-close" id="essPrdClose">收起</button>
+    <h2 style="margin:0 0 8px;font-size:15px;">运价管理 · PRD</h2>
+    <p><span class="prd-tag">CW008</span>运价管理系统 · <span class="prd-tag">CW010</span>合约运价上传沉淀 · <span class="prd-tag">CW011</span>船司 Local + 代理收费标准对比</p>
+
+    <h3>页面结构</h3>
+    <ul>
+      <li><b>我司订舱价</b>：我司合约/成交价目；可填船司官网参考价对照。</li>
+      <li><b>代理订舱价</b>：按订舱代理维护<strong>海运费</strong>（批注：订舱费/文件费/操作费不需要，已去掉）。</li>
+      <li><b>价差对比</b>：同航线×船司×柜型，我司 vs 代理海运费差额，辅助选订舱口。</li>
+    </ul>
+
+    <h3>核心字段</h3>
+    <ul>
+      <li>维度：船司 × 航线 × 起运港 × 目的港 × 柜型 × 有效期</li>
+      <li>我司：合约号、我司价、船司参考价、同步报价组状态</li>
+      <li>代理：订舱代理、海运费（点价订舱用此价）</li>
+    </ul>
+
+    <h3>关键动作</h3>
+    <ul>
+      <li>新增 / 编辑 / 批量失效</li>
+      <li>导入合约价（模版下载）· 导出</li>
+      <li>同步报价组（勾选 / 未同步 / 全部生效）</li>
+      <li>过期提醒：即将过期（≤7 天）标黄，已失效标红</li>
+      <li><b>点价订舱</b>：点击生效价 /「点价订舱」→ 锁定价目 → 批量创建提单 或 AI 识别订舱确认</li>
+    </ul>
+
+    <h3>点价订舱</h3>
+    <ul>
+      <li>仅<strong>生效 / 即将过期</strong>可订；已失效禁用</li>
+      <li>带入：船司、港口、柜型、海运费（代理带订舱口）、合约号、ETD、柜量</li>
+      <li>路径①：批量创建提单手工补提单号/柜号；路径②：打开 AI 上传 Booking Confirmation 回填</li>
+    </ul>
+
+    <h3>引用关系</h3>
+    <ul>
+      <li>舱位播报可带运价摘要；订舱/客服回复一键引用价目</li>
+      <li>配舱后运价可回写沉淀（全流程口径）；本页为流程外主数据维护</li>
+    </ul>
+
+    <h3>关联</h3>
+    <p>
+      <a href="船务组-提单创建批量-AI识别-MVP.html">提单创建(批量) · AI</a><br />
+      <a href="船务组-0730-费用节点提单配仓-大致方案.html">0730 船务方案</a><br />
+      <a href="船务组-提单管理-按周分组与分配-MVP.html">提单管理原型</a><br />
+      <a href="../产品部门-导航.html">产品导航</a>
+    </p>
+  </aside>
+
+  <script>
+(function () {
+  var mode = "own";
+  var editId = null;
+
+  var OWN = [
+    { id: "O1", carrier: "美森", lane: "美西", pol: "盐田", pod: "洛杉矶", type: "40HQ", contract: "MS-2026-08-YT", our: 1850, ref: 2100, cur: "USD", from: "2026-08-01", to: "2026-08-31", status: "生效", sync: "已同步", by: "陈秋玉", at: "2026-08-02 09:12" },
+    { id: "O2", carrier: "EMC", lane: "美西", pol: "宁波", pod: "长滩", type: "40HQ", contract: "EMC-NB-W33", our: 1920, ref: 2050, cur: "USD", from: "2026-08-01", to: "2026-08-10", status: "即将过期", sync: "有变更", by: "陈秋玉", at: "2026-08-05 14:20" },
+    { id: "O3", carrier: "COSCO", lane: "美东", pol: "上海", pod: "纽约", type: "40HQ", contract: "COS-USEC-Q3", our: 2680, ref: 2750, cur: "USD", from: "2026-07-01", to: "2026-09-30", status: "生效", sync: "已同步", by: "陈秋玉", at: "2026-07-28 11:05" },
+    { id: "O4", carrier: "OOCL", lane: "美西", pol: "厦门", pod: "奥克兰", type: "40GP", contract: "OOCL-XM-08", our: 1780, ref: 1900, cur: "USD", from: "2026-08-01", to: "2026-08-31", status: "生效", sync: "未同步", by: "黄少飞", at: "2026-08-06 10:40" },
+    { id: "O5", carrier: "以星", lane: "美西", pol: "青岛", pod: "洛杉矶", type: "45HQ", contract: "ZIM-QD-JUL", our: 2050, ref: 2200, cur: "USD", from: "2026-07-01", to: "2026-07-31", status: "已失效", sync: "—", by: "陈秋玉", at: "2026-06-30 16:00" },
+    { id: "O6", carrier: "ONE", lane: "美西", pol: "盐田", pod: "西雅图", type: "40HQ", contract: "ONE-YT-AUG", our: 1890, ref: 1980, cur: "USD", from: "2026-08-01", to: "2026-08-31", status: "生效", sync: "已同步", by: "陈秋玉", at: "2026-08-01 08:50" }
+  ];
+
+  var AGENT = [
+    { id: "A1", agent: "腾信", carrier: "美森", lane: "美西", pol: "盐田", pod: "洛杉矶", type: "40HQ", ocean: 1980, book: 45, doc: 35, op: 50, cur: "USD", from: "2026-08-01", to: "2026-08-31", status: "生效", by: "陈秋玉", at: "2026-08-03 15:10", note: "含 AMS 代发" },
+    { id: "A2", agent: "合德", carrier: "EMC", lane: "美西", pol: "宁波", pod: "长滩", type: "40HQ", ocean: 2010, book: 40, doc: 30, op: 55, cur: "USD", from: "2026-08-01", to: "2026-08-15", status: "即将过期", by: "陈秋玉", at: "2026-08-04 09:30", note: "" },
+    { id: "A3", agent: "新洋", carrier: "COSCO", lane: "美东", pol: "上海", pod: "纽约", type: "40HQ", ocean: 2750, book: 50, doc: 40, op: 60, cur: "USD", from: "2026-07-01", to: "2026-09-30", status: "生效", by: "黄少飞", at: "2026-07-29 13:22", note: "上海核还箱点" },
+    { id: "A4", agent: "腾信", carrier: "OOCL", lane: "美西", pol: "厦门", pod: "奥克兰", type: "40GP", ocean: 1880, book: 45, doc: 35, op: 50, cur: "USD", from: "2026-08-01", to: "2026-08-31", status: "生效", by: "陈秋玉", at: "2026-08-05 11:00", note: "" },
+    { id: "A5", agent: "美森直客", carrier: "美森", lane: "美西", pol: "盐田", pod: "洛杉矶", type: "40HQ", ocean: 1860, cur: "USD", from: "2026-08-01", to: "2026-08-31", status: "生效", by: "陈秋玉", at: "2026-08-02 10:00", note: "直客口" },
+    { id: "A6", agent: "合德", carrier: "以星", lane: "美西", pol: "青岛", pod: "洛杉矶", type: "45HQ", ocean: 2150, book: 48, doc: 32, op: 52, cur: "USD", from: "2026-07-01", to: "2026-07-31", status: "已失效", by: "陈秋玉", at: "2026-06-28 17:40", note: "" }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg) {
+    var el = $("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2400);
+  }
+  function agentTotal(r) { return +r.ocean || 0; }
+  function statusTag(s) {
+    if (s === "生效") return '<span class="tag ok">生效</span>';
+    if (s === "即将过期") return '<span class="tag warn">即将过期</span>';
+    return '<span class="tag gap">已失效</span>';
+  }
+  function syncTag(s) {
+    if (s === "已同步") return '<span class="tag ok">已同步</span>';
+    if (s === "有变更") return '<span class="tag warn">有变更</span>';
+    if (s === "未同步") return '<span class="tag info">未同步</span>';
+    return '<span class="muted">—</span>';
+  }
+  function matchFilters(r, isAgent) {
+    var c = $("qCarrier").value;
+    var a = $("qAgent").value;
+    var route = $("qRoute").value.trim();
+    var t = $("qType").value;
+    var st = $("qStatus").value;
+    var kw = $("qKw").value.trim().toLowerCase();
+    if (c && r.carrier !== c) return false;
+    if (isAgent && a && r.agent !== a) return false;
+    if (t && r.type !== t) return false;
+    if (st && r.status !== st) return false;
+    if (route) {
+      var blob = (r.lane + r.pol + r.pod).toLowerCase();
+      if (blob.indexOf(route.toLowerCase()) < 0) return false;
+    }
+    if (kw) {
+      var blob2 = ((r.contract || "") + (r.agent || "") + r.pol + r.pod + r.carrier + (r.note || "")).toLowerCase();
+      if (blob2.indexOf(kw) < 0) return false;
+    }
+    return true;
+  }
+  function filteredOwn() { return OWN.filter(function (r) { return matchFilters(r, false); }); }
+  function filteredAgent() { return AGENT.filter(function (r) { return matchFilters(r, true); }); }
+
+  function buildCompare() {
+    var rows = [];
+    filteredOwn().forEach(function (o) {
+      var agents = AGENT.filter(function (a) {
+        return a.carrier === o.carrier && a.lane === o.lane && a.pol === o.pol && a.pod === o.pod && a.type === o.type && a.status !== "已失效";
+      });
+      if (!agents.length) {
+        rows.push({ own: o, agent: null, diff: null });
+      } else {
+        agents.forEach(function (a) {
+          rows.push({ own: o, agent: a, diff: agentTotal(a) - o.our });
+        });
+      }
+    });
+    return rows;
+  }
+
+  function updateTips() {
+    var bar = $("tipBar");
+    bar.className = "tip-bar " + (mode === "own" ? "own" : mode === "agent" ? "agent" : "compare");
+    if (mode === "own") {
+      bar.innerHTML = "<strong>我司订舱：</strong>维护我司成交/合约价目。" +
+        "<strong>点击蓝色价格</strong>或「点价订舱」→ 批量创建提单 / AI 识别订舱确认。超期标黄/红。";
+    } else if (mode === "agent") {
+      bar.innerHTML = "<strong>代理订舱：</strong>按订舱代理维护<strong>海运费</strong>（不拆订舱费/文件费/操作费）。" +
+        "<strong>点价订舱</strong>带代理口与海运费进批量创建；与我司价对比用海运费。";
+    } else {
+      bar.innerHTML = "<strong>价差对比：</strong>同船司×航线×港口×柜型，代理海运费 − 我司价。正数=代理更贵，负数=代理更便宜。无匹配代理行显示「缺代理价」。";
+    }
+    $("fiAgent").style.display = mode === "own" ? "none" : "";
+  }
+
+  function updateCounts() {
+    $("cntOwn").textContent = OWN.length;
+    $("cntAgent").textContent = AGENT.length;
+    $("cntCmp").textContent = buildCompare().length;
+    var own = filteredOwn();
+    var ag = filteredAgent();
+    var expSoon = (mode === "agent" ? ag : own).filter(function (r) { return r.status === "即将过期"; }).length;
+    var unsync = own.filter(function (r) { return r.sync === "未同步" || r.sync === "有变更"; }).length;
+    if (mode === "own") {
+      $("statChips").innerHTML = "生效 <b>" + own.filter(function (r) { return r.status === "生效"; }).length + "</b> · 即将过期 <b>" + expSoon + "</b> · 待同步报价组 <b>" + unsync + "</b>";
+    } else if (mode === "agent") {
+      $("statChips").innerHTML = "生效 <b>" + ag.filter(function (r) { return r.status === "生效"; }).length + "</b> · 即将过期 <b>" + expSoon + "</b> · 代理数 <b>" + Object.keys(ag.reduce(function (m, r) { m[r.agent] = 1; return m; }, {})).length + "</b>";
+    } else {
+      var cmp = buildCompare().filter(function (x) { return x.agent; });
+      var cheaper = cmp.filter(function (x) { return x.diff < 0; }).length;
+      $("statChips").innerHTML = "可比对 <b>" + cmp.length + "</b> · 代理更便宜 <b>" + cheaper + "</b> · 缺代理价 <b>" + (buildCompare().length - cmp.length) + "</b>";
+    }
+  }
+
+  function rowClass(status) {
+    if (status === "即将过期") return "warn-row";
+    if (status === "已失效") return "expire-row";
+    return "";
+  }
+
+  function renderOwn(list) {
+    $("thead").innerHTML = "<tr>" +
+      "<th><input type='checkbox' id='chkAll' /></th>" +
+      "<th>船司</th><th>航线</th><th>起运港</th><th>目的港</th><th>柜型</th>" +
+      "<th>合约号</th><th>我司价</th><th>船司参考价</th><th>价差</th>" +
+      "<th>有效期</th><th>状态</th><th>同步报价组</th><th>维护</th><th>操作</th></tr>";
+    $("tbody").innerHTML = list.map(function (r) {
+      var d = (r.ref != null && r.our != null) ? (r.ref - r.our) : null;
+      var dHtml = d == null ? "—" : ('<span class="money ' + (d > 0 ? "down" : d < 0 ? "up" : "") + '">' + (d > 0 ? "−" : d < 0 ? "+" : "") + Math.abs(d) + "</span>");
+      var canBook = r.status === "生效" || r.status === "即将过期";
+      var priceBtn = canBook
+        ? "<button type='button' class='price-btn' data-act='book' data-src='own' data-id='" + r.id + "' title='点价订舱'>" +
+          r.cur + " " + r.our + " <span class='go'>订舱 →</span></button>"
+        : "<span class='money muted'>" + r.cur + " " + r.our + "</span>";
+      return "<tr class='" + rowClass(r.status) + "' data-id='" + r.id + "'>" +
+        "<td><input type='checkbox' class='row-chk' data-id='" + r.id + "' /></td>" +
+        "<td>" + r.carrier + "</td><td>" + r.lane + "</td><td>" + r.pol + "</td><td>" + r.pod + "</td><td>" + r.type + "</td>" +
+        "<td>" + r.contract + "</td>" +
+        "<td>" + priceBtn + "</td>" +
+        "<td class='muted'>" + r.cur + " " + r.ref + "</td>" +
+        "<td title='船司参考 − 我司'>" + dHtml + "</td>" +
+        "<td>" + r.from.slice(5) + " ~ " + r.to.slice(5) + "</td>" +
+        "<td>" + statusTag(r.status) + "</td>" +
+        "<td>" + syncTag(r.sync) + "</td>" +
+        "<td><div>" + r.by + "</div><div class='muted'>" + r.at + "</div></td>" +
+        "<td><button type='button' class='link-btn' data-act='book' data-src='own' data-id='" + r.id + "'" +
+        (canBook ? "" : " disabled style='opacity:.4;pointer-events:none'") + ">点价订舱</button>" +
+        "<button type='button' class='link-btn' data-act='edit' data-id='" + r.id + "'>编辑</button>" +
+        "<button type='button' class='link-btn' data-act='copy' data-id='" + r.id + "'>复制引用</button></td></tr>";
+    }).join("") || "<tr><td colspan='15' style='text-align:center;color:#999;padding:24px;'>无匹配价目</td></tr>";
+  }
+
+  function renderAgent(list) {
+    $("thead").innerHTML = "<tr>" +
+      "<th><input type='checkbox' id='chkAll' /></th>" +
+      "<th>订舱代理</th><th>船司</th><th>航线</th><th>起运港</th><th>目的港</th><th>柜型</th>" +
+      "<th>海运费</th>" +
+      "<th>有效期</th><th>状态</th><th>备注</th><th>操作</th></tr>";
+    $("tbody").innerHTML = list.map(function (r) {
+      var tot = agentTotal(r);
+      var canBook = r.status === "生效" || r.status === "即将过期";
+      var priceBtn = canBook
+        ? "<button type='button' class='price-btn' data-act='book' data-src='agent' data-id='" + r.id + "' title='点价订舱'>" +
+          r.cur + " " + tot + " <span class='go'>订舱 →</span></button>"
+        : "<span class='money muted'>" + r.cur + " " + tot + "</span>";
+      return "<tr class='" + rowClass(r.status) + "' data-id='" + r.id + "'>" +
+        "<td><input type='checkbox' class='row-chk' data-id='" + r.id + "' /></td>" +
+        "<td><span class='tag purple'>" + r.agent + "</span></td>" +
+        "<td>" + r.carrier + "</td><td>" + r.lane + "</td><td>" + r.pol + "</td><td>" + r.pod + "</td><td>" + r.type + "</td>" +
+        "<td>" + priceBtn + "</td>" +
+        "<td>" + r.from.slice(5) + " ~ " + r.to.slice(5) + "</td>" +
+        "<td>" + statusTag(r.status) + "</td>" +
+        "<td class='muted'>" + (r.note || "—") + "</td>" +
+        "<td><button type='button' class='link-btn' data-act='book' data-src='agent' data-id='" + r.id + "'" +
+        (canBook ? "" : " disabled style='opacity:.4;pointer-events:none'") + ">点价订舱</button>" +
+        "<button type='button' class='link-btn' data-act='edit' data-id='" + r.id + "'>编辑</button>" +
+        "<button type='button' class='link-btn' data-act='copy' data-id='" + r.id + "'>复制引用</button></td></tr>";
+    }).join("") || "<tr><td colspan='12' style='text-align:center;color:#999;padding:24px;'>无匹配价目</td></tr>";
+  }
+
+  function renderCompare(list) {
+    $("thead").innerHTML = "<tr>" +
+      "<th>船司</th><th>航线</th><th>港口</th><th>柜型</th>" +
+      "<th>我司价</th><th>订舱代理</th><th>代理海运费</th><th>差额</th><th>建议</th><th>操作</th></tr>";
+    $("tbody").innerHTML = list.map(function (x) {
+      var o = x.own;
+      if (!x.agent) {
+        return "<tr class='warn-row'><td>" + o.carrier + "</td><td>" + o.lane + "</td><td>" + o.pol + "→" + o.pod + "</td><td>" + o.type + "</td>" +
+          "<td class='money'>" + o.cur + " " + o.our + "</td><td colspan='2' class='muted'>缺代理价</td>" +
+          "<td>—</td><td><span class='tag warn'>补代理报价</span></td>" +
+          "<td><button type='button' class='link-btn' data-act='add-agent' data-oid='" + o.id + "'>补录代理价</button></td></tr>";
+      }
+      var a = x.agent;
+      var diff = x.diff;
+      var cls = diff > 50 ? "up" : diff < -20 ? "down" : "";
+      var tip = diff > 50 ? '<span class="tag gap">优先我司订舱</span>' : diff < -20 ? '<span class="tag ok">代理更优</span>' : '<span class="tag teal">接近</span>';
+      return "<tr class='" + rowClass(o.status === "即将过期" || a.status === "即将过期" ? "即将过期" : o.status) + "'>" +
+        "<td>" + o.carrier + "</td><td>" + o.lane + "</td><td>" + o.pol + "→" + o.pod + "</td><td>" + o.type + "</td>" +
+        "<td class='money'>" + o.cur + " " + o.our + "</td>" +
+        "<td><span class='tag purple'>" + a.agent + "</span></td>" +
+        "<td class='money'>" + a.cur + " " + agentTotal(a) + "</td>" +
+        "<td class='money " + cls + "'>" + (diff > 0 ? "+" : "") + diff + "</td>" +
+        "<td>" + tip + "</td>" +
+        "<td><button type='button' class='link-btn' data-act='book' data-src='own' data-id='" + o.id + "'>我司订舱</button> " +
+        "<button type='button' class='link-btn' data-act='book' data-src='agent' data-id='" + a.id + "'>代理订舱</button> " +
+        "<button type='button' class='link-btn' data-act='copy-cmp' data-oid='" + o.id + "' data-aid='" + a.id + "'>复制对比</button></td></tr>";
+    }).join("") || "<tr><td colspan='10' style='text-align:center;color:#999;padding:24px;'>无对比数据</td></tr>";
+  }
+
+  function render() {
+    updateTips();
+    updateCounts();
+    document.querySelectorAll(".mode-tab").forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-mode") === mode);
+    });
+    $("toolbarOwn").style.display = mode === "compare" ? "flex" : "flex";
+    $("btnAdd").textContent = mode === "agent" ? "＋ 新增代理价" : "＋ 新增价目";
+    $("btnSync").style.display = mode === "own" ? "" : "none";
+    $("btnExpire").style.display = mode === "compare" ? "none" : "";
+    if (mode === "own") renderOwn(filteredOwn());
+    else if (mode === "agent") renderAgent(filteredAgent());
+    else renderCompare(buildCompare());
+    var chkAll = $("chkAll");
+    if (chkAll) {
+      chkAll.onchange = function () {
+        document.querySelectorAll(".row-chk").forEach(function (c) { c.checked = chkAll.checked; });
+      };
+    }
+  }
+
+  function checkedIds() {
+    return Array.prototype.map.call(document.querySelectorAll(".row-chk:checked"), function (c) {
+      return c.getAttribute("data-id");
+    });
+  }
+
+  /* —— 编辑表单 —— */
+  function openEdit(id, forceMode) {
+    editId = id || null;
+    var m = forceMode || mode;
+    if (m === "compare") m = "own";
+    var isAgent = m === "agent";
+    $("editTitle").textContent = (editId ? "编辑" : "新增") + " · " + (isAgent ? "代理订舱价" : "我司订舱价");
+    $("localBlock").style.display = "none";
+    $("editHint").textContent = isAgent
+      ? "代理订舱价只维护海运费（不拆订舱费/文件费/操作费）。保存后可在「价差对比」与同航线我司价对照。"
+      : "我司价为订舱/播报引用基准；船司参考价可选填，用于核对官网价。保存后默认「未同步」，需点「同步报价组」。";
+
+    var r = null;
+    if (editId) {
+      r = isAgent ? AGENT.find(function (x) { return x.id === editId; }) : OWN.find(function (x) { return x.id === editId; });
+    }
+    r = r || (isAgent
+      ? { agent: "腾信", carrier: "美森", lane: "美西", pol: "盐田", pod: "洛杉矶", type: "40HQ", ocean: "", cur: "USD", from: "2026-08-01", to: "2026-08-31", status: "生效", note: "" }
+      : { carrier: "美森", lane: "美西", pol: "盐田", pod: "洛杉矶", type: "40HQ", contract: "", our: "", ref: "", cur: "USD", from: "2026-08-01", to: "2026-08-31", status: "生效" });
+
+    var html = "";
+    if (isAgent) {
+      html += field("agent", "订舱代理", "select", ["腾信", "合德", "美森直客", "新洋"], r.agent);
+    }
+    html += field("carrier", "船司", "select", ["美森", "EMC", "COSCO", "OOCL", "以星", "ONE"], r.carrier);
+    html += field("lane", "航线", "select", ["美西", "美东", "美中"], r.lane);
+    html += field("pol", "起运港", "text", null, r.pol);
+    html += field("pod", "目的港", "text", null, r.pod);
+    html += field("type", "柜型", "select", ["20GP", "40GP", "40HQ", "45HQ"], r.type);
+    html += field("cur", "币种", "select", ["USD", "CNY"], r.cur);
+    html += field("from", "有效起", "date", null, r.from);
+    html += field("to", "有效止", "date", null, r.to);
+    html += field("status", "状态", "select", ["生效", "即将过期", "已失效"], r.status);
+    if (isAgent) {
+      html += field("ocean", "海运费", "number", null, r.ocean, true);
+      html += '<div class="form-row full"><label>备注</label><input id="f_note" value="' + (r.note || "") + '" /></div>';
+    } else {
+      html += field("contract", "合约号", "text", null, r.contract, true);
+      html += field("our", "我司价", "number", null, r.our, true);
+      html += field("ref", "船司参考价", "number", null, r.ref);
+    }
+    $("editForm").innerHTML = html;
+    $("editForm").setAttribute("data-kind", isAgent ? "agent" : "own");
+    $("editMask").classList.add("open");
+  }
+
+  function field(id, label, type, opts, val, req) {
+    var reqHtml = req ? ' <span class="req">*</span>' : "";
+    var ctrl;
+    if (type === "select") {
+      ctrl = "<select id='f_" + id + "'>" + opts.map(function (o) {
+        return "<option" + (o === val ? " selected" : "") + ">" + o + "</option>";
+      }).join("") + "</select>";
+    } else {
+      ctrl = "<input id='f_" + id + "' type='" + type + "' value='" + (val == null ? "" : val) + "' />";
+    }
+    return "<div class='form-row'><label>" + label + reqHtml + "</label>" + ctrl + "</div>";
+  }
+  function localRow(id, name, val) {
+    return "<tr><td>" + name + "</td><td><input id='f_" + id + "' type='number' value='" + (val || 0) + "' /></td>" +
+      "<td>USD</td><td>/柜</td></tr>";
+  }
+
+  function saveEdit() {
+    var kind = $("editForm").getAttribute("data-kind");
+    var now = "2026-08-06 19:30";
+    if (kind === "agent") {
+      var row = {
+        id: editId || ("A" + (AGENT.length + 1)),
+        agent: $("f_agent").value,
+        carrier: $("f_carrier").value,
+        lane: $("f_lane").value,
+        pol: $("f_pol").value.trim(),
+        pod: $("f_pod").value.trim(),
+        type: $("f_type").value,
+        ocean: +$("f_ocean").value || 0,
+        cur: $("f_cur").value,
+        from: $("f_from").value,
+        to: $("f_to").value,
+        status: $("f_status").value,
+        by: "陈秋玉",
+        at: now,
+        note: ($("f_note") && $("f_note").value) || ""
+      };
+      if (!row.pol || !row.pod) { toast("请填写起运港 / 目的港"); return; }
+      if (editId) {
+        var i = AGENT.findIndex(function (x) { return x.id === editId; });
+        AGENT[i] = row;
+      } else AGENT.unshift(row);
+      mode = "agent";
+    } else {
+      var row2 = {
+        id: editId || ("O" + (OWN.length + 1)),
+        carrier: $("f_carrier").value,
+        lane: $("f_lane").value,
+        pol: $("f_pol").value.trim(),
+        pod: $("f_pod").value.trim(),
+        type: $("f_type").value,
+        contract: $("f_contract").value.trim() || ("TMP-" + Date.now().toString().slice(-6)),
+        our: +$("f_our").value || 0,
+        ref: +$("f_ref").value || 0,
+        cur: $("f_cur").value,
+        from: $("f_from").value,
+        to: $("f_to").value,
+        status: $("f_status").value,
+        sync: "未同步",
+        by: "陈秋玉",
+        at: now
+      };
+      if (!row2.pol || !row2.pod || !row2.our) { toast("请填写港口与我司价"); return; }
+      if (editId) {
+        var j = OWN.findIndex(function (x) { return x.id === editId; });
+        var old = OWN[j];
+        row2.sync = (old.our !== row2.our || old.to !== row2.to) ? "有变更" : old.sync;
+        OWN[j] = row2;
+      } else OWN.unshift(row2);
+      mode = "own";
+    }
+    $("editMask").classList.remove("open");
+    render();
+    toast("已保存价目");
+  }
+
+  /* —— 事件 —— */
+  document.querySelectorAll(".mode-tab").forEach(function (btn) {
+    btn.onclick = function () {
+      mode = btn.getAttribute("data-mode");
+      render();
+    };
+  });
+  $("btnSearch").onclick = render;
+  $("btnReset").onclick = function () {
+    ["qCarrier", "qAgent", "qType", "qStatus"].forEach(function (id) { $(id).value = ""; });
+    $("qRoute").value = "";
+    $("qKw").value = "";
+    render();
+  };
+  $("btnAdd").onclick = function () {
+    if (mode === "compare") openEdit(null, "own");
+    else openEdit(null, mode);
+  };
+  $("editClose").onclick = $("editCancel").onclick = function () { $("editMask").classList.remove("open"); };
+  $("editSave").onclick = saveEdit;
+  $("editMask").addEventListener("click", function (e) { if (e.target === this) this.classList.remove("open"); });
+
+  var bookCtx = null;
+
+  var CARRIER_MAP = {
+    "美森": "Matson", "EMC": "EMC", "COSCO": "COSCO", "OOCL": "OOCL",
+    "以星": "ZIM", "ONE": "ONE", "MSC": "MSC", "Hapag": "Hapag"
+  };
+  var POL_MAP = {
+    "盐田": "CNYTN 盐田", "宁波": "CNNGB 宁波", "上海": "CNSHA 上海",
+    "厦门": "CNXMN 厦门", "青岛": "CNTAO 青岛", "天津": "CNTJN 天津"
+  };
+  var POD_MAP = {
+    "洛杉矶": "USLAX 洛杉矶", "长滩": "USLGB 长滩", "纽约": "USNYC 纽约",
+    "奥克兰": "USOAK 奥克兰", "西雅图": "USSEA 西雅图", "休斯敦": "USHOU 休斯敦"
+  };
+
+  function buildBookPayload(src, id) {
+    var qty = Math.max(1, Math.min(20, +$("bookQty").value || 1));
+    var etd = $("bookEtd").value || "2026-08-15";
+    var note = ($("bookNote").value || "").trim();
+    var base;
+    if (src === "agent") {
+      var a = AGENT.find(function (x) { return x.id === id; });
+      if (!a) return null;
+      base = {
+        src: "agent", id: a.id, agent: a.agent, carrier: a.carrier,
+        lane: a.lane, pol: a.pol, pod: a.pod, type: a.type,
+        freight: a.ocean, total: agentTotal(a), cur: a.cur,
+        contract: "", supplier: a.agent + "（代理订舱）",
+        note: note || a.note || ""
+      };
+    } else {
+      var o = OWN.find(function (x) { return x.id === id; });
+      if (!o) return null;
+      base = {
+        src: "own", id: o.id, agent: "", carrier: o.carrier,
+        lane: o.lane, pol: o.pol, pod: o.pod, type: o.type,
+        freight: o.our, total: o.our, cur: o.cur,
+        contract: o.contract, supplier: "我司订舱",
+        note: note || ("合约 " + o.contract)
+      };
+    }
+    base.etd = etd;
+    base.qty = qty;
+    base.carrierCode = CARRIER_MAP[base.carrier] || base.carrier;
+    base.polCode = POL_MAP[base.pol] || base.pol;
+    base.podCode = POD_MAP[base.pod] || base.pod;
+    return base;
+  }
+
+  function openBook(src, id) {
+    var list = src === "agent" ? AGENT : OWN;
+    var r = list.find(function (x) { return x.id === id; });
+    if (!r) return;
+    if (r.status === "已失效") {
+      toast("已失效价目不可订舱，请先启用或换生效价");
+      return;
+    }
+    bookCtx = { src: src, id: id };
+    var price = src === "agent" ? agentTotal(r) : r.our;
+    var title = src === "agent" ? ("代理 · " + r.agent) : ("我司 · " + r.contract);
+    $("bookSummary").innerHTML =
+      '<div><div class="k">订舱口</div><div class="v">' + title + "</div></div>" +
+      '<div><div class="k">船司 / 航线</div><div class="v">' + r.carrier + " · " + r.lane + "</div></div>" +
+      '<div><div class="k">港口</div><div class="v">' + r.pol + " → " + r.pod + "</div></div>" +
+      '<div><div class="k">柜型</div><div class="v">' + r.type + "</div></div>" +
+      '<div><div class="k">锁定价格</div><div class="v price">' + r.cur + " " + price +
+      (src === "agent" ? " <span class='muted' style='font-size:12px'>(代理海运费)</span>" : "") +
+      "</div></div>" +
+      '<div><div class="k">有效期</div><div class="v">' + r.from + " ~ " + r.to + " · " + statusTag(r.status) + "</div></div>";
+    $("bookNote").value = src === "agent" ? (r.note || "") : ("合约 " + r.contract);
+    $("bookQty").value = "1";
+    $("bookMask").classList.add("open");
+  }
+
+  function goBook(openAi) {
+    if (!bookCtx) return;
+    var payload = buildBookPayload(bookCtx.src, bookCtx.id);
+    if (!payload) { toast("价目不存在"); return; }
+    payload.openAi = !!openAi;
+    try {
+      sessionStorage.setItem("ess_book_from_rate", JSON.stringify(payload));
+    } catch (err) { /* ignore */ }
+    var q = "from=rate&src=" + encodeURIComponent(payload.src) +
+      "&id=" + encodeURIComponent(payload.id) +
+      (openAi ? "&ai=1" : "");
+    location.href = "船务组-提单创建批量-AI识别-MVP.html?" + q;
+  }
+
+  $("tbody").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    var act = btn.getAttribute("data-act");
+    var id = btn.getAttribute("data-id");
+    if (act === "book") {
+      openBook(btn.getAttribute("data-src") || (mode === "agent" ? "agent" : "own"), id);
+    } else if (act === "edit") {
+      openEdit(id, mode === "agent" ? "agent" : "own");
+    } else if (act === "copy") {
+      var text;
+      if (mode === "agent") {
+        var a = AGENT.find(function (x) { return x.id === id; });
+        text = "【代理订舱价】" + a.agent + " · " + a.carrier + " · " + a.pol + "→" + a.pod + " · " + a.type +
+          " · 海运费 " + a.cur + " " + agentTotal(a) + " · 有效至 " + a.to;
+      } else {
+        var o = OWN.find(function (x) { return x.id === id; });
+        text = "【我司订舱价】" + o.carrier + " · " + o.pol + "→" + o.pod + " · " + o.type +
+          " · 我司 " + o.cur + " " + o.our + "（船司参考 " + o.ref + "）· 合约 " + o.contract + " · 有效至 " + o.to;
+      }
+      copyText(text);
+    } else if (act === "add-agent") {
+      mode = "agent";
+      openEdit(null, "agent");
+    } else if (act === "copy-cmp") {
+      var o2 = OWN.find(function (x) { return x.id === btn.getAttribute("data-oid"); });
+      var a2 = AGENT.find(function (x) { return x.id === btn.getAttribute("data-aid"); });
+      var diff = agentTotal(a2) - o2.our;
+      copyText("【价差】" + o2.carrier + " " + o2.pol + "→" + o2.pod + " " + o2.type +
+        " · 我司 " + o2.our + " vs " + a2.agent + " " + agentTotal(a2) + " · 差额 " + (diff > 0 ? "+" : "") + diff);
+    }
+  });
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast("已复制 · 可粘贴到播报/回复"); });
+    } else {
+      toast("已生成引用文案（演示）");
+    }
+  }
+
+  $("btnImport").onclick = function () {
+    $("importType").value = mode === "agent" ? "agent" : "own";
+    $("impRows").textContent = "—";
+    $("impNew").textContent = "—";
+    $("impUpd").textContent = "—";
+    $("importMask").classList.add("open");
+  };
+  $("importClose").onclick = $("importCancel").onclick = function () { $("importMask").classList.remove("open"); };
+  $("importTpl").onclick = function () { toast("演示：已下载合约运价导入模版.xlsx"); };
+  $("importOk").onclick = function () {
+    $("impRows").textContent = "12";
+    $("impNew").textContent = "3";
+    $("impUpd").textContent = "9";
+    setTimeout(function () {
+      $("importMask").classList.remove("open");
+      toast("模拟导入完成 · 新增 3 / 更新 9（演示）");
+      render();
+    }, 400);
+  };
+
+  $("btnExport").onclick = function () { toast("演示：已导出当前列表（" + (mode === "agent" ? "代理" : mode === "own" ? "我司" : "对比") + "）"); };
+
+  $("btnExpire").onclick = function () {
+    var ids = checkedIds();
+    if (!ids.length) { toast("请先勾选价目"); return; }
+    if (mode === "own") {
+      OWN.forEach(function (r) { if (ids.indexOf(r.id) >= 0) { r.status = "已失效"; r.sync = "有变更"; } });
+    } else if (mode === "agent") {
+      AGENT.forEach(function (r) { if (ids.indexOf(r.id) >= 0) r.status = "已失效"; });
+    }
+    render();
+    toast("已批量失效 ×" + ids.length);
+  };
+
+  $("btnSync").onclick = function () {
+    var n = syncTargets().length;
+    $("syncHint").textContent = "将推送 " + n + " 条生效价目至报价组。";
+    $("syncMask").classList.add("open");
+  };
+  function syncTargets() {
+    var scope = $("syncScope").value;
+    var list = filteredOwn().filter(function (r) { return r.status === "生效"; });
+    if (scope === "checked") {
+      var ids = checkedIds();
+      list = OWN.filter(function (r) { return ids.indexOf(r.id) >= 0 && r.status === "生效"; });
+    } else if (scope === "changed") {
+      list = list.filter(function (r) { return r.sync === "未同步" || r.sync === "有变更"; });
+    }
+    return list;
+  }
+  $("syncScope").onchange = function () {
+    $("syncHint").textContent = "将推送 " + syncTargets().length + " 条生效价目至报价组。";
+  };
+  $("syncClose").onclick = $("syncCancel").onclick = function () { $("syncMask").classList.remove("open"); };
+  $("syncOk").onclick = function () {
+    var list = syncTargets();
+    list.forEach(function (r) { r.sync = "已同步"; });
+    $("syncMask").classList.remove("open");
+    render();
+    toast("已同步报价组 ×" + list.length + ($("syncNote").value.trim() ? " · " + $("syncNote").value.trim() : ""));
+  };
+
+  /* PRD drawer */
+  function openPrd() {
+    document.body.classList.remove("ess-prd-collapsed");
+    document.body.classList.add("ess-prd-open");
+  }
+  function closePrd() {
+    document.body.classList.add("ess-prd-collapsed");
+    document.body.classList.remove("ess-prd-open");
+  }
+  $("essPrdFab").onclick = openPrd;
+  $("essPrdClose").onclick = closePrd;
+  $("essPrdBackdrop").onclick = closePrd;
+
+  function closeBook() { $("bookMask").classList.remove("open"); }
+  $("bookClose").onclick = $("bookCancel").onclick = closeBook;
+  $("bookMask").addEventListener("click", function (e) { if (e.target === this) closeBook(); });
+  $("bookGoBatch").onclick = $("bookToBatch").onclick = function () { goBook(false); };
+  $("bookGoAi").onclick = $("bookToAi").onclick = function () { goBook(true); };
+  $("bookCopy").onclick = function () {
+    if (!bookCtx) return;
+    var p = buildBookPayload(bookCtx.src, bookCtx.id);
+    if (!p) return;
+    copyText("【点价订舱】" + p.supplier + " · " + p.carrier + " · " + p.pol + "→" + p.pod +
+      " · " + p.type + " · " + p.cur + " " + p.freight +
+      (p.contract ? " · " + p.contract : "") +
+      " · ETD " + p.etd + " · ×" + p.qty +
+      (p.note ? " · " + p.note : ""));
+  };
+
+  render();
+})();
+  </script>
+</body>
+</html>

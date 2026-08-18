@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>产品部门 · 各组系统流程设计（架构评审）</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --gap: #cf1322;
+      --bj: #d46b08; --bj-bg: #fff7e6; --bj-bd: #ffd591;
+      --fk: #531dab; --fk-bg: #f9f0ff; --fk-bd: #d3adf7;
+      --cw: #003a8c; --cw-bg: #e6f7ff; --cw-bd: #91d5ff;
+      --gw: #08979c; --gw-bg: #e6fffb; --gw-bd: #87e8de;
+      --hw: #389e0d; --hw-bg: #f6ffed; --hw-bd: #b7eb8f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .page { max-width: 1480px; margin: 0 auto; padding: 14px 16px 64px; }
+
+    .hero {
+      background: linear-gradient(135deg, #0b1f3a, #1890ff);
+      color: #fff; border-radius: 8px; padding: 18px 20px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 20px; }
+    .hero p { margin: 0; font-size: 13px; line-height: 1.7; opacity: .95; }
+    .hero .meta { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      background: rgba(255,255,255,.18); font-size: 12px; font-weight: 600;
+    }
+
+    .toc {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(240,242,245,.95); backdrop-filter: blur(6px);
+      padding: 8px 0; border-bottom: 1px solid var(--line);
+    }
+    .toc a {
+      padding: 6px 12px; background: #fff; border: 1px solid var(--line);
+      border-radius: 2px; font-size: 12px; color: var(--text);
+    }
+    .toc a:hover { border-color: var(--blue); color: var(--blue); text-decoration: none; }
+    .toc a.bj { border-left: 3px solid var(--bj); }
+    .toc a.fk { border-left: 3px solid var(--fk); }
+    .toc a.cw { border-left: 3px solid var(--cw); }
+    .toc a.gw { border-left: 3px solid var(--gw); }
+    .toc a.hw { border-left: 3px solid var(--hw); }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 6px; padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+    .card h3 { margin: 14px 0 8px; font-size: 13px; }
+    .card.bj h2 { color: var(--bj); border-left: 4px solid var(--bj); padding-left: 10px; }
+    .card.fk h2 { color: var(--fk); border-left: 4px solid var(--fk); padding-left: 10px; }
+    .card.cw h2 { color: var(--cw); border-left: 4px solid var(--cw); padding-left: 10px; }
+    .card.gw h2 { color: var(--gw); border-left: 4px solid var(--gw); padding-left: 10px; }
+    .card.hw h2 { color: var(--hw); border-left: 4px solid var(--hw); padding-left: 10px; }
+    .desc { margin: 0 0 12px; font-size: 12px; color: var(--sub); line-height: 1.65; }
+
+    .note {
+      padding: 10px 12px; background: #fffbe6; border: 1px solid #ffe58f;
+      border-radius: 4px; font-size: 12px; color: #614700; line-height: 1.65; margin: 10px 0;
+    }
+    .okbox {
+      padding: 10px 12px; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 4px; font-size: 12px; color: #135200; line-height: 1.65; margin: 10px 0;
+    }
+    .gapbox {
+      padding: 10px 12px; background: #fff1f0; border: 1px solid #ffa39e;
+      border-radius: 4px; font-size: 12px; color: #a8071a; line-height: 1.65; margin: 10px 0;
+    }
+
+    .badge {
+      display: inline-block; padding: 1px 8px; border-radius: 2px;
+      font-size: 11px; border: 1px solid; font-weight: 600; line-height: 18px;
+    }
+    .badge.p0 { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .badge.p1 { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .badge.unc { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .badge.org { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+
+    .grid3 {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0;
+    }
+    .grid2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;
+    }
+    @media (max-width: 900px) {
+      .grid3, .grid2 { grid-template-columns: 1fr; }
+    }
+    .sc {
+      border: 1px solid var(--line); border-radius: 6px; padding: 12px; background: #fafafa;
+    }
+    .sc h4 { margin: 0 0 8px; font-size: 13px; }
+    .sc ul { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.65; }
+
+    .mermaid-wrap {
+      overflow-x: auto; background: #fafafa; border: 1px solid var(--line);
+      border-radius: 4px; padding: 12px; margin: 8px 0;
+      min-height: 120px;
+    }
+    .mermaid-wrap .mermaid { min-width: max-content; }
+
+    table.tbl {
+      width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px;
+    }
+    table.tbl th, table.tbl td {
+      border: 1px solid var(--line); padding: 8px 10px;
+      text-align: left; vertical-align: top; line-height: 1.55;
+    }
+    table.tbl th { background: #fafafa; color: var(--sub); font-weight: 600; white-space: nowrap; }
+    table.tbl td.n { font-weight: 600; color: #003a8c; white-space: nowrap; }
+    table.tbl tr.hi td { background: #fff7e6; }
+
+    .pages {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0;
+    }
+    .pages span {
+      font-size: 11px; padding: 3px 8px; border-radius: 2px;
+      background: #e6f4ff; border: 1px solid #91caff; color: #0958d9; font-weight: 600;
+    }
+
+    .flow-label {
+      display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+      border-radius: 2px; margin: 0 0 6px; border: 1px solid;
+    }
+    .flow-label.asis { color: #a8071a; background: #fff1f0; border-color: #ffa39e; }
+    .flow-label.tobe { color: #135200; background: #f6ffed; border-color: #b7eb8f; }
+    .compare-pair { margin: 8px 0 14px; }
+    .compare-pair .mermaid-wrap { margin-top: 4px; }
+
+    .footer { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+    @media print {
+      .toc { display: none !important; }
+      .card { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>产品部门 · 各组系统流程设计</h1>
+      <p>
+        站在 IT 产品架构视角：按组输出「调研痛点 → 系统目标流程 → 系统页面/能力 → 跨组接口 → 待确认」。
+        已纳入组织优化：<strong>资料员归属关务；发舱单 / AMS / ISF 全链路收口关务</strong>。
+        口径来源：7/27–7/31 调研纪要 + 各组 SOP / 大致方案。
+      </p>
+      <div class="meta">
+        <span class="pill">架构评审稿</span>
+        <span class="pill">可对接详案 HTML</span>
+        <span class="pill"><a href="产品部门-标准化全流程-评审版.html#vsm" style="color:#fff">价值流图 VSM</a></span>
+        <span class="pill"><a href="产品部门-标准化全流程-评审版.html" style="color:#fff">全流程评审版</a></span>
+        <span class="pill"><a href="../产品部门-导航.html" style="color:#fff">导航</a></span>
+      </div>
+    </section>
+
+    <nav class="toc">
+      <a href="#arch">① 总体架构</a>
+      <a class="bj" href="#bj">② 私卡报价</a>
+      <a class="fk" href="#fk">③ 风控</a>
+      <a class="cw" href="#cw">④ 船务</a>
+      <a class="gw" href="#gw">⑤ 关务（含资料员）</a>
+      <a class="hw" href="#hw">⑥ 海外</a>
+      <a href="#api">⑦ 跨组数据对象</a>
+    </nav>
+
+    <!-- ① 总体 -->
+    <section class="card" id="arch">
+      <h2>① 总体系统架构（原流程 vs 目标）</h2>
+      <p class="desc">以运单/柜为唯一业务对象；各组写各自主责字段，状态机驱动跨组订阅。下方先总对比，各组详情见各章。</p>
+      <div class="compare-pair">
+        <span class="flow-label asis">部门主链 · 原流程</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  A["手算报价\n业务绑价"] --> B["查货不规范\n附加费易漏"]
+  B --> C["手拼播报\n先安排后录"]
+  C --> D["资料核准对票"]
+  D --> E["船务发舱单\n跨组对单"]
+  E --> F["报关·口头查验"]
+  F --> G["人肉刷放行\n人肉通知"]
+  G --> H["海外表导美库"]
+          </pre>
+        </div>
+      </div>
+      <div class="compare-pair">
+        <span class="flow-label tobe">部门主链 · 目标流程</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  BJ["AI报价·有效期·绑运单"] --> WAY["运单"]
+  FK["查货卡点·计费·授权工单"] --> WAY
+  CW["运价·订舱·配舱·提单·放行订阅"] --> CTR["柜子/船期"]
+  GW["资料员闭环\n核准→舱单AMS/ISF→报关查验"] --> WAY
+  GW --> CTR
+  HW["海外事件·计划·POD\n未确认"] --> CTR
+  WAY --> EVT["事件总线"]
+  CTR --> EVT
+  EVT --> N["客服/业务/仓/客户"]
+          </pre>
+        </div>
+      </div>
+      <div class="grid3">
+        <div class="sc">
+          <h4>主数据归属（已确认 A）</h4>
+          <ul>
+            <li>船务主写：舱位 / 配舱 / 装柜执行字段</li>
+            <li>关务主写：资料 / 分单号 / 舱单·AMS·ISF / 报关 / 查验</li>
+            <li>风控主写：查货结果 / 附加费标识 / 侵权工单</li>
+            <li>私卡主写：报价结果 / 有效期 / 运单绑定</li>
+          </ul>
+        </div>
+        <div class="sc">
+          <h4><span class="badge org">组织优化</span> 职责重切</h4>
+          <ul>
+            <li>资料员 → 关务编制</li>
+            <li>发舱单 / AMS / ISF → 关务资料岗闭环</li>
+            <li>船务不再发舱单，只读状态</li>
+            <li>港后预报/Bond：建议随资料员，待船务确认</li>
+          </ul>
+        </div>
+        <div class="sc">
+          <h4>设计原则</h4>
+          <ul>
+            <li>自动算 ≠ 自动放行（报价/舱单均留人工复核点）</li>
+            <li>跨组只传状态与约束，不传 Excel</li>
+            <li>异常必须事件通知，禁止静默改配</li>
+            <li>未齐口径配置化，禁止写死金额</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② 私卡 -->
+    <section class="card bj" id="bj">
+      <h2>② 私卡报价组 · 系统流程设计</h2>
+      <p class="desc">
+        调研：0731 AI 报价评审 ·
+        <a href="私卡报价-0731-AI报价有效期运单绑定-大致方案.html">详案</a> ·
+        <a href="../调研纪要_2026-07-31.txt">纪要</a>
+      </p>
+
+      <h3>2.1 调研痛点 → 设计目标</h3>
+      <table class="tbl">
+        <thead><tr><th>痛点</th><th>系统设计目标</th><th>优先级</th></tr></thead>
+        <tbody>
+          <tr><td>Excel 规则手算，效率低、易过期</td><td>规则表驱动自动算价 + 人工复核台</td><td><span class="badge p0">P0</span></td></tr>
+          <tr class="hi"><td>价格动态变，报价失效仍被使用</td><td>有效期后台可配；过期不可直接引用</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>整柜绑运单甩业务员</td><td>报价员/客服系统内绑定，业务只读消费</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>住宅/商业、内外州模型不一</td><td>分模型引擎；外州距离系数（替代每次手输）</td><td><span class="badge p0">P0</span>/<span class="badge p1">P1</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.2 原流程 vs 目标系统流程</h3>
+      <div class="compare-pair">
+        <span class="flow-label asis">原流程 As-Is</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  A0["业务发询价\n群/表格"] --> A1["报价员 Excel\n手工套规则算价"]
+  A1 --> A2["排版报价\n发给业务员"]
+  A2 --> A3["业务员自行\n绑运单/使用"]
+  A3 --> A4{"价格是否\n已过期?"}
+  A4 -->|常未知| A5["仍被引用\n或重新询价"]
+  A4 -->|已知过期| A1
+          </pre>
+        </div>
+      </div>
+      <div class="compare-pair">
+        <span class="flow-label tobe">目标流程 To-Be</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  A["询价要素入库"] --> B["规则引擎算价\n住宅/商业·内外州"]
+  B --> C{"有效期内?"}
+  C -->|否| B
+  C -->|是| D["复核台"]
+  D --> E["报价员/客服绑运单"]
+  E --> F["业务只读消费"]
+  F --> G["履约引用有效报价"]
+          </pre>
+        </div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>对比点</th><th>原流程</th><th>目标流程</th></tr></thead>
+        <tbody>
+          <tr><td class="n">算价</td><td>Excel 手算</td><td>规则引擎自动算 + 复核</td></tr>
+          <tr class="hi"><td class="n">有效期</td><td>难管控，易过期仍用</td><td>后台可配，过期不可直接用</td></tr>
+          <tr><td class="n">绑运单</td><td>业务员操作</td><td>报价员/客服系统内绑定</td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.3 系统页面 / 能力清单</h3>
+      <div class="pages">
+        <span>规则表维护台</span>
+        <span>AI 报价计算引擎</span>
+        <span>报价复核台</span>
+        <span>有效期配置</span>
+        <span>报价↔运单绑定</span>
+        <span>业务端通知/分享（P1）</span>
+        <span>出库时效预警（并行验收）</span>
+      </div>
+
+      <div class="gapbox">
+        <strong>待确认：</strong>底层 Excel 规则表（袁华君）；距离系数输入方式；业务端通知/分享/港口展示清单（卢慧恒）。
+      </div>
+    </section>
+
+    <!-- ③ 风控 -->
+    <section class="card fk" id="fk">
+      <h2>③ 风控组 · 系统流程设计</h2>
+      <p class="desc">
+        调研：0729 下午 ·
+        <a href="风控组-0729-查货管理-大致方案.html">详案</a> ·
+        <a href="../调研纪要_2026-07-29_上午下午.txt">纪要</a>
+      </p>
+
+      <h3>3.1 调研痛点 → 设计目标</h3>
+      <table class="tbl">
+        <thead><tr><th>痛点</th><th>系统设计目标</th><th>优先级</th></tr></thead>
+        <tbody>
+          <tr><td>仓库查货不规范，有标识未强制看图</td><td>照片必看/已看标记；疑问留痕；完结前强制步骤</td><td><span class="badge p0">P0</span></td></tr>
+          <tr class="hi"><td>附加服务勾了不入账</td><td>勾选 → 写入业务数据统计 / 应收或成本</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>多品名手算易漏</td><td>品名数规则识别 + 配置化加收</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>侵权链路长、授权与关务脱节</td><td>看图→辅助识别→查站→授权工单 → 关务抬头校验</td><td><span class="badge p0">P0</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>3.2 原流程 vs 目标系统流程</h3>
+      <div class="compare-pair">
+        <span class="flow-label asis">原流程 As-Is</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  W0["仓库拍照\n执行不规范"] --> V0["风控看标识\n未必强制看图"]
+  V0 --> Q0{"有疑问?"}
+  Q0 -->|是| ASK0["群里问客户/业务"]
+  Q0 -->|否| FEE0["附加服务勾选\n常不入账"]
+  ASK0 --> FEE0
+  FEE0 --> IP0["侵权：看图→搜网\n要授权·链路散"]
+  IP0 --> DONE0["查货完结\n授权与关务脱节"]
+          </pre>
+        </div>
+      </div>
+      <div class="compare-pair">
+        <span class="flow-label tobe">目标流程 To-Be</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  W["仓库上传照片"] --> V["强制已看图"]
+  V --> Q{"有疑问?"}
+  Q -->|是| ASK["疑问留痕"]
+  Q -->|否| FEE{"附加费/多品名?"}
+  ASK --> FEE
+  FEE -->|是| STAT["写入业务数据统计"]
+  FEE -->|否| IP{"疑似侵权?"}
+  STAT --> IP
+  IP -->|是| AUTH["侵权工单·要授权"]
+  IP -->|否| DONE["查货完结"]
+  AUTH --> GW["交接关务\n授权=抬头"]
+  AUTH --> DONE
+          </pre>
+        </div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>对比点</th><th>原流程</th><th>目标流程</th></tr></thead>
+        <tbody>
+          <tr><td class="n">看图</td><td>有标识、仓库不规范</td><td>已看标记 + 完结前强制</td></tr>
+          <tr class="hi"><td class="n">附加费</td><td>勾选≠入账</td><td>勾选写入业务数据统计</td></tr>
+          <tr><td class="n">侵权授权</td><td>人工散链，与关务脱节</td><td>工单直达关务抬头校验</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3.3 系统页面 / 能力清单</h3>
+      <div class="pages">
+        <span>查货工作台（已看/疑问）</span>
+        <span>附加服务勾选与入账</span>
+        <span>多品名规则引擎</span>
+        <span>侵权辅助识别</span>
+        <span>授权工单（→关务）</span>
+        <span>客户备注 / 违禁品对客（P1）</span>
+      </div>
+
+      <div class="gapbox">
+        <strong>待确认：</strong>多品名「超5每个+30」计费起算与币种；包装 vs 分开包装；直客附加费应收/成本是否可只落其一；豆包结果是否可自动标红。
+      </div>
+    </section>
+
+    <!-- ④ 船务 -->
+    <section class="card cw" id="cw">
+      <h2>④ 船务组 · 系统流程设计</h2>
+      <p class="desc">
+        调研：0730 全天 ·
+        <a href="船务组-0730-费用节点提单配仓-大致方案.html">详案</a> ·
+        <a href="../调研纪要_2026-07-30_上午下午.txt">纪要</a>
+        · <span class="badge org">优化后不含发舱单/AMS/ISF</span>
+      </p>
+
+      <h3>4.1 调研痛点 → 设计目标</h3>
+      <table class="tbl">
+        <thead><tr><th>痛点</th><th>系统设计目标</th><th>优先级</th></tr></thead>
+        <tbody>
+          <tr><td>运价不在系统，播报手拼</td><td>船司运价上系统；播报一键复制</td><td><span class="badge p0">P0</span></td></tr>
+          <tr class="hi"><td>先安排后录；待配仓难批量</td><td>待配仓批量勾选；系统内分配；消费关务同柜约束</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>分配提单靠个人经验；同船分散</td><td>分配推荐 + AI 识别 + 同船/按周聚合</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>放行人肉刷码头（约 3～4 次/天）</td><td>开船+轨迹拉数；未放行标红；订阅关务状态</td><td><span class="badge p0">P0</span></td></tr>
+          <tr class="hi"><td>兼做舱单与资料对单（组织浪费）</td><td><b>舱单链移交关务</b>；船务只读舱单/AMS/ISF 状态</td><td><span class="badge org">组织优化</span></td></tr>
+          <tr><td>甩柜/船期变更通知不到位</td><td>异常事件自动推客服+业务</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>节点费用对账难</td><td>动作关联费用（进港/落箱等）</td><td><span class="badge p1">P1</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 原流程 vs 目标系统流程</h3>
+      <div class="compare-pair">
+        <span class="flow-label asis">原流程 As-Is</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  C0["运价线下/\n难引用"] --> C1["手拼舱位播报"]
+  C1 --> C2["代理群登记\n舱位表 Excel"]
+  C2 --> C3["先安排后录\n配舱"]
+  C3 --> C4["经验分配提单\n同船分散"]
+  C4 --> C5["船务发舱单/AMS\n与资料对单"]
+  C5 --> C6["码头网页\n人肉刷放行"]
+  C6 --> C7["甩柜/变更\n人肉通知"]
+          </pre>
+        </div>
+      </div>
+      <div class="compare-pair">
+        <span class="flow-label tobe">目标流程 To-Be</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  P0["运价上系统"] --> P1["舱位播报一键发"]
+  P1 --> P2["舱位登记/订舱"]
+  P2 --> P3["待配仓批量配舱"]
+  P3 --> P4["分配提单+AI"]
+  P4 --> P5["订阅关务\n舱单/AMS/ISF/放行"]
+  P5 --> P6{"临近开船未放行?"}
+  P6 -->|是| P7["未放行标记/甩柜"]
+  P6 -->|否| P8["装船轨迹盯控"]
+  P7 --> P9["自动通知+费用"]
+  P8 --> P9
+          </pre>
+        </div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>对比点</th><th>原流程</th><th>目标流程</th></tr></thead>
+        <tbody>
+          <tr><td class="n">播报/舱位</td><td>手拼 + Excel 登记</td><td>一键播报 + 舱位线上</td></tr>
+          <tr class="hi"><td class="n">舱单/AMS/ISF</td><td><b>船务主发</b>，跨组对单</td><td><b>移交关务</b>，船务只读订阅</td></tr>
+          <tr><td class="n">提单</td><td>个人经验、同船分散</td><td>推荐分配 + AI + 同船聚合</td></tr>
+          <tr><td class="n">放行</td><td>日刷码头 3～4 次</td><td>开船+轨迹拉数，异常 digest</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.3 系统页面 / 能力清单</h3>
+      <div class="pages">
+        <span>船司运价维护</span>
+        <span>舱位播报卡片</span>
+        <span>舱位表（线上）</span>
+        <span>待配仓/配舱工作台</span>
+        <span>提单管理（AI/同船）</span>
+        <span>放行状态订阅看板</span>
+        <span>甩柜/轨迹更新</span>
+        <span>节点费用台（P1）</span>
+        <span>Bond/预报（待确认是否随资料员）</span>
+      </div>
+
+      <div class="okbox">
+        <strong>与关务接口：</strong>输出配舱结果、提单聚合、装柜字段；输入同柜约束、舱单/AMS/ISF 状态、放行/查验状态。
+        <strong>不主责：</strong>发舱单、AMS、ISF、整柜签入（客服）。
+      </div>
+    </section>
+
+    <!-- ⑤ 关务 -->
+    <section class="card gw" id="gw">
+      <h2>⑤ 关务组（含资料员）· 系统流程设计</h2>
+      <p class="desc">
+        调研：7/27–7/29 关务收口 + 组织优化 ·
+        <a href="关务组-资料核准双通道-流程与页面设计.html">核准</a> ·
+        <a href="关务组-0729-查验分柜装授权-大致方案.html">查验/同柜/授权</a> ·
+        <a href="关务组-改配三类场景-轨迹与同步.html">改配</a> ·
+        <a href="关务组-三表-仓位装柜跟踪-流程与页面设计.html">三表</a>
+      </p>
+
+      <h3>5.1 调研痛点 → 设计目标</h3>
+      <table class="tbl">
+        <thead><tr><th>痛点</th><th>系统设计目标</th><th>优先级</th></tr></thead>
+        <tbody>
+          <tr><td>分单号手填、与舱单不一致</td><td>船司×港口自动生成；发送前硬校验</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>资料核准靠截图对票</td><td>核准双通道：附件识别 ∥ 预录结构化回传</td><td><span class="badge p0">P0</span></td></tr>
+          <tr class="hi"><td>舱单由船务发，跨组对单偏晚</td><td><b>资料员在关务</b>：核准后同岗发舱单/AMS/ISF</td><td><span class="badge org">组织优化</span>+<span class="badge p0">P0</span></td></tr>
+          <tr><td>合并报关分柜装靠群沟通</td><td>同柜约束引擎；分柜装风险确认后供配舱消费</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>查验通知易漏</td><td>一键发客户；开船前一天提醒；处置状态机</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>改配后多方不知</td><td>改配三类轨迹 + 同步改舱单链 + 通知矩阵</td><td><span class="badge p0">P0</span></td></tr>
+          <tr><td>授权与抬头不一致硬过</td><td>授权附件必比报关抬头</td><td><span class="badge p0">P0</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.2 原流程 vs 目标系统流程</h3>
+      <div class="compare-pair">
+        <span class="flow-label asis">原流程 As-Is</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  G0["收集资料\n催委托靠人"] --> G1["手填分单号"]
+  G1 --> G2["截图/纸质\n人工核准对票"]
+  G2 --> G3["合并报关\n群里对谁装柜"]
+  G3 --> G4["资料甩船务\n等发舱单/AMS"]
+  G4 --> G5["跨组对单改单\n易偏晚"]
+  G5 --> G6["推报关行"]
+  G6 --> G7["查验口头转告"]
+  G7 --> G8["改配后\n多方不知"]
+          </pre>
+        </div>
+      </div>
+      <div class="compare-pair">
+        <span class="flow-label tobe">目标流程 To-Be（资料员闭环）</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  S0["预配舱就绪"] --> S1["资料员出单"]
+  S1 --> S2{"有委托?"}
+  S2 -->|否| S1a["催委托"] --> S1
+  S2 -->|是| S3["分单号自动"]
+  S3 --> S4["核准双通道"]
+  S4 --> S5["授权=抬头"]
+  S5 --> S6["同柜确认"]
+  S6 --> S7["发舱单/AMS/ISF"]
+  S7 --> S8["状态同步船务"]
+  S8 --> S9["推报关申报"]
+  S9 --> S10{"国内查验?"}
+  S10 -->|是| S11["查验一键发客户"]
+  S11 --> S12["改配+改舱单链"]
+  S12 --> S13["通知客服业务海外"]
+  S10 -->|否| S14["放行·船务盯控"]
+          </pre>
+        </div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>对比点</th><th>原流程</th><th>目标流程</th></tr></thead>
+        <tbody>
+          <tr><td class="n">资料员归属</td><td>与船务舱单作业交织</td><td><b>编制与作业均在关务</b></td></tr>
+          <tr class="hi"><td class="n">发舱单/AMS/ISF</td><td>船务发，资料等、对单</td><td><b>核准后同岗直发</b>，砍跨组 H4</td></tr>
+          <tr><td class="n">分单号/核准</td><td>手填 + 截图对票</td><td>自动生成 + 双通道核准</td></tr>
+          <tr><td class="n">查验/改配</td><td>口头转告、静默改配</td><td>一键通知 + 改配同步改舱单链</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.3 系统页面 / 能力清单</h3>
+      <div class="grid2">
+        <div class="sc">
+          <h4>资料员工作台（新建/强化）</h4>
+          <ul>
+            <li>出单任务池（预配舱可进）</li>
+            <li>委托催办</li>
+            <li>分单号生成与异常手填留痕</li>
+            <li>核准双通道工作台</li>
+            <li><b>舱单 / AMS / ISF 发送与改单台</b></li>
+            <li>发送 SLA、同船批量、海管家/表格双通道</li>
+          </ul>
+        </div>
+        <div class="sc">
+          <h4>报关 / 查验 / 改配</h4>
+          <ul>
+            <li>同柜约束 / 分柜装风险确认</li>
+            <li>授权附件与抬头硬拦</li>
+            <li>推报关与放行状态机</li>
+            <li>查验一键通知 + 处置状态</li>
+            <li>改配三类 + 通知矩阵</li>
+            <li>三表视图（引用船务主写装柜字段）</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="okbox">
+        <strong>组织优化收益（设计口径）：</strong>
+        砍掉「资料齐 → 再等船务发舱单 → 对单改单」跨组环；
+        分单号与舱单硬一致变为<strong>组内闭环</strong>；
+        改配时舱单/AMS/ISF 由同一资料岗改单留痕，避免二次作业。
+      </div>
+      <div class="gapbox">
+        <strong>待确认：</strong>AN/AMS/ISF 海管家启用阻塞与案例；改港费触发/金额/归属；港后预报/Bond 是否随资料员划转；分单号真实提单样例校验。
+      </div>
+    </section>
+
+    <!-- ⑥ 海外 -->
+    <section class="card hw" id="hw">
+      <h2>⑥ 海外对接组 · 系统流程设计 <span class="badge unc">SOP 带过 · 专场未确认</span></h2>
+      <p class="desc">
+        素材：<a href="海外对接组.pdf">海外对接组 SOP</a> · 调研计划中的卡派/POD/轨迹议题（专场深度不及关务船务）。
+      </p>
+
+      <h3>6.1 SOP 痛点 → 设计方向（待确认）</h3>
+      <table class="tbl">
+        <thead><tr><th>SOP 现状</th><th>系统设计方向</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td>指令可执行性/收费先确认靠人</td><td>指令接收卡控：不可执行阻断；涉及收费先确认</td><td><span class="badge unc">未确认</span></td></tr>
+          <tr class="hi"><td>海派跟踪企微表 → 导美库</td><td>海派跟踪结构化 → 美库计划导入</td><td><span class="badge unc">未确认</span></td></tr>
+          <tr><td>拆柜少/多件/破损多群问询</td><td>拆柜异常工单；有查验拆柜联关务事件</td><td><span class="badge unc">未确认</span></td></tr>
+          <tr><td>私卡/FBA/快递/自提分支长</td><td>按派送方式分流工作台；POD/出库预警衔接私卡</td><td><span class="badge unc">未确认</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.2 原流程 vs 目标系统流程（草案 · 未确认）</h3>
+      <div class="compare-pair">
+        <span class="flow-label asis">原流程 As-Is（SOP）</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  H0["指令群接收\n人工判断可否做"] --> H1["企微海派跟踪表\n筛选导出"]
+  H1 --> H2["导美库改计划"]
+  H2 --> H3["按私卡/FBA/\n快递/自提分支"]
+  H3 --> H4["拆柜异常\n多群问询定责"]
+  H4 --> H5["POD/入仓\n多系统核对"]
+          </pre>
+        </div>
+      </div>
+      <div class="compare-pair">
+        <span class="flow-label tobe">目标流程 To-Be（草案）</span>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
+flowchart LR
+  A["订阅开船/改配事件"] --> B["指令卡控\n可执行+收费确认"]
+  B --> C["海派→美库结构化"]
+  C --> D{"派送方式"}
+  D -->|私卡| E1["出库·POD"]
+  D -->|FBA| E2["PO/入仓"]
+  D -->|快递| E3["尾程轨迹"]
+  D -->|自提| E4["自提规则"]
+  E1 --> F["异常定责工单"]
+  E2 --> F
+  E3 --> F
+  E4 --> F
+          </pre>
+        </div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>对比点</th><th>原流程</th><th>目标流程（草案）</th></tr></thead>
+        <tbody>
+          <tr><td class="n">计划录入</td><td>企微表筛选导进导出</td><td>结构化导入美库</td></tr>
+          <tr class="hi"><td class="n">异常</td><td>多群问询</td><td>定责工单 + 联关务查验事件</td></tr>
+          <tr><td class="n">确认状态</td><td>—</td><td><span class="badge unc">专场未确认，不进承诺</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="gapbox">
+        <strong>风险：</strong>在专场确认前，不承诺海外人效与页面范围；与私卡出库预警、关务改配通知的接口可先预留事件订阅。
+      </div>
+    </section>
+
+    <!-- ⑦ 跨组对象 -->
+    <section class="card" id="api">
+      <h2>⑦ 跨组数据对象与接口（实现契约）</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th>对象</th><th>主写</th><th>订阅方</th><th>关键字段 / 事件</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="n">有效报价</td><td>私卡</td><td>业务、船务履约</td><td>报价 ID、有效期、绑定运单号</td></tr>
+          <tr class="hi"><td class="n">查货结果</td><td>风控</td><td>关务、业务数据</td><td>已看图、附加费项、多品名、侵权工单</td></tr>
+          <tr><td class="n">舱位/配舱/装柜</td><td>船务</td><td>关务、海外</td><td>船期、预配/待配/终配、装柜地址时间报关行</td></tr>
+          <tr class="hi"><td class="n">同柜约束</td><td>关务</td><td>船务配舱</td><td>合并报关组、分柜装风险确认</td></tr>
+          <tr><td class="n">分单号</td><td>关务资料员</td><td>舱单链（组内）、船务只读</td><td>船司×港口规则、异常手填痕</td></tr>
+          <tr class="hi"><td class="n">舱单/AMS/ISF</td><td>关务资料员</td><td>船务只读、代理/海管家</td><td>发送状态、改单留痕、SLA</td></tr>
+          <tr><td class="n">放行状态机</td><td>关务</td><td>船务盯控</td><td>未报/预录/申报/放行/查验/删单</td></tr>
+          <tr><td class="n">查验事件</td><td>关务</td><td>船务费用、客户、改配</td><td>事件 ID、天数、处置、通知记录</td></tr>
+          <tr class="hi"><td class="n">改配/甩柜事件</td><td>关务+船务</td><td>客服、业务、海外、仓</td><td>三类轨迹规则、船名航次、通知矩阵</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        详案落地请继续打开各组大致方案 HTML；本页是架构级「系统流程」总图，用于评审职责切分与建设包边界。
+        人效与 IT 落点标注见
+        <a href="产品部门-标准化全流程-评审版.html">标准化全流程评审版</a>。
+      </div>
+    </section>
+
+    <p class="footer">产品部门 · 各组系统流程设计 · 2026-08-03 · 产品设计架构评审稿</p>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "neutral",
+      securityLevel: "loose",
+      flowchart: { htmlLabels: true, curve: "basis" }
+    });
+  </script>
+</body>
+</html>

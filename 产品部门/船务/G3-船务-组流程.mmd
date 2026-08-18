@@ -1,0 +1,57 @@
+%% 船务组 · 组流程图 · 全流程按组拆分
+%% 覆盖：S2 合约价确认（船务主责）· 无需报价·价格表自动出价 · S3 提单 · S4 配舱 · S6 进港→离港
+%% 交接：H1→私卡（已确认合约价，报价前）· 私卡报完价回接→船务安排订舱 · 无需报价入口←改配/其他价格表渠道 · H3→关务清关 · H4→海外 · H5←关务舱单/放行只读
+%% draw.io：排列 → 插入 → 高级 → Mermaid…
+
+flowchart TB
+  A["运价列表展示合约价"] --> SW{"合约价确认开关<br/>可配置开/关"}
+  SW -->|需确认| OK["确认写回运价侧"]
+  SW -->|仅展示| NO["保持未确认 · 仅展示"]
+  OK --> H1{{"H1 → 私卡<br/>合约价报价前就绪"}}
+  NO --> H1
+  H1 --> H1B{{"← 私卡报完价<br/>绑运单完成"}}
+  H1B --> P1A["船务安排<br/>∥ P1 订舱配舱提单"]
+  GAI["改配"] --> AUTO["无需报价<br/>仅系统按价格表自动出价"]
+  OTH["其他价格表出价渠道"] --> AUTO
+  AUTO --> P1A
+  P1B["∥ P1 关务推送资料<br/>旁路 · 不等排柜"]
+  P1A -.-> P1B
+  P1A --> B["列表按周 · 同船聚合"]
+  B --> C["装完色标 / 业务标记<br/>整柜客户装柜 · 仓内少量可入仓"]
+  C --> TR{"是否火车？"}
+  TR -->|否 · 非火车无此步| E["截单预警 / 开船盯控<br/>优先码头实际开船<br/>ETD 仅参考不强"]
+  TR -->|是 · 火车才有| D{"取消 IT？"}
+  D -->|是| H3{{"H3 → 关务<br/>清关待办提醒<br/>仅火车"}}
+  D -->|否| E
+  H3 --> E
+  H5{{"H5 ← 关务<br/>舱单/放行只读订阅"}} --> F["拉数比对放行状态"]
+  E --> F
+  F --> G{"已放行？"}
+  G -->|否| R6["R6 未放行自环<br/>标红 · 通知船务盯控<br/>须通知客户"]
+  R6 --> F
+  G -->|是| FT{"进港 · 飞驼能否抓<br/>进港时间？"}
+  FT -->|能| PULL["飞驼拉进港时间"]
+  FT -->|不能 / 未覆盖| MAN["人工确认 · 码头补录"]
+  PULL --> ARR{"已进港？"}
+  MAN --> ARR
+  ARR -->|否| R7["未进港预警<br/>标红盯控 · 通知船务"]
+  R7 --> ARR
+  ARR -->|是| H["进港时间落库<br/>触发落箱等节点"]
+  H --> SAIL["离港<br/>优先码头实际开船 · ETD仅参考"]
+  SAIL --> H4{{"H4 → 海外<br/>离港 / 到港承接"}}
+  GAI --> RECV["船务安排<br/>配舱/船期 · R4"]
+  RECV --> P1A
+  H4 --> END(["结束 · 交海外港前"])
+
+  classDef step fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
+  classDef dec fill:#FFFDE7,stroke:#F9A825,color:#F57F17
+  classDef cross fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C
+  classDef back fill:#FFEBEE,stroke:#C62828,color:#B71C1C,stroke-dasharray: 5 4
+  classDef para fill:#E3F2FD,stroke:#1976D2,color:#0D47A1,stroke-dasharray: 5 3
+  classDef endn fill:#ECEFF1,stroke:#78909C,color:#37474F
+  class A,OK,NO,B,C,E,F,H,RECV,PULL,MAN,GAI,OTH,SAIL step
+  class SW,TR,D,G,FT,ARR dec
+  class H1,H1B,H3,H4,H5 cross
+  class P1A,P1B,AUTO para
+  class R6,R7 back
+  class END endn

@@ -1,0 +1,1394 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESS询价编辑（MVP）</title>
+  <link rel="stylesheet" href="../../整柜下单/ess-fcl-carriers.css" />
+  <style>
+    :root {
+      --bg: #f4f6fa;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-bg: #eff6ff;
+      --req: #dc2626;
+      --orange: #f97316;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+    }
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 16px 16px 72px;
+      width: 100%;
+    }
+    .page-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .page-hd h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .page-hd .count {
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+    }
+    .sec-title {
+      margin: 0;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      border-left: 4px solid var(--primary);
+      background: var(--primary-bg);
+      border-bottom: 1px solid var(--line);
+    }
+    .sec-body { padding: 16px 18px 18px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 24px;
+    }
+    @media (max-width: 720px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    .field.hidden { display: none; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+    .req { color: var(--req); margin-left: 2px; }
+    .tag-new, .tag-chg {
+      display: inline-block; margin-left: 4px; padding: 0 4px; border-radius: 2px;
+      font-size: 10px; font-weight: 700; line-height: 14px; vertical-align: middle;
+    }
+    .tag-new { color: #cf1322; background: #fff1f0; border: 1px solid #ffa39e; }
+    .tag-chg { color: #d46b08; background: #fff7e6; border: 1px solid #ffd591; }
+    .mark-legend { font-size: 12px; color: var(--sub); font-weight: 400; margin-left: 8px; }
+    .mark-legend .tag-new, .mark-legend .tag-chg { margin-left: 0; margin-right: 2px; }
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap input,
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 7px 10px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+    .input-wrap input { padding-right: 32px; }
+    .input-wrap .icon {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+      font-size: 14px;
+      pointer-events: none;
+    }
+    .field textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+    .fcl-ms.invalid .fcl-ms-trigger { border-color: #fca5a5; box-shadow: 0 0 0 1px #fca5a5; }
+    .prod-hint { margin: 6px 0 0; font-size: 12px; color: var(--sub); line-height: 1.5; }
+    .unit-wrap {
+      display: flex;
+      align-items: stretch;
+    }
+    .unit-wrap input {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-right: none;
+      flex: 1;
+    }
+    .unit-wrap .unit {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid #d1d5db;
+      border-left: none;
+      border-radius: 0 4px 4px 0;
+      background: #f9fafb;
+      color: var(--sub);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .hint {
+      margin-top: 5px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
+    .hint.warn { color: #b45309; }
+
+    .ai-parse-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-ai {
+      border: none;
+      border-radius: 4px;
+      padding: 6px 14px;
+      font: inherit;
+      font-size: 13px;
+      color: #fff;
+      background: var(--primary);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-ai:hover { background: #1d4ed8; }
+    .ai-parse-hint {
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
+
+    /* 散货 / 整柜切换 */
+    .mode-switch {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      width: fit-content;
+      background: #f9fafb;
+    }
+    .mode-btn {
+      border: none;
+      background: transparent;
+      padding: 8px 20px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--sub);
+      transition: background 0.15s, color 0.15s;
+    }
+    .mode-btn + .mode-btn { border-left: 1px solid var(--line); }
+    .mode-btn.active {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .mode-btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+    }
+    .mode-desc {
+      margin: -6px 0 14px;
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.55;
+    }
+
+    /* 价格项 */
+    .price-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fafbfc;
+    }
+    .price-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .price-item input { margin: 0; }
+
+    /* 箱型 */
+    .ctn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .ctn-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .ctn-chip:has(input:checked) {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+    .ctn-chip input { margin: 0; }
+
+    /* 上传 */
+    .upload-tip {
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+    .upload-paste {
+      border: 1px dashed #cbd5e1;
+      border-radius: 4px;
+      padding: 8px 12px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 8px;
+      background: #fafafa;
+    }
+    .upload-zone {
+      border: 1px dashed #cbd5e1;
+      border-radius: 4px;
+      padding: 28px 16px;
+      text-align: center;
+      background: #fafafa;
+      cursor: pointer;
+    }
+    .upload-zone .folder {
+      font-size: 36px;
+      color: var(--orange);
+      margin-bottom: 8px;
+    }
+    .upload-zone p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .file-list {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
+    }
+    .file-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--primary);
+    }
+    .file-item .rm {
+      color: var(--sub);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 14px;
+      padding: 0 2px;
+    }
+
+    .dim-panel {
+      display: none;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 24px;
+    }
+    .dim-panel.active { display: grid; }
+    @media (max-width: 720px) {
+      .dim-panel.active { grid-template-columns: 1fr; }
+    }
+
+    /* 询价类型（整柜） */
+    .inquiry-type {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .type-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .type-chip:has(input:checked) {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .type-chip input { margin: 0; }
+    .price-group.is-disabled {
+      opacity: 0.55;
+      pointer-events: none;
+      background: #f3f4f6;
+    }
+    .field.hidden { display: none; }
+
+    /* 一口价面板 */
+    .all-in-panel {
+      padding: 14px;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #fffbeb, #fff);
+    }
+    .all-in-callout {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; margin-bottom: 12px;
+      border-radius: 6px; background: #fef3c7;
+      border: 1px solid #fde68a;
+      font-size: 13px; line-height: 1.6; color: #92400e;
+    }
+    .all-in-callout .ico { font-size: 18px; flex-shrink: 0; }
+    .all-in-scope {
+      display: flex; flex-wrap: wrap; gap: 8px 12px;
+      padding: 10px 12px; margin-bottom: 12px;
+      border: 1px dashed #fde68a; border-radius: 6px; background: #fff;
+    }
+    .scope-item {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; cursor: pointer; user-select: none;
+      padding: 6px 10px; border-radius: 6px;
+      border: 1px solid #e5e7eb; background: #fafafa;
+    }
+    .scope-item:has(input:checked) {
+      border-color: #f59e0b; background: #fff7ed; color: #b45309;
+    }
+    .scope-item input { margin: 0; }
+
+    .footer-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.96);
+      border-top: 1px solid var(--line);
+      padding: 10px 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      backdrop-filter: blur(6px);
+    }
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 8px 18px;
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-sm {
+      height: 34px; padding: 0 10px; border: 1px solid var(--primary);
+      background: var(--primary-bg); color: var(--primary);
+      border-radius: 4px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+    }
+    .btn-sm:hover { background: #dbeafe; }
+    .dist-row { display: flex; align-items: stretch; gap: 8px; }
+    .dist-row .unit-wrap { flex: 1; min-width: 0; }
+    .field-dist label {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .hint-inline {
+      font-weight: 400;
+      font-size: 11px;
+      color: var(--sub);
+      line-height: 1.35;
+    }
+    .addr-type {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    }
+    .addr-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      width: max-content; flex: 0 0 auto;
+      padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;
+      background: #fff; font-size: 12px; line-height: 1.3; cursor: pointer; white-space: nowrap;
+    }
+    .addr-chip:has(input:checked) {
+      border-color: var(--primary); background: var(--primary-bg); color: var(--primary); font-weight: 600;
+    }
+    .addr-chip input {
+      width: 14px; height: 14px; margin: 0; padding: 0;
+      flex: none; border: none; background: transparent; accent-color: var(--primary);
+    }
+    .field.addr-field { margin-top: 0; }
+    .addr-lock {
+      margin: 4px 0 0;
+      padding: 4px 8px;
+      background: #f3f4f6;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      font-size: 11px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+    .hint { margin-top: 3px; }
+    .ai-quote-panel { display: none; }
+    .ai-quote-panel.show { display: block; }
+    .ai-quote-hd {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .ai-quote-desc { margin: 0 0 8px; font-size: 12px; color: var(--sub); line-height: 1.65; }
+    .ai-quote-rules {
+      margin: 0; padding: 8px 12px 8px 28px; font-size: 12px; color: #1d4ed8; line-height: 1.7;
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px;
+    }
+    .ai-quote-result {
+      display: none; margin-top: 12px; padding: 12px 14px;
+      border: 1px solid #93c5fd; border-radius: 6px; background: #f8fbff; font-size: 13px; line-height: 1.7;
+    }
+    .ai-quote-result.show { display: block; }
+    .ai-quote-result b { color: #b45309; }
+    .ai-quote-result .fee { font-size: 18px; font-weight: 700; color: #dc2626; }
+    .field input.invalid, .field select.invalid { border-color: #dc2626; background: #fef2f2; }
+    .field-err { display: none; margin: 4px 0 0; font-size: 12px; color: #dc2626; line-height: 1.45; }
+    .field-err.show { display: block; }
+  
+    .bj-topbar {
+      height: 44px; background: #001529; color: #fff;
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; flex-wrap: wrap;
+    }
+    .bj-topbar .logo { font-weight: 700; font-size: 13px; margin-right: 8px; }
+    .bj-topbar a { color: rgba(255,255,255,.75); text-decoration: none; font-size: 12px; padding: 5px 8px; border-radius: 2px; }
+    .bj-topbar a.on, .bj-topbar a:hover { color: #fff; background: rgba(255,255,255,.12); }
+  </style>
+</head>
+<body>
+  <div class="bj-topbar">
+    <div class="logo">报价组</div>
+    <a href="报价组-导航.html">← 报价组导航</a>
+    <a href="ESS我的报价-列表-MVP.html">我的询价</a>
+    <a href="ESS询价报价-报价员列表-MVP.html">报价员列表</a>
+    <a href="ESS询价编辑-MVP.html" class="on">询价编辑</a>
+    <a href="ESS散货询价方案详情-MVP.html">报价员详情</a>
+    <a href="ESS询价编辑-APP-散货-MVP.html#lcl">APP 散货</a>
+    <a href="私卡报价-AI报价规则配置-优化版-MVP.html">AI规则 / 有效期</a>
+    <a href="海外仓至本州地址报价系统.html">本州测算</a>
+    <a href="海外仓至外州地址报价系统.html">外州测算</a>
+  </div>
+
+  <div class="page">
+    <header class="page-hd">
+      <h1>ESS询价编辑<span class="mark-legend"><span class="tag-new">NEW</span> 新增　<span class="tag-chg">改</span> 相对原询价改动</span></h1>
+      <span class="count">8 of 15</span>
+    </header>
+
+    <!-- 询价信息 -->
+    <section class="panel">
+      <h2 class="sec-title">询价信息</h2>
+      <div class="sec-body">
+        <div class="form-grid">
+          <div class="field">
+            <label for="customer">委托客户</label>
+            <div class="input-wrap">
+              <input id="customer" type="text" placeholder="客户名称" />
+              <span class="icon" aria-hidden="true">🔍</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="quoter">委托业务员</label>
+            <input id="quoter" type="text" placeholder="委托业务员（默认）" />
+          </div>
+          <div class="field field-lcl-only full" id="fieldSalesProduct">
+            <label>销售产品<span class="req">*</span><span class="tag-chg">改</span></label>
+            <div id="productMs"></div>
+            <p class="prod-hint">下拉多选；保存后由<strong>后台</strong>按各产品海外仓测距并出 AI 价——本页不展示海外仓、距离与仓地址。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 基本信息 -->
+    <section class="panel">
+      <h2 class="sec-title">基本信息</h2>
+      <div class="sec-body">
+        <div class="mode-switch" role="radiogroup" aria-label="询价维度">
+          <button type="button" class="mode-btn active" data-mode="lcl" aria-checked="true">散货（LCL）</button>
+          <button type="button" class="mode-btn" data-mode="fcl" aria-checked="false">整柜（FCL）</button>
+        </div>
+        <p class="mode-desc" id="modeDesc">散货：下拉多选销售产品；测距与算价由后台完成，本页不填海外仓与距离。</p>
+
+        <div class="form-grid">
+          <!-- ===== 散货字段 ===== -->
+          <div id="lclFields" class="dim-panel active">
+            <div class="field">
+              <label for="warehouse">交货仓（国内）<span class="req">*</span></label>
+              <div class="input-wrap">
+                <input id="warehouse" type="text" placeholder="如 义乌总仓" />
+                <span class="icon" aria-hidden="true">🔍</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="destCountry">目的国<span class="req">*</span></label>
+              <input id="destCountry" type="text" placeholder="目的国" />
+            </div>
+            <div class="field">
+              <label for="zipcode">收货邮编<span class="req">*</span><span class="tag-chg">改</span></label>
+              <input id="zipcode" type="text" placeholder="如 10118" />
+            </div>
+            <div class="field">
+              <label for="destCity">收货城市<span class="req">*</span><span class="tag-new">NEW</span></label>
+              <input id="destCity" type="text" placeholder="如 New York" />
+            </div>
+            <div class="field">
+              <label for="destState">收货州<span class="req">*</span><span class="tag-new">NEW</span></label>
+              <select id="destState">
+                <option value="">-- 请选择 --</option>
+              </select>
+              <p class="field-err" id="destStateErr"></p>
+            </div>
+            <div class="field">
+              <label for="chargeWeight">计费重</label>
+              <input id="chargeWeight" type="text" placeholder="自动计算" readonly />
+            </div>
+            <div class="field">
+              <label for="totalVolume">总体积<span class="req">*</span></label>
+              <div class="unit-wrap">
+                <input id="totalVolume" type="text" placeholder="体积" />
+                <span class="unit">CBM</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="totalWeight">总重量<span class="req">*</span></label>
+              <div class="unit-wrap">
+                <input id="totalWeight" type="text" placeholder="重量" />
+                <span class="unit">KG</span>
+              </div>
+            </div>
+            <div class="field full addr-field">
+              <label>地址类型<span class="req">*</span><span class="tag-new">NEW</span></label>
+              <div class="addr-type" role="radiogroup" aria-label="地址类型">
+                <label class="addr-chip">
+                  <input type="radio" name="addrType" value="res" />
+                  住宅 · 仅26尺
+                </label>
+                <label class="addr-chip">
+                  <input type="radio" name="addrType" value="com_no" />
+                  商业无卸货台 · 仅26尺
+                </label>
+                <label class="addr-chip">
+                  <input type="radio" name="addrType" value="com_dock" />
+                  商业有卸货台 · 可53尺
+                </label>
+              </div>
+              <p class="addr-lock" id="addrLock">请选择地址类型以锁定可用车型。</p>
+            </div>
+            <div class="field full">
+              <label for="productInfo">产品信息</label>
+              <input id="productInfo" type="text" placeholder="货物品名（选填）" />
+            </div>
+          </div>
+
+          <!-- ===== 整柜字段 ===== -->
+          <div id="fclFields" class="dim-panel">
+            <div class="field">
+              <label for="pol">起运港<span class="req">*</span></label>
+              <div class="input-wrap">
+                <input id="pol" type="text" placeholder="起运港" />
+                <span class="icon" aria-hidden="true">🔍</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="pod">目的港<span class="req">*</span></label>
+              <div class="input-wrap">
+                <input id="pod" type="text" placeholder="目的港" />
+                <span class="icon" aria-hidden="true">🔍</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="deliveryAddr">收货地址<span class="req">*</span></label>
+              <input id="deliveryAddr" type="text" placeholder="收货详细地址" />
+            </div>
+            <div class="field">
+              <label for="deliveryZip">邮编<span class="req">*</span></label>
+              <input id="deliveryZip" type="text" placeholder="目的邮编" />
+            </div>
+            <div class="field full">
+              <p class="hint warn">需确认好邮编，便于国外拖车费核算。</p>
+            </div>
+            <div class="field full">
+              <label for="loadingAddr">装柜地址</label>
+              <input id="loadingAddr" type="text" placeholder="装柜详细地址" />
+              <p class="hint warn">询国内拖车费时必填装柜详细地址。</p>
+            </div>
+            <div class="field">
+              <label>喜好船司</label>
+              <div id="preferredCarrierMs"></div>
+              <p class="hint">下拉多选，<strong>最多 2 项</strong>；选项来自数据字典（海运船司）；与箱型组合决定报价端必报方案数。</p>
+            </div>
+            <div class="field">
+              <label>箱型<span class="req">*</span></label>
+              <div id="ctnTypeMs"></div>
+              <p class="hint">下拉多选，<strong>最多 2 项</strong>；选项来自数据字典箱型（启用项）；与喜好船司组合决定报价端必报方案数。</p>
+            </div>
+            <div class="field">
+              <label for="cargoReady">货好时间</label>
+              <input id="cargoReady" type="date" />
+              <p class="hint">要船期时需填写具体货好时间；仅询价可不填。</p>
+            </div>
+            <div class="field">
+              <label for="grossWeight">货物毛重<span class="req">*</span></label>
+              <div class="unit-wrap">
+                <input id="grossWeight" type="text" placeholder="毛重" />
+                <span class="unit">KG</span>
+              </div>
+            </div>
+            <div class="field full">
+              <label>询价类型<span class="req">*</span></label>
+              <div class="inquiry-type" role="radiogroup" aria-label="询价类型">
+                <label class="type-chip">
+                  <input type="radio" name="inquiryType" value="terminalPickup" checked />码头自提
+                </label>
+                <label class="type-chip">
+                  <input type="radio" name="inquiryType" value="terminalDirect" />整柜海外仓自提
+                </label>
+                <label class="type-chip">
+                  <input type="radio" name="inquiryType" value="fclDirect" />整柜直送
+                </label>
+                <label class="type-chip">
+                  <input type="radio" name="inquiryType" value="fclDelivery" />整柜拆送
+                </label>
+              </div>
+              <p class="hint" id="inquiryTypeHint">选择整柜服务类型，便于报价员匹配拖派方案。</p>
+            </div>
+            <div class="field full">
+              <label for="productInfoFcl">产品信息</label>
+              <input id="productInfoFcl" type="text" placeholder="产品信息（选填）" />
+            </div>
+          </div>
+
+          <!-- 询价详情（共用） -->
+          <div class="field full">
+            <label for="inquiryDetail">询价详情</label>
+            <textarea id="inquiryDetail" placeholder="询价详情"></textarea>
+            <div class="ai-parse-row">
+              <button type="button" class="btn-ai" id="btnAiParse">AI 识别</button>
+              <span class="ai-parse-hint" id="aiParseHint">提示：邮编 92374，城市 Redlands，州 CA，总重量 1000，总体积 5，住宅地址，产品信息：家具</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 上传附件 -->
+    <section class="panel">
+      <h2 class="sec-title">上传附件</h2>
+      <div class="sec-body">
+        <p class="upload-tip">支持扩展名：.rar .zip .doc .docx .xls .xlsx .pdf .jpg .png，单个文件不超过 100M，最多 20 个文件。</p>
+        <div class="upload-paste">按 Ctrl+V 将文件粘贴至此处上传</div>
+        <div class="upload-zone" tabindex="0" role="button" aria-label="上传附件">
+          <div class="folder" aria-hidden="true">📁</div>
+          <p>点击或将文件拖拽到这里上传</p>
+        </div>
+        <div class="file-list">
+          <span class="file-item">文档.docx <button type="button" class="rm" aria-label="删除">×</button></span>
+        </div>
+      </div>
+    </section>
+
+    </div>
+
+  <div class="footer-bar">
+    <button type="button" class="btn">取消</button>
+    <button type="button" class="btn btn-primary" id="btnSave">保存</button>
+  </div>
+
+  <script src="../../整柜下单/ess-fcl-multiselect.js"></script>
+  <script src="../../二期/ess-fcl-carriers.js"></script>
+  <script src="../../二期/ess-fcl-container-types.js"></script>
+  <script>
+    (function () {
+      var carrierMs = null;
+      var ctnTypeMs = null;
+      var STORAGE_KEY = "ess-inquiry-mode";
+      var modeBtns = document.querySelectorAll(".mode-btn");
+      var lclFields = document.getElementById("lclFields");
+      var fclFields = document.getElementById("fclFields");
+      var modeDesc = document.getElementById("modeDesc");
+      var inquiryTypeHint = document.getElementById("inquiryTypeHint");
+      var inquiryTypes = document.querySelectorAll('input[name="inquiryType"]');
+      var TYPE_STORAGE_KEY = "ess-inquiry-type";
+      var currentMode = "lcl";
+      var inquiryTypeLabels = {
+        terminalPickup: "码头自提",
+        terminalDirect: "整柜海外仓自提",
+        fclDirect: "整柜直送",
+        fclDelivery: "整柜拆送"
+      };
+      var validInquiryTypes = Object.keys(inquiryTypeLabels);
+
+      var modeText = {
+        lcl: "散货：下拉多选销售产品；测距与算价由后台完成，本页不展示海外仓与距离。",
+        fcl: "整柜维度：按起运港/目的港、箱型询价；选择服务类型。整柜手报价，不走 AI 测算。"
+      };
+      var aiHintText = {
+        lcl: "提示：销售产品 美西私人卡派，邮编 94591，城市 Vallejo，州 CA，总重量 1610，总体积 7.97，住宅地址，产品信息：季洁垫",
+        fcl: "提示：起运港 盐田，目的港 洛杉矶，箱型 40HQ，毛重 18500，邮编 92374，船司 COSCO"
+      };
+      var aiParseHint = document.getElementById("aiParseHint");
+      var inquiryDetailEl = document.getElementById("inquiryDetail");
+      var fieldSalesProduct = document.getElementById("fieldSalesProduct");
+
+      var ZIP_GEO = {
+        "92374": { city: "Redlands", state: "CA", dist: 42 },
+        "90210": { city: "Beverly Hills", state: "CA", dist: 28 },
+        "10001": { city: "New York", state: "NY", dist: 12 },
+        "10118": { city: "New York", state: "NY", dist: 8 },
+        "07001": { city: "Avenel", state: "NJ", dist: 18 },
+        "31408": { city: "Savannah", state: "GA", dist: 8 },
+        "60433": { city: "Joliet", state: "IL", dist: 15 },
+        "77002": { city: "Houston", state: "TX", dist: 12 },
+        "94607": { city: "Oakland", state: "CA", dist: 6 },
+        "94591": { city: "Vallejo", state: "CA", dist: 38 },
+        "61604": { city: "Belleville", state: "IL", dist: 1850 },
+        "80202": { city: "Denver", state: "CO", dist: 1020 },
+        "98101": { city: "Seattle", state: "WA", dist: 1130 }
+      };
+      var WH_ZIP_STATE = {
+        "91761": "CA", "94577": "CA", "07206": "NJ",
+        "60433": "IL", "77051": "TX", "31407": "GA"
+      };
+
+      function isUsState(code) {
+        code = String(code || "").toUpperCase();
+        for (var i = 0; i < US_STATES.length; i++) if (US_STATES[i][0] === code) return true;
+        return false;
+      }
+
+      function parseStateFromText(text) {
+        var raw = String(text || "");
+        var zipHit = raw.toUpperCase().match(/\b([A-Z]{2})\s+\d{5}\b/);
+        if (zipHit && isUsState(zipHit[1])) return zipHit[1];
+        var t = " " + raw.toUpperCase().replace(/,/g, " ") + " ";
+        var i, code, name;
+        for (i = 0; i < US_STATES.length; i++) {
+          name = US_STATES[i][1].toUpperCase();
+          if (name.length > 4 && t.indexOf(" " + name + " ") >= 0) return US_STATES[i][0];
+        }
+        for (i = 0; i < US_STATES.length; i++) {
+          code = US_STATES[i][0];
+          if (new RegExp("\\b" + code + "\\b").test(t) && isUsState(code)) return code;
+        }
+        return "";
+      }
+
+      function warehouseState() {
+        var names = getSelectedProducts();
+        if (names.length && inferWh(names[0]).localStates) return inferWh(names[0]).localStates[0] || "";
+        return "";
+      }
+
+      function destZipState(zip) {
+        return (ZIP_GEO[zip] && ZIP_GEO[zip].state) || "";
+      }
+
+      function stateMismatchMsg() {
+        var dest = (document.getElementById("destState").value || "").trim();
+        var zip = (document.getElementById("zipcode").value || "").trim();
+        var zipSt = destZipState(zip);
+        var whSt = warehouseState();
+        if (!dest || !zipSt) return "";
+        if (dest === zipSt) return "";
+        if (whSt && dest === whSt) {
+          return "收货州不能填海外仓所在州 " + whSt + "。邮编 " + zip + " 所在州是 " + zipSt + "。";
+        }
+        return "收货州与收货邮编不一致：邮编 " + zip + " 为 " + zipSt + "，当前选了 " + dest + "。";
+      }
+
+      function applyStateCheck() {
+        var msg = stateMismatchMsg();
+        var err = document.getElementById("destStateErr");
+        var dest = (document.getElementById("destState").value || "").trim();
+        if (err) {
+          err.textContent = msg;
+          err.classList.toggle("show", !!msg);
+        }
+        if (dest) markInvalid("destState", !!msg);
+        return msg;
+      }
+      var whDestMismatchConfirmed = false;
+      function warehouseDestMismatch() {
+        var dest = (document.getElementById("destState").value || "").trim();
+        var whSt = warehouseState();
+        return !!(dest && whSt && whSt !== dest);
+      }
+      function confirmWarehouseDestIfNeeded() {
+        if (!warehouseDestMismatch()) return true;
+        if (whDestMismatchConfirmed) return true;
+        var whSt = warehouseState();
+        var dest = (document.getElementById("destState").value || "").trim();
+        var ok = confirm("海外仓州和目的州不一致，请确认。\n\n海外仓州：" + whSt + " · 目的州：" + dest + "\n\n确认不一致之后，报价需要用州区匹配报价表的数据。");
+        if (ok) whDestMismatchConfirmed = true;
+        return ok;
+      }
+      var US_STATES = [
+        ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],["CA","California"],
+        ["CO","Colorado"],["CT","Connecticut"],["DE","Delaware"],["FL","Florida"],["GA","Georgia"],
+        ["HI","Hawaii"],["ID","Idaho"],["IL","Illinois"],["IN","Indiana"],["IA","Iowa"],
+        ["KS","Kansas"],["KY","Kentucky"],["LA","Louisiana"],["ME","Maine"],["MD","Maryland"],
+        ["MA","Massachusetts"],["MI","Michigan"],["MN","Minnesota"],["MS","Mississippi"],["MO","Missouri"],
+        ["MT","Montana"],["NE","Nebraska"],["NV","Nevada"],["NH","New Hampshire"],["NJ","New Jersey"],
+        ["NM","New Mexico"],["NY","New York"],["NC","North Carolina"],["ND","North Dakota"],["OH","Ohio"],
+        ["OK","Oklahoma"],["OR","Oregon"],["PA","Pennsylvania"],["RI","Rhode Island"],["SC","South Carolina"],
+        ["SD","South Dakota"],["TN","Tennessee"],["TX","Texas"],["UT","Utah"],["VT","Vermont"],
+        ["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],["WI","Wisconsin"],["WY","Wyoming"]
+      ];
+      var STATE_CN = {
+        "加州":"CA","加利福尼亚":"CA","纽约":"NY","纽约州":"NY","新泽西":"NJ",
+        "佐治亚":"GA","乔治亚":"GA","伊利诺伊":"IL","伊利诺斯":"IL","德州":"TX","得克萨斯":"TX",
+        "科罗拉多":"CO","华盛顿":"WA","俄勒冈":"OR","内华达":"NV","亚利桑那":"AZ","佛罗里达":"FL"
+      };
+      var ADDR_LOCK = {
+        res: "地址类型：住宅地址。可用车型：仅 26 尺小车（货量超标仅可追加 26 尺，禁止 53 尺大车）。",
+        com_no: "地址类型：商业地址（无卸货平台）。可用车型：仅 26 尺小车（禁止 53 尺大车）。",
+        com_dock: "地址类型：商业地址（有卸货平台）。可用车型：26 尺小车 + 53 尺大车（由货量判定）。"
+      };
+      var LA_BANDS = [
+        { max: 30, base: 150, tray: 10, flat: 500 },
+        { max: 50, base: 200, tray: 10, flat: 700 },
+        { max: 60, base: 250, tray: 10, flat: 900 },
+        { max: 70, base: 300, tray: 10, flat: 900 },
+        { max: 90, base: 350, tray: 10, flat: 1000 },
+        { max: 100, base: 400, tray: 10, flat: 1200 },
+        { max: 1e9, base: 450, tray: 10, flat: 1500 }
+      ];
+      function outMileBand(d) {
+        if (!(d > LOCAL_MILES)) return null;
+        if (d <= 200) return { rate: 8.3, label: "151–200迈" };
+        if (d <= 250) return { rate: 7.5, label: "201–250迈" };
+        if (d <= 500) return { rate: 6.5, label: "251–500迈" };
+        if (d <= 999) return { rate: 5.9, label: "501–999迈" };
+        if (d <= 1300) return { rate: 5.3, label: "1000–1300迈" };
+        if (d <= 1600) return { rate: 4.3, label: "1301–1600迈" };
+        if (d <= 2000) return { rate: 4, label: "1601–2000迈" };
+        return { rate: 3.6, label: "≥2001迈" };
+      }
+
+      function pick(text, patterns) {
+        for (var i = 0; i < patterns.length; i++) {
+          var m = text.match(patterns[i]);
+          if (m && m[1]) return String(m[1]).trim();
+        }
+        return "";
+      }
+
+      function setInput(id, value) {
+        if (!value) return false;
+        var el = document.getElementById(id);
+        if (!el) return false;
+        el.value = value;
+        el.style.background = "#fef9c3";
+        window.setTimeout(function () { el.style.background = ""; }, 1200);
+        return true;
+      }
+
+      function updateChargeWeight() {
+        var vol = parseFloat(document.getElementById("totalVolume").value);
+        var wt = parseFloat(document.getElementById("totalWeight").value);
+        if (isNaN(vol) || isNaN(wt)) return;
+        var charge = Math.max(wt, vol * 167);
+        document.getElementById("chargeWeight").value = String(Math.round(charge * 100) / 100);
+      }
+
+      function getAddrType() {
+        var el = document.querySelector('input[name="addrType"]:checked');
+        return el ? el.value : "";
+      }
+
+      function markInvalid(id, on) {
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle("invalid", !!on);
+      }
+
+      var LOCAL_MILES = 150;
+
+      function inferWh(name) {
+        var s = String(name || "");
+        if (/美东|纽约|NY/i.test(s)) return { key: "NY", name: "纽约仓", addr: "7 Slater Dr, Elizabeth, NJ 07206", zip: "07206", incl: 1, localStates: ["NY", "NJ"] };
+        if (/美中|芝加哥|CHI/i.test(s)) return { key: "CHI", name: "芝加哥仓", addr: "2750 Ellis Dr Unit D, Joliet, IL 60433", zip: "60433", incl: 1, localStates: ["IL"] };
+        if (/休斯顿|HOU|美加/i.test(s)) return { key: "HOU", name: "休斯顿仓", addr: "9258 Park S View, Houston, TX 77051", zip: "77051", incl: 1, localStates: ["TX"] };
+        if (/萨凡纳|SAV/i.test(s)) return { key: "SAV", name: "萨凡纳仓", addr: "248 Grange Rd, Savannah, GA 31407", zip: "31407", incl: 1, localStates: ["GA"] };
+        if (/奥克兰|OAK/i.test(s)) return { key: "OAK", name: "奥克兰仓", addr: "1997 Davis St, San Leandro, CA 94577", zip: "94577", incl: 3, localStates: ["CA"] };
+        if (/美西|洛杉矶|LAX|LA\b/i.test(s)) return { key: "LA", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761", incl: 1, localStates: ["CA"] };
+        return { key: "LA", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761", incl: 1, localStates: ["CA"] };
+      }
+
+      var PRODUCT_OPTIONS = [
+        { id: "sp-la", label: "中美快运私人卡派(洛杉矶)" },
+        { id: "sp-oak", label: "中美快运私人卡派(奥克兰)" },
+        { id: "sp-air", label: "美国空派 LAX" },
+        { id: "sp-west", label: "美西私人卡派" },
+        { id: "sp-mid", label: "美中私人卡派" },
+        { id: "sp-east", label: "美东私人卡派" }
+      ];
+      var selectedProducts = ["中美快运私人卡派(洛杉矶)"];
+      var productMs = null;
+
+      function initProductMs() {
+        var host = document.getElementById("productMs");
+        if (!host || !window.mountFclMultiselect) return;
+        productMs = mountFclMultiselect(host, {
+          items: PRODUCT_OPTIONS.map(function (p) { return { code: p.label, label: p.label }; }),
+          defaultSelected: selectedProducts.slice(),
+          maxSelect: PRODUCT_OPTIONS.length,
+          placeholder: "请选择销售产品（可多选）",
+          searchPlaceholder: "搜索销售产品",
+          emptyText: "无匹配产品",
+          limitTip: "已达可选上限",
+          getLabelHtml: function (c) { return c.label; },
+          getSearchText: function (c) { return String(c.label || "").toUpperCase(); },
+          onChange: function (sel) {
+            selectedProducts = sel.slice();
+            whDestMismatchConfirmed = false;
+            applyStateCheck();
+          }
+        });
+      }
+
+      function getSelectedProducts() {
+        if (productMs) return productMs.getSelected();
+        return selectedProducts.slice();
+      }
+
+      function setSelectedProducts(arr) {
+        selectedProducts = (arr || []).filter(Boolean);
+        if (productMs) productMs.setSelected(selectedProducts);
+        whDestMismatchConfirmed = false;
+        applyStateCheck();
+      }
+
+      function applyProductSelect(text) {
+        var t = String(text || "");
+        var hits = [];
+        PRODUCT_OPTIONS.forEach(function (p) {
+          if (t.indexOf(p.label) >= 0) hits.push(p.label);
+        });
+        if (!hits.length) {
+          if (/美西|洛杉矶|LAX/.test(t)) hits.push("美西私人卡派");
+          else if (/奥克兰|OAK/.test(t)) hits.push("中美快运私人卡派(奥克兰)");
+          else if (/美中|芝加哥/.test(t)) hits.push("美中私人卡派");
+          else if (/美东|纽约/.test(t)) hits.push("美东私人卡派");
+        }
+        if (!hits.length) return false;
+        var merged = getSelectedProducts();
+        hits.forEach(function (h) {
+          if (merged.indexOf(h) < 0) merged.push(h);
+        });
+        setSelectedProducts(merged);
+        return true;
+      }
+
+      function fillStateSelect() {
+        var sel = document.getElementById("destState");
+        if (!sel || sel.options.length > 1) return;
+        sel.innerHTML = '<option value="">-- 请选择 --</option>' + US_STATES.map(function (s) {
+          return '<option value="' + s[0] + '">' + s[0] + " · " + s[1] + "</option>";
+        }).join("");
+      }
+
+      function setState(code) {
+        if (!code) return false;
+        var sel = document.getElementById("destState");
+        if (!sel) return false;
+        code = String(code).toUpperCase();
+        sel.value = code;
+        if (sel.value !== code) return false;
+        sel.style.background = "#fef9c3";
+        window.setTimeout(function () { sel.style.background = ""; }, 1200);
+        return true;
+      }
+
+      function resolveStateCode(raw) {
+        if (!raw) return "";
+        var t = String(raw).trim();
+        if (STATE_CN[t]) return STATE_CN[t];
+        var up = t.toUpperCase();
+        for (var i = 0; i < US_STATES.length; i++) {
+          if (US_STATES[i][0] === up) return US_STATES[i][0];
+          if (US_STATES[i][1].toLowerCase() === t.toLowerCase()) return US_STATES[i][0];
+        }
+        return "";
+      }
+
+      function syncAddrLock() {
+        var lock = document.getElementById("addrLock");
+        if (!lock) return;
+        var t = getAddrType();
+        lock.textContent = ADDR_LOCK[t] || "请选择收货地址类型，以锁定可用车型范围。";
+      }
+
+      function zipState(zip) {
+        var z = parseInt(String(zip).replace(/\D/g, ""), 10) || 0;
+        if (z >= 90000 && z <= 96199) return "CA";
+        if (z >= 10000 && z <= 14999) return "NY";
+        if (z >= 7000 && z <= 8999) return "NJ";
+        if (z >= 30000 && z <= 31999) return "GA";
+        if (z >= 60000 && z <= 62999) return "IL";
+        if (z >= 75000 && z <= 79999) return "TX";
+        if (z >= 80000 && z <= 81699) return "CO";
+        if (z >= 98000 && z <= 99499) return "WA";
+        return "";
+      }
+
+      function pickBand(dist) {
+        for (var i = 0; i < LA_BANDS.length; i++) {
+          if (dist <= LA_BANDS[i].max) return LA_BANDS[i];
+        }
+        return LA_BANDS[LA_BANDS.length - 1];
+      }
+
+      function ceilMax(a, b) {
+        return Math.max(Math.ceil(a), Math.ceil(b));
+      }
+
+      function collectLcl() {
+        return {
+          wh: (document.getElementById("warehouse").value || "").trim(),
+          zip: (document.getElementById("zipcode").value || "").trim(),
+          city: (document.getElementById("destCity").value || "").trim(),
+          state: (document.getElementById("destState").value || "").trim(),
+          country: (document.getElementById("destCountry").value || "").trim(),
+          vol: parseFloat(document.getElementById("totalVolume").value),
+          wt: parseFloat(document.getElementById("totalWeight").value),
+          dist: null,
+          addr: getAddrType(),
+          sales: getSelectedProducts(),
+          salesText: getSelectedProducts().join("、"),
+          product: (document.getElementById("productInfo").value || "").trim()
+        };
+      }
+
+      function validateLcl() {
+        var d = collectLcl();
+        var miss = [];
+        markInvalid("productMs", !d.sales.length); if (!d.sales.length) miss.push("销售产品");
+        markInvalid("warehouse", !d.wh); if (!d.wh) miss.push("交货仓");
+        markInvalid("zipcode", !d.zip); if (!d.zip) miss.push("收货邮编");
+        markInvalid("destCity", !d.city); if (!d.city) miss.push("收货城市");
+        markInvalid("destState", !d.state); if (!d.state) miss.push("收货州");
+        var stMsg = applyStateCheck();
+        if (stMsg) miss.push(stMsg);
+        markInvalid("destCountry", !d.country); if (!d.country) miss.push("目的国");
+        markInvalid("totalVolume", !(d.vol > 0)); if (!(d.vol > 0)) miss.push("总体积");
+        markInvalid("totalWeight", !(d.wt > 0)); if (!(d.wt > 0)) miss.push("总重量");
+        if (!d.addr) miss.push("地址类型");
+        if (miss.length) {
+          alert("散货询价请填写：" + miss.join("、"));
+          return null;
+        }
+        if (!confirmWarehouseDestIfNeeded()) return null;
+        return d;
+      }
+
+      function applyCtnType(value) {
+        if (!value) return false;
+        var codes = window.essFclContainersFromText ? essFclContainersFromText(value) : [];
+        if (!codes.length) return false;
+        if (ctnTypeMs) ctnTypeMs.setSelected(codes);
+        return true;
+      }
+
+      function applyPreferredCarriers(text) {
+        if (!text) return false;
+        var codes = window.essFclCarriersFromText ? essFclCarriersFromText(text) : [];
+        if (!codes.length) return false;
+        if (carrierMs) carrierMs.setSelected(codes);
+        return true;
+      }
+
+      function applyInquiryTypeByText(text) {
+        var rules = [
+          { key: "terminalPickup", words: ["码头自提"] },
+          { key: "terminalDirect", words: ["整柜海外仓自提", "海外仓自提"] },
+          { key: "fclDirect", words: ["整柜直送"] },
+          { key: "fclDelivery", words: ["整柜拆送"] }
+        ];
+        for (var i = 0; i < rules.length; i++) {
+          for (var j = 0; j < rules[i].words.length; j++) {
+            if (text.indexOf(rules[i].words[j]) >= 0) {
+              applyInquiryType(rules[i].key);
+              syncFclFields();
+              return rules[i].words[j];
+            }
+          }
+        }
+        return "";
+      }
+
+      function parseLcl(text) {
+        var filled = [];
+        var sales = pick(text, [
+          /销售产品[：:\s]*([^\n]+)/,
+          /(美[东西中]私人卡派[^\n,，;；]*)/,
+          /(美[东西中]加班卡派[^\n,，;；]*)/
+        ]);
+        if (sales && applyProductSelect(sales)) filled.push("销售产品");
+        else if (applyProductSelect(text)) filled.push("销售产品");
+        if (setInput("zipcode", pick(text, [/邮编[：:\s]*([A-Za-z0-9\-]+)/i, /\b(\d{5})(?:-\d{4})?\b/]))) filled.push("邮编");
+        if (setInput("totalWeight", pick(text, [/总重量[：:\s]*([\d.]+)/i, /重量[：:\s]*([\d.]+)\s*KG/i]))) filled.push("总重量");
+        if (setInput("totalVolume", pick(text, [/总体积[：:\s]*([\d.]+)/i, /体积[：:\s]*([\d.]+)\s*CBM/i]))) filled.push("总体积");
+        if (setInput("destCountry", pick(text, [/目的国[：:\s]*([^\n,，;；]+)/]))) filled.push("目的国");
+        if (setInput("warehouse", pick(text, [/交货仓[：:\s]*([^\n,，;；]+)/]))) filled.push("交货仓");
+        var product = pick(text, [/产品品类[：:\s]*([^\n]+)/, /产品信息[：:\s]*([^\n]+)/, /品名[：:\s]*([^\n]+)/]);
+        if (setInput("productInfo", product)) filled.push("产品信息");
+        var city = pick(text, [/收货城市[：:\s]*([^\n,，;；]+)/, /城市[：:\s]*([^\n,，;；]+)/i, /City[：:\s]*([^\n,，;；]+)/i]);
+        if (!city) {
+          var usAddr = text.match(/,\s*([A-Za-z][A-Za-z .'-]+)\s*,\s*([A-Za-z][A-Za-z .]+)\s*,?\s*\d{5}/);
+          if (usAddr) city = usAddr[1];
+        }
+        if (!city) {
+          var citySt = text.match(/,\s*([A-Za-z][A-Za-z .'-]+)\s*,\s*([A-Z]{2})\s+\d{5}/);
+          if (citySt) city = citySt[1];
+        }
+        if (city && setInput("destCity", city.replace(/\s+/g, " "))) filled.push("收货城市");
+        var stRaw = pick(text, [/收货州[：:\s]*([^\n,，;；]+)/, /州[：:\s]*([A-Za-z\u4e00-\u9fa5 .]+)/, /State[：:\s]*([A-Za-z .]+)/i]);
+        if (!stRaw) {
+          var stM = text.match(/,\s*([A-Za-z][A-Za-z .]+)\s*,?\s*\d{5}/) || text.match(/\b([A-Z]{2})\s+\d{5}\b/);
+          if (stM) stRaw = stM[1];
+        }
+        var stCode = resolveStateCode(stRaw);
+        if (!stCode && city) {
+          var afterCity = text.match(new RegExp(city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*,\\s*([A-Za-z][A-Za-z .]+)", "i"));
+          if (afterCity) stCode = resolveStateCode(afterCity[1]);
+        }
+        if (stCode && setState(stCode)) filled.push("收货州");
+        var zipNow = (document.getElementById("zipcode").value || "").trim();
+        if (ZIP_GEO[zipNow]) {
+          if (!(document.getElementById("destCity").value || "").trim() && setInput("destCity", ZIP_GEO[zipNow].city)) filled.push("收货城市");
+          if (!(document.getElementById("destState").value || "").trim() && setState(ZIP_GEO[zipNow].state)) filled.push("收货州");
+        }
+        var addrHit = "";
+        if (/有卸货|带卸货/.test(text)) addrHit = "com_dock";
+        else if (/无卸货/.test(text)) addrHit = "com_no";
+        else if (/住宅/.test(text)) addrHit = "res";
+        if (addrHit) {
+          var radio = document.querySelector('input[name="addrType"][value="' + addrHit + '"]');
+          if (radio) { radio.checked = true; filled.push("地址类型"); syncAddrLock(); }
+        }
+        updateChargeWeight();
+        applyStateCheck();
+        return filled;
+      }
+
+      function parseFcl(text) {
+        var filled = [];
+        if (setInput("pol", pick(text, [/起运港[：:\s]*([^\n,，;；]+)/]))) filled.push("起运港");
+        if (setInput("pod", pick(text, [/目的港[：:\s]*([^\n,，;；]+)/]))) filled.push("目的港");
+        if (setInput("deliveryAddr", pick(text, [/收货地址[：:\s]*([^\n]+)/, /地址[：:\s]*([^\n]+)/]))) filled.push("收货地址");
+        if (setInput("deliveryZip", pick(text, [/邮编[：:\s]*([A-Za-z0-9\-]+)/i]))) filled.push("邮编");
+        if (setInput("loadingAddr", pick(text, [/装柜地址[：:\s]*([^\n]+)/]))) filled.push("装柜地址");
+        if (setInput("grossWeight", pick(text, [/货物毛重[：:\s]*([\d.]+)/i, /毛重[：:\s]*([\d.]+)/i, /总重量[：:\s]*([\d.]+)/i]))) filled.push("货物毛重");
+        var carrierText = pick(text, [/喜好船司[：:\s]*([A-Za-z0-9/\s、,，]+)/, /船司[：:\s]*([A-Za-z0-9/\s、,，]+)/]);
+        if (applyPreferredCarriers(carrierText || text)) filled.push("喜好船司");
+        var ctn = pick(text, [/箱型[：:\s]*([A-Za-z0-9,\s、/×x]+)/i]);
+        if (applyCtnType(ctn || text)) filled.push("箱型");
+        var ready = pick(text, [/货好时间[：:\s]*(\d{4}[-/年]\d{1,2}[-/月]\d{1,2})/]);
+        if (ready) {
+          ready = ready.replace(/[年月]/g, "-").replace(/[日号]/g, "").replace(/\//g, "-");
+          if (setInput("cargoReady", ready)) filled.push("货好时间");
+        }
+        var product = pick(text, [/产品品类[：:\s]*([^\n]+)/, /产品信息[：:\s]*([^\n]+)/]);
+        if (setInput("productInfoFcl", product)) filled.push("产品信息");
+        var typeLabel = applyInquiryTypeByText(text);
+        if (typeLabel) filled.push("询价类型：" + typeLabel);
+        return filled;
+      }
+
+      function syncAiHint() {
+        aiParseHint.textContent = aiHintText[currentMode];
+      }
+
+      function runAiParse() {
+        var text = (inquiryDetailEl.value || "").trim();
+        if (!text) {
+          alert("请先在询价详情中粘贴或输入待识别文本");
+          inquiryDetailEl.focus();
+          return;
+        }
+        var filled = currentMode === "lcl" ? parseLcl(text) : parseFcl(text);
+        if (!filled.length) {
+          alert("未识别到可回填字段，请按提示格式补充关键词后重试");
+          return;
+        }
+        alert("【MVP演示】AI 识别完成，已回填：" + filled.join("、"));
+      }
+
+      function readInitialMode() {
+        if (location.hash === "#fcl") return "fcl";
+        try {
+          var saved = sessionStorage.getItem(STORAGE_KEY);
+          if (saved === "fcl" || saved === "lcl") return saved;
+        } catch (_) {}
+        return "lcl";
+      }
+
+      function persistMode(mode) {
+        try { sessionStorage.setItem(STORAGE_KEY, mode); } catch (_) {}
+        var nextHash = mode === "fcl" ? "#fcl" : "#lcl";
+        if (location.hash !== nextHash) {
+          history.replaceState(null, "", location.pathname + location.search + nextHash);
+        }
+      }
+
+      function setMode(mode, skipPersist) {
+        if (mode !== "lcl" && mode !== "fcl") mode = "lcl";
+        currentMode = mode;
+        modeBtns.forEach(function (btn) {
+          var active = btn.getAttribute("data-mode") === mode;
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-checked", active ? "true" : "false");
+        });
+        lclFields.classList.toggle("active", mode === "lcl");
+        fclFields.classList.toggle("active", mode === "fcl");
+        if (fieldSalesProduct) fieldSalesProduct.classList.toggle("hidden", mode === "fcl");
+        modeDesc.textContent = modeText[mode];
+        syncAiHint();
+        if (!skipPersist) persistMode(mode);
+        if (mode === "fcl") syncFclFields();
+      }
+
+      function getInquiryType() {
+        var checked = document.querySelector('input[name="inquiryType"]:checked');
+        return checked ? checked.value : "terminalPickup";
+      }
+
+      function persistInquiryType(type) {
+        try { sessionStorage.setItem(TYPE_STORAGE_KEY, type); } catch (_) {}
+      }
+
+      function readInitialInquiryType() {
+        try {
+          var saved = sessionStorage.getItem(TYPE_STORAGE_KEY);
+          if (validInquiryTypes.indexOf(saved) >= 0) return saved;
+        } catch (_) {}
+        return "terminalPickup";
+      }
+
+      function applyInquiryType(type) {
+        inquiryTypes.forEach(function (radio) {
+          radio.checked = radio.value === type;
+        });
+      }
+
+      function syncFclFields() {
+        if (currentMode !== "fcl") return;
+        persistInquiryType(getInquiryType());
+      }
+
+      modeBtns.forEach(function (btn) {
+        btn.addEventListener("click", function (e) {
+          e.preventDefault();
+          setMode(btn.getAttribute("data-mode"));
+        });
+      });
+
+      inquiryTypes.forEach(function (radio) {
+        radio.addEventListener("change", syncFclFields);
+      });
+
+      window.addEventListener("hashchange", function () {
+        setMode(location.hash === "#fcl" ? "fcl" : "lcl", true);
+      });
+
+      document.getElementById("btnSave").addEventListener("click", function () {
+        if (currentMode === "lcl") {
+          var d = validateLcl();
+          if (!d) return;
+          alert("【MVP演示】保存散货询价\n销售产品：" + d.salesText + "\n国内交货仓：" + d.wh + "\n收货：" + d.city + ", " + d.state + " " + d.zip + "\n地址类型：" + d.addr + "\n产品信息：" + d.product + "\n\n已提交后台测距与 AI 试算（本页不展示海外仓与距离）。");
+          return;
+        }
+        var typeLabel = "\n询价类型：" + inquiryTypeLabels[getInquiryType()];
+        alert("【MVP演示】保存整柜询价" + typeLabel);
+      });
+
+      document.getElementById("btnAiParse").addEventListener("click", runAiParse);
+      document.getElementById("totalVolume").addEventListener("input", updateChargeWeight);
+      document.getElementById("totalWeight").addEventListener("input", updateChargeWeight);
+      document.querySelectorAll('input[name="addrType"]').forEach(function (r) {
+        r.addEventListener("change", syncAddrLock);
+      });
+      document.getElementById("destState").addEventListener("change", function () {
+        whDestMismatchConfirmed = false;
+        applyStateCheck();
+      });
+      document.getElementById("zipcode").addEventListener("blur", function () {
+        var zip = (this.value || "").trim();
+        var geo = ZIP_GEO[zip];
+        if (geo) {
+          if (!(document.getElementById("destCity").value || "").trim()) setInput("destCity", geo.city);
+          if (!(document.getElementById("destState").value || "").trim()) setState(geo.state);
+        }
+        applyStateCheck();
+      });
+
+      fillStateSelect();
+      initProductMs();
+      applyInquiryType(readInitialInquiryType());
+      setMode(readInitialMode(), true);
+      syncFclFields();
+
+      if (window.essFclCarrierMultiselect) {
+        carrierMs = essFclCarrierMultiselect.mount(document.getElementById("preferredCarrierMs"), {
+          defaultSelected: ["COSCO", "EMC"],
+          limitTip: "喜好船司最多选择 2 项"
+        });
+      }
+      if (window.essFclContainerMultiselect) {
+        ctnTypeMs = essFclContainerMultiselect.mount(document.getElementById("ctnTypeMs"), {
+          defaultSelected: ["40HQ"],
+          limitTip: "箱型最多选择 2 项"
+        });
+      }
+    })();
+  </script>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="散货AI询价报价-需求PRD.html">
+    <span class="ess-prd-chip">PRD · 散货 AI 询价报价</span>
+  </div>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <script src="../../二期/ess-prototype-prd.js" defer></script>
+</body>
+</html>

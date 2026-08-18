@@ -1,0 +1,60 @@
+%% 关务组 · 组流程图 · 全流程按组拆分
+%% 覆盖：S4 报关四切片 · S5 查验 · 目的港清关（关务分支）
+%% 交接：起点：客户已上传报关资料 · H7←报关行预录（核准时）· H5↔船务 · H3←船务 · H4→海外
+%% draw.io：排列 → 插入 → 高级 → Mermaid…
+
+flowchart TB
+  UP["客户已上传报关资料"] --> A["有资料即推 / 到仓出单"]
+  A --> GATE{"终配舱完成？"}
+  GATE -->|否| WAIT["等终配舱<br/>船务/仓协同"]
+  WAIT --> GATE
+  RISK["∥ 风控查货（组内）<br/>待配舱只推未扣件资料"]
+  A -.-> RISK
+  GATE -->|是 · 终配舱后<br/>关务已可执行| B["自动分单号<br/>散货必分票 · 整柜看情况"]
+  B --> C["双通道核准比对"]
+  H7{{"H7 ← 报关行<br/>预录回传"}} --> C
+  C --> D{"核准通过？"}
+  D -->|否| R3["回退 R3<br/>退客户改资料 / 报关行改预录"]
+  R3 --> C
+  D -->|是| JOIN["P2 汇合 · 门禁打开"]
+  RISK -.->|查货完结 · 已可执行| JOIN
+  JOIN --> P3A["∥ P3 同岗直发舱单 / AMS / ISF"]
+  JOIN --> P3B["∥ P3 报关申报 · 放行查验"]
+  H5{{"H5 · 船务只读订阅<br/>砍跨组对单"}}
+  P3A --> H5
+  FIX["To-Be：核准后关务闭环直发，不等船务"]
+  P3A --> FIX
+  P3A --> AMD{"需改单？"}
+  P3B --> AMD
+  AMD -->|否| INSP
+  AMD -->|是| WHERE{"错误落在哪？"}
+  WHERE -->|截单资料| AMD1["改单工作台 · 保函"]
+  WHERE -->|港区运抵| AMD2["改运抵 · 卡截关期"]
+  WHERE -->|舱单| AMD3["先通知报关行勿报关<br/>→ 改舱单 → 再放行报关"]
+  AMD1 --> INSP
+  AMD2 --> INSP
+  AMD3 --> INSP
+  INSP["查验登记 · 一键通知客户"] --> GAI{"需改配？"}
+  GAI -->|否| CLR
+  GAI -->|是| SC["需改配 · 交船务发起"]
+  SC --> H5B{{"H5 → 船务<br/>改配由船务发起 · R4"}}
+  H5B --> CLR
+  H3{{"H3 ← 船务<br/>取消IT→清关待办<br/>仅火车 · 非火车无"}} -.-> CLR
+  CLR["目的港清关 · 放行查验<br/>资料·税金·通知清关行"] --> OK["清关放行"]
+  OK --> H4{{"H4 → 海外<br/>可港前 / 派送"}}
+  H4 --> END(["结束 · 交海外"])
+
+  classDef step fill:#E0F7FA,stroke:#00838F,color:#006064
+  classDef dec fill:#FFFDE7,stroke:#F9A825,color:#F57F17
+  classDef cross fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C
+  classDef back fill:#FFEBEE,stroke:#C62828,color:#B71C1C,stroke-dasharray: 5 4
+  classDef para fill:#E3F2FD,stroke:#1976D2,color:#0D47A1,stroke-dasharray: 5 3
+  classDef fix fill:#F6FFED,stroke:#52C41A,color:#135200
+  classDef endn fill:#ECEFF1,stroke:#78909C,color:#37474F
+  class UP,A,B,C,JOIN,INSP,SC,CLR,OK,AMD1,AMD2,AMD3,WAIT step
+  class GATE,D,AMD,WHERE,GAI dec
+  class H7,H5,H5B,H3,H4 cross
+  class RISK,P3A,P3B para
+  class R3 back
+  class FIX fix
+  class END endn

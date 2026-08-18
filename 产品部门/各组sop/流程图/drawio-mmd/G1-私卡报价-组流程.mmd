@@ -1,0 +1,51 @@
+%% 私卡报价组 · 组流程图 · 全流程按组拆分
+%% 覆盖：S1 询价报价 · 绑运单（船务下发头程运价）
+%% 交接：H1←船务（头程运价）· 报完价→船务安排订舱 · 尾端费快照→海外
+%% 节点标注：第二行「页」= 原型页面 · 第三行「功」= 页面功能
+%% draw.io：排列 → 插入 → 高级 → Mermaid…
+
+flowchart TB
+  START(["开始 · 客户询价<br/>页：询价编辑 / 我的询价 / APP<br/>功：选产品带仓址邮编 · 收货邮编城市州 · 测距 · 地址类型"])
+  START --> A["进入报价员列表<br/>页：询价报价-报价员列表<br/>功：待报价 · AI待确认（不回业务员） · 已完结 · 待绑运单"]
+  A --> TYPE{"整柜 / 散货？<br/>页：报价员列表"}
+  TYPE -->|整柜| BF["人工报价 · 整柜<br/>页：整柜报价编辑 / 询价详情<br/>功：手报价直接生效 · 无 AI 复核"]
+  TYPE -->|散货| BL
+  subgraph LCLFEED["散货算价输入"]
+    direction LR
+    H1{{"H1 ← 船务<br/>页：运价管理<br/>功：下发头程运价"}}
+    BL["AI / 规则算价 · 散货<br/>页：AI规则配置<br/>功：单价=（AI规则+头程运价）÷计费重"]
+    RULE["规则维护（旁路）<br/>页：AI报价规则配置<br/>功：草稿 · 填生效时间 · 到点切新版"]
+  end
+  H1 -.-> BL
+  RULE -.-> BL
+  BF --> DF["报价生效 · 写有效期<br/>页：整柜手报价生效<br/>功：7天含当日 · 遇15/30截断 · 不可改期"]
+  BL --> CL{"AI待确认？<br/>页：报价员详情<br/>功：不返回业务员"}
+  CL -->|否| BL
+  CL -->|是| DL["核对确认 · 已完结<br/>页：核对确认<br/>功：确认后才回业务员 1 条单价 · 写有效期"]
+  DF --> EF{"有效期内？<br/>页：报价员列表 · 绑运单"}
+  DL --> EL{"有效期内？<br/>页：报价员列表 · 绑运单"}
+  EF -->|否| R1F["回退 R1 · 重算<br/>页：整柜报价编辑<br/>功：过期须重算 · 不可改期续命"]
+  EL -->|否| R1L["回退 R1 · 重算<br/>页：报价员详情 · 重算<br/>功：过期须重算 · 不可改期续命"]
+  R1F --> BF
+  R1L --> BL
+  EF -->|是| G1["整柜单绑运单<br/>页：报价员列表 · 绑定运单<br/>功：港+柜型 · 符合N票"]
+  EL -->|是| G2["散货多绑运单<br/>页：报价员列表 · 绑定运单<br/>功：国+邮编+交货仓 · 每小时匹配"]
+  G1 --> H["确认绑定 + 挂尾端派送费<br/>页：绑定运单弹窗<br/>功：尾端费取整挂运单 · 绑后锁定"]
+  G2 --> H
+  H -.-> HW["交叉 → 海外<br/>页：尾程预估费用表<br/>功：取整数派送费快照"]
+  H --> HX{{"→ 船务安排订舱<br/>页：船务提单管理<br/>功：报完价交订舱"}}
+  HX --> END(["结束 · 交船务安排"])
+
+  classDef step fill:#FFF3E0,stroke:#E65100,color:#BF360C
+  classDef dec fill:#FFFDE7,stroke:#F9A825,color:#F57F17
+  classDef cross fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C
+  classDef back fill:#FFEBEE,stroke:#C62828,color:#B71C1C,stroke-dasharray: 5 4
+  classDef para fill:#E3F2FD,stroke:#1976D2,color:#0D47A1,stroke-dasharray: 5 3
+  classDef endn fill:#ECEFF1,stroke:#78909C,color:#37474F
+  class A,BF,BL,DF,DL,H step
+  class TYPE,CL,EF,EL dec
+  class G1,G2,RULE para
+  class H1,HW,HX cross
+  class R1F,R1L back
+  class START,END endn
+  style LCLFEED fill:#F8FAFC,stroke:#90CAF9,stroke-dasharray:4 3,color:#64748b

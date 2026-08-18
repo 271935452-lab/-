@@ -1,0 +1,51 @@
+%% L2-S1 私卡询价报价 · 归属主链路 S1 · 报价组
+%% 上接：散货算价时接入 H1 头程运价 · 下交：报完价→船务安排订舱 · 尾端费快照→海外
+%% 节点标注：页=原型页面 · 功=页面功能
+%% draw.io：排列 → 插入 → 高级 → Mermaid…
+
+flowchart LR
+  A["询价进入报价员列表<br/>页：询价编辑 / 报价员列表<br/>功：选产品带仓址邮编 · 测距 · 地址类型"]
+  A --> T{"整柜 / 散货？<br/>页：报价员列表"}
+  T -->|整柜| B1["人工报价 · 整柜<br/>页：整柜报价编辑<br/>功：手报价直接生效"]
+  T -->|散货| B2
+  subgraph LCLFEED["散货算价输入"]
+    direction TB
+    H0["H1 ← 船务<br/>页：运价管理<br/>功：下发头程运价"]
+    B2["AI/规则算价 · 散货<br/>页：AI规则配置<br/>功：单价=（AI规则+头程运价）÷计费重"]
+  end
+  H0 -.-> B2
+  B1 --> D1["报价生效 · 写有效期<br/>页：整柜手报价生效<br/>功：7天含当日 · 遇15/30截断"]
+  B2 --> C2{"AI待确认？<br/>页：报价员详情<br/>功：不返回业务员"}
+  C2 -->|否| B2
+  C2 -->|是| D2["核对确认 · 已报价<br/>页：核对确认<br/>功：回业务员1条单价 · 进待绑运单"]
+  D1 --> E1["尾端派送费带出<br/>页：绑定运单弹窗<br/>功：取整登记"]
+  D2 --> E2["尾端派送费已登记<br/>页：绑定运单弹窗<br/>功：取整登记"]
+  E1 --> F1["整柜单绑运单<br/>页：报价员列表<br/>功：港+柜型 · 符合N票"]
+  E2 --> F2["散货绑运单<br/>页：报价员列表<br/>功：一运单一票 · 按渠道多选"]
+  F1 --> G1{"有效期内？<br/>页：绑运单"}
+  F2 --> G2{"有效期内？<br/>页：绑运单"}
+  G1 -->|是| BIND1["绑运单完成 · 已完结<br/>页：绑定弹窗<br/>功：绑后锁定 · 可改绑"]
+  G2 -->|是| BIND2["绑运单完成 · 已完结<br/>页：绑定弹窗<br/>功：绑后锁定 · 可改绑"]
+  G1 -->|否| B1
+  G2 -->|否| B2
+  BIND1 --> I["结束 · 交船务安排订舱<br/>页：提单管理"]
+  BIND2 --> I
+  I -.-> HW["尾端费快照 → 海外<br/>页：尾程预估费用表"]
+  I -.-> HX["→ 船务安排订舱<br/>页：提单管理"]
+
+  OLD["旧AI下线边界<br/>散货轨适用"]
+  B2 -.-> OLD
+
+  style A fill:#FFF3E0,stroke:#E65100
+  style T fill:#FFFDE7,stroke:#F9A825
+  style C2 fill:#FFFDE7,stroke:#F9A825
+  style G1 fill:#FFFDE7,stroke:#F9A825
+  style G2 fill:#FFFDE7,stroke:#F9A825
+  style H0 fill:#F3E5F5,stroke:#6A1B9A
+  style HW fill:#F3E5F5,stroke:#6A1B9A
+  style HX fill:#F3E5F5,stroke:#6A1B9A
+  style OLD fill:#FAFAFA,stroke:#9E9E9E,stroke-dasharray: 5 3
+  style B1 fill:#FFF3E0,stroke:#E65100
+  style B2 fill:#E3F2FD,stroke:#1976D2,stroke-dasharray: 5 3
+  style F1 fill:#E3F2FD,stroke:#1976D2,stroke-dasharray: 5 3
+  style F2 fill:#E3F2FD,stroke:#1976D2,stroke-dasharray: 5 3

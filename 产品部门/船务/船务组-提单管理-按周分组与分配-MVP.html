@@ -1,0 +1,3199 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>提单管理 · 费用登记（含水单）· 邮件对接（MVP）</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --orange: #fa8c16;
+      --red: #ff4d4f;
+      --purple: #722ed1;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 14px; flex-shrink: 0; font-size: 12px;
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 180px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.75);
+      padding: 12px 0;
+    }
+    .side-title {
+      padding: 8px 16px; font-size: 12px; color: rgba(255,255,255,.45);
+    }
+    .side-item {
+      padding: 8px 16px; cursor: default; font-size: 13px;
+    }
+    .side-item.on { background: rgba(24,144,255,.25); color: #fff; border-right: 3px solid var(--blue); }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-bottom: 40px; }
+
+    .filter-panel {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 10px 12px 6px;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+      gap: 6px 10px; align-items: end;
+    }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .filter-item label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px;
+    }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; font-size: 12px;
+    }
+    .filter-actions { display: flex; gap: 6px; }
+
+    .toolbar {
+      padding: 6px 12px; background: var(--card);
+      border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .tool-btn {
+      height: 28px; padding: 0 10px; border-radius: 2px; border: 1px solid transparent;
+      background: var(--blue); color: #fff; cursor: pointer; font-size: 12px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .tool-btn.outline { background: #fff; color: var(--blue); border-color: #91d5ff; }
+    .tool-btn.ok { background: var(--green); }
+    .tool-btn.warn { background: var(--orange); }
+    .tool-btn.danger { background: var(--red); }
+    .tool-btn.purple { background: var(--purple); }
+    .tool-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .badge-new {
+      display: inline-block; margin-left: 2px; padding: 0 4px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .tip-bar {
+      margin: 0 12px; padding: 8px 10px; font-size: 12px; line-height: 1.55;
+      background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px;
+      color: #0050b3;
+    }
+    .tip-bar strong { color: #003a8c; }
+
+    .status-tabs {
+      display: flex; gap: 0; padding: 0 12px;
+      background: var(--card); border-bottom: 1px solid var(--line);
+    }
+    .status-tab {
+      height: 36px; padding: 0 14px; border: none; background: transparent;
+      cursor: pointer; color: var(--sub); border-bottom: 2px solid transparent;
+    }
+    .status-tab.active { color: var(--orange); border-bottom-color: var(--orange); font-weight: 600; }
+    .status-tab b { font-weight: 600; }
+
+    .view-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 12px; background: #fafafa; border-bottom: 1px solid var(--line);
+      font-size: 12px; color: var(--sub);
+    }
+    .view-toggle {
+      display: inline-flex; border: 1px solid #d9d9d9; border-radius: 2px; overflow: hidden;
+    }
+    .view-toggle button {
+      height: 26px; padding: 0 12px; border: none; background: #fff; cursor: pointer; color: var(--sub);
+    }
+    .view-toggle button.on { background: #e6f7ff; color: var(--blue); font-weight: 600; }
+
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); margin: 0 0 0; }
+      table.data {
+      width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1480px;
+    }
+    table.data th, table.data td {
+      border-bottom: 1px solid var(--line); padding: 7px 8px;
+      text-align: left; white-space: nowrap;
+    }
+    table.data th {
+      background: #fafafa; color: var(--sub); font-weight: 600; position: sticky; top: 0; z-index: 2;
+    }
+    table.data tr:hover td { background: #f5faff; }
+    table.data tr.selected td { background: #e6f7ff; }
+    /* Excel 式周页签 · 悬浮底部 */
+    .week-sheet-bar {
+      position: fixed; left: 180px; right: 0; bottom: 0; z-index: 80;
+      display: flex; align-items: flex-end; gap: 0;
+      min-height: 36px; padding: 0 10px 0 8px;
+      background: linear-gradient(180deg, #e8eaed 0%, #d0d4da 100%);
+      border-top: 1px solid #b0b6bf;
+      box-shadow: 0 -2px 8px rgba(0,0,0,.08);
+    }
+    .week-sheet-bar .sheet-label {
+      flex-shrink: 0; align-self: center;
+      font-size: 11px; color: #5f6368; padding: 0 10px 0 4px;
+      white-space: nowrap;
+    }
+    .week-sheet-tabs {
+      display: flex; align-items: flex-end; gap: 1px;
+      overflow-x: auto; flex: 1; min-width: 0;
+      padding-top: 4px;
+    }
+    .week-sheet-tab {
+      position: relative;
+      border: 1px solid #9aa0a6; border-bottom: none;
+      background: #c8cdd3; color: #3c4043;
+      padding: 6px 14px 7px; margin: 0;
+      border-radius: 4px 4px 0 0;
+      font-size: 12px; cursor: pointer; white-space: nowrap;
+      line-height: 1.25; max-width: 200px;
+    }
+    .week-sheet-tab .sheet-title { font-weight: 600; }
+    .week-sheet-tab .sheet-range { font-size: 10px; color: #5f6368; margin-left: 4px; }
+    .week-sheet-tab .sheet-cnt {
+      display: inline-block; margin-left: 6px; min-width: 16px; padding: 0 4px;
+      border-radius: 8px; font-size: 10px; font-weight: 700;
+      background: rgba(0,0,0,.12); color: #202124;
+    }
+    .week-sheet-tab:hover { background: #dce0e5; }
+    .week-sheet-tab.on {
+      background: #fff; color: #202124; z-index: 1;
+      border-color: #b0b6bf; border-top: 2px solid #217346;
+      padding-top: 5px; margin-bottom: -1px;
+      box-shadow: 0 -1px 0 #fff;
+    }
+    .week-sheet-tab.on .sheet-range { color: #5f6368; }
+    .week-sheet-tab.on .sheet-cnt { background: #e6f4ea; color: #137333; }
+    .week-sheet-bar .sheet-hint {
+      flex-shrink: 0; align-self: center;
+      font-size: 11px; color: #5f6368; padding: 0 4px 0 12px;
+      white-space: nowrap;
+    }
+    @media (max-width: 900px) {
+      .week-sheet-bar { left: 0; }
+      .week-sheet-bar .sheet-hint { display: none; }
+    }
+    .voy-cell { line-height: 1.35; min-width: 160px; white-space: normal; }
+    .voy-cell .voy-main { font-weight: 600; color: #531dab; }
+    .voy-cell .voy-sub { font-size: 11px; color: #8c8c8c; margin-top: 2px; }
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; border: 1px solid;
+    }
+    .tag.wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.load { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.sail { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.it { color: #cf1322; background: #fff1f0; border-color: #ffa39e; font-weight: 700; }
+    .tag.it-off {
+      color: #531dab; background: #f9f0ff; border-color: #d3adf7; font-weight: 700;
+    }
+    .tag.it-none { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.ams-ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; font-weight: 700; }
+    .tag.ams-no { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.isf-ok { color: #0958d9; background: #e6f4ff; border-color: #91caff; font-weight: 700; }
+    .tag.isf-no { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .send-cell { line-height: 1.35; display: inline; }
+    .send-cell .tag { margin: 1px 2px 1px 0; }
+    .send-cell .send-sub { font-size: 11px; color: #8c8c8c; margin-top: 2px; }
+    .filter-send-hint {
+      display: block; font-size: 11px; color: #8c8c8c; margin-top: 2px;
+    }
+    .filter-send-hint b { color: #1677ff; font-weight: 600; }
+    .it-cell { line-height: 1.35; display: inline; }
+    .it-cell .it-sub { font-size: 11px; color: #722ed1; margin-top: 2px; }
+    .marks-cell {
+      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 6px;
+      min-width: 168px; max-width: 280px; line-height: 1.35;
+    }
+    .marks-cell .it-cell,
+    .marks-cell .send-cell,
+    .marks-cell .amd-cell,
+    .marks-cell .ck-block { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; }
+    .marks-cell .it-sub,
+    .marks-cell .amd-sub,
+    .marks-cell .ck-sub { width: 100%; margin-top: 0; font-size: 11px; }
+    .marks-cell .tag { margin: 0; }
+    .marks-cell .link-btn { font-size: 11px; }
+    tr.it-cancelled td { background: #f9f0ff; }
+    tr.it-cancelled:hover td { background: #f3e8ff; }
+    tr.it-cancelled td:first-child { box-shadow: inset 3px 0 0 #722ed1; }
+    tr.it-has td:first-child { box-shadow: inset 3px 0 0 #ff4d4f; }
+    .tag.ck { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.ck-pass { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.ck-ticket { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
+    .tag.ck-none { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.amd { color: #0958d9; background: #e6f4ff; border-color: #91caff; font-weight: 700; }
+    .tag.amd-done { color: #08979c; background: #e6fffb; border-color: #87e8de; font-weight: 700; }
+    .tag.amd-none { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .amd-cell { line-height: 1.35; display: inline; }
+    .amd-cell .amd-sub { font-size: 11px; color: #0958d9; margin-top: 2px; }
+    tr.amd-row td { background: #e6f4ff; }
+    tr.amd-row:hover td { background: #d6ebff; }
+    tr.amd-row td:nth-child(1) { box-shadow: inset 3px 0 0 #1677ff; }
+    .tag.warn-cut { color: #d46b08; background: #fff7e6; border-color: #ffd591; font-weight: 700; }
+    .tag.warn-sail { color: #cf1322; background: #fff1f0; border-color: #ffa39e; font-weight: 700; }
+    .tag.warn-over { color: #fff; background: #cf1322; border-color: #a8071a; font-weight: 700; }
+    .tag.rel-ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.rel-no { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.sea-ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.sea-no { color: #cf1322; background: #fff1f0; border-color: #ffa39e; font-weight: 700; }
+    .tag.term-ok { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+    .tag.term-no { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; font-weight: 700; }
+    .tag.ft-ok { color: #0958d9; background: #e6f4ff; border-color: #91caff; }
+    .tag.ft-no { color: #d46b08; background: #fff7e6; border-color: #ffd591; font-weight: 700; }
+    .tag.ft-pend { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.arr-ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; font-weight: 700; }
+    .tag.arr-no { color: #d4380d; background: #fff2e8; border-color: #ffbb96; font-weight: 700; }
+    .rel-pair { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+    .warn-cell { line-height: 1.4; }
+    .warn-cell .warn-sub { font-size: 11px; color: #8c8c8c; margin-top: 2px; }
+    tr.warn-cut-row td { /* 截单预警：左边条，不盖装完底色 */ }
+    tr.warn-sail-row td { }
+    tr.warn-sail-row td:nth-child(1) { box-shadow: inset 3px 0 0 #ff4d4f; }
+    tr.warn-cut-row td:nth-child(1) { box-shadow: inset 3px 0 0 #fa8c16; }
+    .tag.imp { color: #0958d9; background: #e6f4ff; border-color: #91caff; font-weight: 700; }
+    .tag.imp-ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; font-weight: 700; }
+    .tag.imp-warn { color: #d46b08; background: #fff7e6; border-color: #ffd591; font-weight: 700; }
+    .tag.imp-over { color: #fff; background: #cf1322; border-color: #a8071a; font-weight: 700; }
+    .imp-cell { line-height: 1.35; max-width: 160px; white-space: normal; }
+    .imp-cell .imp-name { font-size: 12px; color: var(--text); }
+    .imp-cell .imp-sub { font-size: 11px; margin-top: 2px; }
+    tr.imp-over-row td { }
+    tr.imp-over-row td:nth-child(1) { box-shadow: inset 3px 0 0 #cf1322; }
+    .imp-banner {
+      margin: 0 12px; padding: 8px 10px; font-size: 12px; line-height: 1.5;
+      background: #fff1f0; border: 1px solid #ffa39e; border-radius: 2px; color: #a8071a;
+      display: none;
+    }
+    .imp-banner.show { display: block; }
+    .imp-banner strong { color: #cf1322; }
+    .tag.done { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; font-weight: 700; }
+    .tag.load-no { color: #d46b08; background: #fff7e6; border-color: #ffd591; font-weight: 700; }
+    .color-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px;
+    }
+    .color-dot.green { background: #52c41a; }
+    .color-dot.orange { background: #fa8c16; }
+    .color-dot.gray { background: #bfbfbf; }
+    /* 装完色标 · 行底色（同周同船内一眼区分） */
+    tr.load-done td { background: #f6ffed; }
+    tr.load-done:hover td { background: #d9f7be; }
+    tr.load-pending td { background: #fff7e6; }
+    tr.load-pending:hover td { background: #ffe7ba; }
+    /* 装完色标优先于预警左边条：双色左边条 */
+    tr.load-done.warn-sail-row td:nth-child(1),
+    tr.load-done.imp-over-row td:nth-child(1) { box-shadow: inset 3px 0 0 #52c41a, inset 6px 0 0 #ff4d4f; }
+    tr.load-pending.warn-sail-row td:nth-child(1),
+    tr.load-pending.imp-over-row td:nth-child(1) { box-shadow: inset 3px 0 0 #fa8c16, inset 6px 0 0 #ff4d4f; }
+    tr.load-done.warn-cut-row td:nth-child(1) { box-shadow: inset 3px 0 0 #52c41a, inset 6px 0 0 #faad14; }
+    tr.load-pending.warn-cut-row td:nth-child(1) { box-shadow: inset 3px 0 0 #fa8c16; }
+    .legend-bar {
+      display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      margin: 0 12px 8px; padding: 6px 10px; font-size: 12px; color: var(--sub);
+      background: #fafafa; border: 1px solid var(--line); border-radius: 2px;
+    }
+    .legend-bar .lg { display: inline-flex; align-items: center; gap: 4px; }
+    .legend-swatch {
+      display: inline-block; width: 14px; height: 14px; border-radius: 2px; border: 1px solid rgba(0,0,0,.08);
+    }
+    .legend-swatch.done { background: #f6ffed; border-color: #b7eb8f; }
+    .legend-swatch.pending { background: #fff7e6; border-color: #ffd591; }
+
+    .fee-cell { font-size: 11px; line-height: 1.5; max-width: 140px; }
+    .fee-pill {
+      display: inline-block; margin: 1px 2px 1px 0; padding: 0 5px;
+      border-radius: 2px; background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7;
+      white-space: nowrap;
+    }
+    .fee-pill.dem { background: #fff1f0; color: #cf1322; border-color: #ffa39e; }
+    .fee-pill.port { background: #e6f4ff; color: #0958d9; border-color: #91caff; }
+    .fee-pill.mail { background: #f6ffed; color: #389e0d; border-color: #b7eb8f; }
+    .fee-empty { color: #bfbfbf; }
+    .slip-cell { font-size: 11px; line-height: 1.45; max-width: 120px; }
+    .slip-pill {
+      display: inline-block; padding: 0 5px; border-radius: 2px;
+      background: #e6f4ff; color: #0958d9; border: 1px solid #91caff; white-space: nowrap;
+    }
+    .slip-pill.sent { background: #f6ffed; color: #389e0d; border-color: #b7eb8f; }
+    .slip-pill.wait { background: #fff7e6; color: #d46b08; border-color: #ffd591; }
+
+    .mail-dock {
+      margin-top: 10px; padding: 10px 12px; border: 1px dashed #91caff;
+      border-radius: 6px; background: #f0f5ff;
+    }
+    .mail-dock h4 {
+      margin: 0 0 8px; font-size: 13px; color: #0958d9;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .mail-dock h4 .tag-mail {
+      font-size: 10px; padding: 0 5px; border-radius: 2px;
+      background: #1677ff; color: #fff; font-weight: 700;
+    }
+    .mail-list {
+      max-height: 140px; overflow: auto; border: 1px solid #d6e4ff;
+      border-radius: 4px; background: #fff; margin-bottom: 8px;
+    }
+    .mail-item {
+      display: flex; gap: 8px; align-items: flex-start;
+      padding: 8px 10px; border-bottom: 1px solid #f0f0f0;
+      cursor: pointer; font-size: 12px;
+    }
+    .mail-item:last-child { border-bottom: none; }
+    .mail-item:hover { background: #f5f9ff; }
+    .mail-item.on { background: #e6f4ff; outline: 1px solid #91caff; }
+    .mail-item .m-meta { color: #8c8c8c; font-size: 11px; margin-top: 2px; }
+    .mail-item .m-sub { font-weight: 600; color: #262626; }
+    .mail-preview {
+      font-size: 12px; color: #595959; line-height: 1.55;
+      padding: 8px 10px; background: #fff; border: 1px solid #d6e4ff;
+      border-radius: 4px; max-height: 80px; overflow: auto; margin-bottom: 8px;
+    }
+    .upload-box {
+      border: 1px dashed #91d5ff; border-radius: 6px; padding: 14px;
+      text-align: center; background: #fafafa; color: #595959; font-size: 12px;
+      cursor: pointer;
+    }
+    .upload-box strong { color: #1677ff; }
+    .upload-box .file-name { margin-top: 6px; color: #0958d9; font-weight: 600; }
+
+    .pager {
+      padding: 8px 12px; background: var(--card); border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px; font-size: 12px; color: var(--sub);
+    }
+
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: none; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 4px; width: min(640px, 96vw);
+      max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    }
+    .modal.wide { width: min(760px, 96vw); }
+    .modal-hd, .modal-ft {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .modal-ft { border-bottom: none; border-top: 1px solid var(--line); justify-content: flex-end; }
+    .modal-hd h3 { margin: 0; font-size: 15px; }
+    .modal-bd { padding: 14px 16px; overflow: auto; }
+    .alert {
+      padding: 8px 10px; border-radius: 2px; font-size: 12px; line-height: 1.55; margin-bottom: 12px;
+      background: #fffbe6; border: 1px solid #ffe58f; color: #614700;
+    }
+    .alert.info { background: #e6f7ff; border-color: #91d5ff; color: #0050b3; }
+    .alert.ok { background: #f6ffed; border-color: #b7eb8f; color: #135200; }
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .form-item input, .form-item select, .form-item textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px;
+    }
+    .form-item textarea { min-height: 72px; resize: vertical; }
+    .hang-panels {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .hang-panel {
+      border: 1px solid #d9d9d9; border-radius: 4px; background: #fafafa;
+      padding: 8px 10px; min-height: 120px;
+    }
+    .hang-panel h5 {
+      margin: 0 0 6px; font-size: 12px; color: #262626;
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    }
+    .hang-panel h5 .hang-acts { display: flex; gap: 6px; }
+    .hang-panel h5 button {
+      border: none; background: none; color: #1677ff; cursor: pointer;
+      font-size: 11px; padding: 0;
+    }
+    .hang-panel h5 button:hover { text-decoration: underline; }
+    .hang-list {
+      max-height: 148px; overflow: auto; border: 1px solid #e8e8e8;
+      border-radius: 3px; background: #fff;
+    }
+    .hang-row {
+      display: flex; gap: 8px; align-items: flex-start;
+      padding: 7px 8px; border-bottom: 1px solid #f0f0f0;
+      font-size: 12px; cursor: pointer;
+    }
+    .hang-row:last-child { border-bottom: none; }
+    .hang-row:hover { background: #f5f9ff; }
+    .hang-row input { margin-top: 2px; flex-shrink: 0; }
+    .hang-row .hr-main { font-weight: 600; color: #262626; }
+    .hang-row .hr-sub { font-size: 11px; color: #8c8c8c; margin-top: 2px; }
+    .hang-add {
+      display: flex; gap: 6px; margin-top: 6px;
+    }
+    .hang-add input {
+      flex: 1; border: 1px solid #d9d9d9; border-radius: 2px; padding: 5px 8px;
+    }
+    .hang-add button {
+      border: 1px solid #d9d9d9; background: #fff; border-radius: 2px;
+      padding: 4px 10px; cursor: pointer; white-space: nowrap;
+    }
+    .hang-add button:hover { border-color: #1677ff; color: #1677ff; }
+    .hang-hint { margin: 6px 0 0; font-size: 11px; color: #8c8c8c; line-height: 1.45; }
+    @media (max-width: 640px) {
+      .hang-panels { grid-template-columns: 1fr; }
+    }
+    .chat-shell {
+      border: 1px solid #d9d9d9; border-radius: 8px; background: #ededed; padding: 12px;
+    }
+    .chat-bubble {
+      background: #95ec69; border-radius: 6px; padding: 10px 12px;
+      font-size: 13px; line-height: 1.65; white-space: pre-wrap;
+      box-shadow: 0 1px 2px rgba(0,0,0,.06); max-width: 100%;
+      font-family: "Microsoft YaHei", sans-serif;
+    }
+    .chat-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px; font-size: 12px; color: var(--sub);
+    }
+    .chat-meta .group { color: #07c160; font-weight: 600; }
+    .toast {
+      position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%);
+      background: #001529; color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; display: none; z-index: 1100;
+    }
+    .toast.show { display: block; }
+    .proto-link { font-size: 12px; color: var(--sub); padding: 8px 12px 0; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">LOGO</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab">运单管理 <span>×</span></button>
+        <button type="button" class="nav-tab active">提单管理 <span>×</span></button>
+        <button type="button" class="nav-tab">待配仓 <span>×</span></button>
+      </div>
+      <div class="header-right">
+        <span>腾信物流 · 船务</span>
+      </div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-title">提单管理</div>
+        <div class="side-item on">提单管理</div>
+        <div class="side-item">待配仓</div>
+        <div class="side-item">舱位播报</div>
+      </aside>
+
+      <main class="main">
+        <p class="proto-link">
+          原型 · 对齐：
+          <a href="船务组-0730-费用节点提单配仓-大致方案.html">船务 0730 方案</a> ·
+          <a href="船务组-提单创建批量-AI识别-MVP.html">批量创建 · AI识别</a> ·
+          <a href="关务组-查验报表-提单运单维度-MVP.html">查验报表（提单/运单）</a> ·
+          <a href="../调研纪要_2026-07-30_上午下午.txt">0730 纪要</a> ·
+          <a href="../产品部门-导航.html">导航</a>
+        </p>
+
+        <div class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>提单号</label><input id="qBl" placeholder="支持模糊" /></div>
+            <div class="filter-item"><label>柜号</label><input id="qCntr" /></div>
+            <div class="filter-item">
+              <label>船公司</label>
+              <select id="qCarrier"><option value="">全部</option><option>Hapag</option><option>COSCO</option><option>MSC</option><option>ONE</option></select>
+            </div>
+            <div class="filter-item"><label>船名航次</label><input id="qVoy" placeholder="例 YM MOVEMENT" /></div>
+            <div class="filter-item">
+              <label>IT 状态 <span class="badge-new">NEW</span></label>
+              <select id="qIt">
+                <option value="">全部</option>
+                <option value="有IT">有IT</option>
+                <option value="已取消IT">已取消IT</option>
+                <option value="无IT">无IT</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>发送标记 <span class="badge-new">NEW</span></label>
+              <select id="qSend" title="对应工具栏 AMS / ISF">
+                <option value="">全部</option>
+                <option value="ams_no">AMS 未发</option>
+                <option value="ams_ok">AMS 已发</option>
+                <option value="isf_no">ISF 未发</option>
+                <option value="isf_ok">ISF 已发</option>
+                <option value="both_ok">AMS+ISF 均已发</option>
+                <option value="any_no">缺 AMS 或 ISF</option>
+              </select>
+              <span class="filter-send-hint">筛选项 ↔ 工具栏 <b>AMS</b> / <b>ISF</b></span>
+            </div>
+            <div class="filter-item">
+              <label>查验标记 <span class="badge-new">NEW</span></label>
+              <select id="qCk">
+                <option value="">全部</option>
+                <option value="查验中">查验中</option>
+                <option value="查验放行">查验放行</option>
+                <option value="查验挂票">查验挂票</option>
+                <option value="无">无查验</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>改单标记 <span class="badge-new">NEW</span></label>
+              <select id="qAmd">
+                <option value="">全部</option>
+                <option value="改单中">改单中</option>
+                <option value="已改单">已改单</option>
+                <option value="无">无改单</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>海放 <span class="badge-new">NEW</span></label>
+              <select id="qSeaRel">
+                <option value="">全部</option>
+                <option value="未放行">未海放</option>
+                <option value="已放行">已海放</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>码放 <span class="badge-new">NEW</span></label>
+              <select id="qTermRel">
+                <option value="">全部</option>
+                <option value="未放行">未码放</option>
+                <option value="已放行">已码放</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>预警标记 <span class="badge-new">NEW</span></label>
+              <select id="qWarn">
+                <option value="">全部</option>
+                <option value="临近截单">临近截单（提前24h）</option>
+                <option value="临近未海放">临近未海放</option>
+                <option value="临近未码放">临近未码放</option>
+                <option value="开船未海放">开船未海放（已过ETD）</option>
+                <option value="开船未码放">开船未码放（已过ETD）</option>
+                <option value="未进港">未进港预警</option>
+                <option value="sail_any">临近/开船·任一未放</option>
+                <option value="any">任一预警</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>飞驼进港 <span class="badge-new">NEW</span></label>
+              <select id="qFt">
+                <option value="">全部</option>
+                <option value="能">飞驼可抓</option>
+                <option value="不能">飞驼不可抓</option>
+                <option value="待确认">待确认覆盖</option>
+                <option value="未进港">未进港（无时间）</option>
+                <option value="已进港">已进港</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>一水绑柜 <span class="badge-new">NEW</span></label>
+              <select id="qImp">
+                <option value="">全部</option>
+                <option value="over">超限（&gt;5柜）</option>
+                <option value="near">接近上限（4～5）</option>
+                <option value="bound">已绑进口商</option>
+                <option value="none">未绑进口商</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>装完色标 <span class="badge-new">NEW</span></label>
+              <select id="qColor">
+                <option value="">全部</option>
+                <option value="未装完">未装完</option>
+                <option value="装完">装完</option>
+                <option value="已装完">已装完</option>
+              </select>
+            </div>
+            <div class="filter-actions">
+              <button type="button" class="tool-btn" id="btnSearch">搜索查询</button>
+              <button type="button" class="tool-btn outline" id="btnReset">重置</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend-bar" id="loadLegend">
+          <span style="font-weight:600;color:var(--text)">装完色标：</span>
+          <span class="lg"><span class="legend-swatch pending"></span>未装完</span>
+          <span class="lg"><span class="legend-swatch done"></span>装完</span>
+          <span style="color:#8c8c8c">｜ 底部周页签切周 · 同船名航次 → 船内未装完优先</span>
+        </div>
+
+        <div class="imp-banner" id="impBanner"></div>
+
+        <div class="toolbar">
+          <button type="button" class="tool-btn">查询数据</button>
+          <button type="button" class="tool-btn" id="btnBlEdit">提单修改</button>
+          <button type="button" class="tool-btn purple" id="btnAssign">提单分配 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn ok" id="btnBroadcast" style="background:#08979c;border-color:#08979c;">一键复制仓位播报 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn warn" id="btnCancelIt">取消IT标记 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn warn" id="btnCheckMark" style="background:#d46b08;border-color:#d46b08;">查验标记 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn" id="btnAmendMark" style="background:#1677ff;border-color:#1677ff;color:#fff;">改单标记 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn" id="btnMiscFee" title="费用登记 + 水单上传（已合并）" style="background:#531dab;border-color:#531dab;color:#fff;">费用登记 <span style="opacity:.9;font-size:11px">·水单</span> <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn outline" id="btnBindImp">绑定进口商 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn danger">提单删除</button>
+          <button type="button" class="tool-btn outline">提单导出</button>
+          <button type="button" class="tool-btn outline" id="btnAms" title="勾选提单 → 标记 AMS 已发送（写入发送标记）">AMS <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn outline" id="btnIsf" title="勾选提单 → 标记 ISF 已发送（写入发送标记）">ISF <span class="badge-new">NEW</span></button>
+        </div>
+
+        <div class="status-tabs">
+          <button type="button" class="status-tab active" data-st="">全部 <b id="cntAll">(18)</b></button>
+          <button type="button" class="status-tab" data-st="待分配">待分配 <b>(5)</b></button>
+          <button type="button" class="status-tab" data-st="待装柜">待装柜 <b>(4)</b></button>
+          <button type="button" class="status-tab" data-st="待离港">待离港 <b>(2)</b></button>
+          <button type="button" class="status-tab" data-st="已离港">已离港 <b>(1)</b></button>
+          <button type="button" class="status-tab" data-warn="临近截单" style="color:#d46b08;">临近截单 <b id="cntCut">(0)</b> <span class="badge-new">NEW</span></button>
+          <button type="button" class="status-tab" data-warn="临近未海放" style="color:#cf1322;">临近未海放 <b id="cntSea">(0)</b> <span class="badge-new">NEW</span></button>
+          <button type="button" class="status-tab" data-warn="临近未码放" style="color:#c41d7f;">临近未码放 <b id="cntTerm">(0)</b> <span class="badge-new">NEW</span></button>
+          <button type="button" class="status-tab" data-warn="未进港" style="color:#d4380d;">未进港 <b id="cntArr">(0)</b> <span class="badge-new">NEW</span></button>
+        </div>
+
+        <div class="view-bar">
+          <span>列表视图</span>
+          <span id="viewHint">周改底部 Excel 式页签悬浮切换；表内只保留「船名航次」汇集列；排序：同船 → 未装完优先</span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="chkAll" /></th>
+                <th>序号</th>
+                <th>提单号</th>
+                <th>柜号</th>
+                <th>船名航次 <span class="badge-new">NEW</span></th>
+                <th>提单状态</th>
+                <th style="min-width:168px">业务标记 <span class="badge-new">NEW</span><div style="font-weight:400;font-size:11px;color:#8c8c8c;margin-top:2px">IT · AMS/ISF · 查验 · 改单</div></th>
+                <th>截单时间 <span class="badge-new">NEW</span></th>
+                <th>海放 / 码放 / 预警 <span class="badge-new">NEW</span></th>
+                <th>进港 / 飞驼 <span class="badge-new">NEW</span></th>
+                <th>进口商 / 一水绑柜 <span class="badge-new">NEW</span></th>
+                <th>柜型</th>
+                <th>运输方式</th>
+                <th>预计出发时间</th>
+                <th>出发港</th>
+                <th>目的港</th>
+                <th>拖车代理</th>
+                <th>装柜地址</th>
+                <th>预计装柜时间</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="pager">共 <span id="totalCnt">18</span> 条 · 示意数据 · 预警基准 2026-08-07 10:00 · 截单提前24h · 散货一水≤5</div>
+      </main>
+    </div>
+
+    <!-- 周 · Excel 式页签（悬浮页面下方） -->
+    <div class="week-sheet-bar" id="weekSheetBar" aria-label="按预计出发周切换">
+      <span class="sheet-label">周页签</span>
+      <div class="week-sheet-tabs" id="weekSheetTabs" role="tablist"></div>
+      <span class="sheet-hint">类 Excel 工作表 · 悬浮底栏</span>
+    </div>
+  </div>
+
+  <!-- 取消 IT -->
+  <div class="mask" id="itMask" aria-hidden="true">
+    <div class="modal" role="dialog">
+      <div class="modal-hd">
+        <h3>取消IT标记 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="itClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert">
+          取消 IT 牵动：提单标记 · 清关 · 报关 · 加费。确认后写入「已取消IT」，并通知关务清关待办（可含中转港）。
+        </div>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="itTargets" readonly />
+          </div>
+          <div class="form-item">
+            <label>原因</label>
+            <select id="itReason">
+              <option>船司要求取消 IT</option>
+              <option>以星取消 IT / 重审 AN</option>
+              <option>中转港变更</option>
+              <option>客户要求</option>
+              <option>其他</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>中转港（截单补录）</label>
+            <input id="itTransit" placeholder="例 BUSAN / 无则留空" />
+          </div>
+          <div class="form-item">
+            <label>通知关务清关</label>
+            <select id="itNotify">
+              <option value="1">站内待办 + 消息（推荐）</option>
+              <option value="0">仅标记，不通知</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>加费提醒</label>
+            <select id="itFee">
+              <option>按船司费用表后续计费</option>
+              <option>本次无加费</option>
+              <option>已口头确认加费金额</option>
+            </select>
+          </div>
+          <div class="form-item full">
+            <label>备注</label>
+            <textarea id="itRemark" placeholder="例：已与船司确认取消 IT，请关务同步清关行"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="itCancel">取消</button>
+        <button type="button" class="tool-btn warn" id="itConfirm">确认取消IT并通知关务</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查验标记 -->
+  <div class="mask" id="ckMask" aria-hidden="true">
+    <div class="modal" role="dialog">
+      <div class="modal-hd">
+        <h3>查验标记 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="ckClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert">
+          口径（0730）：查验<strong>默认挂柜</strong>（本提单/柜可见）；若因<strong>某票货物</strong>导致查验 → 选「查验挂票」，运单侧同步打标，柜上仍可见汇总。
+        </div>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="ckTargets" readonly />
+          </div>
+          <div class="form-item">
+            <label>查验状态</label>
+            <select id="ckStatus">
+              <option value="查验中">查验中（挂柜）</option>
+              <option value="查验挂票">查验挂票（单票责任）</option>
+              <option value="查验放行">查验放行</option>
+              <option value="无">清除标记</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>关联运单号（挂票时）</label>
+            <input id="ckWaybill" placeholder="例 TX-20260806-009" />
+          </div>
+          <div class="form-item">
+            <label>通知关务</label>
+            <select id="ckNotify">
+              <option value="1">站内待办（推荐）</option>
+              <option value="0">仅标记</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>是否加费</label>
+            <select id="ckFee">
+              <option>后续柜上加费</option>
+              <option>本次无加费</option>
+              <option>已确认加费金额</option>
+            </select>
+          </div>
+          <div class="form-item full">
+            <label>备注</label>
+            <textarea id="ckRemark" placeholder="例：海关布控查验；责任票 TX-20260806-009"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="ckCancel">取消</button>
+        <button type="button" class="tool-btn warn" id="ckConfirm" style="background:#d46b08;border-color:#d46b08;">确认写入查验标记</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 改单标记 -->
+  <div class="mask" id="amdMask" aria-hidden="true">
+    <div class="modal" role="dialog">
+      <div class="modal-hd">
+        <h3>改单标记 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="amdClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info">
+          <strong>改单</strong>＝改截单资料（件毛体、收发通、HS/品名、铅封、VGM、提单号等）。
+          与<strong>改运抵</strong>（港区运抵数据）不同。船开前完成；可生成改单/改 VGM 保函。
+        </div>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="amdTargets" readonly />
+          </div>
+          <div class="form-item">
+            <label>改单状态</label>
+            <select id="amdStatus">
+              <option value="改单中">改单中</option>
+              <option value="已改单">已改单</option>
+              <option value="无">清除标记</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>改单类型</label>
+            <select id="amdType">
+              <option>件毛体</option>
+              <option>收发通</option>
+              <option>HS / 品名</option>
+              <option>铅封</option>
+              <option>VGM</option>
+              <option>提单号（套箱/改配）</option>
+              <option>其他</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>改单保函</label>
+            <select id="amdLetter">
+              <option value="1">需改单保函</option>
+              <option value="2">需改 VGM 保函</option>
+              <option value="0">本次无需保函</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>通知对象</label>
+            <select id="amdNotify">
+              <option value="1">关务 + 代理（推荐）</option>
+              <option value="2">仅关务</option>
+              <option value="0">仅标记</option>
+            </select>
+          </div>
+          <div class="form-item full">
+            <label>改单说明</label>
+            <textarea id="amdRemark" placeholder="例：件数 40→38；HS 6204.44→6204.43；需改单保函"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="amdCancel">取消</button>
+        <button type="button" class="tool-btn" id="amdConfirm" style="background:#1677ff;border-color:#1677ff;color:#fff;">确认写入改单标记</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 费用登记（含水单上传）· 对接邮件 -->
+  <div class="mask" id="feeMask" aria-hidden="true">
+    <div class="modal wide" role="dialog" style="width:820px;max-width:96vw">
+      <div class="modal-hd">
+        <h3>费用登记（含水单） <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="feeClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info">
+          柜上费用 + 付款水单<strong>同一入口</strong>（0730 F1～F5 + 0804 邮箱）：可只登记费用、只上传水单，或两者一并提交并回邮。
+        </div>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="feeTargets" readonly />
+          </div>
+          <div class="form-item">
+            <label>本次操作</label>
+            <select id="feeMode">
+              <option value="fee">仅登记费用</option>
+              <option value="both" selected>登记费用 + 上传水单</option>
+              <option value="slip">仅上传水单（已有费用）</option>
+            </select>
+          </div>
+          <div class="form-item fee-only">
+            <label>登记来源</label>
+            <select id="feeSource">
+              <option value="manual">手工登记</option>
+              <option value="mail">从关联邮件带入</option>
+            </select>
+          </div>
+          <div class="form-item fee-only">
+            <label>费用类型</label>
+            <select id="feeType">
+              <option>改港费</option>
+              <option>滞港费</option>
+              <option>滞箱费</option>
+              <option>落箱费</option>
+              <option>查验加费</option>
+              <option>加载加费</option>
+              <option>AN杂费</option>
+              <option>其他杂费</option>
+            </select>
+          </div>
+          <div class="form-item fee-only">
+            <label>金额</label>
+            <input id="feeAmount" type="number" min="0" step="0.01" placeholder="例 350" />
+          </div>
+          <div class="form-item fee-only">
+            <label>币种</label>
+            <select id="feeCcy">
+              <option>USD</option>
+              <option>CNY</option>
+            </select>
+          </div>
+          <div class="form-item full fee-only" id="feeHangWrap">
+            <label>归属 <span style="color:#8c8c8c;font-weight:400">（多列表勾选 · 可挂多柜 / 多票）</span></label>
+            <div class="hang-panels">
+              <div class="hang-panel">
+                <h5>
+                  <span>挂柜列表</span>
+                  <span class="hang-acts">
+                    <button type="button" id="feeCntrAll">全选</button>
+                    <button type="button" id="feeCntrNone">清空</button>
+                  </span>
+                </h5>
+                <div class="hang-list" id="feeCntrList"></div>
+              </div>
+              <div class="hang-panel">
+                <h5>
+                  <span>挂票列表</span>
+                  <span class="hang-acts">
+                    <button type="button" id="feeWbAll">全选</button>
+                    <button type="button" id="feeWbNone">清空</button>
+                  </span>
+                </h5>
+                <div class="hang-list" id="feeWbList"></div>
+                <div class="hang-add">
+                  <input id="feeWbAdd" placeholder="补录运单号，例 TX-20260806-009" />
+                  <button type="button" id="feeWbAddBtn">添加</button>
+                </div>
+              </div>
+            </div>
+            <p class="hang-hint" id="feeHangHint">默认勾选适用提单下全部柜；单票责任请在「挂票列表」勾选运单。可同时挂柜+挂票。</p>
+          </div>
+          <div class="form-item fee-only">
+            <label>同步对象</label>
+            <select id="feeSync">
+              <option value="1">财务台账 + 业务成本（推荐）</option>
+              <option value="2">仅财务台账</option>
+              <option value="0">仅本柜标记</option>
+            </select>
+          </div>
+          <div class="form-item full fee-only">
+            <label>费用说明</label>
+            <textarea id="feeRemark" placeholder="例：目的港改港产生改港费；滞港 3 天 × 日费率"></textarea>
+          </div>
+        </div>
+
+        <div class="mail-dock fee-only" id="feeMailDock">
+          <h4><span class="tag-mail">MAIL</span> 对接邮件 · 费用归集</h4>
+          <p style="margin:0 0 8px;font-size:12px;color:#595959">
+            按柜号/提单匹配通知邮箱费用邮件；勾选后回填类型·金额·说明并关联线程。
+          </p>
+          <div class="mail-list" id="feeMailList"></div>
+          <div class="mail-preview" id="feeMailPreview">选择上方邮件预览正文摘录…</div>
+          <div class="form-grid">
+            <div class="form-item">
+              <label>关联邮箱账号</label>
+              <select id="feeMailBox">
+                <option>LAX-notify@ess.demo</option>
+                <option>NYC-notify@ess.demo</option>
+                <option>importer-star@ess.demo</option>
+              </select>
+            </div>
+            <div class="form-item">
+              <label>登记后动作</label>
+              <select id="feeMailAction">
+                <option value="link">仅关联邮件线程</option>
+                <option value="reply">关联 + 回复「已登记待付」</option>
+                <option value="none">不对接邮件</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="mail-dock slip-only" id="slipSection" style="margin-top:12px;border-color:#91d5ff;background:#f0f9ff">
+          <h4><span class="tag-mail" style="background:#0958d9">水单</span> 水单上传 · 回邮（已合并）</h4>
+          <div class="form-grid">
+            <div class="form-item" id="slipFeeLinkWrap">
+              <label>关联已录费用</label>
+              <select id="slipFeeLink">
+                <option value="">关联本次登记费用</option>
+              </select>
+            </div>
+            <div class="form-item">
+              <label>付款金额</label>
+              <input id="slipAmount" type="number" min="0" step="0.01" placeholder="默认=费用金额" />
+            </div>
+            <div class="form-item">
+              <label>币种</label>
+              <select id="slipCcy">
+                <option>USD</option>
+                <option>CNY</option>
+              </select>
+            </div>
+            <div class="form-item">
+              <label>付款确认</label>
+              <select id="slipPaid">
+                <option value="1">已付款 · 进业务员成本</option>
+                <option value="0">仅存档 · 暂不进成本</option>
+              </select>
+            </div>
+            <div class="form-item full">
+              <label>水单文件</label>
+              <div class="upload-box" id="slipUploadBox">
+                点击选择或拖入水单 PDF / 图片<br />
+                <strong>示意：点击即模拟选中文件</strong>
+                <div class="file-name" id="slipFileName">未选择文件</div>
+              </div>
+            </div>
+            <div class="form-item full">
+              <label>水单备注</label>
+              <textarea id="slipRemark" placeholder="例：滞港+滞箱合并付款水单"></textarea>
+            </div>
+          </div>
+          <p style="margin:10px 0 8px;font-size:12px;color:#595959">
+            点选原费用邮件作回复线程，或手填收件邮箱；附件自动带水单。
+          </p>
+          <div class="mail-list" id="slipMailList"></div>
+          <div class="form-grid">
+            <div class="form-item">
+              <label>收件邮箱</label>
+              <input id="slipMailTo" placeholder="agent@carrier.com" />
+            </div>
+            <div class="form-item">
+              <label>发件账号</label>
+              <select id="slipMailFrom">
+                <option>LAX-notify@ess.demo</option>
+                <option>NYC-notify@ess.demo</option>
+                <option>importer-star@ess.demo</option>
+              </select>
+            </div>
+            <div class="form-item full">
+              <label>邮件主题</label>
+              <input id="slipMailSubject" />
+            </div>
+            <div class="form-item full">
+              <label>正文</label>
+              <textarea id="slipMailBody" rows="2"></textarea>
+            </div>
+            <div class="form-item">
+              <label>发送策略</label>
+              <select id="slipMailAction">
+                <option value="send">上传并发送回邮</option>
+                <option value="save">仅上传 · 稍后发</option>
+                <option value="draft">保存草稿</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-item full" style="margin-top:10px">
+          <label>已录费用 / 水单（所选提单汇总）</label>
+          <div id="feeHistory" style="font-size:12px;color:#595959;line-height:1.7;padding:8px 10px;background:#fafafa;border:1px solid #f0f0f0;border-radius:6px;max-height:100px;overflow:auto">—</div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="feeCancel">取消</button>
+        <button type="button" class="tool-btn" id="feeConfirm" style="background:#531dab;border-color:#531dab;color:#fff;">确认提交</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 绑定进口商 · 一水绑柜校验 -->
+  <div class="mask" id="impMask" aria-hidden="true">
+    <div class="modal" role="dialog">
+      <div class="modal-hd">
+        <h3>绑定进口商 · 一水绑柜校验 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="impClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info">
+          散货规则：同一进口商在<strong>同一水船（同船名航次）</strong>已绑柜数须 ≤ <strong>5</strong>。
+          绑定时按勾选提单所属航次累计校验；超过则强提示。
+        </div>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="impTargets" readonly />
+          </div>
+          <div class="form-item">
+            <label>进口商</label>
+            <select id="impSelect">
+              <option value="">请选择</option>
+              <option>STAR IMPORTER LLC</option>
+              <option>PACIFIC GATEWAY INC</option>
+              <option>EAST COAST TRADE CO</option>
+              <option>NINGBO BRIGHT LOGISTICS</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>货类（规则适用）</label>
+            <select id="impCargo">
+              <option value="散货">散货（一水≤5）</option>
+              <option value="整柜">整柜（本规则不限）</option>
+            </select>
+          </div>
+          <div class="form-item full">
+            <label>一水绑柜预检</label>
+            <div id="impCheckBox" style="padding:8px 10px;border:1px solid #d9d9d9;border-radius:2px;background:#fafafa;font-size:12px;line-height:1.6;min-height:48px;color:#8c8c8c">
+              选择进口商后显示同船已绑柜数
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="impCancel">取消</button>
+        <button type="button" class="tool-btn" id="impConfirm" style="background:#1677ff;border-color:#1677ff;color:#fff;">确认绑定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分配 · 发群消息 -->
+  <div class="mask" id="asMask" aria-hidden="true">
+    <div class="modal wide" role="dialog">
+      <div class="modal-hd">
+        <h3>提单分配 · 发拖车代理群 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="asClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info">
+          像发微信群消息一样：核对信息 → <strong>一键复制</strong> → 粘贴到拖车代理群。分配结果同步写回系统（拖车代理 / 装柜时间 / 地址）。
+        </div>
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-item">
+            <label>拖车代理群</label>
+            <select id="asGroup">
+              <option>宁波拖车代理群</option>
+              <option>上海新洋拖车群</option>
+              <option>青岛港拖车协调群</option>
+              <option>深圳盐田拖车群</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>分配模板</label>
+            <select id="asTpl">
+              <option value="full">完整装柜分配</option>
+              <option value="short">精简版（柜号+地址+时间）</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>拖车代理</label>
+            <select id="asAgent">
+              <option>甬港拖车</option>
+              <option>上海新洋</option>
+              <option>青港物流</option>
+              <option>盐田畅通（勿选 EPS）</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>预计装柜时间</label>
+            <input id="asLoadAt" type="datetime-local" value="2026-08-07T14:00" />
+          </div>
+          <div class="form-item full">
+            <label>装柜地址（可改）</label>
+            <input id="asAddr" value="浙江省宁波市北仑区××路88号（仓库装柜）" />
+          </div>
+          <div class="form-item">
+            <label>提箱地点</label>
+            <input id="asPickup" value="宁波梅山堆场" />
+          </div>
+          <div class="form-item">
+            <label>进港/还箱地点</label>
+            <input id="asReturn" value="宁波港进港" />
+          </div>
+        </div>
+
+        <div class="chat-shell">
+          <div class="chat-meta">
+            <span class="group" id="asGroupLabel">● 宁波拖车代理群</span>
+            <span>预览 · 可编辑后复制</span>
+          </div>
+          <textarea class="chat-bubble" id="asMsg" rows="12"></textarea>
+        </div>
+        <div class="alert ok" style="margin-top:10px;margin-bottom:0" id="asHint">
+          复制后可直接粘贴微信/企微拖车代理群；点「确认分配」将代理与装柜信息写回勾选提单。
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="asCancel">取消</button>
+        <button type="button" class="tool-btn ok" id="asCopy">一键复制分配消息</button>
+        <button type="button" class="tool-btn purple" id="asConfirm">确认分配并写回</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 仓位播报 · 一键复制 -->
+  <div class="mask" id="bcMask" aria-hidden="true">
+    <div class="modal wide" role="dialog">
+      <div class="modal-hd">
+        <h3>一键复制仓位播报 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="bcClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info">
+          0730：播报现状<strong>手动拼</strong> → 系统按勾选/当前筛选提单<strong>同船聚合</strong>生成文案
+         （待配仓货量 · 航线截单 · 可选运价摘要）→ <strong>一键复制</strong> → 粘贴集团营销中心群。挤满柜子再排。
+        </div>
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-item">
+            <label>播报群</label>
+            <select id="bcGroup">
+              <option>集团营销中心群</option>
+              <option>渠道早报群（黄少飞）</option>
+              <option>青岛/厦门/潍坊区域群</option>
+              <option>义乌宁波北苑群</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>播报模板</label>
+            <select id="bcTpl">
+              <option value="daily">日报完整（同船+截单+货量）</option>
+              <option value="rate">带运价摘要</option>
+              <option value="short">精简版（船名+航线+柜数）</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>数据范围</label>
+            <select id="bcScope">
+              <option value="checked">勾选提单</option>
+              <option value="filter">当前筛选结果</option>
+              <option value="week">当前列表所在周（同周）</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>播报日期</label>
+            <input id="bcDate" type="date" value="2026-08-07" />
+          </div>
+          <div class="form-item full">
+            <label>补充说明（可选，写入文案末尾）</label>
+            <input id="bcNote" placeholder="例：美森 SW 保函船开前送达；一水绑柜散货≤5" />
+          </div>
+        </div>
+
+        <div class="chat-shell" style="background:#e8f3ff">
+          <div class="chat-meta">
+            <span class="group" id="bcGroupLabel" style="color:#08979c">● 集团营销中心群</span>
+            <span>预览 · 可编辑后复制</span>
+          </div>
+          <textarea class="chat-bubble" id="bcMsg" rows="14" style="background:#fff;border:1px solid #91d5ff;width:100%;resize:vertical"></textarea>
+        </div>
+        <div class="alert ok" style="margin-top:10px;margin-bottom:0" id="bcHint">
+          复制后粘贴企微/微信营销群；文案可改。运价来自运价管理示意价，正式版联动「我司订舱价」。
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="bcCancel">取消</button>
+        <button type="button" class="tool-btn" id="bcRefresh" style="background:#08979c;border-color:#08979c;color:#fff;">重新生成</button>
+        <button type="button" class="tool-btn ok" id="bcCopy">一键复制播报</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-提单管理-按周分组与分配-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD · 提单管理增量</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var ROWS = [
+        { id: 1, bl: "HLCUTS12698AZMK1", cntr: "HLBU2877104", st: "待分配", it: "有IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-02 17:00", color: "", type: "20GP", etd: "2026-08-04 00:00:00", carrier: "Hapag", voy: "YM MOVEMENT 0TH5FE1MA", pol: "CNTJN", pod: "USNYC", agent: "", addr: "天津保税区××路1号", loadAt: "", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 2, bl: "HLCUTS12698AZMK2", cntr: "HLBU2877110", st: "待分配", it: "有IT", ck: "查验中", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-02 17:00", color: "", type: "40HQ", etd: "2026-08-04 00:00:00", carrier: "Hapag", voy: "YM MOVEMENT 0TH5FE1MA", pol: "CNTJN", pod: "USNYC", agent: "", addr: "天津开发区××道", loadAt: "", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 3, bl: "COSU1234567890", cntr: "CSNU6688123", st: "待装柜", it: "无IT", ck: "无", amd: "改单中", amdType: "件毛体", amdLetter: "改单保函", amdReason: "件数 40→38", amdAt: "2026-08-05 10:20", release: "已放行", cutOff: "2026-08-04 17:00", color: "装完", type: "40HQ", etd: "2026-08-06 00:00:00", carrier: "COSCO", voy: "COSCO SHIPPING 088E", pol: "CNSHA", pod: "USLAX", agent: "上海新洋", addr: "上海市浦东新区××路66号", loadAt: "2026-08-05 09:00", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 4, bl: "COSU1234567891", cntr: "CSNU6688456", st: "待装柜", it: "无IT", ck: "查验挂票", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-04 17:00", color: "装完", type: "40HQ", etd: "2026-08-06 00:00:00", carrier: "COSCO", voy: "COSCO SHIPPING 088E", pol: "CNSHA", pod: "USLAX", agent: "上海新洋", addr: "上海市松江区××工业园", loadAt: "2026-08-05 14:00", week: "2026-W32", ckWb: "TX-20260806-009", itReason: "", itTransit: "", itAt: "" },
+        { id: 5, bl: "MEDU9988776655", cntr: "MEDU1122334", st: "待分配", it: "有IT", ck: "无", amd: "改单中", amdType: "HS / 品名", amdLetter: "改单保函", amdReason: "HS 6204.44→6204.43", amdAt: "2026-08-06 09:10", release: "未放行", cutOff: "2026-08-08 06:00", color: "", type: "40HQ", etd: "2026-08-07 00:00:00", carrier: "MSC", voy: "MSC OSCAR 12W", pol: "CNNGB", pod: "USLGB", agent: "", addr: "宁波北仑××路88号", loadAt: "", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 6, bl: "ONEY5566778899", cntr: "NYKU4455667", st: "待装柜", it: "已取消IT", ck: "查验放行", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "已放行", cutOff: "2026-08-09 17:00", color: "装完", type: "40HQ", etd: "2026-08-11 00:00:00", carrier: "ONE", voy: "ONE CONTINUITY 021E", pol: "CNYTN", pod: "USHOU", agent: "盐田畅通", addr: "深圳市盐田区××物流园", loadAt: "2026-08-09 10:00", week: "2026-W33", ckWb: "", itReason: "以星取消 IT / 重审 AN", itTransit: "BUSAN", itAt: "2026-08-09 11:20" },
+        { id: 7, bl: "ONEY5566778800", cntr: "NYKU4455778", st: "待分配", it: "有IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-09 12:00", color: "", type: "20GP", etd: "2026-08-11 00:00:00", carrier: "ONE", voy: "ONE CONTINUITY 021E", pol: "CNYTN", pod: "USHOU", agent: "", addr: "东莞××工业区", loadAt: "", week: "2026-W33", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 8, bl: "HLCUTS12699BB001", cntr: "HLCU9900112", st: "待离港", it: "无IT", ck: "无", amd: "已改单", amdType: "VGM", amdLetter: "改 VGM 保函", amdReason: "VGM 重报", amdAt: "2026-08-10 16:40", release: "已放行", cutOff: "2026-08-10 17:00", color: "装完", type: "40HQ", etd: "2026-08-12 00:00:00", carrier: "Hapag", voy: "AL RAWDAH 009E", pol: "CNSHA", pod: "USNYC", agent: "上海新洋", addr: "上海外高桥", loadAt: "2026-08-10 08:30", week: "2026-W33", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 9, bl: "COSU20260813001", cntr: "CSNU7788990", st: "待分配", it: "有IT", ck: "查验中", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-11 17:00", color: "", type: "40HQ", etd: "2026-08-13 00:00:00", carrier: "COSCO", voy: "COSCO FORTUNE 055E", pol: "CNNGB", pod: "USLAX", agent: "", addr: "宁波慈溪××仓", loadAt: "", week: "2026-W33", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 10, bl: "MEDU20260818001", cntr: "MSCU3344556", st: "待装柜", it: "无IT", ck: "无", amd: "改单中", amdType: "铅封", amdLetter: "", amdReason: "铅封号更正", amdAt: "2026-08-16 11:00", release: "未放行", cutOff: "2026-08-16 17:00", color: "", type: "40HQ", etd: "2026-08-18 00:00:00", carrier: "MSC", voy: "MSC MIRJA 08E", pol: "CNTAO", pod: "USLGB", agent: "青港物流", addr: "青岛黄岛××路", loadAt: "2026-08-16 13:00", week: "2026-W34", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 11, bl: "MEDU20260818002", cntr: "MSCU3344667", st: "待离港", it: "已取消IT", ck: "查验挂票", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "已放行", cutOff: "2026-08-16 17:00", color: "装完", type: "20GP", etd: "2026-08-18 00:00:00", carrier: "MSC", voy: "MSC MIRJA 08E", pol: "CNTAO", pod: "USLGB", agent: "青港物流", addr: "青岛保税区", loadAt: "2026-08-16 15:00", week: "2026-W34", ckWb: "FBA19DFXK542", itReason: "船司要求取消 IT", itTransit: "", itAt: "2026-08-16 16:05" },
+        { id: 12, bl: "HLCUTS12700CC100", cntr: "HLCU5566778", st: "已离港", it: "无IT", ck: "无", amd: "已改单", amdType: "收发通", amdLetter: "改单保函", amdReason: "收货人地址更正", amdAt: "2026-08-14 09:30", release: "已放行", cutOff: "2026-08-17 17:00", color: "装完", type: "40HQ", etd: "2026-08-19 00:00:00", carrier: "Hapag", voy: "YM WARMTH 0TH6WE1MA", pol: "CNSHA", pod: "USNYC", agent: "上海新洋", addr: "上海临港", loadAt: "2026-08-15 11:00", week: "2026-W34", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 13, bl: "COSU20260808088", cntr: "CSNU8800123", st: "待离港", it: "无IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-06 17:00", color: "装完", type: "40HQ", etd: "2026-08-08 00:00:00", carrier: "COSCO", voy: "COSCO HOPE 066E", pol: "CNSHA", pod: "USLAX", agent: "上海新洋", addr: "上海外高桥", loadAt: "2026-08-06 10:00", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
+        { id: 14, bl: "MEDU20260807001", cntr: "MSCU7700112", st: "待装柜", it: "无IT", ck: "查验中", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-07 12:00", color: "", type: "40HQ", etd: "2026-08-09 00:00:00", carrier: "MSC", voy: "MSC LISA 03E", pol: "CNNGB", pod: "USLGB", agent: "甬港拖车", addr: "宁波北仑", loadAt: "2026-08-07 15:00", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" }
+      ];
+
+      /* 示意：进口商 + 一水绑柜（散货同船≤5） */
+      (function seedImp() {
+        var map = {
+          3: "PACIFIC GATEWAY INC",
+          4: "PACIFIC GATEWAY INC",
+          6: "EAST COAST TRADE CO",
+          8: "EAST COAST TRADE CO",
+          10: "STAR IMPORTER LLC",
+          11: "STAR IMPORTER LLC",
+          12: "PACIFIC GATEWAY INC",
+          13: "NINGBO BRIGHT LOGISTICS",
+          14: "NINGBO BRIGHT LOGISTICS"
+        };
+        ROWS.forEach(function (r) {
+          r.imp = map[r.id] || "";
+          r.cargo = "散货";
+        });
+        /* STAR 在 MSC MIRJA 再绑 4 柜 → 同船共 6 柜超限示意 */
+        var base = ROWS.filter(function (r) { return r.id === 10; })[0];
+        [15, 16, 17, 18].forEach(function (id, i) {
+          ROWS.push({
+            id: id,
+            bl: "MEDU20260818" + (100 + i),
+            cntr: "MSCU3344" + (700 + i),
+            st: i % 2 ? "待装柜" : "待分配",
+            it: "无IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "",
+            release: i === 0 ? "已放行" : "未放行",
+            seaRel: i === 0 ? "已放行" : "未放行",
+            termRel: i <= 1 ? "已放行" : "未放行",
+            cutOff: "2026-08-16 17:00",
+            color: "", type: "40HQ",
+            etd: base.etd, carrier: base.carrier, voy: base.voy,
+            pol: base.pol, pod: base.pod, agent: "青港物流",
+            addr: "青岛黄岛××路", loadAt: "", week: base.week,
+            ckWb: "", itReason: "", itTransit: "", itAt: "",
+            imp: "STAR IMPORTER LLC", cargo: "散货", fees: []
+          });
+        });
+      })();
+
+      /* 海放 / 码放：从旧 release 迁移，并造区分样例 */
+      (function seedSeaTermRel() {
+        ROWS.forEach(function (r) {
+          if (r.seaRel == null) r.seaRel = r.release || "未放行";
+          if (r.termRel == null) {
+            /* 默认同步；下面按 id 覆盖区分场景 */
+            r.termRel = r.seaRel;
+          }
+        });
+        var byId = {};
+        ROWS.forEach(function (r) { byId[r.id] = r; });
+        /* 临近未海放（码放已过） */
+        if (byId[4]) { byId[4].seaRel = "未放行"; byId[4].termRel = "已放行"; byId[4].release = "未放行"; }
+        /* 临近双未 */
+        if (byId[5]) { byId[5].seaRel = "未放行"; byId[5].termRel = "未放行"; byId[5].release = "未放行"; }
+        /* 开船未海放（码放已过） */
+        if (byId[13]) { byId[13].seaRel = "未放行"; byId[13].termRel = "已放行"; byId[13].release = "未放行"; }
+        /* 临近未码放（海放已过）· 关键区分样例 */
+        if (byId[14]) { byId[14].seaRel = "已放行"; byId[14].termRel = "未放行"; byId[14].release = "已放行"; }
+        /* 双已 */
+        [3, 6, 8, 11, 12].forEach(function (id) {
+          if (byId[id]) {
+            byId[id].seaRel = "已放行";
+            byId[id].termRel = "已放行";
+            byId[id].release = "已放行";
+          }
+        });
+        /* 已过 ETD 双未 */
+        [1, 2].forEach(function (id) {
+          if (byId[id]) {
+            byId[id].seaRel = "未放行";
+            byId[id].termRel = "未放行";
+            byId[id].release = "未放行";
+          }
+        });
+      })();
+
+      /* 进港 / 飞驼：开船后盯进港；飞驼不能抓 → 人工；未进港预警 */
+      (function seedArriveFt() {
+        ROWS.forEach(function (r) {
+          if (r.ftGrab == null) r.ftGrab = "能"; /* 飞驼能否抓进港时间 */
+          if (r.arriveAt == null) r.arriveAt = "";
+        });
+        var byId = {};
+        ROWS.forEach(function (r) { byId[r.id] = r; });
+        /* 已进港 · 飞驼抓到 */
+        if (byId[12]) { byId[12].ftGrab = "能"; byId[12].arriveAt = "2026-08-20 09:30"; }
+        if (byId[8]) { byId[8].ftGrab = "能"; byId[8].arriveAt = ""; } /* 未到 ETD 窗口，不预警 */
+        /* 已过 ETD · 飞驼可抓但未进港 → 预警 */
+        if (byId[13]) { byId[13].ftGrab = "能"; byId[13].arriveAt = ""; }
+        if (byId[1]) { byId[1].ftGrab = "能"; byId[1].arriveAt = ""; }
+        if (byId[2]) { byId[2].ftGrab = "能"; byId[2].arriveAt = ""; }
+        if (byId[4]) { byId[4].ftGrab = "能"; byId[4].arriveAt = ""; }
+        /* 飞驼不可抓 · 需人工 · 已过 ETD 未进港预警 */
+        if (byId[3]) { byId[3].ftGrab = "不能"; byId[3].arriveAt = ""; }
+        /* 待确认覆盖港 · 已有进港（人工） */
+        if (byId[11]) { byId[11].ftGrab = "待确认"; byId[11].arriveAt = "2026-08-19 14:00"; }
+        if (byId[14]) { byId[14].ftGrab = "不能"; byId[14].arriveAt = ""; } /* ETD 未过，仅展示不可抓 */
+        if (byId[6]) { byId[6].ftGrab = "能"; byId[6].arriveAt = ""; }
+      })();
+
+      /* 发送标记：AMS / ISF（默认未发；部分示意已发） */
+      (function seedSend() {
+        ROWS.forEach(function (r) {
+          if (r.ams == null) r.ams = "未发";
+          if (r.isf == null) r.isf = "未发";
+        });
+        var byId = {};
+        ROWS.forEach(function (r) { byId[r.id] = r; });
+        [3, 6, 8, 12].forEach(function (id) {
+          if (byId[id]) { byId[id].ams = "已发"; byId[id].amsAt = "2026-08-05 14:00"; }
+        });
+        [3, 8, 11, 12].forEach(function (id) {
+          if (byId[id]) { byId[id].isf = "已发"; byId[id].isfAt = "2026-08-05 15:30"; }
+        });
+      })();
+
+      /* 示意：柜上杂费（改港 / 滞港等） */
+      (function seedFees() {
+        ROWS.forEach(function (r) {
+          if (!r.fees) r.fees = [];
+        });
+        var byId = {};
+        ROWS.forEach(function (r) { byId[r.id] = r; });
+        if (byId[4]) {
+          byId[4].fees.push({
+            type: "查验加费", amount: 200, ccy: "USD", hang: "票",
+            wb: "TX-20260806-009", remark: "单票责任查验", at: "2026-08-05 16:00"
+          });
+        }
+        if (byId[6]) {
+          byId[6].fees.push({
+            type: "改港费", amount: 450, ccy: "USD", hang: "柜",
+            wb: "", remark: "目的港改港", at: "2026-08-10 09:30"
+          });
+        }
+        if (byId[11]) {
+          byId[11].fees.push(
+            {
+              type: "滞港费", amount: 320, ccy: "USD", hang: "柜", wb: "",
+              remark: "滞港 2 天", at: "2026-08-17 11:00",
+              fromMail: true, mailSub: "Demurrage notice MSCU3344667"
+            },
+            {
+              type: "滞箱费", amount: 180, ccy: "USD", hang: "柜", wb: "",
+              remark: "超免用箱期", at: "2026-08-17 11:05",
+              fromMail: true, mailSub: "Detention invoice MSCU3344667"
+            }
+          );
+          byId[11].slips = [{
+            file: "水单_MSCU3344667_USD500.pdf", amount: 500, ccy: "USD",
+            mailed: true, at: "2026-08-17 14:20", remark: "滞港+滞箱合并付"
+          }];
+        }
+        if (byId[13]) {
+          byId[13].fees.push({
+            type: "落箱费", amount: 800, ccy: "CNY", hang: "柜",
+            wb: "", remark: "进港落箱", at: "2026-08-06 18:20"
+          });
+          byId[13].slips = [{
+            file: "水单_CSNU8800123.pdf", amount: 800, ccy: "CNY",
+            mailed: false, at: "2026-08-07 09:00", remark: "待回邮"
+          }];
+        }
+        ROWS.forEach(function (r) {
+          if (!r.slips) r.slips = [];
+        });
+      })();
+
+      /* 示意：柜子通知邮箱费用邮件（按柜号匹配） */
+      var FEE_MAILS = [
+        {
+          id: "m1", cntr: "MSCU3344667", bl: "MEDU20260818002",
+          from: "billing@msc.demo", box: "LAX-notify@ess.demo",
+          sub: "Demurrage notice MSCU3344667",
+          type: "滞港费", amount: 320, ccy: "USD",
+          body: "Container MSCU3344667 demurrage 2 days × USD160 = USD320. Please remit and reply with payment slip.",
+          at: "2026-08-16 08:12"
+        },
+        {
+          id: "m2", cntr: "MSCU3344667", bl: "MEDU20260818002",
+          from: "billing@msc.demo", box: "LAX-notify@ess.demo",
+          sub: "Detention invoice MSCU3344667",
+          type: "滞箱费", amount: 180, ccy: "USD",
+          body: "Detention beyond free time: USD180. Reply with remittance advice.",
+          at: "2026-08-16 08:15"
+        },
+        {
+          id: "m3", cntr: "NYKU4455667", bl: "ONEY5566778899",
+          from: "ops@one.demo", box: "NYC-notify@ess.demo",
+          sub: "Port change fee ONYKU4455667",
+          type: "改港费", amount: 450, ccy: "USD",
+          body: "Destination change surcharge USD450 for BL ONEY5566778899.",
+          at: "2026-08-09 16:40"
+        },
+        {
+          id: "m4", cntr: "CSNU8800123", bl: "COSU20260808088",
+          from: "agent@cosco.demo", box: "LAX-notify@ess.demo",
+          sub: "AN misc / drop charge CSNU8800123",
+          type: "AN杂费", amount: 95, ccy: "USD",
+          body: "Arrival notice misc + drop related charge USD95. Payment required before pickup.",
+          at: "2026-08-07 07:30"
+        }
+      ];
+
+      var WEEK_LABEL = {
+        "2026-W32": { title: "2026 第32周", range: "08-03～08-09" },
+        "2026-W33": { title: "2026 第33周", range: "08-10～08-16" },
+        "2026-W34": { title: "2026 第34周", range: "08-17～08-23" }
+      };
+
+      /* 原型「现在」：与页面示意日一致，正式版取系统时 */
+      var NOW = new Date(2026, 7, 7, 10, 0, 0); /* 2026-08-07 10:00 */
+      var TODAY = NOW; /* 开船窗口仍按日口径兼容 */
+      var NEAR_CUT_HOURS = 24; /* 截单：提前 24 小时预警 */
+      var NEAR_SAIL_DAYS = 3;
+      var IMP_LIMIT = 5; /* 散货一水绑柜上限 */
+
+      var stFilter = "";
+      var itFilter = "";
+      var amdFilter = "";
+      var warnFilter = "";
+      var impFilter = "";
+      var colorFilter = "";
+      /* 底部周页签：默认当前示意周；"" = 全部周 */
+      var weekFilter = "2026-W32";
+      var selected = {};
+      var itSingleId = null;
+
+      function parseDay(str) {
+        if (!str) return null;
+        var m = String(str).match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (!m) return null;
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      }
+
+      function parseDateTime(str) {
+        if (!str) return null;
+        var m = String(str).match(/(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+        if (!m) return null;
+        return new Date(
+          Number(m[1]), Number(m[2]) - 1, Number(m[3]),
+          m[4] != null ? Number(m[4]) : 0,
+          m[5] != null ? Number(m[5]) : 0,
+          m[6] != null ? Number(m[6]) : 0
+        );
+      }
+
+      function daysBetween(a, b) {
+        return Math.round((b.getTime() - a.getTime()) / 86400000);
+      }
+
+      function hoursBetween(a, b) {
+        return (b.getTime() - a.getTime()) / 3600000;
+      }
+
+      function seaOk(r) { return (r.seaRel || r.release || "未放行") === "已放行"; }
+      function termOk(r) { return (r.termRel || "未放行") === "已放行"; }
+
+      function warnFlags(r) {
+        var cut = parseDateTime(r.cutOff);
+        var etd = parseDay(r.etd);
+        var nearCut = false;
+        var nearSea = false;
+        var nearTerm = false;
+        var overSea = false;
+        var overTerm = false;
+        var hoursToCut = null;
+        if (cut) {
+          hoursToCut = hoursBetween(NOW, cut);
+          /* 截单提前 24 小时预警（未到截单且距截单 ≤24h） */
+          nearCut = hoursToCut >= 0 && hoursToCut <= NEAR_CUT_HOURS;
+        }
+        if (etd) {
+          var todayDay = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+          var dEtd = daysBetween(todayDay, etd);
+          var nearWin = dEtd >= 0 && dEtd <= NEAR_SAIL_DAYS;
+          var overWin = dEtd < 0;
+          if (!seaOk(r)) {
+            if (overWin) overSea = true;
+            else if (nearWin) nearSea = true;
+          }
+          if (!termOk(r)) {
+            if (overWin) overTerm = true;
+            else if (nearWin) nearTerm = true;
+          }
+        }
+        /* 开船后（ETD 已过）仍无进港时间 → 未进港预警；与飞驼能否抓无关（不能抓也要人工盯） */
+        var noArrive = false;
+        if (etd) {
+          var todayDay2 = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+          var dEtd2 = daysBetween(todayDay2, etd);
+          if (dEtd2 < 0 && !(r.arriveAt || "").trim()) noArrive = true;
+        }
+        return {
+          nearCut: nearCut,
+          hoursToCut: hoursToCut,
+          nearSea: nearSea,
+          nearTerm: nearTerm,
+          overSea: overSea,
+          overTerm: overTerm,
+          nearSail: nearSea || nearTerm,
+          overSail: overSea || overTerm,
+          noArrive: noArrive
+        };
+      }
+
+      function hasWarn(r, kind) {
+        var f = warnFlags(r);
+        if (kind === "临近截单") return f.nearCut;
+        if (kind === "临近未海放") return f.nearSea;
+        if (kind === "临近未码放") return f.nearTerm;
+        if (kind === "开船未海放") return f.overSea;
+        if (kind === "开船未码放") return f.overTerm;
+        if (kind === "未进港") return f.noArrive;
+        if (kind === "临近开船未放行") return f.nearSail;
+        if (kind === "开船未放行") return f.overSail;
+        if (kind === "sail_any") return f.nearSail || f.overSail;
+        if (kind === "any") return f.nearCut || f.nearSail || f.overSail || f.noArrive;
+        return false;
+      }
+
+      /** 同进口商 + 同一水船（船名航次）已绑柜数 */
+      function impBindCount(imp, voy) {
+        if (!imp || !voy) return 0;
+        return ROWS.filter(function (r) {
+          return r.imp === imp && r.voy === voy;
+        }).length;
+      }
+
+      function impMeta(r) {
+        var imp = r.imp || "";
+        var n = imp ? impBindCount(imp, r.voy) : 0;
+        var cargo = r.cargo || "散货";
+        var limited = cargo === "散货";
+        var over = limited && n > IMP_LIMIT;
+        var near = limited && n >= 4 && n <= IMP_LIMIT;
+        return { imp: imp, n: n, cargo: cargo, limited: limited, over: over, near: near };
+      }
+
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        setTimeout(function () { el.classList.remove("show"); }, 2200);
+      }
+
+      function itTag(r) {
+        var it = r.it;
+        if (it === "有IT") {
+          return '<div class="it-cell"><span class="tag it">有IT</span>' +
+            '<button type="button" class="link-btn" data-cancel-it="' + r.id + '" style="border:none;background:none;color:#cf1322;cursor:pointer;padding:0;">取消IT →</button></div>';
+        }
+        if (it === "已取消IT") {
+          var sub = [];
+          if (r.itReason) sub.push(r.itReason);
+          if (r.itTransit) sub.push("中转 " + r.itTransit);
+          if (r.itAt) sub.push(r.itAt);
+          return '<div class="it-cell"><span class="tag it-off">已取消IT</span>' +
+            (sub.length ? '<div class="it-sub">' + sub.join(" · ") + "</div>" : "") +
+            "</div>";
+        }
+        return '<span class="tag it-none">无IT</span>';
+      }
+
+      function ckTag(r) {
+        var ck = r.ck || "无";
+        if (ck === "查验中") return '<span class="tag ck" title="默认挂柜">查验中</span>';
+        if (ck === "查验放行") return '<span class="tag ck-pass">查验放行</span>';
+        if (ck === "查验挂票") {
+          var tip = r.ckWb ? ("责任票 " + r.ckWb) : "单票责任";
+          return '<div class="ck-block"><span class="tag ck-ticket" title="' + tip + '">查验挂票</span>' +
+            (r.ckWb ? '<div class="ck-sub" style="color:#c41d7f">' + r.ckWb + "</div>" : "") +
+            "</div>";
+        }
+        return ""; /* 无查验：合并列不占位 */
+      }
+
+      function amdTag(r) {
+        var amd = r.amd || "无";
+        if (amd === "改单中") {
+          var sub = [];
+          if (r.amdType) sub.push(r.amdType);
+          if (r.amdLetter) sub.push(r.amdLetter);
+          if (r.amdAt) sub.push(r.amdAt);
+          return '<div class="amd-cell"><span class="tag amd">改单中</span>' +
+            (sub.length ? '<div class="amd-sub">' + sub.join(" · ") + "</div>" : "") +
+            "</div>";
+        }
+        if (amd === "已改单") {
+          var sub2 = [];
+          if (r.amdType) sub2.push(r.amdType);
+          if (r.amdAt) sub2.push(r.amdAt);
+          return '<div class="amd-cell"><span class="tag amd-done">已改单</span>' +
+            (sub2.length ? '<div class="amd-sub" style="color:#08979c">' + sub2.join(" · ") + "</div>" : "") +
+            "</div>";
+        }
+        return ""; /* 无改单：合并列不占位 */
+      }
+
+      function sendTag(r) {
+        var ams = r.ams || "未发";
+        var isf = r.isf || "未发";
+        var amsHtml = ams === "已发"
+          ? '<span class="tag ams-ok" title="' + (r.amsAt || "") + '">AMS 已发</span>'
+          : '<span class="tag ams-no">AMS 未发</span>';
+        var isfHtml = isf === "已发"
+          ? '<span class="tag isf-ok" title="' + (r.isfAt || "") + '">ISF 已发</span>'
+          : '<span class="tag isf-no">ISF 未发</span>';
+        return '<div class="send-cell">' + amsHtml + isfHtml + "</div>";
+      }
+
+      /** 业务标记：IT + AMS/ISF + 查验 + 改单 合并一列 */
+      function marksCell(r) {
+        return '<div class="marks-cell">' +
+          itTag(r) + sendTag(r) + ckTag(r) + amdTag(r) +
+          "</div>";
+      }
+
+      function matchSendFilter(r, send) {
+        if (!send) return true;
+        var ams = r.ams || "未发";
+        var isf = r.isf || "未发";
+        if (send === "ams_no") return ams !== "已发";
+        if (send === "ams_ok") return ams === "已发";
+        if (send === "isf_no") return isf !== "已发";
+        if (send === "isf_ok") return isf === "已发";
+        if (send === "both_ok") return ams === "已发" && isf === "已发";
+        if (send === "any_no") return ams !== "已发" || isf !== "已发";
+        return true;
+      }
+
+      function relWarnCell(r) {
+        var f = warnFlags(r);
+        var sea = seaOk(r);
+        var term = termOk(r);
+        var relHtml = '<div class="rel-pair">' +
+          (sea ? '<span class="tag sea-ok" title="海关放行">海放✓</span>' : '<span class="tag sea-no" title="海关未放行">未海放</span>') +
+          (term ? '<span class="tag term-ok" title="码头放行">码放✓</span>' : '<span class="tag term-no" title="码头未放行">未码放</span>') +
+          "</div>";
+        var tags = [];
+        if (f.overSea) tags.push('<span class="tag warn-over" title="已过ETD仍未海放，可触发智能甩柜">开船未海放</span>');
+        else if (f.nearSea) tags.push('<span class="tag warn-sail" title="ETD≤3天且未海放">临近未海放</span>');
+        if (f.overTerm) tags.push('<span class="tag warn-over" title="已过ETD仍未码放">开船未码放</span>');
+        else if (f.nearTerm) tags.push('<span class="tag warn-sail" style="color:#c41d7f;background:#fff0f6;border-color:#ffadd2" title="ETD≤3天且未码放">临近未码放</span>');
+        if (f.nearCut) tags.push('<span class="tag warn-cut" title="距截单≤24小时">临近截单</span>');
+        var sub = "";
+        if (f.nearSail || f.overSail) {
+          var etd = parseDay(r.etd);
+          var todayDay = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+          var d = etd ? daysBetween(todayDay, etd) : null;
+          if (d != null) {
+            sub = d < 0 ? ("已过开船 " + (-d) + " 天") : ("距开船 " + d + " 天");
+          }
+        } else if (f.nearCut && f.hoursToCut != null) {
+          var h = Math.max(0, Math.round(f.hoursToCut * 10) / 10);
+          sub = h < 1 ? ("距截单约 " + Math.round(h * 60) + " 分钟") : ("距截单 " + h + " 小时");
+        }
+        return '<div class="warn-cell">' + relHtml +
+          (tags.length ? '<div style="margin-top:3px">' + tags.join(" ") + "</div>" : "") +
+          (sub ? '<div class="warn-sub">' + sub + "</div>" : "") +
+          "</div>";
+      }
+
+      function arriveFtCell(r) {
+        var f = warnFlags(r);
+        var ft = r.ftGrab || "待确认";
+        var ftTag = ft === "能"
+          ? '<span class="tag ft-ok" title="飞驼可抓进港时间">飞驼可抓</span>'
+          : (ft === "不能"
+            ? '<span class="tag ft-no" title="飞驼未覆盖，须人工确认/码头补录">飞驼不可抓</span>'
+            : '<span class="tag ft-pend" title="覆盖港待确认">飞驼待确认</span>');
+        var arr = (r.arriveAt || "").trim();
+        var arrHtml = arr
+          ? '<span class="tag arr-ok">已进港</span>'
+          : (f.noArrive
+            ? '<span class="tag arr-no">未进港</span>'
+            : '<span class="tag ft-pend">进港—</span>');
+        var sub = arr ? arr : (f.noArrive
+          ? (ft === "不能" ? "人工补录 · 未进港预警" : "飞驼无回写 · 未进港预警")
+          : (ft === "不能" ? "开船后改人工盯" : "开船后飞驼拉数"));
+        return '<div class="warn-cell"><div class="rel-pair">' + ftTag + arrHtml + "</div>" +
+          '<div class="warn-sub">' + sub + "</div></div>";
+      }
+
+      function cutOffCell(r) {
+        var f = warnFlags(r);
+        var t = r.cutOff || "—";
+        if (f.nearCut) {
+          return '<span style="color:#d46b08;font-weight:700">' + t + "</span>";
+        }
+        return t;
+      }
+
+      function impCell(r) {
+        var m = impMeta(r);
+        if (!m.imp) {
+          return '<span class="tag amd-none">未绑定</span>';
+        }
+        var tag;
+        if (m.over) {
+          tag = '<span class="tag imp-over" title="散货一水已超 ' + IMP_LIMIT + ' 柜">一水 ' + m.n + "/" + IMP_LIMIT + " 超限</span>";
+        } else if (m.near) {
+          tag = '<span class="tag imp-warn">一水 ' + m.n + "/" + IMP_LIMIT + "</span>";
+        } else if (m.limited) {
+          tag = '<span class="tag imp-ok">一水 ' + m.n + "/" + IMP_LIMIT + "</span>";
+        } else {
+          tag = '<span class="tag imp">一水 ' + m.n + "（整柜）</span>";
+        }
+        return '<div class="imp-cell"><div class="imp-name" title="' + m.imp + '">' + m.imp + "</div>" +
+          '<div class="imp-sub">' + tag + "</div></div>";
+      }
+
+      function stTag(st) {
+        var cls = st === "待分配" ? "wait" : st === "待装柜" ? "load" : "sail";
+        return '<span class="tag ' + cls + '">' + st + '</span>';
+      }
+
+      function colorCell(c) {
+        if (c === "装完" || c === "美装完") return '<span class="color-dot green"></span><span class="tag done">装完</span>';
+        return '<span class="color-dot orange"></span><span class="tag load-no">未装完</span>';
+      }
+
+      function feePillClass(type, fromMail) {
+        if (fromMail) return " mail";
+        if (type === "滞港费" || type === "滞箱费" || type === "AN杂费") return " dem";
+        if (type === "改港费" || type === "落箱费") return " port";
+        return "";
+      }
+
+      function feeCell(r) {
+        var list = r.fees || [];
+        if (!list.length) return '<span class="fee-empty">—</span>';
+        var html = '<div class="fee-cell">';
+        list.slice(0, 3).forEach(function (f) {
+          html += '<span class="fee-pill' + feePillClass(f.type, f.fromMail) + '" title="' +
+            (f.fromMail ? "来自邮件 · " : "") +
+            (f.remark || "") + (f.wb ? " · " + f.wb : "") +
+            (f.mailSub ? " · " + f.mailSub : "") + '">' +
+            f.type + " " + f.ccy + " " + f.amount +
+            (f.hang === "票" ? "·票" : "") +
+            (f.fromMail ? "·邮" : "") + "</span>";
+        });
+        if (list.length > 3) html += '<span class="fee-empty">+' + (list.length - 3) + "</span>";
+        html += "</div>";
+        return html;
+      }
+
+      function slipCell(r) {
+        var list = r.slips || [];
+        if (!list.length) return '<span class="fee-empty">—</span>';
+        var last = list[list.length - 1];
+        var cls = last.mailed ? " sent" : " wait";
+        var label = last.mailed ? "已回邮" : "待回邮";
+        return '<div class="slip-cell"><span class="slip-pill' + cls + '" title="' +
+          (last.file || "") + " · " + (last.at || "") + '">' +
+          label + " ×" + list.length + "</span></div>";
+      }
+
+      function loadStatus(r) {
+        if (r.color === "装完" || r.color === "美装完") return "装完";
+        return "未装完";
+      }
+
+      function loadSortKey(r) {
+        /* 船内：未装完优先，再装完 */
+        var c = loadStatus(r);
+        if (c === "装完") return 1;
+        return 0;
+      }
+
+      function matchColorFilter(r, val) {
+        if (!val) return true;
+        var ls = loadStatus(r);
+        if (val === "已装完" || val === "装完") return ls === "装完";
+        return ls === val;
+      }
+
+      function sortByWeekVessel(list) {
+        return list.slice().sort(function (a, b) {
+          if (a.week !== b.week) return a.week < b.week ? -1 : 1;
+          if (a.voy !== b.voy) return a.voy < b.voy ? -1 : 1;
+          var sa = loadSortKey(a);
+          var sb = loadSortKey(b);
+          if (sa !== sb) return sa - sb;
+          return (a.bl || "").localeCompare(b.bl || "");
+        });
+      }
+
+      function filtered() {
+        var bl = (document.getElementById("qBl").value || "").trim().toUpperCase();
+        var cntr = (document.getElementById("qCntr").value || "").trim().toUpperCase();
+        var carrier = document.getElementById("qCarrier").value;
+        var voy = (document.getElementById("qVoy").value || "").trim().toUpperCase();
+        var it = document.getElementById("qIt").value;
+        var send = document.getElementById("qSend").value;
+        var ck = document.getElementById("qCk").value;
+        var amd = document.getElementById("qAmd").value;
+        var seaRel = document.getElementById("qSeaRel").value;
+        var termRel = document.getElementById("qTermRel").value;
+        var warn = document.getElementById("qWarn").value;
+        var ftQ = document.getElementById("qFt").value;
+        var impQ = document.getElementById("qImp").value;
+        var colorQ = document.getElementById("qColor").value;
+        return ROWS.filter(function (r) {
+          if (stFilter && r.st !== stFilter) return false;
+          if (itFilter && r.it !== itFilter) return false;
+          if (amdFilter && (r.amd || "无") !== amdFilter) return false;
+          if (warnFilter && !hasWarn(r, warnFilter)) return false;
+          if (impFilter === "over" && !impMeta(r).over) return false;
+          if (colorFilter && !matchColorFilter(r, colorFilter)) return false;
+          if (bl && r.bl.indexOf(bl) < 0) return false;
+          if (cntr && r.cntr.indexOf(cntr) < 0) return false;
+          if (carrier && r.carrier !== carrier) return false;
+          if (voy && r.voy.toUpperCase().indexOf(voy) < 0) return false;
+          if (it && r.it !== it) return false;
+          if (send && !matchSendFilter(r, send)) return false;
+          if (ck && (r.ck || "无") !== ck) return false;
+          if (amd && (r.amd || "无") !== amd) return false;
+          if (seaRel && (r.seaRel || "未放行") !== seaRel) return false;
+          if (termRel && (r.termRel || "未放行") !== termRel) return false;
+          if (warn && !hasWarn(r, warn)) return false;
+          if (ftQ === "未进港" && (r.arriveAt || "").trim()) return false;
+          if (ftQ === "已进港" && !(r.arriveAt || "").trim()) return false;
+          if (ftQ && ftQ !== "未进港" && ftQ !== "已进港" && (r.ftGrab || "待确认") !== ftQ) return false;
+          if (impQ === "over" && !impMeta(r).over) return false;
+          if (impQ === "near" && !impMeta(r).near) return false;
+          if (impQ === "bound" && !r.imp) return false;
+          if (impQ === "none" && r.imp) return false;
+          if (colorQ && !matchColorFilter(r, colorQ)) return false;
+          if (weekFilter && r.week !== weekFilter) return false;
+          return true;
+        });
+      }
+
+      function weekCounts() {
+        var map = {};
+        ROWS.forEach(function (r) {
+          map[r.week] = (map[r.week] || 0) + 1;
+        });
+        return map;
+      }
+
+      function renderWeekTabs() {
+        var counts = weekCounts();
+        var weeks = Object.keys(WEEK_LABEL).sort();
+        var html = '<button type="button" class="week-sheet-tab' + (weekFilter === "" ? " on" : "") +
+          '" data-week="" role="tab" aria-selected="' + (weekFilter === "" ? "true" : "false") + '">' +
+          '<span class="sheet-title">全部周</span>' +
+          '<span class="sheet-cnt">' + ROWS.length + "</span></button>";
+        weeks.forEach(function (wk) {
+          var meta = WEEK_LABEL[wk];
+          var on = weekFilter === wk;
+          html += '<button type="button" class="week-sheet-tab' + (on ? " on" : "") +
+            '" data-week="' + wk + '" role="tab" aria-selected="' + (on ? "true" : "false") + '">' +
+            '<span class="sheet-title">' + meta.title + "</span>" +
+            (meta.range ? '<span class="sheet-range">ETD ' + meta.range + "</span>" : "") +
+            '<span class="sheet-cnt">' + (counts[wk] || 0) + "</span></button>";
+        });
+        document.getElementById("weekSheetTabs").innerHTML = html;
+      }
+
+      function checkedRows() {
+        return ROWS.filter(function (r) { return selected[r.id]; });
+      }
+
+      function render() {
+        renderWeekTabs();
+        var list = filtered();
+        document.getElementById("totalCnt").textContent = String(list.length);
+        document.getElementById("cntAll").textContent = "(" + ROWS.length + ")";
+        document.getElementById("cntCut").textContent = "(" + ROWS.filter(function (r) { return hasWarn(r, "临近截单"); }).length + ")";
+        document.getElementById("cntSea").textContent = "(" + ROWS.filter(function (r) {
+          return hasWarn(r, "临近未海放");
+        }).length + ")";
+        document.getElementById("cntTerm").textContent = "(" + ROWS.filter(function (r) {
+          return hasWarn(r, "临近未码放");
+        }).length + ")";
+        document.getElementById("cntArr").textContent = "(" + ROWS.filter(function (r) {
+          return hasWarn(r, "未进港");
+        }).length + ")";
+
+        /* 顶部超限横幅（无独立页签，靠横幅 + 绑定弹窗 + 列表红标提示） */
+        var overGroups = {};
+        ROWS.forEach(function (r) {
+          var m = impMeta(r);
+          if (!m.over) return;
+          var key = m.imp + "||" + r.voy;
+          if (!overGroups[key]) overGroups[key] = { imp: m.imp, voy: r.voy, n: m.n, carrier: r.carrier };
+        });
+        var banner = document.getElementById("impBanner");
+        var keys = Object.keys(overGroups);
+        if (keys.length) {
+          banner.classList.add("show");
+          banner.innerHTML = "<strong>一水绑柜超限提示：</strong>" + keys.map(function (k) {
+            var g = overGroups[k];
+            return g.imp + " · " + g.carrier + " / " + g.voy + " 已绑 <strong>" + g.n + "</strong> 柜（散货上限 " + IMP_LIMIT + "）";
+          }).join("；") + "。请改配/换船或更换进口商。";
+        } else {
+          banner.classList.remove("show");
+          banner.innerHTML = "";
+        }
+
+        var html = "";
+        var seq = 0;
+
+        function voyCell(r) {
+          return '<div class="voy-cell"><div class="voy-main">' + (r.voy || "—") + "</div>" +
+            '<div class="voy-sub">' + (r.carrier || "—") + " · " + (r.pol || "") + "→" + (r.pod || "") +
+            " · " + (r.type || "") + "</div></div>";
+        }
+
+        function rowHtml(r) {
+          seq += 1;
+          var ck = selected[r.id] ? " checked" : "";
+          var sel = selected[r.id] ? " selected" : "";
+          var itCls = r.it === "已取消IT" ? " it-cancelled" : (r.it === "有IT" ? " it-has" : "");
+          var amdCls = (r.amd === "改单中") ? " amd-row" : "";
+          var ls = loadStatus(r);
+          var loadCls = ls === "装完" ? " load-done" : " load-pending";
+          /* 预警/超限仅保留左边条提示，装完色标用行底色 */
+          var warnBorder = "";
+          var f = warnFlags(r);
+          var m = impMeta(r);
+          if (m.over) warnBorder = " imp-over-row";
+          else if (f.nearSail || f.overSail) warnBorder = " warn-sail-row";
+          else if (f.nearCut) warnBorder = " warn-cut-row";
+          return '<tr class="data-row' + sel + itCls + amdCls + loadCls + warnBorder + '" data-id="' + r.id + '">' +
+            '<td><input type="checkbox" class="row-ck"' + ck + ' /></td>' +
+            "<td>" + seq + "</td>" +
+            '<td><a href="#">' + r.bl + "</a></td>" +
+            "<td>" + r.cntr + "</td>" +
+            "<td>" + voyCell(r) + "</td>" +
+            "<td>" + stTag(r.st) + "</td>" +
+            "<td>" + marksCell(r) + "</td>" +
+            "<td>" + cutOffCell(r) + "</td>" +
+            "<td>" + relWarnCell(r) + "</td>" +
+            "<td>" + arriveFtCell(r) + "</td>" +
+            "<td>" + impCell(r) + "</td>" +
+            "<td>" + r.type + "</td>" +
+            "<td>海运</td>" +
+            "<td>" + r.etd + "</td>" +
+            "<td>" + r.pol + "</td>" +
+            "<td>" + r.pod + "</td>" +
+            "<td>" + (r.agent || "—") + "</td>" +
+            "<td>" + (r.addr || "—") + "</td>" +
+            "<td>" + (r.loadAt || "—") + "</td>" +
+            "</tr>";
+        }
+
+        sortByWeekVessel(list).forEach(function (r) { html += rowHtml(r); });
+
+        document.getElementById("tbody").innerHTML = html ||
+          '<tr><td colspan="19" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+      }
+
+      document.getElementById("tbody").addEventListener("change", function (e) {
+        var ck = e.target.closest(".row-ck");
+        if (!ck) return;
+        var tr = ck.closest("tr");
+        var id = Number(tr.getAttribute("data-id"));
+        if (ck.checked) selected[id] = true; else delete selected[id];
+        tr.classList.toggle("selected", ck.checked);
+      });
+
+      document.getElementById("chkAll").addEventListener("change", function () {
+        var on = this.checked;
+        filtered().forEach(function (r) {
+          if (on) selected[r.id] = true; else delete selected[r.id];
+        });
+        render();
+      });
+
+      document.querySelectorAll(".status-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          stFilter = btn.getAttribute("data-st") || "";
+          itFilter = "";
+          amdFilter = "";
+          warnFilter = btn.getAttribute("data-warn") || "";
+          impFilter = btn.getAttribute("data-imp") || "";
+          colorFilter = btn.getAttribute("data-color") || "";
+          document.getElementById("qIt").value = "";
+          document.getElementById("qAmd").value = "";
+          document.getElementById("qWarn").value = "";
+          document.getElementById("qSeaRel").value = "";
+          document.getElementById("qTermRel").value = "";
+          document.getElementById("qImp").value = "";
+          document.getElementById("qColor").value = "";
+          document.getElementById("qFt").value = "";
+          if (warnFilter) {
+            document.getElementById("qWarn").value = warnFilter;
+            stFilter = ""; impFilter = ""; colorFilter = "";
+            weekFilter = ""; /* 预警跨周看，底栏切到「全部周」 */
+          } else if (impFilter) {
+            document.getElementById("qImp").value = impFilter;
+            stFilter = ""; warnFilter = ""; colorFilter = "";
+          } else if (colorFilter) {
+            document.getElementById("qColor").value = colorFilter;
+            stFilter = ""; warnFilter = ""; impFilter = "";
+          }
+          render();
+        });
+      });
+
+      document.getElementById("tbody").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-cancel-it]");
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var id = Number(btn.getAttribute("data-cancel-it"));
+        selected = {};
+        selected[id] = true;
+        itSingleId = id;
+        openIt();
+      });
+
+      document.getElementById("btnSearch").onclick = render;
+      document.getElementById("btnReset").onclick = function () {
+        ["qBl", "qCntr", "qVoy"].forEach(function (id) { document.getElementById(id).value = ""; });
+        document.getElementById("qCarrier").value = "";
+        document.getElementById("qIt").value = "";
+        document.getElementById("qSend").value = "";
+        document.getElementById("qCk").value = "";
+        document.getElementById("qAmd").value = "";
+        document.getElementById("qSeaRel").value = "";
+        document.getElementById("qTermRel").value = "";
+        document.getElementById("qWarn").value = "";
+        document.getElementById("qFt").value = "";
+        document.getElementById("qImp").value = "";
+        document.getElementById("qColor").value = "";
+        amdFilter = "";
+        warnFilter = "";
+        impFilter = "";
+        colorFilter = "";
+        weekFilter = "2026-W32";
+        render();
+      };
+
+      document.getElementById("weekSheetTabs").addEventListener("click", function (e) {
+        var tab = e.target.closest(".week-sheet-tab");
+        if (!tab) return;
+        weekFilter = tab.getAttribute("data-week") || "";
+        render();
+      });
+
+      function markSend(kind) {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        var now = "2026-08-07 17:40";
+        rows.forEach(function (r) {
+          if (kind === "AMS") {
+            r.ams = "已发";
+            r.amsAt = now;
+          } else {
+            r.isf = "已发";
+            r.isfAt = now;
+          }
+        });
+        toast("已写入发送标记 · " + kind + " 已发 ×" + rows.length);
+        render();
+      }
+      document.getElementById("btnAms").onclick = function () { markSend("AMS"); };
+      document.getElementById("btnIsf").onclick = function () { markSend("ISF"); };
+
+      /* —— 取消 IT —— */
+      function openIt() {
+        var rows = checkedRows();
+        if (itSingleId != null) {
+          var one = ROWS.find(function (r) { return r.id === itSingleId; });
+          rows = one ? [one] : rows;
+        }
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        var hasIt = rows.filter(function (r) { return r.it === "有IT"; });
+        if (!hasIt.length) { toast("勾选记录中没有「有IT」状态"); itSingleId = null; return; }
+        document.getElementById("itTargets").value = hasIt.map(function (r) {
+          return r.bl + " / " + r.cntr;
+        }).join("；");
+        document.getElementById("itMask").classList.add("open");
+      }
+      function closeIt() {
+        document.getElementById("itMask").classList.remove("open");
+        itSingleId = null;
+      }
+      document.getElementById("btnCancelIt").onclick = function () {
+        itSingleId = null;
+        openIt();
+      };
+      document.getElementById("itClose").onclick = closeIt;
+      document.getElementById("itCancel").onclick = closeIt;
+      document.getElementById("itMask").addEventListener("click", function (e) {
+        if (e.target === this) closeIt();
+      });
+      document.getElementById("itConfirm").onclick = function () {
+        var rows = checkedRows().filter(function (r) { return r.it === "有IT"; });
+        if (itSingleId != null) {
+          var one = ROWS.find(function (r) { return r.id === itSingleId && r.it === "有IT"; });
+          if (one && rows.indexOf(one) < 0) rows = [one];
+        }
+        var reason = document.getElementById("itReason").value;
+        var transit = document.getElementById("itTransit").value.trim();
+        var notify = document.getElementById("itNotify").value === "1";
+        var now = "2026-08-06 23:50";
+        rows.forEach(function (r) {
+          r.it = "已取消IT";
+          r.itReason = reason;
+          r.itTransit = transit;
+          r.itAt = now;
+        });
+        itSingleId = null;
+        closeIt();
+        render();
+        toast("已打「取消IT」标记 ×" + rows.length + (notify ? " · 已通知关务清关" : "") + (transit ? " · 中转港已记" : ""));
+      };
+
+      /* —— 查验标记 —— */
+      function openCk() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        document.getElementById("ckTargets").value = rows.map(function (r) {
+          return r.bl + " / " + r.cntr;
+        }).join("；");
+        var hasTicket = rows.some(function (r) { return r.ck === "查验挂票" && r.ckWb; });
+        document.getElementById("ckWaybill").value = hasTicket
+          ? (rows.filter(function (r) { return r.ckWb; })[0].ckWb || "")
+          : "";
+        document.getElementById("ckMask").classList.add("open");
+      }
+      function closeCk() {
+        document.getElementById("ckMask").classList.remove("open");
+      }
+      document.getElementById("btnCheckMark").onclick = openCk;
+      document.getElementById("ckClose").onclick = closeCk;
+      document.getElementById("ckCancel").onclick = closeCk;
+      document.getElementById("ckMask").addEventListener("click", function (e) {
+        if (e.target === this) closeCk();
+      });
+      document.getElementById("ckConfirm").onclick = function () {
+        var rows = checkedRows();
+        var st = document.getElementById("ckStatus").value;
+        var wb = document.getElementById("ckWaybill").value.trim();
+        var notify = document.getElementById("ckNotify").value === "1";
+        if (st === "查验挂票" && !wb) {
+          toast("查验挂票须填写关联运单号");
+          return;
+        }
+        rows.forEach(function (r) {
+          r.ck = st;
+          r.ckWb = st === "查验挂票" ? wb : (st === "无" ? "" : r.ckWb);
+        });
+        closeCk();
+        render();
+        toast("查验标记已更新 ×" + rows.length +
+          (st === "查验挂票" ? " · 运单 " + wb + " 同步挂票" : "") +
+          (notify && st !== "无" ? " · 已通知关务" : ""));
+      };
+
+      /* —— 改单标记 —— */
+      function letterLabel(v) {
+        if (v === "1") return "改单保函";
+        if (v === "2") return "改 VGM 保函";
+        return "";
+      }
+      function openAmd() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        document.getElementById("amdTargets").value = rows.map(function (r) {
+          return r.bl + " / " + r.cntr;
+        }).join("；");
+        var first = rows[0];
+        if (first.amd === "已改单" || first.amd === "改单中") {
+          document.getElementById("amdStatus").value = first.amd;
+        }
+        if (first.amdType) {
+          var typeSel = document.getElementById("amdType");
+          for (var i = 0; i < typeSel.options.length; i++) {
+            if (typeSel.options[i].text === first.amdType) { typeSel.selectedIndex = i; break; }
+          }
+        }
+        document.getElementById("amdRemark").value = first.amdReason || "";
+        document.getElementById("amdMask").classList.add("open");
+      }
+      function closeAmd() {
+        document.getElementById("amdMask").classList.remove("open");
+      }
+      document.getElementById("btnAmendMark").onclick = openAmd;
+      document.getElementById("btnBlEdit").onclick = openAmd;
+      document.getElementById("amdClose").onclick = closeAmd;
+      document.getElementById("amdCancel").onclick = closeAmd;
+      document.getElementById("amdMask").addEventListener("click", function (e) {
+        if (e.target === this) closeAmd();
+      });
+      document.getElementById("amdConfirm").onclick = function () {
+        var rows = checkedRows();
+        var st = document.getElementById("amdStatus").value;
+        var type = document.getElementById("amdType").value;
+        var letter = letterLabel(document.getElementById("amdLetter").value);
+        var notify = document.getElementById("amdNotify").value;
+        var remark = document.getElementById("amdRemark").value.trim();
+        var now = "2026-08-07 00:15";
+        rows.forEach(function (r) {
+          r.amd = st;
+          if (st === "无") {
+            r.amdType = "";
+            r.amdLetter = "";
+            r.amdReason = "";
+            r.amdAt = "";
+          } else {
+            r.amdType = type;
+            r.amdLetter = letter;
+            r.amdReason = remark;
+            r.amdAt = now;
+          }
+        });
+        closeAmd();
+        render();
+        var notifyTxt = notify === "1" ? " · 已通知关务+代理" : (notify === "2" ? " · 已通知关务" : "");
+        toast("改单标记已更新 ×" + rows.length + (st !== "无" ? " · " + type : "") +
+          (letter ? " · " + letter : "") + notifyTxt);
+      };
+
+      /* —— 费用登记（含水单）· 邮件对接 —— */
+      var selectedFeeMail = null;
+      var selectedSlipMail = null;
+      var slipFileName = "";
+      var feeHangRows = [];
+      var feeWbOptions = [];
+
+      function feeHistoryHtml(rows) {
+        var lines = [];
+        rows.forEach(function (r) {
+          (r.fees || []).forEach(function (f) {
+            lines.push(r.bl + " · 费用 " + f.type + " " + f.ccy + " " + f.amount +
+              "（挂" + f.hang + (f.wb ? "/" + f.wb : "") + "）" +
+              (f.fromMail ? " · 邮件" : "") +
+              (f.remark ? " · " + f.remark : "") + " · " + f.at);
+          });
+          (r.slips || []).forEach(function (s) {
+            lines.push(r.bl + " · 水单 " + (s.file || "") +
+              (s.mailed ? " · 已回邮" : " · 待回邮") +
+              (s.amount ? " · " + s.ccy + " " + s.amount : "") + " · " + s.at);
+          });
+        });
+        return lines.length ? lines.join("<br>") : "暂无已录费用 / 水单";
+      }
+
+      function demoWbsForRow(r) {
+        var list = [];
+        if (r.ckWb) list.push(r.ckWb);
+        if (r.id === 13) list.push("TX-20260808-" + String(r.id).padStart(3, "0"), "FBA-LAX-8800123");
+        if (r.id === 4 && list.indexOf("TX-20260806-009") < 0) list.push("TX-20260806-009");
+        if (!list.length) list.push("TX-DEMO-" + r.cntr.slice(-4));
+        return list;
+      }
+
+      function collectFeeWbOptions(rows) {
+        var seen = {};
+        var out = [];
+        rows.forEach(function (r) {
+          demoWbsForRow(r).forEach(function (wb) {
+            if (seen[wb]) return;
+            seen[wb] = true;
+            out.push({ wb: wb, rowId: r.id, bl: r.bl, cntr: r.cntr, tip: r.ckWb === wb ? "责任票" : "柜内运单" });
+          });
+        });
+        return out;
+      }
+
+      function renderFeeHangLists(rows, opts) {
+        opts = opts || {};
+        feeHangRows = rows.slice();
+        feeWbOptions = collectFeeWbOptions(rows);
+        var cntrBox = document.getElementById("feeCntrList");
+        var wbBox = document.getElementById("feeWbList");
+        var checkAllCntr = opts.checkAllCntr !== false;
+        var checkedWbs = opts.checkedWbs || {};
+
+        cntrBox.innerHTML = rows.map(function (r) {
+          return '<label class="hang-row">' +
+            '<input type="checkbox" class="fee-cntr-ck" value="' + r.id + '"' +
+            (checkAllCntr ? " checked" : "") + " />" +
+            '<div><div class="hr-main">' + r.cntr + " · " + r.type + "</div>" +
+            '<div class="hr-sub">' + r.bl + " · " + r.voy + "</div></div></label>";
+        }).join("");
+
+        if (!feeWbOptions.length) {
+          wbBox.innerHTML = '<div style="padding:10px;color:#8c8c8c;font-size:12px">暂无运单，可下方补录</div>';
+        } else {
+          wbBox.innerHTML = feeWbOptions.map(function (o, i) {
+            var on = !!checkedWbs[o.wb];
+            return '<label class="hang-row">' +
+              '<input type="checkbox" class="fee-wb-ck" value="' + i + '"' +
+              (on ? " checked" : "") + " data-wb=\"" + o.wb.replace(/"/g, "&quot;") + "\" />" +
+              '<div><div class="hr-main">' + o.wb + "</div>" +
+              '<div class="hr-sub">' + o.tip + " · " + o.cntr + " / " + o.bl + "</div></div></label>";
+          }).join("");
+        }
+        updateFeeHangHint();
+      }
+
+      function updateFeeHangHint() {
+        var cntrs = document.querySelectorAll("#feeCntrList .fee-cntr-ck:checked").length;
+        var wbs = document.querySelectorAll("#feeWbList .fee-wb-ck:checked").length;
+        var el = document.getElementById("feeHangHint");
+        if (!el) return;
+        el.textContent = "已选挂柜 " + cntrs + " · 挂票 " + wbs +
+          "。至少勾选一项；费用只写入已勾选的柜/票（可同时挂柜+挂票）。";
+      }
+
+      function getSelectedHangCntrIds() {
+        return Array.prototype.map.call(
+          document.querySelectorAll("#feeCntrList .fee-cntr-ck:checked"),
+          function (el) { return parseInt(el.value, 10); }
+        );
+      }
+
+      function getSelectedHangWbs() {
+        var out = [];
+        document.querySelectorAll("#feeWbList .fee-wb-ck:checked").forEach(function (el) {
+          var idx = parseInt(el.value, 10);
+          var o = feeWbOptions[idx];
+          if (o) out.push(o);
+          else if (el.getAttribute("data-wb")) {
+            out.push({ wb: el.getAttribute("data-wb"), rowId: feeHangRows[0] ? feeHangRows[0].id : null });
+          }
+        });
+        return out;
+      }
+
+      function setHangListChecks(sel, on) {
+        document.querySelectorAll(sel).forEach(function (el) { el.checked = !!on; });
+        updateFeeHangHint();
+      }
+
+      function addCustomFeeWb() {
+        var input = document.getElementById("feeWbAdd");
+        var wb = (input.value || "").trim();
+        if (!wb) { toast("请输入运单号"); return; }
+        var exists = feeWbOptions.some(function (o) { return o.wb === wb; });
+        if (exists) {
+          document.querySelectorAll("#feeWbList .fee-wb-ck").forEach(function (el) {
+            if (el.getAttribute("data-wb") === wb) el.checked = true;
+          });
+          input.value = "";
+          updateFeeHangHint();
+          toast("已勾选已有运单 " + wb);
+          return;
+        }
+        var keepCntr = {};
+        getSelectedHangCntrIds().forEach(function (id) { keepCntr[id] = true; });
+        var checkedWbs = {};
+        getSelectedHangWbs().forEach(function (o) { checkedWbs[o.wb] = true; });
+        checkedWbs[wb] = true;
+        var row = feeHangRows[0];
+        feeWbOptions.push({
+          wb: wb,
+          rowId: row ? row.id : null,
+          bl: row ? row.bl : "",
+          cntr: row ? row.cntr : "",
+          tip: "手工补录"
+        });
+        renderFeeHangLists(feeHangRows, { checkAllCntr: false, checkedWbs: checkedWbs });
+        document.querySelectorAll("#feeCntrList .fee-cntr-ck").forEach(function (el) {
+          el.checked = !!keepCntr[parseInt(el.value, 10)];
+        });
+        updateFeeHangHint();
+        input.value = "";
+        toast("已添加并勾选 " + wb);
+      }
+
+      function mailsForRows(rows) {
+        var set = {};
+        rows.forEach(function (r) {
+          set[r.cntr] = true;
+          set[r.bl] = true;
+        });
+        return FEE_MAILS.filter(function (m) {
+          return set[m.cntr] || set[m.bl];
+        });
+      }
+
+      function syncFeeModeUi() {
+        var mode = document.getElementById("feeMode").value;
+        var showFee = mode === "fee" || mode === "both";
+        var showSlip = mode === "slip" || mode === "both";
+        document.querySelectorAll("#feeMask .fee-only").forEach(function (el) {
+          el.style.display = showFee ? "" : "none";
+        });
+        document.querySelectorAll("#feeMask .slip-only").forEach(function (el) {
+          el.style.display = showSlip ? "" : "none";
+        });
+        var linkWrap = document.getElementById("slipFeeLinkWrap");
+        if (linkWrap) linkWrap.style.display = mode === "slip" ? "" : "none";
+        if (showFee) updateFeeHangHint();
+      }
+
+      function fillSlipFeeOptions(rows) {
+        var sel = document.getElementById("slipFeeLink");
+        var opts = ['<option value="">关联本次登记费用 / 不指定</option>'];
+        rows.forEach(function (r) {
+          (r.fees || []).forEach(function (f, i) {
+            opts.push('<option value="' + r.id + "-" + i + '">' +
+              r.cntr + " · " + f.type + " " + f.ccy + " " + f.amount + "</option>");
+          });
+        });
+        sel.innerHTML = opts.join("");
+      }
+
+      function renderFeeMails(rows) {
+        var list = mailsForRows(rows);
+        var box = document.getElementById("feeMailList");
+        if (!list.length) {
+          box.innerHTML = '<div style="padding:10px;color:#8c8c8c;font-size:12px">所选提单暂无匹配费用邮件</div>';
+          selectedFeeMail = null;
+          document.getElementById("feeMailPreview").textContent = "无匹配邮件";
+          return;
+        }
+        box.innerHTML = list.map(function (m) {
+          return '<div class="mail-item" data-mid="' + m.id + '">' +
+            '<input type="radio" name="feeMailPick" ' + (selectedFeeMail && selectedFeeMail.id === m.id ? "checked" : "") + ' />' +
+            '<div><div class="m-sub">' + m.sub + "</div>" +
+            '<div class="m-meta">' + m.type + " " + m.ccy + " " + m.amount +
+            " · " + m.from + " → " + m.box + " · " + m.at + "</div></div></div>";
+        }).join("");
+        box.querySelectorAll(".mail-item").forEach(function (el) {
+          el.onclick = function () {
+            var id = el.getAttribute("data-mid");
+            selectedFeeMail = list.filter(function (m) { return m.id === id; })[0] || null;
+            applyFeeMail(selectedFeeMail);
+            renderFeeMails(rows);
+          };
+        });
+      }
+
+      function renderSlipMails(rows) {
+        var list = mailsForRows(rows);
+        var box = document.getElementById("slipMailList");
+        if (!list.length) {
+          box.innerHTML = '<div style="padding:10px;color:#8c8c8c;font-size:12px">无匹配邮件时可手填收件邮箱</div>';
+          selectedSlipMail = null;
+          return;
+        }
+        box.innerHTML = list.map(function (m) {
+          return '<div class="mail-item' + (selectedSlipMail && selectedSlipMail.id === m.id ? " on" : "") +
+            '" data-mid="' + m.id + '">' +
+            '<input type="radio" name="slipMailPick" ' +
+            (selectedSlipMail && selectedSlipMail.id === m.id ? "checked" : "") + ' />' +
+            '<div><div class="m-sub">回复：' + m.sub + "</div>" +
+            '<div class="m-meta">' + m.from + " · " + m.at + "</div></div></div>";
+        }).join("");
+        box.querySelectorAll(".mail-item").forEach(function (el) {
+          el.onclick = function () {
+            var id = el.getAttribute("data-mid");
+            selectedSlipMail = list.filter(function (m) { return m.id === id; })[0] || null;
+            if (selectedSlipMail) {
+              document.getElementById("slipMailTo").value = selectedSlipMail.from;
+              document.getElementById("slipMailFrom").value = selectedSlipMail.box;
+              document.getElementById("slipMailSubject").value = "Re: " + selectedSlipMail.sub + " · Payment slip";
+              var amt = document.getElementById("slipAmount").value ||
+                document.getElementById("feeAmount").value || selectedSlipMail.amount;
+              var ccy = document.getElementById("slipCcy").value || selectedSlipMail.ccy;
+              document.getElementById("slipMailBody").value =
+                "Dear Sir/Madam,\n\nPlease find attached the payment slip for " +
+                selectedSlipMail.cntr + " / " + selectedSlipMail.type +
+                " amounting to " + ccy + " " + amt + ".\n\nThanks.";
+              if (!document.getElementById("slipAmount").value) {
+                document.getElementById("slipAmount").value = selectedSlipMail.amount;
+                document.getElementById("slipCcy").value = selectedSlipMail.ccy;
+              }
+            }
+            renderSlipMails(rows);
+          };
+        });
+      }
+
+      function applyFeeMail(m) {
+        if (!m) return;
+        document.getElementById("feeSource").value = "mail";
+        document.getElementById("feeType").value = m.type;
+        document.getElementById("feeAmount").value = m.amount;
+        document.getElementById("feeCcy").value = m.ccy;
+        document.getElementById("feeRemark").value = "来自邮件：" + m.sub;
+        document.getElementById("feeMailBox").value = m.box;
+        document.getElementById("feeMailPreview").textContent = m.body;
+        if (!document.getElementById("slipAmount").value) {
+          document.getElementById("slipAmount").value = m.amount;
+          document.getElementById("slipCcy").value = m.ccy;
+        }
+        if (document.getElementById("feeMailAction").value === "none") {
+          document.getElementById("feeMailAction").value = "link";
+        }
+      }
+
+      function openFee() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        selectedFeeMail = null;
+        selectedSlipMail = null;
+        slipFileName = "";
+        document.getElementById("feeTargets").value = rows.map(function (r) {
+          return r.bl + " / " + r.cntr;
+        }).join("；");
+        document.getElementById("feeMode").value = "both";
+        document.getElementById("feeSource").value = "manual";
+        document.getElementById("feeAmount").value = "";
+        document.getElementById("feeRemark").value = "";
+        document.getElementById("feeType").value = "改港费";
+        document.getElementById("feeCcy").value = "USD";
+        document.getElementById("feeSync").value = "1";
+        document.getElementById("feeMailAction").value = "link";
+        document.getElementById("feeMailPreview").textContent = "选择上方邮件预览正文摘录…";
+        document.getElementById("feeWbAdd").value = "";
+        document.getElementById("slipAmount").value = "";
+        document.getElementById("slipCcy").value = "USD";
+        document.getElementById("slipPaid").value = "1";
+        document.getElementById("slipRemark").value = "";
+        document.getElementById("slipFileName").textContent = "未选择文件";
+        document.getElementById("slipMailTo").value = "";
+        document.getElementById("slipMailSubject").value =
+          "Payment slip · " + rows.map(function (r) { return r.cntr; }).join("/");
+        document.getElementById("slipMailBody").value =
+          "Dear Sir/Madam,\n\nPlease find attached the remittance advice / payment slip.\n\nThanks.";
+        document.getElementById("slipMailAction").value = "send";
+        renderFeeHangLists(rows, { checkAllCntr: true, checkedWbs: {} });
+        syncFeeModeUi();
+        fillSlipFeeOptions(rows);
+        renderFeeMails(rows);
+        renderSlipMails(rows);
+        document.getElementById("feeHistory").innerHTML = feeHistoryHtml(rows);
+        document.getElementById("feeMask").classList.add("open");
+      }
+      function closeFee() {
+        document.getElementById("feeMask").classList.remove("open");
+      }
+
+      document.getElementById("btnMiscFee").onclick = openFee;
+      document.getElementById("feeClose").onclick = closeFee;
+      document.getElementById("feeCancel").onclick = closeFee;
+      document.getElementById("feeMode").onchange = syncFeeModeUi;
+      document.getElementById("feeCntrAll").onclick = function () {
+        setHangListChecks("#feeCntrList .fee-cntr-ck", true);
+      };
+      document.getElementById("feeCntrNone").onclick = function () {
+        setHangListChecks("#feeCntrList .fee-cntr-ck", false);
+      };
+      document.getElementById("feeWbAll").onclick = function () {
+        setHangListChecks("#feeWbList .fee-wb-ck", true);
+      };
+      document.getElementById("feeWbNone").onclick = function () {
+        setHangListChecks("#feeWbList .fee-wb-ck", false);
+      };
+      document.getElementById("feeWbAddBtn").onclick = addCustomFeeWb;
+      document.getElementById("feeWbAdd").onkeydown = function (e) {
+        if (e.key === "Enter") { e.preventDefault(); addCustomFeeWb(); }
+      };
+      document.getElementById("feeHangWrap").addEventListener("change", function (e) {
+        if (e.target && (e.target.classList.contains("fee-cntr-ck") || e.target.classList.contains("fee-wb-ck"))) {
+          updateFeeHangHint();
+        }
+      });
+      document.getElementById("feeSource").onchange = function () {
+        if (this.value === "mail") {
+          var rows = checkedRows();
+          var list = mailsForRows(rows);
+          if (list.length) {
+            selectedFeeMail = list[0];
+            applyFeeMail(selectedFeeMail);
+            renderFeeMails(rows);
+          } else {
+            toast("所选提单暂无匹配费用邮件");
+            this.value = "manual";
+          }
+        }
+      };
+      document.getElementById("feeMask").addEventListener("click", function (e) {
+        if (e.target === this) closeFee();
+      });
+      document.getElementById("slipUploadBox").onclick = function () {
+        var rows = checkedRows();
+        var cntr = rows[0] ? rows[0].cntr : "CNTR";
+        slipFileName = "水单_" + cntr + "_" + Date.now().toString().slice(-6) + ".pdf";
+        document.getElementById("slipFileName").textContent = slipFileName;
+        toast("已模拟选择水单文件");
+      };
+      document.getElementById("feeConfirm").onclick = function () {
+        var rows = checkedRows();
+        var mode = document.getElementById("feeMode").value;
+        var doFee = mode === "fee" || mode === "both";
+        var doSlip = mode === "slip" || mode === "both";
+        var type = document.getElementById("feeType").value;
+        var amount = parseFloat(document.getElementById("feeAmount").value, 10);
+        var ccy = document.getElementById("feeCcy").value;
+        var sync = document.getElementById("feeSync").value;
+        var remark = document.getElementById("feeRemark").value.trim();
+        var mailAct = document.getElementById("feeMailAction").value;
+        var fromMail = document.getElementById("feeSource").value === "mail" || !!selectedFeeMail;
+        var now = "2026-08-07 09:40";
+        var parts = [];
+        var hangCntrIds = getSelectedHangCntrIds();
+        var hangWbs = getSelectedHangWbs();
+        var rowById = {};
+        rows.forEach(function (r) { rowById[r.id] = r; });
+
+        if (doFee) {
+          if (!(amount > 0)) { toast("请填写有效费用金额"); return; }
+          if (!hangCntrIds.length && !hangWbs.length) {
+            toast("归属须至少勾选一个柜或一张票"); return;
+          }
+          if (document.getElementById("feeSource").value === "mail" && !selectedFeeMail) {
+            toast("请选择要带入的费用邮件"); return;
+          }
+          hangCntrIds.forEach(function (id) {
+            var r = rowById[id];
+            if (!r) return;
+            if (!r.fees) r.fees = [];
+            r.fees.push({
+              type: type, amount: amount, ccy: ccy, hang: "柜",
+              wb: "", remark: remark, at: now,
+              fromMail: fromMail && mailAct !== "none",
+              mailSub: selectedFeeMail ? selectedFeeMail.sub : "",
+              mailId: selectedFeeMail ? selectedFeeMail.id : ""
+            });
+          });
+          hangWbs.forEach(function (o) {
+            var r = rowById[o.rowId] || rows[0];
+            if (!r) return;
+            if (!r.fees) r.fees = [];
+            r.fees.push({
+              type: type, amount: amount, ccy: ccy, hang: "票",
+              wb: o.wb, remark: remark, at: now,
+              fromMail: fromMail && mailAct !== "none",
+              mailSub: selectedFeeMail ? selectedFeeMail.sub : "",
+              mailId: selectedFeeMail ? selectedFeeMail.id : ""
+            });
+          });
+          var syncTxt = sync === "1" ? "财务+业务成本" : (sync === "2" ? "财务台账" : "本柜标记");
+          var hangTxt = [];
+          if (hangCntrIds.length) hangTxt.push("挂柜×" + hangCntrIds.length);
+          if (hangWbs.length) hangTxt.push("挂票×" + hangWbs.length);
+          parts.push("费用 " + type + " " + ccy + " " + amount +
+            "（" + syncTxt + " · " + hangTxt.join("+") + "）");
+          if (mailAct === "link" && selectedFeeMail) parts.push("已关联费用邮件");
+          if (mailAct === "reply" && selectedFeeMail) parts.push("已回复「已登记待付」");
+        }
+
+        if (doSlip) {
+          if (!slipFileName) { toast("请先选择水单文件"); return; }
+          var slipAmt = parseFloat(document.getElementById("slipAmount").value, 10);
+          if (!(slipAmt > 0) && amount > 0) slipAmt = amount;
+          var slipCcy = document.getElementById("slipCcy").value || ccy;
+          var paid = document.getElementById("slipPaid").value;
+          var slipRemark = document.getElementById("slipRemark").value.trim();
+          var slipMailAct = document.getElementById("slipMailAction").value;
+          var mailTo = document.getElementById("slipMailTo").value.trim();
+          if (slipMailAct === "send" && !mailTo) {
+            toast("发送回邮须填写收件邮箱（或点选费用邮件线程）");
+            return;
+          }
+          var slipTargets = hangCntrIds.length
+            ? hangCntrIds.map(function (id) { return rowById[id]; }).filter(Boolean)
+            : rows;
+          slipTargets.forEach(function (r) {
+            if (!r.slips) r.slips = [];
+            r.slips.push({
+              file: slipFileName,
+              amount: slipAmt || 0,
+              ccy: slipCcy,
+              mailed: slipMailAct === "send",
+              mailTo: mailTo,
+              mailSub: document.getElementById("slipMailSubject").value,
+              at: now,
+              remark: slipRemark,
+              paid: paid === "1"
+            });
+          });
+          parts.push(slipMailAct === "send" ? "水单已回邮 " + mailTo :
+            (slipMailAct === "draft" ? "水单已存草稿" : "水单已上传"));
+          if (paid === "1") parts.push("已进业务员成本");
+        }
+
+        closeFee();
+        render();
+        toast("已提交 ×" + rows.length + " · " + parts.join(" · "));
+      };
+
+      /* —— 绑定进口商 · 一水绑柜 —— */
+      function refreshImpCheck() {
+        var rows = checkedRows();
+        var imp = document.getElementById("impSelect").value;
+        var cargo = document.getElementById("impCargo").value;
+        var box = document.getElementById("impCheckBox");
+        if (!imp) {
+          box.style.borderColor = "#d9d9d9";
+          box.style.background = "#fafafa";
+          box.style.color = "#8c8c8c";
+          box.textContent = "选择进口商后显示同船已绑柜数";
+          return { ok: true, over: false };
+        }
+        if (!rows.length) {
+          box.textContent = "请先勾选提单";
+          return { ok: false, over: false };
+        }
+        var byVoy = {};
+        rows.forEach(function (r) {
+          if (!byVoy[r.voy]) byVoy[r.voy] = [];
+          byVoy[r.voy].push(r);
+        });
+        var lines = [];
+        var anyOver = false;
+        Object.keys(byVoy).forEach(function (voy) {
+          var arr = byVoy[voy];
+          var already = ROWS.filter(function (r) {
+            return r.imp === imp && r.voy === voy && !selected[r.id];
+          }).length;
+          var after = already + arr.length;
+          var over = cargo === "散货" && after > IMP_LIMIT;
+          if (over) anyOver = true;
+          lines.push("【" + arr[0].carrier + "】" + voy +
+            "：原已绑 " + already + " + 本次 " + arr.length + " = <b>" + after + "</b> / " + IMP_LIMIT +
+            (over ? ' <span style="color:#cf1322;font-weight:700">⚠ 将超过一水上限</span>' : " ✓"));
+        });
+        if (cargo !== "散货") {
+          lines.push("货类=整柜：本规则不限柜数，仅作展示。");
+        }
+        box.innerHTML = lines.join("<br/>");
+        box.style.borderColor = anyOver ? "#ffa39e" : "#b7eb8f";
+        box.style.background = anyOver ? "#fff1f0" : "#f6ffed";
+        box.style.color = anyOver ? "#a8071a" : "#135200";
+        return { ok: true, over: anyOver };
+      }
+
+      function openImp() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选要绑定进口商的提单"); return; }
+        document.getElementById("impTargets").value = rows.map(function (r) {
+          return r.bl + " / " + r.cntr + " · " + r.voy;
+        }).join("；");
+        if (rows[0].imp) {
+          document.getElementById("impSelect").value = rows[0].imp;
+        }
+        if (rows[0].cargo) {
+          document.getElementById("impCargo").value = rows[0].cargo;
+        }
+        refreshImpCheck();
+        document.getElementById("impMask").classList.add("open");
+      }
+      function closeImp() {
+        document.getElementById("impMask").classList.remove("open");
+      }
+      document.getElementById("btnBindImp").onclick = openImp;
+      document.getElementById("impClose").onclick = closeImp;
+      document.getElementById("impCancel").onclick = closeImp;
+      document.getElementById("impMask").addEventListener("click", function (e) {
+        if (e.target === this) closeImp();
+      });
+      document.getElementById("impSelect").onchange = refreshImpCheck;
+      document.getElementById("impCargo").onchange = refreshImpCheck;
+      document.getElementById("impConfirm").onclick = function () {
+        var rows = checkedRows();
+        var imp = document.getElementById("impSelect").value;
+        var cargo = document.getElementById("impCargo").value;
+        if (!imp) { toast("请选择进口商"); return; }
+        var chk = refreshImpCheck();
+        if (chk.over) {
+          var go = window.confirm(
+            "提示：绑定后散货一水绑柜将超过 " + IMP_LIMIT + " 柜上限。\n\n是否仍要强制绑定？（正式版可配置禁止/需主管审批）"
+          );
+          if (!go) return;
+        }
+        rows.forEach(function (r) {
+          r.imp = imp;
+          r.cargo = cargo;
+        });
+        closeImp();
+        render();
+        toast(chk.over
+          ? "已强制绑定进口商 ×" + rows.length + " · 一水绑柜已超限，请关注改配"
+          : "已绑定进口商 ×" + rows.length + " · " + imp);
+      };
+
+      /* —— 分配消息 —— */
+      function fmtLoadAt() {
+        var v = document.getElementById("asLoadAt").value;
+        if (!v) return "待定";
+        return v.replace("T", " ");
+      }
+
+      function buildMsg(rows) {
+        var tpl = document.getElementById("asTpl").value;
+        var agent = document.getElementById("asAgent").value;
+        var addr = document.getElementById("asAddr").value.trim();
+        var pickup = document.getElementById("asPickup").value.trim();
+        var ret = document.getElementById("asReturn").value.trim();
+        var loadAt = fmtLoadAt();
+        var group = document.getElementById("asGroup").value;
+        var lines = [];
+        lines.push("【装柜分配 · 请拖车代理接单】");
+        lines.push("群：" + group);
+        lines.push("拖车代理：" + agent);
+        lines.push("————————");
+        rows.forEach(function (r, i) {
+          if (tpl === "short") {
+            lines.push((i + 1) + ". " + r.cntr + "｜" + r.type + "｜" + (addr || r.addr) + "｜" + loadAt);
+          } else {
+            lines.push((i + 1) + ". 提单 " + r.bl);
+            lines.push("   柜号 " + r.cntr + "　柜型 " + r.type);
+            lines.push("   船名航次 " + r.voy);
+            lines.push("   航线 " + r.pol + " → " + r.pod + "　ETD " + r.etd.slice(0, 10));
+            lines.push("   装柜地址 " + (addr || r.addr || "待补充"));
+            lines.push("   预计装柜 " + loadAt);
+            lines.push("   提箱 " + pickup + "　进港/还箱 " + ret);
+            if (r.it === "有IT") lines.push("   ⚠ 本票有IT，取消IT另通知");
+            lines.push("");
+          }
+        });
+        if (tpl === "short") {
+          lines.push("提箱：" + pickup + "｜还箱：" + ret);
+        }
+        lines.push("————————");
+        lines.push("注意：仔细核对地址/时间；勿选 EPS 拖车代理；装柜时间写回提单。");
+        lines.push("收到请回复「收到+柜号」");
+        return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+      }
+
+      function refreshMsg() {
+        var rows = checkedRows();
+        if (!rows.length) return;
+        document.getElementById("asGroupLabel").textContent = "● " + document.getElementById("asGroup").value;
+        document.getElementById("asMsg").value = buildMsg(rows);
+      }
+
+      function openAssign() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选要分配的提单"); return; }
+        if (rows[0].addr) document.getElementById("asAddr").value = rows[0].addr;
+        if (rows[0].agent) {
+          var sel = document.getElementById("asAgent");
+          for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === rows[0].agent || sel.options[i].text === rows[0].agent) {
+              sel.selectedIndex = i; break;
+            }
+          }
+        }
+        refreshMsg();
+        document.getElementById("asMask").classList.add("open");
+      }
+      function closeAssign() {
+        document.getElementById("asMask").classList.remove("open");
+      }
+
+      document.getElementById("btnAssign").onclick = openAssign;
+      document.getElementById("asClose").onclick = closeAssign;
+      document.getElementById("asCancel").onclick = closeAssign;
+      document.getElementById("asMask").addEventListener("click", function (e) {
+        if (e.target === this) closeAssign();
+      });
+      ["asGroup", "asTpl", "asAgent", "asLoadAt", "asAddr", "asPickup", "asReturn"].forEach(function (id) {
+        document.getElementById(id).addEventListener("input", refreshMsg);
+        document.getElementById(id).addEventListener("change", refreshMsg);
+      });
+
+      document.getElementById("asCopy").onclick = function () {
+        var text = document.getElementById("asMsg").value;
+        function ok() { toast("已复制 · 去拖车代理群粘贴即可"); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(ok).catch(function () {
+            document.getElementById("asMsg").select();
+            document.execCommand("copy");
+            ok();
+          });
+        } else {
+          document.getElementById("asMsg").select();
+          document.execCommand("copy");
+          ok();
+        }
+      };
+
+      document.getElementById("asConfirm").onclick = function () {
+        var rows = checkedRows();
+        var agent = document.getElementById("asAgent").value;
+        var addr = document.getElementById("asAddr").value.trim();
+        var loadAt = fmtLoadAt();
+        rows.forEach(function (r) {
+          r.agent = agent;
+          r.addr = addr || r.addr;
+          r.loadAt = loadAt;
+          if (r.st === "待分配") r.st = "待装柜";
+        });
+        closeAssign();
+        render();
+        toast("已分配写回 ×" + rows.length + " · 可再点「一键复制」发群（如未复制）");
+      };
+
+      /* —— 仓位播报 · 一键复制 —— */
+      var RATE_HINT = {
+        "COSCO|CNSHA|USLAX": "40HQ 约 USD 2850（我司订舱示意）",
+        "Hapag|CNTJN|USNYC": "20GP 约 USD 2100 / 40HQ 约 USD 3200",
+        "MSC|CNNGB|USLGB": "40HQ 约 USD 3100",
+        "ONE|CNYTN|USHOU": "40HQ 约 USD 2950",
+        "MSC|CNTAO|USLGB": "40HQ 约 USD 3050",
+        "Hapag|CNSHA|USNYC": "40HQ 约 USD 3300"
+      };
+
+      function cutOffHint(etd) {
+        // 示意：截单 = ETD 前 2 天 17:00
+        var d = (etd || "").slice(0, 10);
+        if (!d) return "截单待核";
+        var parts = d.split("-");
+        var dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        dt.setDate(dt.getDate() - 2);
+        var m = String(dt.getMonth() + 1).padStart(2, "0");
+        var day = String(dt.getDate()).padStart(2, "0");
+        return dt.getFullYear() + "-" + m + "-" + day + " 17:00";
+      }
+
+      function rateHint(r) {
+        var key = r.carrier + "|" + r.pol + "|" + r.pod;
+        return RATE_HINT[key] || (r.carrier + " " + r.pol + "→" + r.pod + " 运价见运价管理");
+      }
+
+      function bcSourceRows() {
+        var scope = document.getElementById("bcScope").value;
+        if (scope === "checked") {
+          var ck = checkedRows();
+          return ck.length ? ck : null;
+        }
+        if (scope === "filter") {
+          return filtered();
+        }
+        // week: same weeks as checked or as filtered
+        var base = checkedRows();
+        if (!base.length) base = filtered();
+        var weeks = {};
+        base.forEach(function (r) { weeks[r.week] = true; });
+        return ROWS.filter(function (r) { return weeks[r.week]; });
+      }
+
+      function buildBroadcast(rows) {
+        var tpl = document.getElementById("bcTpl").value;
+        var group = document.getElementById("bcGroup").value;
+        var date = document.getElementById("bcDate").value || "2026-08-07";
+        var note = (document.getElementById("bcNote").value || "").trim();
+        var byVoy = {};
+        rows.forEach(function (r) {
+          if (!byVoy[r.voy]) byVoy[r.voy] = [];
+          byVoy[r.voy].push(r);
+        });
+        var lines = [];
+        lines.push("【舱位播报 · " + date + "】");
+        lines.push("群：" + group);
+        lines.push("————————");
+        Object.keys(byVoy).sort().forEach(function (voy, idx) {
+          var arr = byVoy[voy];
+          var r0 = arr[0];
+          var wait = arr.filter(function (x) { return x.st === "待分配"; }).length;
+          var load = arr.filter(function (x) { return x.st === "待装柜"; }).length;
+          var sail = arr.filter(function (x) { return x.st === "待离港" || x.st === "已离港"; }).length;
+          var types = {};
+          arr.forEach(function (x) { types[x.type] = (types[x.type] || 0) + 1; });
+          var typeStr = Object.keys(types).map(function (t) { return t + "×" + types[t]; }).join("、");
+          var cut = cutOffHint(r0.etd);
+          var fullHint = wait >= 3 ? " ⚠ 待配仓较满，挤满再排" : "";
+
+          if (tpl === "short") {
+            lines.push((idx + 1) + ". " + r0.carrier + "｜" + voy);
+            lines.push("   " + r0.pol + "→" + r0.pod + "｜ETD " + r0.etd.slice(0, 10) + "｜共" + arr.length + "柜（待配" + wait + "）" + fullHint);
+          } else {
+            lines.push((idx + 1) + ". 【" + r0.carrier + "】" + voy);
+            lines.push("   航线 " + r0.pol + " → " + r0.pod + "　ETD " + r0.etd.slice(0, 10));
+            lines.push("   截单 " + cut + "　签入请盯截单");
+            lines.push("   柜量 共" + arr.length + "｜待分配" + wait + "｜待装柜" + load + "｜已走" + sail + "　（" + typeStr + "）" + fullHint);
+            if (tpl === "rate") {
+              lines.push("   运价 " + rateHint(r0));
+            }
+            if (tpl === "daily") {
+              var bls = arr.slice(0, 4).map(function (x) { return x.cntr; }).join("、");
+              if (arr.length > 4) bls += " 等";
+              lines.push("   柜号 " + bls);
+            }
+            lines.push("");
+          }
+        });
+        lines.push("————————");
+        lines.push("说明：数据来自提单管理同船聚合；一水绑柜散货≤5；勿选 EPS。");
+        if (note) lines.push("补充：" + note);
+        lines.push("以上请业务/客服知悉，有舱位变动另通知。");
+        return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+      }
+
+      function refreshBroadcast() {
+        var rows = bcSourceRows();
+        if (!rows || !rows.length) {
+          document.getElementById("bcMsg").value = "";
+          document.getElementById("bcHint").textContent = "当前范围无提单，请勾选或调整筛选后再生成。";
+          return false;
+        }
+        document.getElementById("bcGroupLabel").textContent = "● " + document.getElementById("bcGroup").value;
+        document.getElementById("bcMsg").value = buildBroadcast(rows);
+        var voyN = {};
+        rows.forEach(function (r) { voyN[r.voy] = true; });
+        document.getElementById("bcHint").textContent =
+          "已聚合 " + Object.keys(voyN).length + " 船 · " + rows.length + " 柜 · 可编辑后复制到营销群。";
+        return true;
+      }
+
+      function openBroadcast() {
+        var scope = document.getElementById("bcScope");
+        if (!checkedRows().length) {
+          scope.value = "filter";
+        } else {
+          scope.value = "checked";
+        }
+        if (!refreshBroadcast()) {
+          toast("请先勾选提单，或保证当前筛选有数据");
+          return;
+        }
+        document.getElementById("bcMask").classList.add("open");
+      }
+      function closeBroadcast() {
+        document.getElementById("bcMask").classList.remove("open");
+      }
+
+      document.getElementById("btnBroadcast").onclick = openBroadcast;
+      document.getElementById("bcClose").onclick = closeBroadcast;
+      document.getElementById("bcCancel").onclick = closeBroadcast;
+      document.getElementById("bcMask").addEventListener("click", function (e) {
+        if (e.target === this) closeBroadcast();
+      });
+      document.getElementById("bcRefresh").onclick = function () {
+        if (!refreshBroadcast()) toast("当前范围无数据");
+        else toast("已重新生成播报");
+      };
+      ["bcGroup", "bcTpl", "bcScope", "bcDate", "bcNote"].forEach(function (id) {
+        document.getElementById(id).addEventListener("change", refreshBroadcast);
+        document.getElementById(id).addEventListener("input", refreshBroadcast);
+      });
+
+      document.getElementById("bcCopy").onclick = function () {
+        var text = document.getElementById("bcMsg").value;
+        if (!text) { toast("没有可复制内容"); return; }
+        function ok() { toast("已复制仓位播报 · 去营销中心群粘贴即可"); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(ok).catch(function () {
+            document.getElementById("bcMsg").select();
+            document.execCommand("copy");
+            ok();
+          });
+        } else {
+          document.getElementById("bcMsg").select();
+          document.execCommand("copy");
+          ok();
+        }
+      };
+
+      render();
+    })();
+  </script>
+</body>
+</html>

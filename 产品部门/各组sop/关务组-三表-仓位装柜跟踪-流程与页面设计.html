@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>关务组 · 线下三表 · 仓位→装柜→海派跟踪</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --gap: #cf1322;
+      --t1: #096dd9; --t2: #08979c; --t3: #531dab;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .page { max-width: 1280px; margin: 0 auto; padding: 14px 16px 56px; }
+
+    .hero {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 6px; padding: 14px 16px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+    .hero p { margin: 0; font-size: 12px; color: var(--sub); line-height: 1.65; }
+
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .toc a {
+      padding: 6px 12px; background: #fff; border: 1px solid var(--line);
+      border-radius: 2px; font-size: 12px; color: var(--text);
+    }
+    .toc a:hover { border-color: var(--blue); color: var(--blue); text-decoration: none; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 6px; padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+    .card h3 { margin: 14px 0 8px; font-size: 13px; color: #003a8c; }
+    .desc { margin: 0 0 14px; font-size: 12px; color: var(--sub); line-height: 1.6; }
+
+    .note {
+      padding: 10px 12px; background: #fffbe6; border: 1px solid #ffe58f;
+      border-radius: 4px; font-size: 12px; color: #614700; line-height: 1.65; margin: 10px 0;
+    }
+    .note strong { color: #874d00; }
+
+    .badge {
+      display: inline-block; padding: 1px 8px; border-radius: 2px;
+      font-size: 11px; border: 1px solid; font-weight: 600; line-height: 18px;
+    }
+    .badge.t1 { color: var(--t1); background: #e6f7ff; border-color: #91d5ff; }
+    .badge.t2 { color: var(--t2); background: #e6fffb; border-color: #87e8de; }
+    .badge.t3 { color: var(--t3); background: #f9f0ff; border-color: #d3adf7; }
+    .badge.gap { color: var(--gap); background: #fff1f0; border-color: #ffa39e; }
+    .badge.ok { color: var(--ok); background: #f6ffed; border-color: #95de64; }
+    .badge.warn { color: var(--warn); background: #fff7e6; border-color: #ffd591; }
+
+    .mermaid-wrap {
+      overflow-x: auto; background: #fafafa; border: 1px solid var(--line);
+      border-radius: 4px; padding: 12px;
+    }
+
+    .phases {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px;
+    }
+    @media (max-width: 900px) { .phases { grid-template-columns: 1fr; } }
+    .phase {
+      border: 1px solid var(--line); border-radius: 6px; padding: 12px; background: #fafafa;
+    }
+    .phase.t1 { border-top: 3px solid var(--t1); }
+    .phase.t2 { border-top: 3px solid var(--t2); }
+    .phase.t3 { border-top: 3px solid var(--t3); }
+    .phase h4 { margin: 0 0 6px; font-size: 13px; }
+    .phase p { margin: 0; font-size: 12px; line-height: 1.6; color: var(--sub); }
+    .phase ul { margin: 8px 0 0; padding-left: 16px; font-size: 12px; line-height: 1.6; }
+
+    /* wireframe list */
+    .wf {
+      border: 1px solid var(--line); border-radius: 4px; overflow: hidden; margin-top: 10px;
+    }
+    .wf-bar {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      padding: 8px 12px; background: #0b1f3a; color: #fff; font-size: 12px;
+    }
+    .wf-tabs { display: flex; gap: 0; }
+    .wf-tabs span {
+      padding: 4px 12px; border: 1px solid rgba(255,255,255,.25);
+      margin-right: -1px; cursor: default;
+    }
+    .wf-tabs span.on { background: #1890ff; border-color: #1890ff; font-weight: 600; }
+    .wf-bar .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+    .wf-bar button {
+      border: 1px solid rgba(255,255,255,.35); background: transparent;
+      color: #fff; border-radius: 2px; padding: 3px 10px; font-size: 12px; cursor: default;
+    }
+    .wf-bar button.primary { background: #1890ff; border-color: #1890ff; }
+
+    .wf-filter {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 8px 12px; border-bottom: 1px solid var(--line); background: #fafafa; font-size: 12px;
+    }
+    .wf-filter .chip {
+      padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--sub);
+    }
+    .wf-filter .chip.on { border-color: #91d5ff; background: #e6f7ff; color: #096dd9; }
+    .wf-filter input, .wf-filter select {
+      border: 1px solid var(--line); border-radius: 2px; padding: 3px 8px; font: inherit; background: #fff;
+    }
+
+    table.grid {
+      width: 100%; border-collapse: collapse; font-size: 11px;
+    }
+    table.grid th, table.grid td {
+      border-bottom: 1px solid var(--line); padding: 7px 8px;
+      text-align: left; vertical-align: middle; white-space: nowrap;
+    }
+    table.grid th { background: #fafafa; color: var(--sub); font-weight: 600; }
+    table.grid tr:hover td { background: #f5f9ff; }
+    .st {
+      display: inline-block; padding: 0 6px; border-radius: 2px;
+      font-size: 10px; font-weight: 600; border: 1px solid;
+    }
+    .st.pre { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .st.final { color: #389e0d; background: #f6ffed; border-color: #95de64; }
+    .st.wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .st.done { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+
+    .side-action {
+      display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 12px;
+      border-top: 1px solid var(--line); background: #fafafa; font-size: 12px;
+    }
+    .side-action button {
+      border: 1px solid var(--line); background: #fff; border-radius: 2px;
+      padding: 4px 10px; font: inherit; cursor: default;
+    }
+    .side-action button.primary { background: #1890ff; border-color: #1890ff; color: #fff; }
+    .side-action button.teal { background: #13c2c2; border-color: #13c2c2; color: #fff; }
+
+    table.tbl {
+      width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px;
+    }
+    table.tbl th, table.tbl td {
+      border: 1px solid var(--line); padding: 8px 10px;
+      text-align: left; vertical-align: top; line-height: 1.55;
+    }
+    table.tbl th { background: #fafafa; color: var(--sub); font-weight: 600; white-space: nowrap; }
+    table.tbl td.n { font-weight: 600; color: #003a8c; white-space: nowrap; }
+
+    .footer { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>线下三表 · 仓位表 → 装柜表 → 海派跟踪表</h1>
+      <p>
+        调研日：2026-07-28 · 选富口径：共同维护；仓位看货量订舱 → 装柜看预配终配与装柜信息 → 跟踪收留装柜完成（关务也用）。
+        关联：<a href="../关务组调研纪要_2026-07-28.html">0728 纪要</a> ·
+        <a href="关务组-资料核准双通道-流程与页面设计.html">资料核准</a> ·
+        <a href="关务组-改配三类场景-轨迹与同步.html">改配三类</a>
+      </p>
+    </section>
+
+    <nav class="toc">
+      <a href="#overview">① 三表定位</a>
+      <a href="#flow">② 流转图</a>
+      <a href="#ui">③ 系统三视图线框</a>
+      <a href="#export">④ 报关资料出口</a>
+      <a href="#sys">⑤ 系统化落点</a>
+    </nav>
+
+    <section class="card" id="overview">
+      <h2>① 三表定位（As-Is 线下）</h2>
+      <p class="desc">现状是 Excel 共维；系统应做成同一对象的三个视图，而不是三套互拷数据。</p>
+      <div class="phases">
+        <div class="phase t1">
+          <h4><span class="badge t1">仓位表</span></h4>
+          <p>订舱货量总览 · 按周看仓位</p>
+          <ul>
+            <li>群里要订舱数据，再维护进表</li>
+            <li>看货量、船名航次、港口、柜型</li>
+            <li>订舱新增品名等也在此层维护</li>
+          </ul>
+        </div>
+        <div class="phase t2">
+          <h4><span class="badge t2">装柜表</span></h4>
+          <p>仓位基础上的排柜落地</p>
+          <ul>
+            <li>预配 / 终配 / 待配</li>
+            <li>装柜地址、时间、扩展字段</li>
+            <li><strong>发哪个报关行</strong>在此可见</li>
+          </ul>
+        </div>
+        <div class="phase t3">
+          <h4><span class="badge t3">海派跟踪表</span></h4>
+          <p>装柜完成后的跟踪池</p>
+          <ul>
+            <li>装柜完成的都放这里</li>
+            <li>关务 / 尾端·海外客服会用</li>
+            <li>承接甩柜换船等轨迹延续/覆盖</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="flow">
+      <h2>② 流转图</h2>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart LR
+  subgraph IN[" upstream "]
+    G["群里订舱数据"]
+    B["订舱/品名"]
+  end
+
+  subgraph T1["仓位表"]
+    W1["按周看仓位 · 货量"]
+    W2["共同维护"]
+  end
+
+  subgraph T2["装柜表"]
+    L1["预配 / 待配 / 终配"]
+    L2["装柜地址·时间·报关行"]
+  end
+
+  subgraph OUT["报关出口"]
+    C1["报关明细下载资料"]
+    C2["发报关行"]
+    C3["资料核准双通道"]
+  end
+
+  subgraph T3["海派跟踪表"]
+    H1["装柜完成进入"]
+    H2["轨迹跟踪 · 改配写回"]
+  end
+
+  G --> W1
+  B --> W1
+  W1 --> W2 --> L1
+  L1 --> L2
+  L2 -->|"终配/待配"| C1 --> C2
+  C2 --> C3
+  L2 -->|"装柜完成"| H1 --> H2
+  H2 -.->|"甩柜/查验换船/换柜"| L2
+
+  style T1 fill:#e6f7ff,stroke:#096dd9
+  style T2 fill:#e6fffb,stroke:#08979c
+  style T3 fill:#f9f0ff,stroke:#531dab
+  style C3 fill:#fff1f0,stroke:#cf1322,stroke-dasharray: 4 3
+        </pre>
+      </div>
+      <div class="note">
+        <strong>一句话：</strong>仓位管「有多少舱」→ 装柜管「怎么装、发给谁」→ 跟踪管「装完之后怎么跟」；
+        报关资料从装柜表的终配/待配出口，核准另见双通道方案。
+      </div>
+    </section>
+
+    <section class="card" id="ui">
+      <h2>③ 系统三视图线框（建议）</h2>
+      <p class="desc">同一列表用 Tab 切换三视图；底层一条配舱/柜记录，状态驱动可见字段与按钮。</p>
+
+      <div class="wf">
+        <div class="wf-bar">
+          <div class="wf-tabs">
+            <span>仓位表</span>
+            <span class="on">装柜表</span>
+            <span>海派跟踪表</span>
+          </div>
+          <div class="acts">
+            <button type="button">从群数据导入</button>
+            <button type="button">按周</button>
+            <button type="button" class="primary">导出</button>
+          </div>
+        </div>
+        <div class="wf-filter">
+          <span class="chip on">本周</span>
+          <span class="chip">下周</span>
+          <span>船名航次</span><input placeholder="COSCO / 025W" />
+          <span>港口</span><select><option>青岛</option><option>宁波</option></select>
+          <span class="chip on">终配</span>
+          <span class="chip on">待配</span>
+          <span class="chip">预配</span>
+          <span class="chip">装柜完成</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th></th>
+                <th>状态</th>
+                <th>船名航次</th>
+                <th>提单号</th>
+                <th>柜号</th>
+                <th>柜型</th>
+                <th>装柜时间</th>
+                <th>装柜地址</th>
+                <th>报关行</th>
+                <th>配舱</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>☐</td>
+                <td><span class="st final">终配</span></td>
+                <td>COSCO / 025W</td>
+                <td>COSU6502971850</td>
+                <td>OOCU9737915</td>
+                <td>40HQ</td>
+                <td>07-29 14:00</td>
+                <td>青岛仓库 A</td>
+                <td>青岛港兴</td>
+                <td>260609-青岛T25</td>
+                <td><a href="#">下载报关资料</a> · <a href="#">进核准</a></td>
+              </tr>
+              <tr>
+                <td>☐</td>
+                <td><span class="st wait">待配</span></td>
+                <td>COSCO / 025W</td>
+                <td>COSU6502971866</td>
+                <td>—</td>
+                <td>40HQ</td>
+                <td>07-30 09:00</td>
+                <td>青岛仓库 B</td>
+                <td>青岛港兴</td>
+                <td>260609-青岛T25</td>
+                <td><a href="#">下载报关资料</a> · <a href="#">确认终配</a></td>
+              </tr>
+              <tr>
+                <td>☐</td>
+                <td><span class="st pre">预配</span></td>
+                <td>OOCL / 088E</td>
+                <td>—</td>
+                <td>—</td>
+                <td>40HQ</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>仓位预留</td>
+                <td><a href="#">完善装柜信息</a></td>
+              </tr>
+              <tr>
+                <td>☐</td>
+                <td><span class="st done">装柜完成</span></td>
+                <td>COSCO / 024W</td>
+                <td>COSU6502971701</td>
+                <td>TCLU8899001</td>
+                <td>40HQ</td>
+                <td>07-25 16:00</td>
+                <td>苏州仓</td>
+                <td>港兴</td>
+                <td>260624-苏T12</td>
+                <td><a href="#">在跟踪表打开</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="side-action">
+          <button type="button" class="primary">批量下载报关资料</button>
+          <button type="button" class="teal">标记装柜完成 → 进跟踪表</button>
+          <button type="button">改配（甩柜/查验换船/换柜）</button>
+          <span style="color:var(--sub);font-size:11px">选中终配/待配后可下载；装柜完成自动或手动落入海派跟踪表</span>
+        </div>
+      </div>
+
+      <h3>各视图字段侧重</h3>
+      <table class="tbl">
+        <thead>
+          <tr><th>视图</th><th>必显</th><th>可弱化</th><th>主操作</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="n"><span class="badge t1">仓位表</span></td>
+            <td>周次、船名航次、港口、柜型、货量/舱位数、订舱来源</td>
+            <td>装柜地址、报关行</td>
+            <td>导入订舱、按周筛选、下发到装柜</td>
+          </tr>
+          <tr>
+            <td class="n"><span class="badge t2">装柜表</span></td>
+            <td>预配/终配/待配、提单柜号、装柜地址时间、报关行</td>
+            <td>纯货量统计</td>
+            <td>完善装柜信息、下载报关资料、确认终配</td>
+          </tr>
+          <tr>
+            <td class="n"><span class="badge t3">海派跟踪表</span></td>
+            <td>提单/柜、船名航次、轨迹节点、改配标记</td>
+            <td>装柜地址编辑</td>
+            <td>跟轨迹、改配入口、通知已读</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="export">
+      <h2>④ 报关资料出口（装柜表驱动）</h2>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart TB
+  A["装柜表：终配 或 待配"] --> B["报关明细"]
+  B --> C["下载报关资料<br/>现状：只改名字"]
+  C --> D["按装柜表报关行发送"]
+  D --> E["资料核准双通道"]
+  E --> F["预录 / 允许报关"]
+
+  style A fill:#e6fffb,stroke:#08979c
+  style C fill:#fff7e6,stroke:#d46b08
+  style E fill:#fff1f0,stroke:#cf1322,stroke-dasharray: 4 3
+        </pre>
+      </div>
+      <ul>
+        <li>发哪个报关行 = 看装柜表，不另开一张「报关行分配表」。</li>
+        <li>主痛点：<strong>分单号</strong>各船司规则不同（承接昨日规则表）。</li>
+        <li>目标：下载时带出报关行、分单号、与舱单一致性校验结果。</li>
+      </ul>
+    </section>
+
+    <section class="card" id="sys">
+      <h2>⑤ 系统化落点与缺口</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th>#</th><th>能力</th><th>现状（线下）</th><th>系统目标</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="n">1</td>
+            <td>三表一体</td>
+            <td><span class="badge gap">Excel 多表拷贝</span></td>
+            <td>一对象三视图 + 状态机</td>
+          </tr>
+          <tr>
+            <td class="n">2</td>
+            <td>订舱进入仓位</td>
+            <td><span class="badge warn">群里要数再手填</span></td>
+            <td>导入/接口进仓位，按周看板</td>
+          </tr>
+          <tr>
+            <td class="n">3</td>
+            <td>装柜 → 报关出口</td>
+            <td><span class="badge warn">下载改名手发</span></td>
+            <td>一键下载/推送，报关行自动带出</td>
+          </tr>
+          <tr>
+            <td class="n">4</td>
+            <td>装柜完成 → 跟踪</td>
+            <td><span class="badge warn">手工挪表</span></td>
+            <td>状态变更自动进跟踪表</td>
+          </tr>
+          <tr>
+            <td class="n">5</td>
+            <td>改配写回三表</td>
+            <td><span class="badge gap">易漏通知</span></td>
+            <td>场景①②③写回 + 通知矩阵</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <strong>分期建议：</strong>先做装柜表视图 + 报关资料出口（对接核准与报关行）→
+        再接通跟踪表与改配写回 → 最后仓位按周看板与订舱导入，替换群里要数。
+      </div>
+      <p class="desc" style="margin-bottom:0">
+        相关：
+        <a href="../关务组调研纪要_2026-07-28.html">0728 纪要</a> ·
+        <a href="关务组-资料核准双通道-流程与页面设计.html">资料核准</a> ·
+        <a href="关务组-改配三类场景-轨迹与同步.html">改配三类</a>
+      </p>
+    </section>
+
+    <p class="footer">产品部门 · 关务组 · 线下三表 · 2026-07-28</p>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>
