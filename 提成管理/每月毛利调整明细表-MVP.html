@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>每月毛利调整明细（弹窗）</title>
+  <style>
+    :root {
+      --line: #e5e7eb;
+      --text: #111827;
+      --sub: #64748b;
+      --pos: #15803d;
+      --neg: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: rgba(15, 23, 42, 0.45);
+      overflow: hidden;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-box {
+      width: min(98vw, 1280px);
+      max-height: 92vh;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-hd {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    .modal-hd h2 { margin: 0; font-size: 17px; font-weight: 600; }
+    .modal-hd p { margin: 6px 0 0; font-size: 12px; color: var(--sub); line-height: 1.5; }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 8px;
+      background: #f3f4f6;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      color: #374151;
+      flex-shrink: 0;
+    }
+    .modal-close:hover { background: #e5e7eb; }
+    .modal-bd { overflow: auto; flex: 1; min-height: 0; padding: 0 18px 12px; }
+    .modal-ft {
+      padding: 10px 18px;
+      border-top: 1px solid var(--line);
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn:hover { background: #f9fafb; }
+    .btn-link {
+      border: none;
+      background: none;
+      padding: 0;
+      color: #2563eb;
+      font-size: 11px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .btn-link:hover { color: #1d4ed8; }
+    .mono { font-family: Consolas, "Courier New", monospace; font-size: 11px; }
+    .section-label {
+      margin: 14px 0 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    table.detail {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    table.detail th,
+    table.detail td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      vertical-align: middle;
+      text-align: right;
+      white-space: nowrap;
+    }
+    table.detail th {
+      font-weight: 700;
+      color: #334155;
+      background: #f8fafc;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    table.detail td.text-left,
+    table.detail th.text-left { text-align: left; }
+    table.detail tbody tr:hover td { background: #fafbff; }
+    .num-pos { color: var(--pos); font-weight: 600; }
+    .num-neg { color: var(--neg); font-weight: 600; }
+    .num-zero { color: #94a3b8; }
+    .sum-row td {
+      background: #f1f5f9 !important;
+      font-weight: 700;
+      border-top: 2px solid #cbd5e1;
+    }
+    th.col-adj { background: #eff6ff; color: #1e40af; }
+    .expand-cell { text-align: center !important; width: 72px; }
+    tr.cust-detail-head td {
+      background: #f8fafc !important;
+      padding: 8px 10px !important;
+      border-top: none;
+    }
+    tr.cust-detail-item td {
+      background: #fafbff !important;
+      font-size: 11px;
+    }
+    tr.cust-detail-item td:first-child + td {
+      padding-left: 18px;
+    }
+    .issue-summary {
+      padding: 8px 10px;
+      background: #eef2ff;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .na { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="modal-box">
+      <div class="modal-hd">
+        <div>
+          <h2 id="dlgTitle">每月毛利调整明细</h2>
+          <p id="dlgSub">汪张帝等（<span class="mono">wangzhangdi_deng</span>）· 账期维度汇总；可展开查看<strong>客户单号</strong>级提成回算明细</p>
+        </div>
+        <button type="button" class="modal-close" data-commission-leave aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p class="section-label">账期汇总</p>
+        <table class="detail">
+          <thead>
+            <tr>
+              <th class="expand-cell">单号</th>
+              <th class="text-left">月份</th>
+              <th>归档净利润</th>
+              <th>当前净利润</th>
+              <th>毛利调整 ±</th>
+              <th>归档提成系数</th>
+              <th>调整后提成系数</th>
+              <th>归档应发</th>
+              <th>调整后应发</th>
+              <th class="col-adj">本期提成调整 ±</th>
+            </tr>
+          </thead>
+          <tbody id="monthBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" data-commission-leave>关闭</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    var GP_CUST_SAMPLES = {
+      "2025-12": [
+        { cust: "WB-YW-202512-A001", prevNet: 800, prevPay: 304, prevRate: "38%", currNet: 1100, currPay: 418, currRate: "38%" },
+        { cust: "WB-YW-202512-B018", prevNet: 26000, prevPay: 9880, prevRate: "38%", currNet: 26000, currPay: 9462, currRate: "38%" }
+      ],
+      "2026-01": [
+        { cust: "WB-YW-202601-C033", prevNet: 5200, prevPay: 1976, prevRate: "38%", currNet: 5200, currPay: 1976, currRate: "38%" },
+        { cust: "WB-YW-202601-D044", prevNet: 23300, prevPay: 8854, prevRate: "38%", currNet: 23300, currPay: 8854, currRate: "38%" }
+      ],
+      "2026-02": [
+        { cust: "WB-YW-202602-E055", prevNet: 2000, prevPay: 760, prevRate: "38%", currNet: 2600, currPay: 988, currRate: "38%" },
+        { cust: "WB-YW-202602-F066", prevNet: 29200, prevPay: 11096, prevRate: "38%", currNet: 29200, currPay: 10603.6, currRate: "38%" }
+      ],
+      "2026-03": [
+        { cust: "WB-YW-202603-C112", prevNet: -500, prevPay: -200, prevRate: "38%", currNet: -450, currPay: -180, currRate: "40%" },
+        { cust: "WB-YW-202603-D205", prevNet: 63900, prevPay: 24292, prevRate: "38%", currNet: 63550, currPay: 22852.3, currRate: "40%" }
+      ],
+      "2026-04": [
+        { cust: "WB-YW-202604-G077", prevNet: 1500, prevPay: 570, prevRate: "38%", currNet: 2100, currPay: 798, currRate: "38%" },
+        { cust: "WB-YW-202604-H088", prevNet: 44100, prevPay: 16758, prevRate: "38%", currNet: 44100, currPay: 16207, currRate: "38%" }
+      ],
+      "2026-05": [
+        { cust: "WB-YW-202605-I099", prevNet: 1800, prevPay: 684, prevRate: "38%", currNet: 2180, currPay: 828.4, currRate: "38%" },
+        { cust: "WB-YW-202605-J110", prevNet: 50300, prevPay: 19114, prevRate: "38%", currNet: 50300, currPay: 18115.6, currRate: "38%" }
+      ]
+    };
+
+    var MONTH_ROWS = [
+      { month: "2025-12", archivedNet: 26800, currentNet: 27100, gpAdj: 300, rate: "38%", currRate: "38%", adjPay: 9880, archivedPay: 10184, commAdj: -304 },
+      { month: "2026-01", archivedNet: 28500, currentNet: 28500, gpAdj: 0, rate: "38%", currRate: "38%", adjPay: 10830, archivedPay: 10830, commAdj: 0 },
+      { month: "2026-02", archivedNet: 31200, currentNet: 31800, gpAdj: 600, rate: "38%", currRate: "38%", adjPay: 11591.6, archivedPay: 11856, commAdj: -264.4 },
+      { month: "2026-03", archivedNet: 63400, currentNet: 63100, gpAdj: -300, rate: "38%", currRate: "40%", adjPay: 22672.3, archivedPay: 24092, commAdj: -1419.7 },
+      { month: "2026-04", archivedNet: 45600, currentNet: 46200, gpAdj: 600, rate: "38%", currRate: "38%", adjPay: 17005, archivedPay: 17328, commAdj: -323 },
+      { month: "2026-05", archivedNet: 52100, currentNet: 52480, gpAdj: 380, rate: "38%", currRate: "38%", adjPay: 18944, archivedPay: 19798, commAdj: -854 }
+    ];
+
+    function getCustMonthTotals(month) {
+      var rows = GP_CUST_SAMPLES[month] || [];
+      var t = {
+        archivedNet: 0,
+        currentNet: 0,
+        gpAdj: 0,
+        archivedPay: 0,
+        adjPay: 0,
+        commAdj: 0
+      };
+      rows.forEach(function (r) {
+        var prevNet = Number(r.prevNet) || 0;
+        var currNet = Number(r.currNet) || 0;
+        var prevPay = Number(r.prevPay) || 0;
+        var currPay = Number(r.currPay) || 0;
+        t.archivedNet += prevNet;
+        t.currentNet += currNet;
+        t.gpAdj += currNet - prevNet;
+        t.archivedPay += prevPay;
+        t.adjPay += currPay;
+        t.commAdj += currPay - prevPay;
+      });
+      return t;
+    }
+
+    function getMonthDisplayRow(row) {
+      if (!GP_CUST_SAMPLES[row.month]) return row;
+      return Object.assign({}, row, getCustMonthTotals(row.month));
+    }
+
+    function formatMoney(n) {
+      var x = Number(n);
+      if (!isFinite(x)) x = 0;
+      return x.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function signedClass(n) {
+      var x = Number(n);
+      if (!x) return "num-zero";
+      return x > 0 ? "num-pos" : "num-neg";
+    }
+
+    function signedText(n) {
+      var x = Number(n);
+      if (!x) return "0.00";
+      return (x > 0 ? "+" : "−") + formatMoney(Math.abs(x));
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderCustDetailRows(month, groupId) {
+      var rows = GP_CUST_SAMPLES[month] || [];
+      var groupCls = "js-cust-detail-" + groupId;
+      if (!rows.length) return "";
+      var totals = getCustMonthTotals(month);
+      var bodyHtml = rows
+        .map(function (r) {
+          var gpNet = (Number(r.currNet) || 0) - (Number(r.prevNet) || 0);
+          var commAdj = (Number(r.currPay) || 0) - (Number(r.prevPay) || 0);
+          return (
+            '<tr class="cust-detail-item ' + groupCls + '" style="display:none;">' +
+            '<td class="expand-cell"><span class="na">—</span></td>' +
+            '<td class="text-left mono">' + escapeHtml(r.cust) + "</td>" +
+            "<td>" + formatMoney(r.prevNet) + "</td>" +
+            "<td>" + formatMoney(r.currNet) + "</td>" +
+            '<td class="' + signedClass(gpNet) + '">' + signedText(gpNet) + "</td>" +
+            "<td>" + escapeHtml(r.prevRate) + "</td>" +
+            "<td>" + escapeHtml(r.currRate) + "</td>" +
+            "<td>" + formatMoney(r.prevPay) + "</td>" +
+            "<td><strong>" + formatMoney(r.currPay) + "</strong></td>" +
+            '<td class="' + signedClass(commAdj) + '">' + signedText(commAdj) + "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+      return (
+        '<tr class="cust-detail-head ' + groupCls + '" style="display:none;"><td colspan="10">' +
+        '<div class="issue-summary">' +
+        "<strong>客户单号明细 · " + escapeHtml(month) + " · </strong>" +
+        "本次毛利调整合计：调整后应发 " + formatMoney(totals.adjPay) +
+        " − 归档应发 " + formatMoney(totals.archivedPay) +
+        " = " + formatMoney(totals.commAdj) + " CNY" +
+        "</div></td></tr>" +
+        bodyHtml
+      );
+    }
+
+    function renderMonthTable() {
+      var tbody = document.getElementById("monthBody");
+      if (!tbody) return;
+      var totals = { archivedNet: 0, currentNet: 0, gpAdj: 0, adjPay: 0, archivedPay: 0, commAdj: 0 };
+      var html = MONTH_ROWS.map(function (row, idx) {
+        var display = getMonthDisplayRow(row);
+        totals.archivedNet += display.archivedNet;
+        totals.currentNet += display.currentNet;
+        totals.gpAdj += display.gpAdj;
+        totals.adjPay += display.adjPay;
+        totals.archivedPay += display.archivedPay;
+        totals.commAdj += display.commAdj;
+        var detailId = "cust-detail-" + idx;
+        var expandBtn =
+          '<button type="button" class="btn-link js-expand-cust" data-target="' +
+          detailId +
+          '" aria-expanded="false">查看</button>';
+        var detailRows = renderCustDetailRows(row.month, idx);
+        return (
+          "<tr>" +
+          '<td class="expand-cell">' + expandBtn + "</td>" +
+          '<td class="text-left"><strong>' + escapeHtml(display.month) + "</strong></td>" +
+          "<td>" + formatMoney(display.archivedNet) + "</td>" +
+          "<td>" + formatMoney(display.currentNet) + "</td>" +
+          '<td class="' + signedClass(display.gpAdj) + '">' + signedText(display.gpAdj) + "</td>" +
+          "<td>" + escapeHtml(display.rate) + "</td>" +
+          "<td>" + escapeHtml(display.currRate || display.rate) + "</td>" +
+          "<td>" + formatMoney(display.archivedPay) + "</td>" +
+          "<td>" + formatMoney(display.adjPay) + "</td>" +
+          '<td class="' + signedClass(display.commAdj) + '">' + signedText(display.commAdj) + "</td>" +
+          "</tr>" + detailRows
+        );
+      }).join("");
+      html +=
+        '<tr class="sum-row">' +
+        '<td class="expand-cell"><span class="na">—</span></td>' +
+        '<td class="text-left">合计</td>' +
+        "<td>" + formatMoney(totals.archivedNet) + "</td>" +
+        "<td>" + formatMoney(totals.currentNet) + "</td>" +
+        '<td class="' + signedClass(totals.gpAdj) + '">' + signedText(totals.gpAdj) + "</td>" +
+        "<td>—</td>" +
+        "<td>—</td>" +
+        "<td>" + formatMoney(totals.archivedPay) + "</td>" +
+        "<td>" + formatMoney(totals.adjPay) + "</td>" +
+        '<td class="' + signedClass(totals.commAdj) + '">' + signedText(totals.commAdj) + "</td>" +
+        "</tr>";
+      tbody.innerHTML = html;
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".js-expand-cust");
+      if (!btn) return;
+      var targetId = btn.getAttribute("data-target");
+      var groupIdx = targetId ? targetId.replace("cust-detail-", "") : "";
+      var rows = groupIdx
+        ? document.querySelectorAll(".js-cust-detail-" + groupIdx)
+        : [];
+      if (!rows.length) return;
+      var open = rows[0].style.display === "none";
+      rows.forEach(function (tr) {
+        tr.style.display = open ? "" : "none";
+      });
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.textContent = open ? "收起" : "查看";
+    });
+
+    renderMonthTable();
+
+    (function initFromQuery() {
+      var qs = new URLSearchParams(window.location.search);
+      var account = qs.get("account") || "wangzhangdi_deng";
+      var name = qs.get("name") || "汪张帝等";
+      var month = qs.get("month") || "";
+      var sub = document.getElementById("dlgSub");
+      if (sub) {
+        sub.innerHTML =
+          escapeHtml(name) +
+          '（<span class="mono">' +
+          escapeHtml(account) +
+          "</span>）· 账期维度汇总；可展开查看<strong>客户单号</strong>级提成回算明细";
+      }
+      if (!month) return;
+      var idx = -1;
+      for (var i = 0; i < MONTH_ROWS.length; i++) {
+        if (MONTH_ROWS[i].month === month) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx < 0) return;
+      document.querySelectorAll(".js-cust-detail-" + idx).forEach(function (tr) {
+        tr.style.display = "";
+      });
+      var expandBtn = document.querySelector('.js-expand-cust[data-target="cust-detail-' + idx + '"]');
+      if (expandBtn) {
+        expandBtn.setAttribute("aria-expanded", "true");
+        expandBtn.textContent = "收起";
+      }
+    })();
+  </script>
+  <script src="commission-nav-close.js"></script>
+</body>
+</html>

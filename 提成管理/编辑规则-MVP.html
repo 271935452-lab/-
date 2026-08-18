@@ -1,0 +1,1556 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>编辑规则（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --green-bg: #ecfdf3;
+      --green-text: #027a48;
+      --blue-bg: #eff6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .page { max-width: 1320px; margin: 0 auto; padding: 20px 16px 100px; }
+    .top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .edit-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .side-nav {
+      position: sticky;
+      top: 16px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .side-nav-title {
+      font-size: 12px;
+      color: var(--sub);
+      margin: 2px 6px 8px;
+    }
+    .nav-link {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: #374151;
+      text-decoration: none;
+      font-size: 13px;
+      margin-bottom: 4px;
+      border: 1px solid transparent;
+    }
+    .nav-link:hover { background: #f8fafc; }
+    .nav-link.active {
+      color: var(--primary);
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      font-weight: 600;
+    }
+    .top h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+    .meta { font-size: 13px; color: var(--sub); margin: 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .sec-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 14px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+      background: var(--blue-bg);
+    }
+    .sec-title.sub { border-left-color: #16a34a; background: #f0fdf4; }
+    .sec-title.warn { border-left-color: #d97706; background: #fffbeb; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 20px;
+    }
+    @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+    .field-full { grid-column: 1 / -1; }
+    .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .field input, .field select { height: 36px; }
+    .field textarea { min-height: 72px; padding: 8px 10px; resize: vertical; }
+    .hint { font-size: 12px; color: var(--sub); margin-top: 6px; line-height: 1.5; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips.box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fff;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .chip.on { border-color: var(--primary); background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .tab.active { border-color: #93c5fd; background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .tab[aria-disabled="true"] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .calc-panel { display: none; margin-top: 4px; }
+    .calc-panel.active { display: block; }
+    .preview-box {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+      font-size: 13px;
+    }
+    .preview-box strong { color: #1e40af; }
+    .preview-kv { color: var(--sub); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+    .tier-wrap { overflow-x: auto; }
+    .tier-table {
+      width: 100%;
+      min-width: 520px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .tier-table th, .tier-table td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .tier-table th { background: #fafbff; color: #4b5563; font-weight: 600; }
+    .tier-inline-note {
+      font-size: 12px;
+      color: var(--sub);
+      margin: 8px 0 0;
+      line-height: 1.55;
+    }
+    .builder-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .expr-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fafafa;
+    }
+    .expr-title {
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 6px;
+    }
+    .expr-toolbar {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    .token-grid, .op-grid {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .token-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .op-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .token, .op-btn {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      padding: 6px 4px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .token:hover, .op-btn:hover { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+    .mini-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-mini {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #fff;
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .base-to-maintain {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--blue-bg);
+      border: 1px solid #bfdbfe;
+      font-size: 12px;
+      line-height: 1.55;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px 12px;
+    }
+    .base-to-maintain-link {
+      flex-shrink: 0;
+      font-weight: 600;
+      color: var(--primary);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .base-to-maintain-link:hover {
+      color: var(--primary-hover);
+      text-decoration: underline;
+    }
+    .base-to-maintain-note {
+      color: var(--sub);
+      flex: 1 1 220px;
+      min-width: 0;
+    }
+    .mono {
+      width: 100%;
+      min-height: 88px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      background: #fff;
+      resize: vertical;
+    }
+    @media (max-width: 720px) { .builder-grid { grid-template-columns: 1fr; } }
+    .sticky-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.96);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      z-index: 50;
+    }
+    .sticky-inner {
+      max-width: 1320px;
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .req { color: #b42318; }
+    @media (max-width: 980px) {
+      .edit-layout { grid-template-columns: 1fr; }
+      .side-nav { position: static; }
+    }
+  </style>
+<style id="commission-nav-skin">
+/* 提成管理 · 左侧主导航（与各页 :root 独立） */
+.app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+.app-sidenav {
+  width: 232px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+}
+.sidenav-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidenav-title { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
+.sidenav-sub { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.sidenav-nav { flex: 1; overflow-y: auto; }
+.sidenav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 14px 18px 6px;
+}
+.sidenav-link {
+  display: block;
+  padding: 9px 18px 9px 15px;
+  margin: 0 8px 2px;
+  font-size: 14px;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.sidenav-link:hover { background: #f8fafc; color: #2563eb; }
+.sidenav-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+  border-left-color: #2563eb;
+}
+.app-main { flex: 1; min-width: 0; background: #f5f7fb; }
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .app-sidenav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 12px 8px;
+  }
+  .sidenav-brand {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .sidenav-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .sidenav-section-label { display: none; }
+  .sidenav-link {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-left: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .sidenav-link.active { border-color: #93c5fd; }
+}
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidenav" aria-label="提成管理导航">
+      <div class="sidenav-brand">
+        <div class="sidenav-title">提成管理</div>
+        <div class="sidenav-sub">Commission · MVP 原型导航</div>
+      </div>
+      <nav class="sidenav-nav">
+        <div class="sidenav-section-label">0.更新说明</div>
+        <a href="更新记录-MVP.html" class="sidenav-link">更新记录</a>
+        <div class="sidenav-section-label">1.人员映射表</div>
+        <a href="人员映射表-MVP.html" class="sidenav-link">人员映射表</a>
+        <a href="批量导入人员映射-MVP.html" class="sidenav-link">批量导入人员映射</a>
+        <a href="新增人员映射-MVP.html" class="sidenav-link">新增人员映射</a>
+        <a href="编辑人员映射-MVP.html" class="sidenav-link">编辑人员映射</a>
+        <a href="引用规则包-独立弹窗页-MVP.html" class="sidenav-link">引用规则包</a>
+        <div class="sidenav-section-label">2.月度调整表</div>
+        <a href="表外导入成本列表-MVP.html" class="sidenav-link">月度调整表</a>
+        <a href="导入表外成本弹窗页-MVP.html" class="sidenav-link">导入表外成本</a>
+        <a href="导入绩效系数弹窗页-MVP.html" class="sidenav-link">导入绩效系数</a>
+        <div class="sidenav-section-label">3.基数方案</div>
+        <a href="基数方案列表-MVP.html" class="sidenav-link">基数方案列表</a>
+        <a href="基数维护-公式构建器.html" class="sidenav-link">编辑基数</a>
+        <div class="sidenav-section-label">4.提成规则包</div>
+        <a href="规则包-规则子母表-MVP.html" class="sidenav-link">规则包列表</a>
+        <a href="规则包详情-MVP.html" class="sidenav-link">规则包详情</a>
+        <a href="规则包编辑-弹窗页-MVP.html" class="sidenav-link">新增编辑规则包</a>
+        <a href="编辑规则-MVP.html" class="sidenav-link">编辑规则</a>
+        <div class="sidenav-section-label">5.提成试算</div>
+        <a href="提成试算表-直客与同行-MVP.html" class="sidenav-link">提成试算表(直客/同行)</a>
+        <a href="月度提成归档与运单明细-MVP.html" class="sidenav-link">月度归档和运单底表</a>
+        <a href="提成试算表-直客与同行-MVP.html#dev-trial-log-matrix" class="sidenav-link">试算步骤矩阵（开发）</a>
+      </nav>
+    </aside>
+    <main class="app-main">
+
+  <div class="page">
+    <div class="top">
+      <div>
+        <a href="#" class="btn" data-commission-leave>← 返回规则引擎列表</a>
+        <h1 style="margin-top:12px;">编辑规则</h1>
+        <p class="meta">规则编码：<strong>规则_直客业务员_毛利阶梯</strong> · 当前版本 <strong>v1.4</strong>（草稿可改，发布后生成新版本）</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn">试算预览</button>
+        <button type="button" class="btn">变更日志</button>
+        <button type="button" class="btn btn-primary">保存草稿</button>
+        <button type="button" class="btn btn-primary">保存并发布</button>
+      </div>
+    </div>
+
+    <div class="edit-layout">
+      <aside class="side-nav">
+        <div class="side-nav-title">模块导航</div>
+        <a class="nav-link active" href="#sec-basic">基本信息</a>
+        <a class="nav-link" href="#sec-deduct">提成扣配置</a>
+        <a class="nav-link" href="#sec-product">销售产品与结算参数</a>
+        <a class="nav-link" href="#sec-match">匹配控制</a>
+        <a class="nav-link" href="#sec-customer">指定客户</a>
+        <a class="nav-link" href="#sec-expression">表达式与计算公式</a>
+        <a class="nav-link" href="#sec-base">基数方案与计算方式</a>
+        <a class="nav-link" href="#sec-audit">备注与审计</a>
+      </aside>
+      <div class="edit-content">
+
+    <div id="sec-basic" class="card">
+      <div class="sec-title">基本信息</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>规则名称 <span class="req">*</span></label>
+          <input type="text" value="直客业务员毛利阶梯" />
+        </div>
+        <div class="field">
+          <label>规则编码 <span class="req">*</span></label>
+          <input type="text" value="规则_直客业务员_毛利阶梯" readonly />
+          <div class="hint">编码创建后不可改；复制规则将生成新编码。</div>
+        </div>
+        <div class="field">
+          <label>所属规则包</label>
+          <select>
+            <option>直客-总部-2026版（规则包_直客_总部_2026）</option>
+            <option>— 不归属规则包</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>状态</label>
+          <select>
+            <option>草稿</option>
+            <option>待发布</option>
+            <option>生效中</option>
+            <option>已停用</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>生效起始 <span class="req">*</span></label>
+          <input type="date" value="2026-01-01" />
+        </div>
+        <div class="field">
+          <label>生效截止</label>
+          <input type="date" value="2026-12-31" />
+          <div class="hint">空表示长期有效（与产品约定一致）。</div>
+        </div>
+        <div class="field field-full">
+          <label>规则说明</label>
+          <textarea placeholder="对内说明，可选">按业务毛利分档计提；与互斥组 互斥组_直客_A 内其他规则二选一命中。</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-customer" class="card">
+      <div class="sec-title sub">指定客户</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>指定客户（可多选）</label>
+          <div class="chips box">
+            <span class="chip on">宁波远航国际物流有限公司</span>
+            <span class="chip">上海海联供应链有限公司</span>
+            <span class="chip">深圳跨境电商客户A</span>
+            <span class="chip">华东大客户B</span>
+          </div>
+          <div class="hint">按客户维度命中：勾选为指定客户列表；<strong>默认按客户名称精确匹配</strong>，仅对已勾选客户生效。可选范围来自<strong>客户表</strong>中<strong>已开户</strong>的客户（未开户不出现在多选列表）。更复杂的客户范围策略由产品/引擎约定（本页<strong>不提供</strong>客户在条件表达式中的快捷插入，避免与上方列表重复）。</div>
+        </div>
+        <div class="field field-full">
+          <label>客户命中说明</label>
+          <textarea placeholder="选填">仅当运单底表客户与指定客户列表命中时，才进入本规则计算链路。</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-deduct" class="card">
+      <div class="sec-title">提成扣配置（规则层）</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>提成扣类型 <span class="req">*</span>（可多选）</label>
+          <div class="chips box">
+            <span class="chip on">客服提成</span>
+            <span class="chip on">表外导入</span>
+          </div>
+          <div class="hint">MVP 仅两种提成扣类型（与业务「三、提成扣说明」一致）：勾选即参与扣减，不勾选则该项按 0 处理。</div>
+        </div>
+        <div class="field">
+          <label>是否启用提成扣 <span class="req">*</span></label>
+          <select>
+            <option>启用</option>
+            <option>不启用</option>
+          </select>
+        </div>
+        <div class="field field-full">
+          <label>提成扣计算说明</label>
+          <textarea>应发提成 = 应计提成 - 客服提成扣减金额 - 财务导入提成扣金额；客服提成当前按“直接扣提成”口径处理。</textarea>
+          <div class="hint">口径约定：总开关关闭时不扣任何类型；总开关开启时按「提成扣类型」勾选项执行扣减。</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-product" class="card">
+      <div class="sec-title sub">销售产品与结算参数</div>
+      <div class="hint" style="margin-bottom:12px;padding:8px 10px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;color:#166534;font-size:12px;line-height:1.55;">
+        <strong>同行业务员：</strong>「销售产品」即<strong>运单底表</strong>维度命中条件；包级为「同角色相加」且同一员工命中多条规则时，按产品交集分别命中并<strong>相加</strong>计提（《07 产品回复》P7）。
+      </div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>销售产品（规则匹配）<span class="req">*</span>（可多选）</label>
+          <div class="chips box">
+            <span class="chip on">海派特价</span>
+            <span class="chip on">主营产品</span>
+            <span class="chip">空运出口</span>
+            <span class="chip">海运整柜</span>
+            <span class="chip">跨境电商专线</span>
+          </div>
+          <div class="hint">多选列表来自<strong>销售产品主数据</strong>，仅<strong>已启用</strong>状态的产品可勾选（停用项不展示或灰显以实现为准）。</div>
+        </div>
+        <div class="field">
+          <label>基本提成点（%）</label>
+          <input type="text" value="取当前配置点" readonly style="background:#f9fafb;" />
+        </div>
+        <div class="field">
+          <label>累计规则</label>
+          <select>
+            <option>每满1年累计+2%</option>
+            <option>不累计</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>累计上限（%）</label>
+          <input type="text" value="8.00%" />
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-match" class="card">
+      <div class="sec-title sub">适用角色与匹配控制（分公司 + 小组 + 提成角色 + 入职时间 + 员工状态 + 员工工号）</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>分公司 <span class="req">*</span></label>
+          <select>
+            <option>总部</option>
+            <option>深圳</option>
+            <option>坂田</option>
+            <option>福永</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>小组 <span class="req">*</span></label>
+          <select>
+            <option>联动组</option>
+            <option>稳航组</option>
+            <option>全部小组</option>
+          </select>
+        </div>
+        <div class="field field-full">
+          <label>适用提成角色 <span class="req">*</span>（可多选）</label>
+          <div class="chips">
+            <span class="chip on">直客业务员</span>
+            <span class="chip">直客主管</span>
+            <span class="chip">直客客服</span>
+            <span class="chip">同行业务员</span>
+          </div>
+          <div class="hint">点击切换选中；保存时至少选一个。选项来自<strong>系统字典·提成角色</strong>，与<strong>人员映射表</strong>使用的提成角色枚举<strong>同源</strong>（编码/名称一致）。</div>
+        </div>
+        <div class="field">
+          <label>服务场景（service_mode）</label>
+          <select>
+            <option>全部场景</option>
+            <option>有业务员客服</option>
+            <option>无业务员客服</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>匹配优先级</label>
+          <input type="number" value="100" min="0" />
+          <div class="hint">同互斥组内数值大者优先。<strong>方案 B（不拆包）</strong>：为个别人<strong>新增一条规则</strong>，单独配置<strong>提成点 + 累计提成点/上限</strong>；在该条<strong>条件表达式</strong>中填写 <span class="mono" style="font-size:11px">#{员工工号} in [...]</span> <strong>工号白名单</strong>（与人员映射表一致）。引擎判断：<strong>当前员工工号在名单内</strong>则命中本条（走累计）；<strong>不在名单</strong>则命中<strong>另一条大众规则</strong>（不累计）。本条匹配优先级须<strong>高于</strong>大众规则（如 310 vs 100）。</div>
+        </div>
+        <div class="field">
+          <label>入职时间起（命中）</label>
+          <input type="date" value="2025-04-08" />
+        </div>
+        <div class="field">
+          <label>入职时间止（命中）</label>
+          <input type="date" value="" />
+          <div class="hint">为空表示无上限；命中按员工入职日期落在区间内判断。</div>
+        </div>
+        <div class="field">
+          <label>员工状态（命中）</label>
+          <select>
+            <option>全部</option>
+            <option>试用</option>
+            <option>转正</option>
+          </select>
+          <div class="hint">苏州主管提成可按“试用/转正”区分命中规则。</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="sec-expression" class="card">
+      <div class="sec-title">命中条件（规则包锁定后：分公司 + 小组 + 提成角色 + 入职时间 + 员工状态 + 员工工号 + 组员实发提成 / 组员平均票数（表达式）等；<strong>销售产品 / 指定客户见上方结构化配置</strong>）</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>表达式与计算公式编辑器</label>
+          <div class="builder-grid">
+            <div class="expr-box">
+              <div class="expr-title">条件表达式（系统）</div>
+              <div class="expr-toolbar">
+                <div class="token-grid">
+                  <div class="token" data-insert="#{分公司}">分公司</div>
+                  <div class="token" data-insert="#{小组}">小组</div>
+                  <div class="token" data-insert="#{提成角色}">提成角色</div>
+                  <div class="token" data-insert="#{入职时间}">入职时间</div>
+                  <div class="token" data-insert="#{员工状态}">员工状态</div>
+                  <div class="token" data-insert="#{员工工号}">员工工号</div>
+                  <div class="token" data-insert="#{组员实发提成}">组员实发提成</div>
+                  <div class="token" data-insert="#{组员平均票数}">组员平均票数</div>
+                </div>
+                <div class="op-grid">
+                  <div class="op-btn" data-insert=" && ">&amp;&amp;</div>
+                  <div class="op-btn" data-insert=" || ">||</div>
+                  <div class="op-btn" data-insert=" == ">==</div>
+                  <div class="op-btn" data-insert=" >= ">&gt;=</div>
+                  <div class="op-btn" data-insert=" <= ">&lt;=</div>
+                  <div class="op-btn" data-insert=" != ">!=</div>
+                </div>
+                <div class="op-grid">
+                  <div class="op-btn" data-insert=" > ">&gt;</div>
+                  <div class="op-btn" data-insert=" < ">&lt;</div>
+                  <div class="op-btn" data-insert=" ( ">(</div>
+                  <div class="op-btn" data-insert=" ) ">)</div>
+                  <div class="op-btn" data-insert=" in ">in</div>
+                  <div class="op-btn" data-insert="'深圳'">'深圳'</div>
+                  <div class="op-btn" data-insert="['10001','10002']">工号列表</div>
+                </div>
+              </div>
+              <textarea id="condExprEditor" class="mono" placeholder="#{分公司}=='深圳' && #{小组}=='联动组' && #{提成角色} in ['直客业务员'] && #{员工状态}=='转正'"></textarea>
+              <div class="mini-actions">
+                <button id="btnExprUndo" type="button" class="btn-mini">撤销一步</button>
+                <button id="btnExprClear" type="button" class="btn-mini">清空</button>
+              </div>
+            </div>
+            <div class="expr-box">
+              <div class="expr-title">计算公式（系统）</div>
+              <div class="expr-toolbar">
+                <div class="token-grid">
+                  <div class="token calc-token" data-insert="#{应发提成}">应发提成</div>
+                  <div class="token calc-token" data-insert="#{客服提成扣}">客服提成扣</div>
+                  <div class="token calc-token" data-insert="#{表外成本扣}">表外成本扣</div>
+                  <div class="token calc-token" data-insert="#{绩效系数}">绩效系数</div>
+                </div>
+                <div class="op-grid">
+                  <div class="op-btn calc-op" data-insert="+">+</div>
+                  <div class="op-btn calc-op" data-insert="-">-</div>
+                  <div class="op-btn calc-op" data-insert="*">*</div>
+                  <div class="op-btn calc-op" data-insert="/">/</div>
+                  <div class="op-btn calc-op" data-insert="(">(</div>
+                  <div class="op-btn calc-op" data-insert=")">)</div>
+                </div>
+                <div class="op-grid">
+                  <div class="op-btn calc-op" data-insert="max(">max(</div>
+                  <div class="op-btn calc-op" data-insert="min(">min(</div>
+                  <div class="op-btn calc-op" data-insert="0">0</div>
+                  <div class="op-btn calc-op" data-insert="1000">1000</div>
+                  <div class="op-btn calc-op" data-insert=",">,</div>
+                  <div class="op-btn calc-op" data-insert="%">%</div>
+                </div>
+              </div>
+              <textarea id="calcExprEditor" class="mono" placeholder="#{应发提成}*#{绩效系数}-#{客服提成扣}-#{表外成本扣}（应发提成=引擎按基数方案+阶梯/固定比例+基本提成点等先算；绩效 108%→1.08）"></textarea>
+              <div class="mini-actions">
+                <button id="btnCalcUndo" type="button" class="btn-mini">撤销一步</button>
+                <button id="btnCalcClear" type="button" class="btn-mini">清空</button>
+              </div>
+            </div>
+          </div>
+          <div class="hint">门槛与额外命中条件写入「条件表达式（系统）」；<strong>销售产品、指定客户不在此插入 token</strong>，请以页面上方「销售产品与结算参数」「指定客户」结构化配置为准。白名单类命中建议使用<strong>人员映射表中的员工工号</strong>（与 <span class="mono" style="font-size:11px">#{员工工号}</span> 一致），并在结果明细可回显。<strong>组维度门槛</strong>可使用 <span class="mono" style="font-size:11px">#{组员实发提成}</span>、<span class="mono" style="font-size:11px">#{组员平均票数}</span>（与比较运算符组合，如 <span class="mono" style="font-size:11px">&gt;=</span> 阈值）；<strong>「组员」范围、账期切片、是否含当前员工本人、实发是否取已归档批次</strong>等聚合口径以<strong>引擎字典 / 试算步骤说明</strong>为准，保存前须通过占位符校验。<strong>「计算公式」工具条（MVP 暂行）</strong>仅提供：<span class="mono" style="font-size:11px">#{应发提成}</span>、<span class="mono" style="font-size:11px">#{客服提成扣}</span>、<span class="mono" style="font-size:11px">#{表外成本扣}</span>、<span class="mono" style="font-size:11px">#{绩效系数}</span>；<strong>组员实发提成、组员平均票数不参与「计算公式」四项</strong>，仅作命中条件。<strong>#{应发提成}</strong>由引擎在命中后按本页「基数方案 + 毛利阶梯/计费重/固定比例 + 基本提成点（及累计规则等）」<strong>先算出主应发</strong>，再代入公式做绩效折扣与提成扣类加减。<strong>毛利类上月结转、组员应收等其它组员口径、上月提成结转</strong>等不在「计算公式」工具条展开，由<strong>基数层公式</strong>或引擎步骤处理（与试算步骤对齐）。<strong>#{绩效系数}</strong>来自<strong>月度调整 → 导入绩效系数</strong>（员工 + 账期）：<strong>仅当本条「计算公式」显式写出</strong> <span class="mono" style="font-size:11px">#{绩效系数}</span> 时才做绩效折扣；<strong>未导入且公式未引用该占位符时，不做绩效折扣计算</strong>；若公式已引用但未导入，按<strong>引擎约定</strong>阻断试算或拦截保存。<strong>个税</strong>：<strong>不提供</strong>本页公式占位符；在<strong>应发提成（规则公式产出后的应发口径）</strong>之后由试算/发放引擎扣减，并入<strong>实发提成</strong>链路；MVP <strong>不自动算税</strong>（可导入/可空），与《提成试算表》「应发−个税→实发」一致。<strong>#{表外成本扣}</strong>与台账「提成扣」类表外导入同源；若引擎沿用旧字段名可与 <span class="mono" style="font-size:11px">#{表外导入扣}</span> 映射等价。</div>
+          <div class="hint" style="margin-top:10px;padding:10px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;color:#14532d;font-size:12px;line-height:1.6;">
+            <strong>同包「累计提成点」个别人（方案 B）：</strong>保留<strong>一条大众规则 A</strong>（结构化条件与大众一致，表达式<strong>不写</strong>工号白名单，优先级较低，累计规则选「不累计」）。<strong>新增规则 B</strong>：单独配置<strong>提成点 + 累计提成点与上限</strong>；销售产品、指定客户等与 A 对齐（在<strong>结构化区块</strong>维护）；在条件表达式中维护<strong>工号白名单</strong>，例如末尾追加
+            <span class="mono" style="font-size:11px;color:#14532d;">&amp;&amp; #{员工工号} in ['10001','10002']</span>
+            （真实工号以人员映射表为准）。<strong>匹配逻辑</strong>：<strong>工号在名单</strong>则命中 B（走累计）；<strong>不在名单</strong>则命中 A。B 的<strong>匹配优先级须高于 A</strong>；两条规则须在同一规则包、同一互斥编排上下文内配置，试算命中原因须能打印最终命中的规则编码。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-base" class="card">
+      <div class="sec-title warn">基数方案与计算方式</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>基数方案编码 <span class="req">*</span></label>
+          <select>
+            <option>基数方案_毛利标准（毛利 - 系统成本 - 表外成本）</option>
+            <option>基数方案_同行毛利</option>
+            <option>基数方案_净利润标准</option>
+          </select>
+          <div class="hint">基数在「基数/公式维护」中配置；此处仅引用编码。</div>
+          <div class="base-to-maintain">
+            <a href="基数维护-公式构建器.html" class="base-to-maintain-link">编辑基数方案</a>
+            <a href="基数方案列表-MVP.html" class="base-to-maintain-link" style="font-weight:500;">基数方案列表</a>
+            <span class="base-to-maintain-note">公式构建器与侧栏「3. 基数方案」入口一致；主档筛选与版本见列表页。正式版可按下拉所选方案编码深链；已归档版本建议只读或复制新版本后再改。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs calc-mode-tabs" role="tablist">
+        <button type="button" class="tab active" role="tab" aria-selected="true" data-panel="calc-panel-tier">毛利阶梯</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-panel="calc-panel-weight">计费重阶梯</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-panel="calc-panel-flat">固定比例</button>
+      </div>
+
+      <div id="calc-panel-tier" class="calc-panel active" role="tabpanel">
+        <div class="form-grid">
+          <div class="field">
+            <label>阶梯类型</label>
+            <select>
+              <option>全额按档</option>
+              <option>超额累进</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>回款发放门槛</label>
+            <select>
+              <option>不限制</option>
+              <option>回款率 ≥ 80%</option>
+              <option>回款率 ≥ 90%</option>
+            </select>
+          </div>
+        </div>
+
+        <p style="font-size:13px;color:var(--sub);margin:12px 0 8px;">阶梯明细（下界含、上界不含，与财务口径一致）</p>
+        <div class="tier-wrap">
+          <table class="tier-table">
+            <thead>
+              <tr>
+                <th>档位</th>
+                <th>基数下限（含）</th>
+                <th>基数上限（不含）</th>
+                <th>提成比例</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><input type="text" value="0" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="100000" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="3.00%" style="width:100%;border:none;padding:4px;" /></td>
+                <td><a href="#" style="color:var(--primary);font-size:13px;">删除</a></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><input type="text" value="100000" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="300000" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="5.00%" style="width:100%;border:none;padding:4px;" /></td>
+                <td><a href="#" style="color:var(--primary);font-size:13px;">删除</a></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><input type="text" value="300000" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="999999999" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="8.00%" style="width:100%;border:none;padding:4px;" /></td>
+                <td><a href="#" style="color:var(--primary);font-size:13px;">删除</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="btn" style="margin-top:10px;">+ 增加档位</button>
+      </div>
+
+      <div id="calc-panel-weight" class="calc-panel" role="tabpanel">
+        <div class="preview-box" style="margin:0 0 0;">
+          <strong>计算口径说明</strong>
+          <div class="tier-inline-note" id="weightPreviewMain">基数 = 计费重对应的计费金额；单位只参与“如何计价”，不作为独立基数值。</div>
+          <div class="tier-inline-note" id="weightPreviewFormula">计费金额 = 数量 × 单价；数量可能是票数或KG，取决于命中的阶梯单位。</div>
+        </div>
+
+        <p style="font-size:13px;color:var(--sub);margin:12px 0 8px;">计费重阶梯（下界含、上界不含）</p>
+        <div class="tier-wrap">
+          <table class="tier-table">
+            <thead>
+              <tr>
+                <th>档位</th>
+                <th>计费重下限（含KG）</th>
+                <th>计费重上限（不含KG）</th>
+                <th>计费单位</th>
+                <th>单价</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><input type="text" value="0" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="21" style="width:100%;border:none;padding:4px;" /></td>
+                <td>
+                  <select style="width:100%;border:none;padding:4px;background:#fff;">
+                    <option selected>元/票</option>
+                    <option>元/KG</option>
+                  </select>
+                </td>
+                <td><input type="text" value="2.00" style="width:100%;border:none;padding:4px;" /></td>
+                <td><a href="#" style="color:var(--primary);font-size:13px;">删除</a></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><input type="text" value="21" style="width:100%;border:none;padding:4px;" /></td>
+                <td><input type="text" value="999999999" style="width:100%;border:none;padding:4px;" /></td>
+                <td>
+                  <select style="width:100%;border:none;padding:4px;background:#fff;">
+                    <option>元/票</option>
+                    <option selected>元/KG</option>
+                  </select>
+                </td>
+                <td><input type="text" value="0.10" style="width:100%;border:none;padding:4px;" /></td>
+                <td><a href="#" style="color:var(--primary);font-size:13px;">删除</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="hint" style="margin-top:10px;">当计费重落入某一档后，系统读取该档“计费单位 + 单价”完成换算，再把结果作为基数参与提成公式。</div>
+        <button type="button" class="btn" style="margin-top:10px;">+ 增加档位</button>
+      </div>
+
+      <div id="calc-panel-flat" class="calc-panel" role="tabpanel">
+        <div class="form-grid">
+          <div class="field">
+            <label>固定比例（%）<span class="req">*</span></label>
+            <input type="number" id="flatRatePct" value="3.5" min="0" max="100" step="0.01" />
+            <div class="hint">引擎落库可与展示口径换算（如 0.035）；此处按百分比录入便于业务核对。<strong>比例基数</strong>随本规则引用的「基数方案」在试算/归档时按账期汇总；回款门槛、封顶、金额精度等由规则引擎统一策略处理，不在本页签单独配置。</div>
+          </div>
+        </div>
+
+        <div class="preview-box">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;">
+            <strong>计算示意（非落库结果）</strong>
+            <button type="button" class="btn-mini" id="btnFlatPreview">刷新示意</button>
+          </div>
+          <div id="flatPreviewMain" class="preview-kv">—</div>
+          <div id="flatPreviewFormula" class="preview-kv"></div>
+        </div>
+        <div class="hint" style="margin-top:10px;">切换回「毛利阶梯」不会清空本页已填比例；保存时以当前激活页签对应的计算方式写入规则版本。</div>
+      </div>
+
+      <div id="calc-panel-piece" class="calc-panel" role="tabpanel">
+        <p class="hint" style="margin:8px 0 0;">分段函数（按表达式/多段折线）将在二期与规则引擎表达式能力对齐后开放；MVP 请使用「毛利阶梯」或「固定比例」。</p>
+      </div>
+    </div>
+
+    <div id="sec-audit" class="card">
+      <div class="sec-title">备注与审计</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>内部备注</label>
+          <textarea placeholder="选填"></textarea>
+        </div>
+        <div class="field field-full">
+          <label>最近修改</label>
+          <input type="text" value="张三 · 2026-04-16 10:24" readonly style="background:#f9fafb;" />
+        </div>
+      </div>
+    </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sticky-bar">
+    <div class="sticky-inner">
+      <a href="#" class="btn" data-commission-leave>取消</a>
+      <button type="button" class="btn">保存草稿</button>
+      <button type="button" class="btn btn-primary">保存并发布</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var calcTabBar = document.querySelector(".calc-mode-tabs");
+      if (calcTabBar) {
+        var calcTabs = calcTabBar.querySelectorAll(".tab[data-panel]");
+        var calcPanels = {
+          "calc-panel-tier": document.getElementById("calc-panel-tier"),
+          "calc-panel-weight": document.getElementById("calc-panel-weight"),
+          "calc-panel-flat": document.getElementById("calc-panel-flat"),
+          "calc-panel-piece": document.getElementById("calc-panel-piece")
+        };
+        calcTabs.forEach(function (t) {
+          t.addEventListener("click", function () {
+            var pid = t.getAttribute("data-panel");
+            if (!pid || !calcPanels[pid]) return;
+            calcTabs.forEach(function (x) {
+              x.classList.toggle("active", x === t);
+              x.setAttribute("aria-selected", x === t ? "true" : "false");
+            });
+            Object.keys(calcPanels).forEach(function (key) {
+              var p = calcPanels[key];
+              if (p) p.classList.toggle("active", key === pid);
+            });
+          });
+        });
+      }
+
+      function formatWeightRuleText() {
+        var rows = [];
+        var tbody = document.querySelector("#calc-panel-weight tbody");
+        if (!tbody) return "";
+        Array.prototype.slice.call(tbody.querySelectorAll("tr")).forEach(function (tr) {
+          var cells = tr.querySelectorAll("td");
+          if (cells.length < 5) return;
+          var low = cells[1].querySelector("input");
+          var high = cells[2].querySelector("input");
+          var unit = cells[3].querySelector("select");
+          var price = cells[4].querySelector("input");
+          var lowVal = low ? String(low.value || "").trim() : "";
+          var highVal = high ? String(high.value || "").trim() : "";
+          var unitVal = unit ? unit.value : "";
+          var priceVal = price ? String(price.value || "").trim() : "";
+          if (!lowVal && !highVal && !priceVal) return;
+          rows.push({ low: lowVal, high: highVal, unit: unitVal, price: priceVal });
+        });
+        if (!rows.length) return "";
+        return rows.map(function (r) {
+          var unitText = r.unit === "元/KG" ? "元/KG" : "元/票";
+          var lowText = r.low === "0" ? "<" + r.high + "KG" : ">=" + r.low + "KG";
+          return lowText + "：" + r.price + unitText;
+        }).join("；");
+      }
+
+      function updateWeightPreview() {
+        var main = document.getElementById("weightPreviewMain");
+        var formula = document.getElementById("weightPreviewFormula");
+        if (!main) return;
+        var txt = formatWeightRuleText();
+        if (txt) main.textContent = txt;
+        if (formula) formula.textContent = "按计费重命中对应阶梯后，按各档「计费单位」与单价计算计费金额。";
+      }
+
+      var weightPanel = document.getElementById("calc-panel-weight");
+      if (weightPanel) {
+        weightPanel.querySelectorAll("input, select").forEach(function (el) {
+          el.addEventListener("change", updateWeightPreview);
+          el.addEventListener("input", updateWeightPreview);
+        });
+        updateWeightPreview();
+      }
+
+      function updateFlatPreview() {
+        var rateEl = document.getElementById("flatRatePct");
+        var mainEl = document.getElementById("flatPreviewMain");
+        var formulaEl = document.getElementById("flatPreviewFormula");
+        if (!rateEl || !mainEl) return;
+        var rate = parseFloat(String(rateEl.value).replace(",", ""), 10);
+        if (isNaN(rate)) rate = 0;
+        mainEl.innerHTML =
+          "固定比例 <strong>" +
+          rate +
+          "%</strong>；<strong>比例基数</strong>由本规则引用的「基数方案」在试算/归档时按账期汇总后参与计算。";
+        if (formulaEl) {
+          formulaEl.textContent =
+            "本页签仅维护固定比例；回款门槛、封顶、展示精度等由引擎侧统一处理（以实现配置为准）。";
+        }
+      }
+      var btnFlat = document.getElementById("btnFlatPreview");
+      if (btnFlat) btnFlat.addEventListener("click", updateFlatPreview);
+      var flatRatePct = document.getElementById("flatRatePct");
+      if (flatRatePct) {
+        flatRatePct.addEventListener("change", updateFlatPreview);
+        flatRatePct.addEventListener("input", updateFlatPreview);
+      }
+      updateFlatPreview();
+      document.querySelectorAll(".chip").forEach(function (c) {
+        c.addEventListener("click", function () {
+          c.classList.toggle("on");
+        });
+      });
+
+      var navLinks = Array.prototype.slice.call(document.querySelectorAll(".nav-link"));
+      var sections = navLinks.map(function (link) {
+        return document.querySelector(link.getAttribute("href"));
+      }).filter(Boolean);
+      function setActiveNav(id) {
+        navLinks.forEach(function (link) {
+          var active = link.getAttribute("href") === "#" + id;
+          link.classList.toggle("active", active);
+        });
+      }
+      function updateActiveByScroll() {
+        var current = sections[0];
+        sections.forEach(function (sec) {
+          var rect = sec.getBoundingClientRect();
+          if (rect.top <= 160) current = sec;
+        });
+        if (current && current.id) setActiveNav(current.id);
+      }
+      navLinks.forEach(function (link) {
+        link.addEventListener("click", function (e) {
+          e.preventDefault();
+          var target = document.querySelector(link.getAttribute("href"));
+          if (!target) return;
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          setActiveNav(target.id);
+        });
+      });
+      window.addEventListener("scroll", updateActiveByScroll, { passive: true });
+      updateActiveByScroll();
+
+      var condEditor = document.getElementById("condExprEditor");
+      var exprHistory = [];
+      function pushExprHistory() {
+        exprHistory.push(condEditor.value);
+        if (exprHistory.length > 30) exprHistory.shift();
+      }
+      function insertExpr(text) {
+        pushExprHistory();
+        var start = condEditor.selectionStart || condEditor.value.length;
+        var end = condEditor.selectionEnd || condEditor.value.length;
+        condEditor.value = condEditor.value.slice(0, start) + text + condEditor.value.slice(end);
+        var nextPos = start + text.length;
+        condEditor.focus();
+        condEditor.setSelectionRange(nextPos, nextPos);
+      }
+
+      var calcEditor = document.getElementById("calcExprEditor");
+      var calcHistory = [];
+      function pushCalcHistory() {
+        calcHistory.push(calcEditor.value);
+        if (calcHistory.length > 30) calcHistory.shift();
+      }
+      function insertCalc(text) {
+        pushCalcHistory();
+        var start = calcEditor.selectionStart || calcEditor.value.length;
+        var end = calcEditor.selectionEnd || calcEditor.value.length;
+        calcEditor.value = calcEditor.value.slice(0, start) + text + calcEditor.value.slice(end);
+        var nextPos = start + text.length;
+        calcEditor.focus();
+        calcEditor.setSelectionRange(nextPos, nextPos);
+      }
+
+      var exprBoxes = document.querySelectorAll("#sec-expression .builder-grid > .expr-box");
+      if (exprBoxes.length >= 2) {
+        exprBoxes[0].querySelectorAll(".token, .op-btn").forEach(function (el) {
+          el.addEventListener("click", function () {
+            insertExpr(el.getAttribute("data-insert") || "");
+          });
+        });
+        exprBoxes[1].querySelectorAll(".calc-token, .calc-op").forEach(function (el) {
+          el.addEventListener("click", function () {
+            insertCalc(el.getAttribute("data-insert") || "");
+          });
+        });
+      } else {
+        document.querySelectorAll(".token:not(.calc-token), .op-btn:not(.calc-op)").forEach(function (el) {
+          el.addEventListener("click", function () {
+            insertExpr(el.getAttribute("data-insert") || "");
+          });
+        });
+        document.querySelectorAll(".calc-token, .calc-op").forEach(function (el) {
+          el.addEventListener("click", function () {
+            insertCalc(el.getAttribute("data-insert") || "");
+          });
+        });
+      }
+
+      document.getElementById("btnExprUndo").addEventListener("click", function () {
+        var prev = exprHistory.pop();
+        if (typeof prev === "string") {
+          condEditor.value = prev;
+          condEditor.focus();
+        }
+      });
+      document.getElementById("btnExprClear").addEventListener("click", function () {
+        pushExprHistory();
+        condEditor.value = "";
+        condEditor.focus();
+      });
+
+      document.getElementById("btnCalcUndo").addEventListener("click", function () {
+        var prev = calcHistory.pop();
+        if (typeof prev === "string") {
+          calcEditor.value = prev;
+          calcEditor.focus();
+        }
+      });
+      document.getElementById("btnCalcClear").addEventListener("click", function () {
+        pushCalcHistory();
+        calcEditor.value = "";
+        calcEditor.focus();
+      });
+
+      var orchSel = document.getElementById("pkgOrchestration");
+      var orchInput = document.getElementById("orchGroupId");
+      var dimSel = document.getElementById("waybillMatchDim");
+      function syncPeerSalesPreset() {
+        if (!orchSel || !orchInput || !dimSel) return;
+        var peerOn = false;
+        document.querySelectorAll("#sec-match .chips .chip").forEach(function (c) {
+          if (c.textContent.trim() === "同行业务员" && c.classList.contains("on")) peerOn = true;
+        });
+        if (peerOn) {
+          dimSel.value = "sales_product";
+          orchSel.value = "additive";
+          orchInput.value = "相加组_同行_销售产品_A";
+        }
+      }
+      document.querySelectorAll("#sec-match .chips .chip").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          window.setTimeout(syncPeerSalesPreset, 0);
+        });
+      });
+    })();
+  </script>
+    </main>
+  </div>
+<script src="commission-nav-close.js"></script>
+<script id="v1-topmenu-links">
+  (function () {
+    var nav = document.querySelector(".sidenav-nav");
+    if (!nav) return;
+    nav.innerHTML = "" +
+      "<div class=\"sidenav-section-label\">1.人员映射表</div>" +
+      "<a href=\"人员映射表-MVP.html\" class=\"sidenav-link\">人员映射表</a>" +
+      "<a href=\"批量导入人员映射-MVP.html\" class=\"sidenav-link\">批量导入人员映射</a>" +
+      "<a href=\"新增人员映射-MVP.html\" class=\"sidenav-link\">新增人员映射</a>" +
+      "<a href=\"编辑人员映射-MVP.html\" class=\"sidenav-link\">编辑人员映射</a>" +
+      "<a href=\"引用规则包-独立弹窗页-MVP.html\" class=\"sidenav-link\">引用规则包</a>" +
+      "<div class=\"sidenav-section-label\">2.月度调整表</div>" +
+      "<a href=\"表外导入成本列表-MVP.html\" class=\"sidenav-link\">月度调整表</a>" +
+      "<a href=\"导入表外成本弹窗页-MVP.html\" class=\"sidenav-link\">导入表外成本</a>" +
+      "<a href=\"导入绩效系数弹窗页-MVP.html\" class=\"sidenav-link\">导入绩效系数</a>" +
+      "<div class=\"sidenav-section-label\">3.基数方案</div>" +
+      "<a href=\"基数方案列表-MVP.html\" class=\"sidenav-link\">基数方案列表</a>" +
+      "<a href=\"基数维护-公式构建器.html\" class=\"sidenav-link\">编辑基数</a>" +
+      "<div class=\"sidenav-section-label\">4.提成规则包</div>" +
+      "<a href=\"规则包-规则子母表-MVP.html\" class=\"sidenav-link\">规则包列表</a>" +
+      "<a href=\"规则包详情-MVP.html\" class=\"sidenav-link\">规则包详情</a>" +
+      "<a href=\"规则包编辑-弹窗页-MVP.html\" class=\"sidenav-link\">新增编辑规则包</a>" +
+      "<a href=\"编辑规则-MVP.html\" class=\"sidenav-link\">编辑规则</a>" +
+      "<div class=\"sidenav-section-label\">5.提成试算</div>" +
+      "<a href=\"提成试算表-直客与同行-MVP.html\" class=\"sidenav-link\">提成试算表(直客/同行)</a>" +
+      "<a href=\"月度提成归档与运单明细-MVP.html\" class=\"sidenav-link\">月度归档和运单底表</a>" +
+      "<a href=\"提成试算表-直客与同行-MVP.html#dev-trial-log-matrix\" class=\"sidenav-link\">试算步骤矩阵（开发）</a>";
+  })();
+</script>
+<style id="prd-side-panel">
+  @media (min-width: 1501px) {
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+    .app-shell {
+      height: 100%;
+      min-height: 100%;
+    }
+    .app-main {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-right: 360px;
+      box-sizing: border-box;
+    }
+    .page {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+  @media (max-width: 1500px) {
+    .app-main {
+      padding-right: 0;
+    }
+    .prd-side { display: none; }
+  }
+  .prd-side {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 360px;
+    height: 100vh;
+    overflow: auto;
+    overscroll-behavior: contain;
+    background: #f8fafc;
+    border-left: 1px solid #dbe3ee;
+    padding: 14px 14px 22px;
+    z-index: 1300;
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+  }
+  .prd-side h3 { margin: 0 0 8px; font-size: 15px; }
+  .prd-side h4 { margin: 12px 0 6px; font-size: 13px; color: #0f172a; }
+  .prd-side p, .prd-side li { font-size: 12px; color: #334155; line-height: 1.6; }
+  .prd-side ul { margin: 0; padding-left: 16px; }
+  .prd-chip { display: inline-block; font-size: 11px; color: #1d4ed8; background: #dbeafe; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; }
+  .prd-chip.phase2 { color: #047857; background: #d1fae5; border: 1px solid #a7f3d0; }
+  .prd-side .prd-note { font-size: 11px; color: #64748b; line-height: 1.55; margin: 0 0 8px; }
+  .prd-side table.prd-mini { width: 100%; border-collapse: collapse; font-size: 11px; margin: 6px 0 10px; }
+  .prd-side table.prd-mini th, .prd-side table.prd-mini td {
+    border: 1px solid #e2e8f0; padding: 4px 6px; text-align: left; vertical-align: top;
+  }
+  .prd-side table.prd-mini th { background: #f1f5f9; color: #334155; font-weight: 600; }
+  .prd-phase2-tag {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 0 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #5b21b6;
+    background: #ede9fe;
+    border: 1px solid #c4b5fd;
+    vertical-align: middle;
+    line-height: 1.45;
+  }
+  @media (min-width: 1501px) {
+    .sticky-bar { right: 360px; }
+  }
+</style>
+<aside class="prd-side" aria-label="PRD 文档">
+  <span class="prd-chip">PRD · 提成规则包模块</span>
+  <h3>编辑规则页 PRD（MVP · 开发测试版）</h3>
+  <p style="margin:0 0 10px;font-size:11px;color:#64748b;line-height:1.55;"><span class="prd-phase2-tag" title="二期">二期</span>标题前带角标的小节为与问题清单 16～22、《域名说明》第 23～24 条及《07_二期原型待产品确认问题-产品回复》等对齐的补充说明，实现范围以立项为准。</p>
+  <h4>背景与目标</h4>
+  <p>在单条规则上维护「命中条件、计提与扣减链、版本与生效期」，与试算/归档可对账；命中过程可解释，避免「页面上有字段但引擎不参与匹配」的灰区。</p>
+  <h4><span class="prd-phase2-tag" title="二期">二期</span>命中总原则</h4>
+  <ul>
+    <li><strong>账期与命中链（16）</strong>：单条规则须在自身生效区间内；试算全链路须先通过<strong>人员映射</strong>、再命中<strong>规则包</strong>、最后命中<strong>本规则</strong>，三者对<strong>同一账期同时有效</strong>方可参与计算。</li>
+    <li><strong>规则包排他（17）</strong>：同一<strong>提成角色 + 分公司 + 部门 + 小组</strong>在同一时间片内仅允许一个「生效中」规则包，避免同维多套包并行。</li>
+    <li><strong>复用（22）</strong>：<strong>基数方案可复用</strong>；<strong>规则与规则包不可复用</strong>（规则编码唯一，复制须新码）。</li>
+    <li><strong>列表状态与账期（24）</strong>：规则主档/规则包列表为「已失效」等<strong>运营展示态</strong>时，<strong>不自动排除</strong>「数据账期仍落在该规则（及所属包、人员映射）生效区间内」的补算；引擎以<strong>数据账期切片 + 已发布快照</strong>判定；计费日志须带规则/包版本标识。若字典定义「已废弃」则禁止全账期。</li>
+    <li><strong>《07 产品回复》P6～P9（规则模块）</strong>：<strong>P6</strong> 包层保留默认编排默认值；规则层「互斥组」输入 MVP 去掉，默认同角色互斥；多角色包内按优先级顺序。<strong>P7</strong> 销售产品仅规则层参与匹配；相加=同包同角色同人多规则命中则数值类结果相加；苏州整柜/非整柜优先运单底表「是否整柜」逻辑列。<strong>P8</strong> 指定客户 MVP 默认白名单 INCLUDE；EXCLUDE/ALL 不暴露、后端枚举预留。<strong>P9</strong> <code>#{员工工号}</code> 与<strong>人员映射表中的员工工号</strong>一致，须进内置变量接口并与试算明细回显对齐。</li>
+    <li>运单/账期落在生效区间内，且规则状态允许参与计算，才进入候选集。</li>
+    <li>结构化字段（分公司、小组、角色、服务场景、入职区间、员工状态、销售产品、客户范围等）与「条件表达式」语义应一致或可校验；试算命中原因可读到一致维度。</li>
+    <li><strong>互斥 / 相加（与《07 产品回复》P6 对齐）</strong>：同角色互斥与包内默认编排由<strong>规则包主档</strong>承载；规则编辑页<strong>不再维护「互斥组/相加组」编号输入</strong>。同角色多条规则仍按<strong>匹配优先级 + 销售产品交集</strong>命中；多规则<strong>相加</strong>由包级「同角色相加」与矩阵定义触发。</li>
+    <li>工号类维度建议在表达式中使用 <code>#{员工工号}</code> 与 <code>in ['工号1',…]</code> 白名单，取值以<strong>人员映射表工号</strong>为准，明细可回显。</li>
+    <li><strong>同包个别「累计提成点」</strong>：见下方专节（<strong>方案 B</strong>：工号白名单 + 双规则），与「匹配优先级」字段说明一致。</li>
+  </ul>
+  <h4>同包个别业务员「累计提成点」（方案 B：工号白名单 + 双规则）</h4>
+  <p class="prd-note"><strong>产品定稿</strong>：不拆规则包。为个别人<strong>新增一条规则 B</strong>，单独配置<strong>基本提成点 + 累计提成点/上限</strong>；在条件表达式中配置 <code>#{员工工号} in [...]</code> <strong>工号白名单</strong>（与人员映射表工号一致）。<strong>匹配逻辑</strong>：当前员工工号<strong>在名单内</strong>则命中 B（走累计）；<strong>不在名单</strong>则命中<strong>大众规则 A</strong>（不累计）。A 与 B 须在同一互斥组内，B 的匹配优先级<strong>高于</strong> A。</p>
+  <ul>
+    <li><strong>规则 A（大众默认）</strong>：结构化条件覆盖全员；条件表达式<strong>不写</strong> <code>#{员工工号}</code> 白名单；「累计规则」选<strong>不累计</strong>；<strong>匹配优先级</strong>取较低值（如 100）。</li>
+    <li><strong>规则 B（个别人累计）</strong>：销售产品与指定客户、分公司、小组、角色等与 A 对齐（均在<strong>结构化区块</strong>维护）；单独配置<strong>提成点 + 累计规则与累计上限</strong>；在条件表达式中追加
+      <code>&amp;&amp; #{员工工号} in ['真实工号_1','真实工号_2']</code>（列表即<strong>工号白名单</strong>，以<strong>人员映射表工号</strong>为准）；<strong>匹配优先级</strong>设为<strong>高于 A</strong>（如 310），且与 A 处于<strong>同一互斥组</strong>。</li>
+    <li><strong>引擎行为</strong>：白名单判定等价于「当前工号 ∈ 配置集合」；对同一员工同一账期，仅允许命中 A/B 之一；试算/日志须输出最终命中的<strong>规则编码</strong>以便审计。</li>
+    <li><strong>实现说明</strong>：可由完整<strong>条件表达式解析</strong>实现；若短期未上解析器，后端可将等价名单<strong>结构化持久化</strong>并与表达式快照做<strong>一致性校验</strong>，验收口径不变。</li>
+    <li><strong>校验</strong>：保存时检测 B 的白名单是否为空；检测 A 与 B 是否存在「同优先级且条件可同时为真」的死锁或双命中，必要时阻断保存。</li>
+  </ul>
+  <h4>字段是否参与「运单/员工匹配」</h4>
+  <p class="prd-note">「参与匹配」= 影响本条规则是否进入该运单/员工的计提链路；「不参与」= 仅展示、元数据或命中后的计算口径。</p>
+  <ul>
+    <li><strong>不参与匹配</strong>：规则名称；规则编码；规则说明；客户命中说明；提成扣类型/总开关/扣减说明（参与命中后金额，不参与是否命中）；基本提成点只读、累计规则/上限；计算公式全文；基数方案及阶梯/固定比例各子字段；内部备注、最近修改。<strong>（《07 产品回复》P5：「结算方式」第一版从表单移除。）</strong></li>
+    <li><strong>参与或门控</strong>：状态；生效起始/截止；所属规则包（间接影响包内编排）；指定客户（<strong>多选列表 + 客户命中说明</strong>，列表数据来自<strong>客户表·已开户</strong>；本页原型已移除「客户匹配方式」「客户范围」下拉，引擎侧默认名称精确匹配、仅列表命中）；销售产品多选（待选为<strong>销售产品主数据·已启用</strong>）；分公司、小组、适用提成角色（<strong>系统字典</strong>，与<strong>人员映射表·提成角色</strong>同源）、服务场景（<code>service_mode</code>）、匹配优先级、入职起止、员工状态；条件表达式。</li>
+    <li><strong>条件表达式快捷 token</strong>：<strong>不提供</strong> <code>#{销售产品}</code>、<code>#{指定客户}</code> 插入按钮；销售产品、指定客户<strong>仅</strong>由「销售产品与结算参数」「指定客户」结构化区块配置，与表达式并存时以结构化为准（表达式不重复承载这两项）。另提供 <code>#{组员实发提成}</code>、<code>#{组员平均票数}</code> 用于<strong>组维度门槛</strong>命中，聚合定义见下表。</li>
+  </ul>
+  <h4>表达式板块：条件表达式（系统）与计算公式（系统）</h4>
+  <p class="prd-note">与页面「表达式与计算公式编辑器」两栏、工具条占位符及灰字说明一致；落库字段名、函数白名单以<strong>规则引擎注册表</strong>为准，下表为 <strong>MVP 原型约定</strong>。</p>
+  <p class="prd-note"><strong>职责划分</strong>：<strong>条件表达式</strong>产出命中判断（布尔/可判定真值），与上方结构化匹配区语义须<strong>可校验、可对账</strong>；<strong>计算公式</strong>仅在命中后参与<strong>应发金额</strong>调整，<strong>不参与</strong>是否命中。</p>
+  <p class="prd-note"><strong>计算公式（MVP 暂行）</strong>：工具条<strong>仅提供</strong> <code>#{应发提成}</code>、<code>#{客服提成扣}</code>、<code>#{表外成本扣}</code>、<code>#{绩效系数}</code> 四项占位符。<strong>应发提成</strong>由引擎在命中后按「基数方案 + 毛利阶梯/计费重/固定比例 + 基本提成点（及累计规则等）」<strong>先算出主应发</strong>，本式主要承担<strong>绩效系数折扣</strong>与<strong>提成扣</strong>类加减；<code>#{绩效系数}</code> <strong>仅当本条公式显式引用时</strong>参与折扣，<strong>未导入且公式未引用则不做绩效折扣</strong>；已引用未导入时按引擎约定<strong>阻断试算或拦截保存</strong>。<code>#{净利润基数}</code>、<code>#{基本提成点}</code>、上月提成结转等<strong>暂不放入</strong>本工具条（由基数层或引擎步骤处理，与试算日志对齐）。<strong>组员实发提成、组员平均票数</strong>仅出现在<strong>条件表达式</strong>工具条，<strong>不进入</strong>计算公式四项。<strong>个税</strong>：本页<strong>不配</strong> <code>#{个税}</code>；在<strong>应发提成（本条公式产出后）</strong>之后由试算/发放引擎扣减，并入<strong>实发提成</strong>；MVP <strong>不自动算税</strong>（可导入/可空）。</p>
+  <p style="font-size:12px;font-weight:600;margin:10px 0 4px;color:#0f172a;">一、条件表达式 — 快捷占位符（本页工具条）</p>
+  <table class="prd-mini" aria-label="条件表达式占位符说明">
+    <thead>
+      <tr>
+        <th>Token（插入片段）</th>
+        <th>含义</th>
+        <th>典型取值来源</th>
+        <th>在匹配中的作用</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>#{分公司}</code></td>
+        <td>分公司</td>
+        <td>运单归因 / 人员映射组织维度（与表单「分公司」同维）。</td>
+        <td>参与命中；与结构化不一致时保存应阻断或自动对齐（Q3）。</td>
+      </tr>
+      <tr>
+        <td><code>#{小组}</code></td>
+        <td>小组（部门小组）</td>
+        <td>同上。</td>
+        <td>参与命中。</td>
+      </tr>
+      <tr>
+        <td><code>#{提成角色}</code></td>
+        <td>提成角色</td>
+        <td><strong>系统字典</strong>（与<strong>人员映射表·提成角色</strong>同源枚举）；人员映射、规则命中、试算日志使用同一编码口径。</td>
+        <td>参与命中。</td>
+      </tr>
+      <tr>
+        <td><code>#{入职时间}</code></td>
+        <td>员工入职日期</td>
+        <td>人事主数据 / 人员映射。</td>
+        <td>参与命中；与表单「入职起止」区间配合。</td>
+      </tr>
+      <tr>
+        <td><code>#{员工状态}</code></td>
+        <td>试用 / 转正等</td>
+        <td>人事主数据。</td>
+        <td>参与命中。</td>
+      </tr>
+      <tr>
+        <td><code>#{员工工号}</code></td>
+        <td>员工工号</td>
+        <td><strong>人员映射表</strong>中的员工工号（与主数据人事工号一致，以实现字段为准）；用于 <code>in [...]</code> 白名单收窄等。</td>
+        <td>参与命中；<strong>累计提成点个别人</strong>用 <code>in ['工号1',…]</code>（见上节双规则）。</td>
+      </tr>
+      <tr>
+        <td><code>#{组员实发提成}</code></td>
+        <td>组员实发提成</td>
+        <td>按<strong>小组/组织维度</strong>汇总的组员<strong>实发提成</strong>金额（取值时点、是否含本人、是否仅已归档批次、币种精度等以<strong>引擎字典与试算步骤</strong>为准；须避免与当前规则应发形成循环依赖）。</td>
+        <td>参与命中；典型与 <code>&gt;=</code> <code>&lt;=</code> 等组合作<strong>门槛条件</strong>；试算日志须能解释取值快照。</td>
+      </tr>
+      <tr>
+        <td><code>#{组员平均票数}</code></td>
+        <td>组员平均票数</td>
+        <td>同一「组员」集合内在<strong>账期切片</strong>下的票数聚合后再取算术平均（分子分母定义、是否含主管/不含本人等以<strong>引擎字典</strong>为准）。</td>
+        <td>参与命中；典型与数值阈值比较；与运单底表票数口径可对账。</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="prd-note" style="margin-top:6px;"><strong>说明</strong>：<code>#{组员实发提成}</code>、<code>#{组员平均票数}</code> 为<strong>条件侧</strong>指标，<strong>不参与</strong>「计算公式」四项中的算术链；若与结构化「小组」等维度组合使用，保存时建议做<strong>一致性校验</strong>（Q3）。</p>
+  <p style="font-size:12px;font-weight:600;margin:10px 0 4px;color:#0f172a;">二、条件表达式 — 逻辑与比较运算符（本页工具条）</p>
+  <p class="prd-note" style="margin:0 0 6px;">提供片段：<code>&amp;&amp;</code> <code>||</code> <code>==</code> <code>!=</code> <code>&gt;=</code> <code>&lt;=</code> <code>&gt;</code> <code>&lt;</code> <code>( )</code> <code>in</code>；演示用字面量（如 <code>'深圳'</code>、工号列表）保存前须替换为真实值。撤销/清空仅影响编辑器缓冲，发布前须整体验证通过。</p>
+  <p style="font-size:12px;font-weight:600;margin:10px 0 4px;color:#0f172a;">三、计算公式 — 快捷占位符（本页工具条 · 暂行四项）</p>
+  <table class="prd-mini" aria-label="计算公式占位符说明">
+    <thead>
+      <tr>
+        <th>Token</th>
+        <th>界面名称</th>
+        <th>含义与取值来源</th>
+        <th>在计算中的作用</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>#{应发提成}</code></td>
+        <td>应发提成</td>
+        <td>引擎在规则命中后，已按本页<strong>基数方案 + 计算方式（阶梯/计费重/固定比例）+ 基本提成点与累计规则</strong>算出的<strong>主应发金额</strong>（未乘绩效、未扣提成扣前快照，以实现字典为准）。</td>
+        <td>公式主项；典型写法与 <code>#{绩效系数}</code> 相乘后再减各项扣。</td>
+      </tr>
+      <tr>
+        <td><code>#{客服提成扣}</code></td>
+        <td>客服提成扣</td>
+        <td>同包客服侧先跑批结果（见下「三、提成扣说明」）。</td>
+        <td>应发链上扣减；未启用按 0 或引擎默认。</td>
+      </tr>
+      <tr>
+        <td><code>#{表外成本扣}</code></td>
+        <td>表外成本扣</td>
+        <td>月度调整 / 表外导入中大类为<strong>「提成扣」</strong>的当期汇总；与《域名说明》中 <code>#{表外导入扣}</code> <strong>可映射为同一引擎字段</strong>（以实现注册名为准）。</td>
+        <td>应发链上扣减。</td>
+      </tr>
+      <tr>
+        <td><code>#{绩效系数}</code></td>
+        <td>绩效系数</td>
+        <td>月度调整 → 导入绩效系数（员工 + 账期），如 108%→1.08。</td>
+        <td><strong>仅当本条「计算公式」显式引用时</strong>对应发主项做乘数折扣；<strong>未导入且公式未引用则不做绩效折扣</strong>；已引用未导入时阻断试算或拦截保存（以实现写死）。</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="prd-note" style="margin-top:6px;"><strong>个税</strong>：不提供 <code>#{个税}</code> 占位符；在<strong>应发提成（上表公式链产出后）</strong>之后由引擎扣减，与《提成试算表》「应发 − 个税 → 实发」一致；MVP <strong>不自动算税</strong>（财务导入或空）。</p>
+  <p style="font-size:12px;font-weight:600;margin:10px 0 4px;color:#0f172a;">四、计算公式 — 算术运算符与函数（本页工具条）</p>
+  <p class="prd-note" style="margin:0 0 6px;">提供：<code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>( )</code> <code>max(</code> <code>min(</code> 及数字、<code>,</code> <code>%</code>。其中 <code>%</code> 若引擎定义为「取模」而非「百分比字面」，则须禁止与业务混用或在保存校验中拦截；百分比录入仍在「固定比例」等结构化区完成。</p>
+  <p class="prd-note" style="margin:0 0 6px;"><strong>毛利类上月结转、组员应收/票数、上月提成结转</strong>等：<strong>不在</strong>本页计算公式工具条展开；由<strong>基数方案公式</strong>或<strong>引擎在 #{应发提成} 之前/之内的步骤</strong>处理，避免与「应发提成」主项重复；与试算步骤矩阵对齐。</p>
+  <h4>服务场景（有无业务员客服）</h4>
+  <p class="prd-note">与人员映射中客服类 <code>service_mode</code> 口径一致；底表取值与规则选项组合如下（MVP 建议底表强制枚举，空值走数据治理或单独兜底规则）。</p>
+  <table class="prd-mini" aria-label="service_mode 匹配">
+    <thead>
+      <tr>
+        <th>规则选项</th>
+        <th>底表=有业务员客服</th>
+        <th>底表=无业务员客服</th>
+        <th>底表缺失/未知</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>全部场景</td>
+        <td>命中</td>
+        <td>命中</td>
+        <td>需产品二选一：不按本维度过滤 vs 视为不通过（上线前写死）</td>
+      </tr>
+      <tr>
+        <td>有业务员客服</td>
+        <td>命中</td>
+        <td>不命中</td>
+        <td>不命中（未知不按「有」处理）</td>
+      </tr>
+      <tr>
+        <td>无业务员客服</td>
+        <td>不命中</td>
+        <td>命中</td>
+        <td>不命中（未知不按「无」处理）</td>
+      </tr>
+    </tbody>
+  </table>
+  <h4>指定客户（有无客户 / 客户未关联）</h4>
+  <p class="prd-note">表单仅保留「指定客户（可多选）」与「客户命中说明」；「客户匹配方式」「客户范围」已从本页移除，与截图一致。</p>
+  <p class="prd-note"><strong>可选客户来源</strong>：多选 chips / 下拉的数据来自<strong>客户表</strong>，仅包含<strong>已开户</strong>的客户；未开户客户<strong>不出现在</strong>本列表。命中时仍以运单底表客户与所选名单做匹配（默认名称精确），与下列「有无客户」规则一致。</p>
+  <ul>
+    <li><strong>全部客户</strong>+ 指定列表为空：不对客户维度过滤；运单客户为空仍可命中（若业务禁止无客户计提，应用表达式或数据校验另控）。</li>
+    <li><strong>仅指定客户</strong>：列表为空 → 拦截保存；运单客户为空 → 不命中。</li>
+    <li><strong>排除指定客户</strong>：运单客户为空 → 一般命中（空值不在排除名单中，除非产品定义为「空视为某类客户」）。</li>
+  </ul>
+  <h4>销售产品（底表为空）</h4>
+  <p class="prd-note"><strong>可选销售产品来源</strong>：多选列表来自<strong>销售产品主数据</strong>，仅<strong>已启用</strong>状态的销售产品可勾选；已停用产品不进入待选列表（历史规则引用已停用码的处置以实现策略为准，可提示整改）。</p>
+  <ul>
+    <li>规则侧销售产品多选为 MVP 必填（至少一项）。有值且在集合内 → 产品维度通过；有值不在集合 → 不命中。</li>
+    <li>运单销售产品<strong>为空/未打标</strong> → <strong>不命中</strong>依赖产品的规则行（无法证明属于所选集合）。</li>
+    <li>同行业务员相加组：按产品交集分别命中后相加；产品为空则无法与产品敏感规则求交集，贡献为 0，除非另配「产品为空」兜底规则并在文档中显性命名。</li>
+  </ul>
+  <h4>适用提成角色（与人员映射同源字典）</h4>
+  <p class="prd-note"><strong>可选提成角色来源</strong>：与<strong>人员映射表</strong>中「提成角色」字段使用<strong>同一套系统字典</strong>（编码/展示名一致），由字典维护岗位枚举；规则保存时须保证所选角色在字典中有效，且能与人员映射行上的提成角色对账。</p>
+  <h4>其它空值口径（简）</h4>
+  <ul>
+    <li>生效截止空 = 长期有效；入职止空 = 无上限；员工状态「全部」= 不限制试用/转正。</li>
+    <li>条件表达式中写死账号等：底表不一致则不命中；未写该维度则不在该维度过滤。</li>
+  </ul>
+  <h4>三、提成扣说明（业务口径）</h4>
+  <p class="prd-note">与业务域名说明文档「三、提成扣说明」一致；本页「提成扣配置」与公式中的 <code>#{客服提成扣}</code>、<code>#{表外成本扣}</code>（与 <code>#{表外导入扣}</code> 可同源映射）对应。</p>
+  <ul>
+    <li><strong>1. 客服提成</strong>：当期<strong>所属规则包</strong>若存在需计提/需扣的<strong>客服提成</strong>口径，引擎须<strong>先完成客服侧计提</strong>，得到当期可确认的客服提成结果，再作为「客服提成扣」参与本条规则（及同包内其他主体角色）之后的应发扣减链。即<strong>有客服提成则先算客服，再算当前规则主体</strong>；与《域名说明》中「业务员先跑、主管后跑」等顺序原则一并体现在跑批/试算步骤中。未命中客服或未配置时该项按 0 或引擎默认（与试算日志一致）。</li>
+    <li><strong>2. 表外导入（表外成本扣）</strong>：仅汇总<strong>当期</strong>在<strong>表外导入/月度调整</strong>中入账、且记录类型为<strong>「提成扣」</strong>的表外成本金额；公式区按钮文案为<strong>表外成本扣</strong>，占位符为 <code>#{表外成本扣}</code>（与历史文档 <code>#{表外导入扣}</code> <strong>可映射同一字段</strong>，以实现注册名为准）参与扣减；<strong>非「提成扣」类型</strong>的导入不得计入本扣减项（可进入毛利扣等其他口径，见月度调整表 PRD）。</li>
+    <li>本页「是否启用提成扣」「提成扣类型」：<strong>MVP 仅枚举两种</strong>——<strong>客服提成</strong>、<strong>表外导入</strong>（与《域名说明》「三、提成扣说明」一致）。总开关关闭则整条扣减链不执行；开启时仅对已勾选类型按上款口径取数并代入「计算公式」中 <code>#{客服提成扣}</code> / <code>#{表外成本扣}</code>。</li>
+  </ul>
+  <h4><span class="prd-phase2-tag" title="二期">二期</span>地域补发与主管团队门槛（宁波 / 厦门 / 泉州）</h4>
+  <p class="prd-note">与《域名：hkywtx.rtb56.com.txt》<strong>第 23 条</strong>及「四、试算顺序和公式」中<strong>宁波直客主管（第 5 条）补充</strong>一致；城市名单扩展须发版更新。</p>
+  <ul>
+    <li><strong>适用分公司</strong>：宁波、厦门、泉州（直客/主管命中规则以实际配置为准，本段描述「三地」共性补发逻辑）。</li>
+    <li><strong>业务员</strong>：当账期「计算净利润」（口径须与规则/试算 Q8 一致，如毛利−表内毛利扣）<strong>≤3000</strong> 时，该业务员该账期提成按 <strong>0</strong>；同月底表或调整事后修正导致该指标<strong>超过 3000</strong>，须<strong>重算</strong>该业务员该账期提成并产生<strong>补发或冲减</strong>。</li>
+    <li><strong>团队提成合计 T</strong>：业务员（及规则约定的其他组员角色）结果变更后，按与主管规则中「<strong>团队满 20000 元</strong>」门槛<strong>相同口径</strong>重算当月 <strong>T</strong>；修正后为 <strong>T′</strong>（含哪些角色、是否含客服以实现字典为准）。</li>
+    <li><strong>主管（组内实发之和×比例等）</strong>：须取「组员实发」在业务员侧重算<strong>落库之后</strong>再算主管（与《域名说明》「业务员先跑、主管后跑」一致）。联动分支：<strong>A</strong> 修正前 T＜20000 且 T′≥20000 → 该账期主管按新数据<strong>全量重算</strong>应发（原先未达标视为需重新给足主管提成）；<strong>B</strong> 修正前 T≥20000 且 T′≥20000 → 主管侧仅处理<strong>差额</strong>（新应发−旧应发，或与 Δ组内实发×比例等价实现须写死并可对账）；<strong>C</strong> 修正前 T≥20000 且 T′＜20000 → <strong>冲减主管 / 锁定归档快照</strong>等策略须财务确认，引擎须支持可审计的一种或组合。</li>
+    <li><strong>计费日志</strong>：补发批次须记录修正前后 <strong>T、T′</strong>、命中分支（A/B/C）、涉及组员与主管账号，便于开发自测与财务复核。</li>
+  </ul>
+  <h4>校验与保存</h4>
+  <ul>
+    <li>必填：规则名称、规则编码、生效起始、销售产品至少一项、分公司、小组、适用提成角色至少一项、基数方案及当前计算页签下必填子项。</li>
+    <li>组合：<strong>仅指定客户</strong>且客户列表为空 → 前端拦截保存。</li>
+    <li>草稿可改；发布后新版本；与规则包锁定、只读字段关系以实现为准。</li>
+  </ul>
+  <h4>与其它模块联动</h4>
+  <ul>
+    <li>人员映射、客服角色与 <code>service_mode</code>：见人员映射 PRD。</li>
+    <li>规则包互斥/相加编排：见规则包相关说明。</li>
+    <li>运单底表字段：见月度归档与运单底表 PRD。</li>
+    <li>基数公式：见基数维护/基数方案配置。</li>
+    <li>表外导入「提成扣」类型：见月度调整表 / 导入表外成本 PRD；与「毛利扣」类导入区分。</li>
+  </ul>
+  <h4><span class="prd-phase2-tag" title="二期">二期</span>规则包历史版本查看（与本页关系）</h4>
+  <ul>
+    <li>单条规则的<strong>历史</strong>由规则中心版本表记录；规则所属<strong>规则包</strong>的主档/包内清单历史在<strong>规则包列表</strong>「历史版本」查看。</li>
+    <li>试算/归档日志中应能打印：本规则 <code>规则编码</code> + 当时 <code>规则包版本ID</code>（若存在）。</li>
+  </ul>
+  <h4><span class="prd-phase2-tag" title="二期">二期</span>字段有/无时的匹配（本页 · 编辑规则）</h4>
+  <ul>
+    <li><strong>指定客户列表为空</strong>：不对客户维收窄（与 PRD「指定客户」专节一致）；「仅业务需要排除」等走结构化或后续策略，不在此重复。</li>
+    <li><strong>销售产品未选</strong>：MVP 拦截保存（至少一项）。</li>
+    <li><strong>小组/部门在结构化区为空</strong>：与规则包、人员映射同维「空对空」对齐；表达式中不写该维则不在该维追加过滤。</li>
+    <li><strong>条件表达式为空</strong>：仅按结构化字段 + 规则包上下文命中；不视为「恒真」额外放宽。</li>
+    <li><strong>服务场景=全部场景</strong>：不过滤有/无业务员客服；与专节矩阵一致。</li>
+  </ul>
+  <h4><span class="prd-phase2-tag" title="二期">二期</span>字段取值来源（本页）</h4>
+  <ul>
+    <li><strong>指定客户</strong>多选：<strong>客户表</strong>，仅<strong>已开户</strong>客户进入待选列表。</li>
+    <li><strong>销售产品</strong>多选：<strong>销售产品主数据</strong>，仅<strong>已启用</strong>产品进入待选列表。</li>
+    <li><strong>适用提成角色</strong>多选：<strong>系统字典</strong>（与<strong>人员映射表·提成角色</strong>同源枚举）。</li>
+    <li>分公司、小组、入职区间、员工状态：<strong>本页表单 / 组织与员工主数据</strong>。</li>
+    <li>基数方案编码、阶梯与比例子项：<strong>基数维护</strong>主数据引用。</li>
+    <li>互斥组/相加组编码：<strong>规则编排字典</strong>；与规则包内编排一致。</li>
+    <li>条件表达式 / 计算公式占位符的逐项说明：<strong>见上节「表达式板块」</strong>；总原则为<strong>引擎注册表</strong>与运单底表、月度调整、主数据映射一致；<strong>销售产品、指定客户</strong>仅以结构化区块配置。</li>
+    <li><code>#{应发提成}</code>、<code>#{绩效系数}</code>、<code>#{客服提成扣}</code>、<code>#{表外成本扣}</code> 与试算列、计费日志步骤<strong>同源字段</strong>（以实现字典为准）。</li>
+    <li><code>#{员工工号}</code>：<strong>人员映射表·工号</strong>；试算日志须可回显。</li>
+    <li><code>#{组员实发提成}</code>、<code>#{组员平均票数}</code>：<strong>组维度聚合服务 / 试算前置批次</strong>输出（与规则引擎注册字段名一致）；口径写引擎字典，日志须可打印聚合键与账期。</li>
+  </ul>
+  <h4><span class="prd-phase2-tag" title="二期">二期</span>《问题清单》产品回复摘录（规则 · 2026-05-11）</h4>
+  <p class="prd-note">依据《提成管理系统-问题清单-产品回复开发.docx》与开发 Q&amp;A 对齐；若与业务签字版冲突以签字版为准。</p>
+  <ul>
+    <li><strong>Q2 计算方式三 Tab</strong>：MVP 一条规则仅一种计算方式（三选一）。服务端只持久化<strong>当前激活 Tab</strong>；非激活 Tab 不作为引擎输入。保存/发布只提交激活 Tab；切换 Tab 可提示「仅当前页签会保存」；可选离开时清空未激活 Tab（非强制）。</li>
+    <li><strong>Q3 结构化 vs 表达式</strong>：MVP 以<strong>结构化匹配区</strong>为权威；表达式由保存时按结构化生成/覆盖，或用户编辑时在保存前做<strong>一致性校验</strong>，不一致则阻断。引擎只消费通过校验的最终表达式快照。</li>
+    <li><strong>Q4 保存草稿</strong>：草稿不替代已发布版本；已发布继续对外生效直至「保存并发布」。试算默认绑定<strong>当前生效发布版</strong>；「按草稿试算」须显式选草稿版本（可二期）。</li>
+    <li><strong>Q5 匹配优先级</strong>：数值越大越优先；仅同一规则包、同一互斥/编排上下文内排序。同优先级：MVP 建议<strong>阻断保存</strong>，或按规则编码字典序（二选一并写死）。</li>
+    <li><strong>Q6 累计规则（建议默认，待财务签字）</strong>：累计加成基数为<strong>基本提成点</strong>；年限自<strong>入职日期</strong>起算（满整年 +2%，不足年不计）；「累计上限」指<strong>最终提成比例</strong>封顶。</li>
+  </ul>
+  <h4>非功能性要求</h4>
+  <ul>
+    <li>保存前后审计：操作人、时间、关键 Diff。</li>
+    <li>表达式保存前语法/占位符校验（以实现为准）。</li>
+  </ul>
+  <h4>本期范围与后续</h4>
+  <ul>
+    <li>本期：本页字段、命中口径、三种计算方式（毛利阶梯/计费重/固定比例）MVP。</li>
+    <li><span class="prd-chip phase2">二期</span> 分段函数、封顶与试算深度联动、更细冲突消解提示。</li>
+  </ul>
+</aside>
+</body>
+</html>
