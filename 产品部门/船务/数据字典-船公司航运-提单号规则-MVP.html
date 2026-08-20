@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>数据字典 · 船公司(航运) · 提单号规则（MVP）</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --header-tab: #132d52; --sidebar: #001529;
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --bad: #cf1322;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 120px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; letter-spacing: .5px; background: rgba(255,255,255,.06);
+    }
+    .nav-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .nav-tab {
+      padding: 0 14px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 14px; flex-shrink: 0; font-size: 12px; color: rgba(255,255,255,.7);
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 168px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.75);
+      padding: 12px 0;
+    }
+    .side-title { padding: 8px 16px; font-size: 12px; color: rgba(255,255,255,.45); }
+    .side-item { padding: 8px 16px; font-size: 13px; }
+    .side-item.on { background: rgba(24,144,255,.25); color: #fff; border-right: 3px solid var(--blue); }
+
+    .work { flex: 1; min-width: 0; display: flex; min-height: 0; }
+    .dict-nav {
+      width: 188px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--line);
+      padding: 10px 0; overflow: auto;
+    }
+    .dict-nav h4 {
+      margin: 0 12px 8px; font-size: 12px; color: var(--sub); font-weight: 600;
+    }
+    .dict-nav a {
+      display: block; padding: 7px 14px; color: var(--text); font-size: 13px;
+    }
+    .dict-nav a:hover { background: #f5f5f5; text-decoration: none; }
+    .dict-nav a.on { background: #e6f7ff; color: #096dd9; font-weight: 600; }
+
+    .main { flex: 1; min-width: 0; padding: 10px 12px 40px; overflow: auto; }
+    .proto-link { margin: 0 0 8px; font-size: 12px; color: var(--sub); }
+    .badge-new {
+      display: inline-block; margin-left: 4px; padding: 0 5px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; vertical-align: middle;
+    }
+    .toolbar {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px;
+      padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin-bottom: 8px;
+    }
+    .toolbar input, .toolbar select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .toolbar input { width: 180px; }
+    .btn {
+      height: 28px; padding: 0 12px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; cursor: pointer; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { color: #fff; }
+
+    .table-card { background: #fff; border: 1px solid var(--line); border-radius: 2px; overflow: auto; }
+    table.data { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1080px; }
+    table.data th, table.data td {
+      border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle;
+    }
+    table.data th {
+      background: #fafafa; color: var(--sub); font-weight: 600; white-space: nowrap;
+      position: sticky; top: 0;
+    }
+    table.data th.hl { background: #fff1f0; color: #a8071a; }
+    table.data td.hl { background: #fff7f6; }
+    table.data tr:hover td { background: #f5f9ff; }
+    table.data tr:hover td.hl { background: #ffe7e6; }
+    .mono { font-family: Consolas,"Courier New",monospace; font-weight: 700; }
+    .prefix {
+      display: inline-block; min-width: 52px; padding: 0 6px; height: 22px; line-height: 20px;
+      border: 1px dashed #ffa39e; background: #fff1f0; color: #a8071a;
+      border-radius: 2px; font-family: Consolas,"Courier New",monospace; font-weight: 700;
+      text-align: center;
+    }
+    .prefix.empty { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; font-weight: 400; }
+    .tag {
+      display: inline-block; padding: 0 7px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 12px; border: 1px solid;
+    }
+    .tag.on { color: var(--ok); background: #f6ffed; border-color: #b7eb8f; }
+    .tag.off { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .swatch {
+      display: inline-block; width: 14px; height: 14px; border-radius: 2px;
+      border: 1px solid #d9d9d9; vertical-align: -2px; margin-right: 6px;
+    }
+    .link-btn { border: none; background: none; color: var(--blue); cursor: pointer; padding: 0 4px; }
+
+    .try {
+      margin-top: 8px; background: #fff; border: 1px solid var(--line); border-radius: 2px;
+      padding: 10px 12px;
+    }
+    .try h3 { margin: 0 0 6px; font-size: 13px; }
+    .try .hint { margin: 0 0 8px; font-size: 12px; color: var(--sub); line-height: 1.55; }
+    .try-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .try-row select, .try-row input {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .try-out {
+      margin-top: 8px; padding: 8px 10px; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 2px; font-size: 13px; color: #135200;
+    }
+    .try-out b { font-family: Consolas,"Courier New",monospace; }
+
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    .mask.open { display: flex; }
+    .dlg {
+      width: 460px; max-width: 96vw; background: #fff; border-radius: 4px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.18);
+    }
+    .dlg-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+    }
+    .dlg-hd h3 { margin: 0; font-size: 14px; }
+    .dlg-bd { padding: 14px; }
+    .form-item { margin-bottom: 10px; }
+    .form-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .form-item input, .form-item select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .form-item .ex { font-size: 12px; color: var(--sub); margin-top: 4px; }
+    .dlg-ft {
+      padding: 10px 14px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .toast {
+      position: fixed; top: 72px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; z-index: 2000;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">腾信物流</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab">业务员运单查询</button>
+        <button type="button" class="nav-tab">风控规则</button>
+        <button type="button" class="nav-tab">提单管理包</button>
+        <button type="button" class="nav-tab active">数据字典</button>
+      </div>
+      <div class="header-right">基础资料 · 船务</div>
+    </header>
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-title">基础资料</div>
+        <div class="side-item on">数据字典</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">提单创建(批量)</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</div>
+      </aside>
+      <div class="work">
+        <nav class="dict-nav">
+          <h4>字典分类</h4>
+          <a href="javascript:void(0)" class="on">船公司(航运)</a>
+          <a href="javascript:void(0)">船公司(空运)</a>
+          <a href="javascript:void(0)">国内港口</a>
+          <a href="javascript:void(0)">国外港口</a>
+          <a href="javascript:void(0)">箱型</a>
+          <a href="javascript:void(0)">运输方式</a>
+        </nav>
+        <main class="main">
+          <p class="proto-link">
+            原型 · 对齐现网「基础资料 → 数据字典 → 船公司(航运)」·
+            <a href="船务组-提单创建批量-AI识别-MVP.html">提单创建</a> ·
+            <a href="船务组-需求PRD.html#m3-bl">规则 PRD</a> ·
+            <a href="船务组-导航.html">导航</a>
+          </p>
+          <div class="toolbar">
+            <input id="q" placeholder="值 / 标签 / 前缀" />
+            <select id="qExt">
+              <option value="">扩展字段（全部）</option>
+              <option>海运</option>
+              <option>空运</option>
+            </select>
+            <select id="qSt">
+              <option value="">状态（全部）</option>
+              <option value="启用">启用</option>
+              <option value="停用">停用</option>
+            </select>
+            <button type="button" class="btn primary" id="btnQuery">查询</button>
+            <button type="button" class="btn" id="btnAdd">新增</button>
+            <button type="button" class="btn" id="btnExport">导出</button>
+          </div>
+          <div class="table-card">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>值</th>
+                  <th>标签</th>
+                  <th>标签(英文)</th>
+                  <th>扩展字段</th>
+                  <th class="hl">提单号规则 <span class="badge-new">NEW</span></th>
+                  <th>颜色</th>
+                  <th>状态</th>
+                  <th>排序</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+          <div class="try">
+            <h3>录入试算 · 选船司后提单号前面默认带上</h3>
+            <p class="hint">解决 CW015：同一个船的提单格式统一，别有的加前缀有的没。规则为空（如合德）则不加。</p>
+            <div class="try-row">
+              <select id="tryCarrier"></select>
+              <input id="tryTail" placeholder="后面数字 / 识别到的提单号" style="width:240px" />
+              <button type="button" class="btn primary" id="btnTry">套规则</button>
+            </div>
+            <div class="try-out" id="tryOut">选择船司后，提单号默认带该前缀。</div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="mask">
+    <div class="dlg" role="dialog">
+      <div class="dlg-hd">
+        <h3 id="dlgTitle">编辑船公司</h3>
+        <button type="button" class="btn" id="dlgClose">关闭</button>
+      </div>
+      <div class="dlg-bd">
+        <div class="form-item">
+          <label>值</label>
+          <input id="fCode" />
+        </div>
+        <div class="form-item">
+          <label>标签</label>
+          <input id="fLabel" />
+        </div>
+        <div class="form-item">
+          <label>标签(英文)</label>
+          <input id="fEn" />
+        </div>
+        <div class="form-item">
+          <label>扩展字段</label>
+          <select id="fExt"><option>海运</option><option>空运</option></select>
+        </div>
+        <div class="form-item">
+          <label>提单号规则（前缀） <span class="badge-new">NEW</span></label>
+          <input id="fPrefix" placeholder="如 COSU / EGLV / OOLU，可空" maxlength="8" style="text-transform:uppercase" />
+          <div class="ex">选了这个船司，提单号前面默认带上。只填大写字母数字，一般 4 位。空 = 不套规则。</div>
+        </div>
+        <div class="form-item">
+          <label>状态</label>
+          <select id="fSt"><option>启用</option><option>停用</option></select>
+        </div>
+        <div class="form-item">
+          <label>排序</label>
+          <input id="fSort" type="number" />
+        </div>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn" id="dlgCancel">取消</button>
+        <button type="button" class="btn primary" id="dlgOk">保存</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-需求PRD.html" data-prd-anchor="m3-bl">
+    <span class="ess-prd-chip">PRD · 提单号规则</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var STORE = "ess-carrier-bl-prefix";
+      var DEFAULTS = [
+        { code: "OOCL", label: "OOCL东方海外", en: "OOCL", ext: "海运", prefix: "OOLU", color: "#000000", st: "启用", sort: 1 },
+        { code: "EMC", label: "EMC长荣", en: "Evergreen", ext: "海运", prefix: "EGLV", color: "#000000", st: "启用", sort: 2 },
+        { code: "CMA", label: "CMA达飞", en: "CMA CGM", ext: "海运", prefix: "CMAU", color: "#000000", st: "启用", sort: 3 },
+        { code: "KMTC", label: "KMTC高丽海运", en: "KMTC", ext: "海运", prefix: "KMTU", color: "#000000", st: "启用", sort: 4 },
+        { code: "HPL", label: "HPL赫伯罗特", en: "Hapag-Lloyd", ext: "海运", prefix: "HLCU", color: "#000000", st: "启用", sort: 5 },
+        { code: "YML", label: "YML阳明海运", en: "Yang Ming", ext: "海运", prefix: "YMLU", color: "#000000", st: "启用", sort: 6 },
+        { code: "MSK", label: "MSK马士基", en: "Maersk", ext: "海运", prefix: "MAEU", color: "#000000", st: "启用", sort: 7 },
+        { code: "HEDE", label: "HEDE合德", en: "HEDE", ext: "海运", prefix: "", color: "#000000", st: "启用", sort: 8 },
+        { code: "SML", label: "SML森罗", en: "SML", ext: "海运", prefix: "SMLM", color: "#000000", st: "启用", sort: 9 },
+        { code: "CUL", label: "中联航运", en: "CUL", ext: "海运", prefix: "", color: "#000000", st: "启用", sort: 10 },
+        { code: "ONE", label: "ONE", en: "Ocean Network Express", ext: "海运", prefix: "ONEY", color: "#000000", st: "启用", sort: 11 },
+        { code: "WHL", label: "WHL万海", en: "Wan Hai", ext: "海运", prefix: "WHLU", color: "#000000", st: "启用", sort: 12 },
+        { code: "ZIM", label: "ZIM以星", en: "ZIM", ext: "海运", prefix: "ZIMU", color: "#000000", st: "启用", sort: 13 },
+        { code: "COSCO", label: "COSCO中远海运", en: "COSCO", ext: "海运", prefix: "COSU", color: "#000000", st: "启用", sort: 14 },
+        { code: "MSC", label: "MSC地中海", en: "MSC", ext: "海运", prefix: "MEDU", color: "#000000", st: "启用", sort: 15 },
+        { code: "SLS", label: "SLS海领", en: "SLS", ext: "海运", prefix: "", color: "#000000", st: "启用", sort: 16 },
+        { code: "HMM", label: "HMM韩国现代", en: "HMM", ext: "海运", prefix: "HDMU", color: "#000000", st: "启用", sort: 17 },
+        { code: "MATS", label: "MATS美森", en: "Matson", ext: "海运", prefix: "MATS", color: "#000000", st: "启用", sort: 18 }
+      ];
+
+      function loadRows() {
+        var rows = DEFAULTS.map(function (r) { return Object.assign({}, r); });
+        try {
+          var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
+          rows.forEach(function (r) {
+            if (saved[r.code] != null) r.prefix = String(saved[r.code]).toUpperCase();
+          });
+        } catch (e) {}
+        return rows;
+      }
+      function savePrefixMap(rows) {
+        var map = {};
+        rows.forEach(function (r) { map[r.code] = r.prefix || ""; });
+        localStorage.setItem(STORE, JSON.stringify(map));
+      }
+      function normPrefix(s) {
+        return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+      }
+      function applyRule(prefix, raw) {
+        var p = normPrefix(prefix);
+        var bl = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
+        if (!p) return bl;
+        if (!bl || bl === p) return p;
+        if (bl.indexOf(p) === 0) return bl;
+        return p + bl;
+      }
+
+      var ROWS = loadRows();
+      var editIdx = -1;
+
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        setTimeout(function () { el.classList.remove("show"); }, 2200);
+      }
+
+      function filtered() {
+        var q = (document.getElementById("q").value || "").trim().toUpperCase();
+        var ext = document.getElementById("qExt").value;
+        var st = document.getElementById("qSt").value;
+        return ROWS.filter(function (r) {
+          if (ext && r.ext !== ext) return false;
+          if (st && r.st !== st) return false;
+          if (!q) return true;
+          return (r.code + " " + r.label + " " + r.en + " " + r.prefix).toUpperCase().indexOf(q) >= 0;
+        });
+      }
+
+      function render() {
+        var list = filtered();
+        document.getElementById("tbody").innerHTML = list.map(function (r) {
+          var i = ROWS.indexOf(r);
+          return "<tr>" +
+            "<td>" + r.sort + "</td>" +
+            "<td class='mono'>" + r.code + "</td>" +
+            "<td>" + r.label + "</td>" +
+            "<td>" + r.en + "</td>" +
+            "<td>" + r.ext + "</td>" +
+            "<td class='hl'>" +
+              (r.prefix
+                ? "<span class='prefix'>" + r.prefix + "</span>"
+                : "<span class='prefix empty'>（不加）</span>") +
+            "</td>" +
+            "<td><span class='swatch' style='background:" + r.color + "'></span>" + r.color + "</td>" +
+            "<td><span class='tag " + (r.st === "启用" ? "on" : "off") + "'>" + r.st + "</span></td>" +
+            "<td>" + r.sort + "</td>" +
+            "<td><button type='button' class='link-btn' data-edit='" + i + "'>编辑</button></td>" +
+            "</tr>";
+        }).join("");
+        var sel = document.getElementById("tryCarrier");
+        var keep = sel.value;
+        sel.innerHTML = ROWS.filter(function (r) { return r.st === "启用"; }).map(function (r) {
+          return "<option value='" + r.code + "'>" + r.code + " · " + r.label +
+            (r.prefix ? " · " + r.prefix : " · 无前缀") + "</option>";
+        }).join("");
+        if (keep) sel.value = keep;
+      }
+
+      function openDlg(idx) {
+        editIdx = idx;
+        var r = idx < 0 ? { code: "", label: "", en: "", ext: "海运", prefix: "", color: "#000000", st: "启用", sort: ROWS.length + 1 } : ROWS[idx];
+        document.getElementById("dlgTitle").textContent = idx < 0 ? "新增船公司" : "编辑 · " + r.code;
+        document.getElementById("fCode").value = r.code;
+        document.getElementById("fLabel").value = r.label;
+        document.getElementById("fEn").value = r.en;
+        document.getElementById("fExt").value = r.ext || "海运";
+        document.getElementById("fPrefix").value = r.prefix || "";
+        document.getElementById("fSt").value = r.st;
+        document.getElementById("fSort").value = r.sort;
+        document.getElementById("mask").classList.add("open");
+      }
+      function closeDlg() { document.getElementById("mask").classList.remove("open"); }
+
+      document.getElementById("btnQuery").onclick = render;
+      document.getElementById("q").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") render();
+      });
+      document.getElementById("qExt").onchange = render;
+      document.getElementById("qSt").onchange = render;
+      document.getElementById("btnAdd").onclick = function () { openDlg(-1); };
+      document.getElementById("btnExport").onclick = function () {
+        toast("已导出当前页（示意）");
+      };
+      document.getElementById("tbody").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-edit]");
+        if (btn) openDlg(Number(btn.getAttribute("data-edit")));
+      });
+      document.getElementById("dlgClose").onclick = closeDlg;
+      document.getElementById("dlgCancel").onclick = closeDlg;
+      document.getElementById("mask").addEventListener("click", function (e) {
+        if (e.target === this) closeDlg();
+      });
+      document.getElementById("dlgOk").onclick = function () {
+        var code = (document.getElementById("fCode").value || "").trim().toUpperCase();
+        if (!code) { toast("请填写值"); return; }
+        var rec = {
+          code: code,
+          label: document.getElementById("fLabel").value.trim() || code,
+          en: document.getElementById("fEn").value.trim() || code,
+          ext: document.getElementById("fExt").value,
+          prefix: normPrefix(document.getElementById("fPrefix").value),
+          color: "#000000",
+          st: document.getElementById("fSt").value,
+          sort: Number(document.getElementById("fSort").value) || ROWS.length + 1
+        };
+        if (editIdx < 0) ROWS.push(rec);
+        else ROWS[editIdx] = rec;
+        savePrefixMap(ROWS);
+        closeDlg();
+        render();
+        toast("已保存「" + code + "」提单号规则 " + (rec.prefix || "（不加）") + " · 提单创建会读取");
+      };
+
+      document.getElementById("btnTry").onclick = function () {
+        var code = document.getElementById("tryCarrier").value;
+        var row = ROWS.filter(function (r) { return r.code === code; })[0];
+        var out = applyRule(row && row.prefix, document.getElementById("tryTail").value);
+        var p = row && row.prefix;
+        document.getElementById("tryOut").innerHTML = p
+          ? "选 <b>" + code + "</b> → 提单号默认带上 <b>" + p + "</b> → 落库 <b>" + (out || p) + "</b>"
+          : "选 <b>" + code + "</b> 未配前缀，提单号按手填 <b>" + (out || "（空）") + "</b>，不加前缀。";
+      };
+
+      render();
+    })();
+  </script>
+</body>
+</html>

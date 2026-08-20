@@ -220,6 +220,23 @@
     }
     .tool-btn.outline { background: #fff; color: var(--blue); }
     .tool-btn.warn { background: #fa8c16; border-color: #fa8c16; }
+    .tool-btn.check { background: #d46b08; border-color: #d46b08; }
+    .badge-new {
+      display: inline-block; margin-left: 2px; padding: 0 4px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; font-weight: 600; border: 1px solid;
+    }
+    .tag.ck { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.ck-pass { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.ck-ticket { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
+    .tag.ck-none { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    tr.waybill-ck td { background: #fff7e6; }
+    tr.waybill-ck:hover td { background: #ffe7ba; }
+    tr.waybill-ck td:first-child { box-shadow: inset 3px 0 0 #d46b08; }
 
     /* ── 状态 Tab ── */
     .status-bar {
@@ -348,7 +365,8 @@
       <button type="button" class="btn-demo" id="btnSimCheckin">模拟签入（未上传报关资料）</button>
       <button type="button" class="btn-demo" id="btnSimPush">模拟服务端推送（无需刷新）</button>
       <button type="button" class="btn-demo" id="btnClearTodo">清空代办</button>
-      <span class="hint">签入后若报关资料未上传 → 序号列/菜单/铃铛角标 +1 · 铃铛下拉：我的消息/我的代办/我的审批</span>
+      <span class="hint">签入后若为报关件且报关资料未上传 → 序号列/菜单/铃铛角标 +1 · 关联关务「签入即预报资料」</span>
+      <a href="产品部门/各组sop/关务组-签入即预报资料-MVP.html" style="color:#d46b08;margin-left:8px">签入即预报资料 →</a>
     </div>
 
     <header class="top-header">
@@ -426,10 +444,19 @@
         <section class="filter-panel">
           <div class="filter-grid">
             <div class="filter-item"><label>到货时间</label><input type="text" value="2026-05-01 ~ 2026-05-23" /></div>
-            <div class="filter-item"><label>运单号</label><input type="text" value="FBA19DFXK542" /></div>
+            <div class="filter-item"><label>运单号</label><input type="text" placeholder="支持模糊" id="qWb" /></div>
             <div class="filter-item"><label>客户名称</label><input type="text" placeholder="请输入" /></div>
             <div class="filter-item"><label>国家CN</label><select><option>全部</option><option>US</option></select></div>
-            <div class="filter-item"><label>客户</label><input type="text" placeholder="请输入" /></div>
+            <div class="filter-item">
+              <label>查验标记 <span class="badge-new">NEW</span></label>
+              <select id="qCk">
+                <option value="">全部</option>
+                <option value="查验中">查验中</option>
+                <option value="查验挂票">查验挂票</option>
+                <option value="查验放行">查验放行</option>
+                <option value="无">无查验</option>
+              </select>
+            </div>
             <div class="filter-item"><label>扣件类型</label><select><option>全部</option></select></div>
           </div>
         </section>
@@ -442,13 +469,15 @@
           <button type="button" class="tool-btn outline">导出</button>
           <button type="button" class="tool-btn warn" id="btnCheckin">签入</button>
           <button type="button" class="tool-btn outline" id="btnUploadCustoms">上传报关资料</button>
+          <button type="button" class="tool-btn check" id="btnCkMark">查验标记 <span class="badge-new">NEW</span></button>
         </div>
 
         <div class="status-bar">
-          <button type="button" class="status-tab active">全部(1)</button>
+          <button type="button" class="status-tab active" data-all>全部(3)</button>
           <button type="button" class="status-tab">待提仓到(1)</button>
-          <button type="button" class="status-tab">待出库(0)</button>
-          <button type="button" class="status-tab">已出库(0)</button>
+          <button type="button" class="status-tab">待出库(1)</button>
+          <button type="button" class="status-tab">已出库(1)</button>
+          <button type="button" class="status-tab" id="tabCk" style="color:#d46b08;">查验中(1) <span class="badge-new">NEW</span></button>
         </div>
 
         <div class="table-wrap">
@@ -457,7 +486,7 @@
               <tr>
                 <th class="col-index">
                   <div class="cell-index-head">
-                    <input type="checkbox" checked aria-label="全选" />
+                    <input type="checkbox" id="chkAllWb" aria-label="全选" />
                     <span>序号</span>
                   </div>
                 </th>
@@ -466,19 +495,21 @@
                 <th>客户单号</th>
                 <th>客户类型</th>
                 <th>运输方式</th>
+                <th>查验标记 <span class="badge-new">NEW</span></th>
+                <th>关联提单/柜</th>
                 <th>报关资料</th>
                 <th>签入状态</th>
               </tr>
             </thead>
-            <tbody>
-              <tr id="rowWaybill">
+            <tbody id="wbBody">
+              <tr id="rowWaybill" class="waybill-has-todo" data-ck="无">
                 <td class="col-index" id="cellIndex">
                   <span class="cell-index-wrap">
                     <div class="cell-index-stack">
-                      <input type="checkbox" checked aria-label="选择第 1 行" />
+                      <input type="checkbox" checked aria-label="选择第 1 行" class="wb-ck" />
                       <span class="cell-index-num">1</span>
                     </div>
-                    <span class="waybill-todo-badge" id="waybillTodoBadge" title="签入后上传报关资料">1</span>
+                    <span class="waybill-todo-badge show" id="waybillTodoBadge" title="签入后上传报关资料">1</span>
                   </span>
                 </td>
                 <td>大功成商</td>
@@ -486,27 +517,77 @@
                 <td><a class="waybill-no" href="#">FBA19DFXK542</a></td>
                 <td>直客</td>
                 <td id="cellTransport">海运</td>
+                <td><span class="tag ck-none">—</span></td>
+                <td style="color:rgba(0,0,0,.45)">—</td>
                 <td id="cellCustomsDoc"><span style="color:#ff4d4f">未上传</span></td>
                 <td id="cellCheckin">未签入</td>
+              </tr>
+              <tr class="waybill-ck" data-ck="查验挂票">
+                <td class="col-index">
+                  <span class="cell-index-wrap">
+                    <div class="cell-index-stack">
+                      <input type="checkbox" class="wb-ck" aria-label="选择第 2 行" />
+                      <span class="cell-index-num">2</span>
+                    </div>
+                  </span>
+                </td>
+                <td>华东汽配</td>
+                <td>2026-05-18</td>
+                <td><a class="waybill-no" href="#">TX-20260806-009</a></td>
+                <td>直客</td>
+                <td>海运</td>
+                <td>
+                  <span class="tag ck-ticket" title="单票责任 · 同步提单">查验挂票</span>
+                  <div style="font-size:11px;color:#c41d7f;margin-top:2px;">责任票</div>
+                </td>
+                <td>
+                  <div>COSU1234567891</div>
+                  <div style="font-size:11px;color:rgba(0,0,0,.45)">CSNU6688456</div>
+                </td>
+                <td><span style="color:#389e0d">已上传</span></td>
+                <td>已签入</td>
+              </tr>
+              <tr data-ck="查验中">
+                <td class="col-index">
+                  <span class="cell-index-wrap">
+                    <div class="cell-index-stack">
+                      <input type="checkbox" class="wb-ck" aria-label="选择第 3 行" />
+                      <span class="cell-index-num">3</span>
+                    </div>
+                  </span>
+                </td>
+                <td>宁波同城</td>
+                <td>2026-05-19</td>
+                <td><a class="waybill-no" href="#">TX-20260813-021</a></td>
+                <td>同行</td>
+                <td>海运</td>
+                <td><span class="tag ck" title="随柜查验 · 提单已标查验中">查验中</span></td>
+                <td>
+                  <div>COSU20260813001</div>
+                  <div style="font-size:11px;color:rgba(0,0,0,.45)">CSNU7788990</div>
+                </td>
+                <td><span style="color:#389e0d">已上传</span></td>
+                <td>已签入</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <div class="pager">
-          <span>共 1 条</span>
+          <span>共 3 条</span>
           <span>500 条/页</span>
           <button type="button" class="tool-btn outline" style="height:24px;padding:0 8px;font-size:12px">1</button>
         </div>
 
         <div class="prd-note">
-          <strong>PRD · 签入后报关资料代办（3 / 3.1 / 3.2）</strong>
+          <strong>PRD · 签入后报关资料代办（3 / 3.1 / 3.2）+ 查验标记</strong>
           <ul>
             <li><strong>触发条件：</strong>运单已签入，且<strong>报关资料未上传</strong> → 在对应<strong>业务员</strong>、<strong>客服</strong>的待办列表各生成一条代办。</li>
             <li><strong>3.1 弹窗：</strong>右下角弹出「您有一件代办事项，请及时处理：<em>流程名称</em>」（如：签入后上传报关资料）。</li>
             <li><strong>3.2 角标：</strong>「运单管理」「我的待办」顶栏 Tab、左侧「运单」模块菜单、<strong>列表运单行（序号列）</strong>展示未读角标；<strong>服务端推送/WebSocket 或轮询</strong>更新，<strong>无需手动刷新</strong>页面。</li>
             <li><strong>运单行角标：</strong>该运单存在未处理代办（如签入后报关资料未上传）时，<strong>序号列（复选框+序号合并列）</strong>右上角显示红色角标「1」，整行浅橙底色提示；上传报关资料或处理完成后清除。</li>
             <li><strong>消息铃铛：</strong>右上角铃铛角标展示三类未读总和（与 Tab/侧栏同步）；点击下拉：<strong>我的消息</strong>、<strong>我的代办</strong>、<strong>我的审批</strong>，各分类独立角标。</li>
+            <li><strong>查验标记（NEW）：</strong>与提单管理联动。默认随柜「查验中」；若因本票货物导致查验 →「查验挂票」（责任票）。列表可筛、工具栏可写回；关联提单/柜号可见。</li>
           </ul>
         </div>
       </main>
@@ -774,6 +855,65 @@
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") toggleMsgDropdown(false);
       });
+
+      /* 查验标记 · 筛选 / 写回（与提单联动示意） */
+      var qCk = document.getElementById("qCk");
+      var wbBody = document.getElementById("wbBody");
+      function filterCkRows() {
+        if (!wbBody || !qCk) return;
+        var v = qCk.value;
+        Array.prototype.forEach.call(wbBody.querySelectorAll("tr"), function (tr) {
+          var ck = tr.getAttribute("data-ck") || "无";
+          tr.style.display = (!v || ck === v) ? "" : "none";
+        });
+      }
+      if (qCk) qCk.addEventListener("change", filterCkRows);
+      var tabCk = document.getElementById("tabCk");
+      if (tabCk) {
+        tabCk.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
+          tabCk.classList.add("active");
+          if (qCk) { qCk.value = "查验中"; filterCkRows(); }
+        });
+      }
+      document.querySelectorAll(".status-tab[data-all]").forEach(function (t) {
+        t.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (x) { x.classList.remove("active"); });
+          t.classList.add("active");
+          if (qCk) { qCk.value = ""; filterCkRows(); }
+        });
+      });
+      var btnCkMark = document.getElementById("btnCkMark");
+      if (btnCkMark) {
+        btnCkMark.addEventListener("click", function () {
+          var checked = wbBody ? wbBody.querySelectorAll(".wb-ck:checked") : [];
+          if (!checked.length) {
+            alert("请先勾选运单");
+            return;
+          }
+          var st = window.prompt("写入查验状态：查验中 / 查验挂票 / 查验放行 / 无", "查验挂票");
+          if (!st) return;
+          st = st.trim();
+          if (["查验中", "查验挂票", "查验放行", "无"].indexOf(st) < 0) {
+            alert("仅支持：查验中 / 查验挂票 / 查验放行 / 无");
+            return;
+          }
+          Array.prototype.forEach.call(checked, function (ck) {
+            var tr = ck.closest("tr");
+            if (!tr) return;
+            tr.setAttribute("data-ck", st);
+            tr.classList.toggle("waybill-ck", st === "查验挂票" || st === "查验中");
+            var cell = tr.cells[6];
+            if (!cell) return;
+            if (st === "查验中") cell.innerHTML = '<span class="tag ck">查验中</span>';
+            else if (st === "查验挂票") cell.innerHTML = '<span class="tag ck-ticket">查验挂票</span><div style="font-size:11px;color:#c41d7f;margin-top:2px;">责任票</div>';
+            else if (st === "查验放行") cell.innerHTML = '<span class="tag ck-pass">查验放行</span>';
+            else cell.innerHTML = '<span class="tag ck-none">—</span>';
+          });
+          alert("已更新查验标记 ×" + checked.length + "（示意同步提单侧）");
+          filterCkRows();
+        });
+      }
 
       /* 模拟无需刷新的服务端推送：轮询检测（正式环境可换 WebSocket） */
       var lastPollCount = 0;

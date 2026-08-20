@@ -297,6 +297,7 @@
         <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</div>
         <div class="side-item on">提单创建(批量)</div>
         <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-运价管理-我司与代理订舱-MVP.html'">运价 · 点价订舱</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='数据字典-船公司航运-提单号规则-MVP.html'">数据字典 · 船公司</div>
         <div class="side-item">待配仓</div>
         <div class="side-item">舱位播报</div>
       </aside>
@@ -304,6 +305,7 @@
       <main class="main">
         <p class="proto-link">
           原型 · 对齐现网 <code>/Scan/BillAddBatch</code> ·
+          <a href="数据字典-船公司航运-提单号规则-MVP.html">船公司字典 · 提单号规则</a> ·
           <a href="船务组-运价管理-我司与代理订舱-MVP.html">运价管理 · 点价订舱</a> ·
           <a href="船务组-提单管理-按周分组与分配-MVP.html">提单管理</a> ·
           <a href="船务组-0730-费用节点提单配仓-大致方案.html">0730 方案</a> ·
@@ -318,11 +320,7 @@
         </div>
 
         <p class="tip-bar">
-          <strong>本期增量：</strong>
-          运价<strong>点价订舱</strong>可带入船司/港口/柜型/海运费；
-          右上角 <strong>AI</strong> → 上传订舱确认 PDF/截图 → 识别提单号·柜号等 →
-          预览校对后<strong>写入表格</strong>（AI 回填格橙色高亮）。
-          <strong>提单号非必填</strong>（可先落柜号/船司/航次，后补 B/L）。
+          右上角 <strong>AI</strong> 识别订舱确认 / 提单副本。点价订舱带入的价目见顶部绿条。规则见 PRD。
         </p>
 
         <section class="card">
@@ -481,31 +479,49 @@
 
   <div class="toast" id="toast"></div>
 
-  <div class="ess-prd" data-ess-prd>
-    <h3>产品说明 · 批量创建提单 · AI识别</h3>
-    <h4>背景（0730 船务）</h4>
-    <ul>
-      <li>调研明确：提单需 <strong>AI 识别</strong>信息，降低手工录入订舱确认/提单副本的差错与耗时。</li>
-      <li>落点：现网「提单创建(批量)」右上角 AI 入口（与页面红钮一致），不另开孤立菜单。</li>
-    </ul>
-    <h4>交互</h4>
-    <ul>
-      <li>上传 PDF/图片/Excel 或粘贴文本 → 识别 → 预览校对（置信度）→ 写入批量表格。</li>
-      <li>写入方式：追加新行 / 覆盖空表；AI 回填格橙色高亮，必填未识别到的仍标红须手补。</li>
-      <li><strong>提单号非必填</strong>（批注）：创建时可先填柜号/船司/航次等；B/L 可后续补录或 AI 识别回填。</li>
-      <li>多柜同提单号拆多行；港口/船司走主数据模糊匹配，低置信度强制人工确认。</li>
-      <li><b>点价订舱</b>：从运价管理点价进入，预填船司/港口/柜型/海运费/订舱口；可选直接打开 AI 补柜号（提单号可空）。</li>
-    </ul>
-    <h4>范围边界</h4>
-    <ul>
-      <li>仅服务<strong>创建录入</strong>；改单、改运抵、取消 IT、查验标记仍在提单管理。</li>
-      <li>海运费/免用箱若材料无则留空，不臆造金额。</li>
-    </ul>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-需求PRD.html" data-prd-anchor="m3">
+    <span class="ess-prd-chip">PRD · 提单创建 AI</span>
   </div>
 
   <script src="../../二期/ess-prototype-prd.js"></script>
   <script>
     (function () {
+      var CARRIER_OPTS = ["", "COSCO", "Hapag", "MSC", "ONE", "EMC", "OOCL", "Matson", "ZIM", "HEDE"];
+      var BL_PREFIX_DEFAULT = {
+        COSCO: "COSU", Hapag: "HLCU", HPL: "HLCU", MSC: "MEDU", ONE: "ONEY",
+        EMC: "EGLV", OOCL: "OOLU", Matson: "MATS", MATS: "MATS", ZIM: "ZIMU", HEDE: ""
+      };
+      function blPrefix(code) {
+        if (!code) return "";
+        var map = Object.assign({}, BL_PREFIX_DEFAULT);
+        try {
+          var saved = JSON.parse(localStorage.getItem("ess-carrier-bl-prefix") || "{}");
+          Object.keys(saved).forEach(function (k) { map[k] = saved[k]; });
+        } catch (e) {}
+        var alias = { Hapag: "HPL", Matson: "MATS" };
+        var key = alias[code] || code;
+        var p = map[key] != null ? map[key] : map[code];
+        return String(p || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      }
+      function applyBlPrefix(r, oldCode) {
+        var neu = blPrefix(r.carrier);
+        var old = blPrefix(oldCode);
+        var bl = String(r.bl || "").trim().toUpperCase().replace(/\s+/g, "");
+        if (!neu && !old) { r.bl = bl; return false; }
+        if (!bl || bl === old) { r.bl = neu; return r.bl !== bl; }
+        if (neu && bl.indexOf(neu) === 0) { r.bl = bl; return false; }
+        if (old && bl.indexOf(old) === 0) {
+          r.bl = neu + bl.slice(old.length);
+          return true;
+        }
+        if (neu) { r.bl = neu + bl; return true; }
+        r.bl = bl;
+        return false;
+      }
+      function ensureBlPrefix(r) {
+        if (!r.bl) return false;
+        return applyBlPrefix(r, r.carrier);
+      }
       var emptyRow = function () {
         return {
           mode: "海运", bl: "", freight: "", free: "", etd: "",
@@ -579,7 +595,7 @@
           html += "<tr data-i=\"" + i + "\">" +
             "<td>" + (i + 1) + (r.ai ? '<span class="ai-tag">AI</span>' : "") + "</td>" +
             "<td>" + cell(r, "mode", { type: "select", options: ["海运", "空运", "铁路"] }) + "</td>" +
-            "<td>" + cell(r, "bl", { ph: "非必填，可后补" }) + "</td>" +
+            "<td>" + cell(r, "bl", { ph: blPrefix(r.carrier) ? blPrefix(r.carrier) + "…" : "非必填，可后补" }) + "</td>" +
             "<td>" + cell(r, "freight", { ph: "金额" }) + "</td>" +
             "<td>" + cell(r, "free", { ph: "如 7/7" }) + "</td>" +
             "<td>" + cell(r, "etd", { input: "datetime-local" }) + "</td>" +
@@ -587,7 +603,7 @@
             "<td>" + cell(r, "type", { type: "select", options: ["", "20GP", "40GP", "40HQ", "45HQ"] }) + "</td>" +
             "<td>" + cell(r, "pol", { ph: "搜索港口" }) + "</td>" +
             "<td>" + cell(r, "pod", { ph: "搜索港口" }) + "</td>" +
-            "<td>" + cell(r, "carrier", { type: "select", options: ["", "COSCO", "Hapag", "MSC", "ONE", "EMC", "OOCL", "Matson", "ZIM"] }) + "</td>" +
+            "<td>" + cell(r, "carrier", { type: "select", options: CARRIER_OPTS }) + "</td>" +
             "<td>" + cell(r, "voy", { ph: "船名航次" }) + "</td>" +
             "<td>" + cell(r, "supplier", { type: "select", options: ["", "我司订舱", "代理订舱", "客户自订"] }) + "</td>" +
             '<td><div class="row-ops">' +
@@ -610,7 +626,20 @@
 
       document.getElementById("tbody").addEventListener("change", function (e) {
         var tr = e.target.closest("tr");
-        if (tr) syncRowFromDom(tr);
+        if (!tr) return;
+        var i = Number(tr.getAttribute("data-i"));
+        var r = ROWS[i];
+        var oldCarrier = r ? r.carrier : "";
+        syncRowFromDom(tr);
+        if (e.target.getAttribute("data-k") === "carrier") {
+          applyBlPrefix(r, oldCarrier);
+          var blEl = tr.querySelector('[data-k="bl"]');
+          if (blEl) {
+            blEl.value = r.bl || "";
+            var p = blPrefix(r.carrier);
+            blEl.placeholder = p ? p + "…" : "非必填，可后补";
+          }
+        }
       });
       document.getElementById("tbody").addEventListener("input", function (e) {
         var tr = e.target.closest("tr");
@@ -631,7 +660,11 @@
           else ROWS.splice(i, 1);
           render();
         } else if (act === "save") {
-          toast("原型：第 " + (i + 1) + " 行已保存（示意）");
+          if (ensureBlPrefix(r)) {
+            var blEl = tr.querySelector('[data-k="bl"]');
+            if (blEl) blEl.value = r.bl;
+          }
+          toast("原型：第 " + (i + 1) + " 行已保存" + (r.bl ? " · " + r.bl : "") + "（示意）");
         }
       });
 
@@ -651,9 +684,13 @@
 
       document.getElementById("btnSaveAll").onclick = function () {
         document.querySelectorAll("#tbody tr").forEach(syncRowFromDom);
+        var patched = 0;
+        ROWS.forEach(function (r) { if (ensureBlPrefix(r)) patched += 1; });
+        if (patched) render();
         var ok = ROWS.filter(rowReady).length;
         var noBl = ROWS.filter(function (r) { return rowReady(r) && !r.bl; }).length;
         toast("原型：批量保存 " + ok + " 行" +
+          (patched ? " · 已按船司规则补前缀 ×" + patched : "") +
           (noBl ? "（其中 " + noBl + " 行提单号待补，已允许）" : "") + "（示意）");
       };
 
@@ -813,7 +850,7 @@
         if (!picked.length) { toast("请至少勾选一行"); return; }
         var writeMode = document.getElementById("aiWriteMode").value;
         var mapped = picked.map(function (r) {
-          return {
+          var row = {
             mode: r.mode || "海运",
             bl: r.bl || "",
             freight: r.freight || "",
@@ -828,6 +865,8 @@
             supplier: r.supplier || "",
             ai: true
           };
+          applyBlPrefix(row, "");
+          return row;
         });
         var onlyEmpty = ROWS.length === 1 && !ROWS[0].bl && !ROWS[0].cntr;
         if (writeMode === "replace" || onlyEmpty) {

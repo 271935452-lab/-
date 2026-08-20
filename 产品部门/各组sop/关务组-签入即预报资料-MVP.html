@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>关务 · 签入即预报资料 · MVP</title>
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --teal: #0d8a8a; --green: #52c41a;
+      --red: #ff4d4f; --orange: #fa8c16;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .topbar {
+      height: 48px; background: #0a6b6b; color: #fff;
+      display: flex; align-items: center; padding: 0 16px; gap: 20px;
+    }
+    .topbar .logo { font-weight: 700; letter-spacing: .3px; }
+    .topbar .nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.8); text-decoration: none;
+      padding: 6px 10px; border-radius: 2px; font-size: 12px;
+    }
+    .topbar .nav a.on, .topbar .nav a:hover { color: #fff; background: rgba(255,255,255,.14); }
+    .topbar .right { color: rgba(255,255,255,.6); font-size: 12px; }
+    .layout { max-width: 1280px; margin: 0 auto; padding: 16px; }
+
+    .page-hd { margin-bottom: 12px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .page-hd h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .page-hd .sub { margin: 6px 0 0; color: var(--sub); font-size: 12px; line-height: 1.6; max-width: 860px; }
+    .page-hd .links { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+    .page-hd .links a {
+      color: var(--teal); font-size: 12px; padding: 4px 8px;
+      border: 1px solid #99f6e4; border-radius: 2px; background: #f0fdfa; text-decoration: none;
+    }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 2px; margin-bottom: 12px;
+    }
+    .panel-hd {
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      font-weight: 600; font-size: 13px; background: #fafafa;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .panel-bd { padding: 14px; }
+
+    .rule {
+      margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.7;
+      background: #e6fffb; border: 1px solid #87e8de; border-radius: 2px; color: #006d75;
+    }
+    .rule strong { color: #00474f; }
+
+    .matrix {
+      width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px;
+    }
+    .matrix th, .matrix td {
+      border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top;
+    }
+    .matrix th { background: #fafafa; color: var(--sub); font-weight: 600; }
+    .matrix .act-ok { color: #389e0d; font-weight: 600; }
+    .matrix .act-block { color: #cf1322; font-weight: 600; }
+    .matrix .act-skip { color: #8c8c8c; font-weight: 600; }
+
+    .demo-bar {
+      background: #fffbe6; border: 1px solid #ffe58f; border-radius: 2px;
+      padding: 8px 12px; margin-bottom: 12px;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      font-size: 12px; color: #ad6800;
+    }
+    .demo-bar strong { color: #874d00; }
+    .btn {
+      height: 28px; padding: 0 12px; border-radius: 2px;
+      border: 1px solid #d9d9d9; background: #fff; font: inherit; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--teal); color: var(--teal); }
+    .btn-primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .btn-primary:hover { color: #fff; opacity: .92; }
+    .btn-ok { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn-warn { background: var(--orange); border-color: var(--orange); color: #fff; }
+    .btn-ghost { background: #fff; color: var(--sub); }
+
+    .filter-grid {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px 14px; padding: 14px 14px 8px;
+    }
+    @media (max-width: 960px) { .filter-grid { grid-template-columns: repeat(2, 1fr); } }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .filter-item select, .filter-item input {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .filter-actions {
+      padding: 0 14px 14px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+    }
+
+    .tabs {
+      display: flex; border-bottom: 1px solid var(--line); background: #fafafa; padding: 0 12px; flex-wrap: wrap;
+    }
+    .tab {
+      padding: 10px 14px; border: none; background: none; font: inherit;
+      color: var(--sub); cursor: pointer; position: relative;
+    }
+    .tab.active { color: var(--teal); font-weight: 600; }
+    .tab.active::after {
+      content: ""; position: absolute; left: 14px; right: 14px; bottom: 0;
+      height: 2px; background: var(--teal);
+    }
+    .tab .cnt {
+      display: inline-block; margin-left: 4px; padding: 0 6px; height: 18px; line-height: 18px;
+      border-radius: 9px; background: #f0f0f0; font-size: 11px; color: var(--sub);
+    }
+    .tab.active .cnt { background: #e6fffb; color: var(--teal); }
+
+    .table-wrap { overflow: auto; }
+    table.data { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.data th, table.data td {
+      border: 1px solid var(--line); padding: 8px 10px; text-align: left; white-space: nowrap;
+    }
+    table.data th { background: #fafafa; color: var(--sub); font-weight: 600; }
+    table.data tr:hover td { background: #e6fffb; }
+    table.data tr.row-block td { background: #fff2f0; }
+    table.data tr.row-block:hover td { background: #ffccc7; }
+    table.data tr.row-ok td { background: #f6ffed; }
+    table.data tr.row-ok:hover td { background: #d9f7be; }
+
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; font-weight: 600; border: 1px solid;
+    }
+    .tag.yes { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.no { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.skip { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.done { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+
+    .ops { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ops .btn { height: 26px; padding: 0 8px; font-size: 12px; }
+    .ops .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .toast {
+      position: fixed; right: 16px; bottom: 16px; z-index: 50;
+      max-width: 360px; padding: 10px 14px; border-radius: 4px;
+      background: #001529; color: #fff; font-size: 12px; line-height: 1.5;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18); display: none;
+    }
+    .toast.show { display: block; }
+    .footer-note {
+      margin-top: 8px; font-size: 11px; color: var(--sub); line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">关务组</div>
+    <nav class="nav">
+      <a class="on" href="#">签入即预报资料</a>
+      <a href="关务组-资料核准双通道-流程与页面设计.html">资料核准双通道</a>
+      <a href="../../运单管理-签入代办角标弹窗-MVP.html">签入代办（关联）</a>
+      <a href="关务组-导航.html">组导航</a>
+    </nav>
+    <div class="right">MVP · 报关件 × 资料上传</div>
+  </header>
+
+  <main class="layout">
+    <div class="page-hd">
+      <div>
+        <h1>签入即预报资料</h1>
+        <p class="sub">
+          运单<strong>签入成功</strong>后，按「是否报关件 × 是否已上传报关资料」自动判定：可否立即预报资料、是否催传、是否跳过报关路径。
+          与「签入后未传报关资料代办」衔接：本页侧重关务侧预报动作，代办页侧重业务/客服催传。
+        </p>
+      </div>
+      <div class="links">
+        <a href="关务组-导航.html">← 关务组导航</a>
+        <a href="../../index.html">总导航</a>
+        <a href="../../运单管理-签入代办角标弹窗-MVP.html">签入代办角标</a>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-hd">判定规则（签入触发）</div>
+      <div class="panel-bd">
+        <p class="rule">
+          <strong>触发点：</strong>运单状态变为「已签入」。<br />
+          <strong>读取字段：</strong>① 客户/运单是否报关件（是 / 否）；② 报关资料是否已上传（已上传 / 未上传）。<br />
+          <strong>原则：</strong>仅报关件且资料齐全时允许「立即预报」；报关件缺资料则拦截预报并生成催传待办；非报关件（如买单）不走报关件预报路径。
+        </p>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>是否报关件</th>
+              <th>报关资料</th>
+              <th>系统动作</th>
+              <th>关务可操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag yes">是</span></td>
+              <td><span class="tag yes">已上传</span></td>
+              <td class="act-ok">自动进入「可预报」队列；可选自动推送预报</td>
+              <td>预报资料 / 查看附件 / 进入核准</td>
+            </tr>
+            <tr>
+              <td><span class="tag yes">是</span></td>
+              <td><span class="tag no">未上传</span></td>
+              <td class="act-block">拦截预报；给业务员+客服生成「签入后上传报关资料」代办</td>
+              <td>催传资料（不可预报）；资料齐后自动转可预报</td>
+            </tr>
+            <tr>
+              <td><span class="tag skip">否</span></td>
+              <td><span class="tag skip">—</span></td>
+              <td class="act-skip">标记「非报关件 · 跳过预报」；不生成报关资料代办</td>
+              <td>仅查看；如后续改报关件再重新判定</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="demo-bar">
+      <strong>演示：</strong>
+      <button type="button" class="btn" id="btnSimOk">模拟签入 · 报关件+已传资料</button>
+      <button type="button" class="btn" id="btnSimBlock">模拟签入 · 报关件+未传资料</button>
+      <button type="button" class="btn" id="btnSimSkip">模拟签入 · 非报关件</button>
+      <button type="button" class="btn btn-ghost" id="btnReset">重置列表</button>
+      <span style="margin-left:auto;color:#8c8c8c">点击行内按钮可切换状态</span>
+    </div>
+
+    <section class="panel">
+      <div class="filter-grid">
+        <div class="filter-item">
+          <label>运单号</label>
+          <input id="qNo" placeholder="支持模糊" />
+        </div>
+        <div class="filter-item">
+          <label>是否报关件</label>
+          <select id="qCustoms">
+            <option value="">全部</option>
+            <option value="1">是</option>
+            <option value="0">否</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>报关资料</label>
+          <select id="qUpload">
+            <option value="">全部</option>
+            <option value="1">已上传</option>
+            <option value="0">未上传</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>预报状态</label>
+          <select id="qStatus">
+            <option value="">全部</option>
+            <option value="ready">可预报</option>
+            <option value="blocked">待催传</option>
+            <option value="forecasted">已预报</option>
+            <option value="skipped">已跳过</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>客户</label>
+          <input id="qCustomer" placeholder="客户简称" />
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button type="button" class="btn" id="btnResetFilter">重置</button>
+        <button type="button" class="btn btn-primary" id="btnSearch">查询</button>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <button type="button" class="tab active" data-tab="all">全部<span class="cnt" id="cAll">0</span></button>
+        <button type="button" class="tab" data-tab="ready">可预报<span class="cnt" id="cReady">0</span></button>
+        <button type="button" class="tab" data-tab="blocked">待催传<span class="cnt" id="cBlocked">0</span></button>
+        <button type="button" class="tab" data-tab="forecasted">已预报<span class="cnt" id="cForecasted">0</span></button>
+        <button type="button" class="tab" data-tab="skipped">已跳过<span class="cnt" id="cSkipped">0</span></button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>运单号</th>
+              <th>客户</th>
+              <th>签入时间</th>
+              <th>是否报关件</th>
+              <th>报关资料</th>
+              <th>预报状态</th>
+              <th>判定说明</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="panel-bd footer-note">
+        开发要点：签入成功写事件 → 读客户档案「是否报关件」与运单附件「报关资料」→ 落判定结果与状态机；
+        资料上传成功回调时，若为报关件则自动从「待催传」转为「可预报」。非报关件不生成报关资料代办（与签入代办页条件对齐：仅报关件且未上传才催传）。
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (function () {
+      var seed = [
+        { id: "WY260820001", customer: "华东贸易", checkinAt: "2026-08-20 09:12", isCustoms: true, uploaded: true, status: "ready" },
+        { id: "WY260820002", customer: "深圳迅达", checkinAt: "2026-08-20 09:28", isCustoms: true, uploaded: false, status: "blocked" },
+        { id: "WY260820003", customer: "义乌百货", checkinAt: "2026-08-20 10:05", isCustoms: false, uploaded: false, status: "skipped" },
+        { id: "WY260820004", customer: "宁波海运", checkinAt: "2026-08-20 10:40", isCustoms: true, uploaded: true, status: "forecasted" },
+        { id: "WY260820005", customer: "广州联创", checkinAt: "2026-08-20 11:02", isCustoms: true, uploaded: false, status: "blocked" }
+      ];
+      var rows = seed.map(function (r) { return Object.assign({}, r); });
+      var tab = "all";
+      var tbody = document.getElementById("tbody");
+      var toastEl = document.getElementById("toast");
+      var toastTimer;
+
+      function decide(r) {
+        if (!r.isCustoms) return { status: "skipped", tip: "非报关件，跳过报关件预报路径" };
+        if (!r.uploaded) return { status: "blocked", tip: "报关件但资料未齐，拦截预报并催传" };
+        if (r.status === "forecasted") return { status: "forecasted", tip: "资料齐全，已完成预报" };
+        return { status: "ready", tip: "报关件且资料已上传，可立即预报" };
+      }
+
+      function statusTag(s) {
+        if (s === "ready") return '<span class="tag wait">可预报</span>';
+        if (s === "blocked") return '<span class="tag no">待催传</span>';
+        if (s === "forecasted") return '<span class="tag done">已预报</span>';
+        return '<span class="tag skip">已跳过</span>';
+      }
+
+      function rowClass(s) {
+        if (s === "blocked") return "row-block";
+        if (s === "ready" || s === "forecasted") return "row-ok";
+        return "";
+      }
+
+      function nowStr() {
+        var d = new Date();
+        function p(n) { return n < 10 ? "0" + n : "" + n; }
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+      }
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2600);
+      }
+
+      function filtered() {
+        var no = (document.getElementById("qNo").value || "").trim();
+        var cust = (document.getElementById("qCustomer").value || "").trim();
+        var qc = document.getElementById("qCustoms").value;
+        var qu = document.getElementById("qUpload").value;
+        var qs = document.getElementById("qStatus").value;
+        return rows.filter(function (r) {
+          if (r.status !== "forecasted") r.status = decide(r).status;
+          if (tab !== "all" && r.status !== tab) return false;
+          if (no && r.id.indexOf(no) === -1) return false;
+          if (cust && r.customer.indexOf(cust) === -1) return false;
+          if (qc !== "" && String(+r.isCustoms) !== qc) return false;
+          if (qu !== "" && String(+r.uploaded) !== qu) return false;
+          if (qs && r.status !== qs) return false;
+          return true;
+        });
+      }
+
+      function recount() {
+        var all = rows.length, ready = 0, blocked = 0, forecasted = 0, skipped = 0;
+        rows.forEach(function (r) {
+          var s = r.status === "forecasted" ? "forecasted" : decide(r).status;
+          if (r.status !== "forecasted") r.status = s;
+          if (r.status === "ready") ready++;
+          else if (r.status === "blocked") blocked++;
+          else if (r.status === "forecasted") forecasted++;
+          else skipped++;
+        });
+        document.getElementById("cAll").textContent = all;
+        document.getElementById("cReady").textContent = ready;
+        document.getElementById("cBlocked").textContent = blocked;
+        document.getElementById("cForecasted").textContent = forecasted;
+        document.getElementById("cSkipped").textContent = skipped;
+      }
+
+      function render() {
+        recount();
+        var list = filtered();
+        tbody.innerHTML = list.map(function (r) {
+          var tip = decide(r).tip;
+          var ops = "";
+          if (r.status === "ready") {
+            ops =
+              '<button type="button" class="btn btn-ok" data-act="forecast" data-id="' + r.id + '">预报资料</button>' +
+              '<button type="button" class="btn" data-act="view" data-id="' + r.id + '">查看资料</button>';
+          } else if (r.status === "blocked") {
+            ops =
+              '<button type="button" class="btn btn-warn" data-act="urge" data-id="' + r.id + '">催传资料</button>' +
+              '<button type="button" class="btn" data-act="upload" data-id="' + r.id + '">模拟已上传</button>' +
+              '<button type="button" class="btn" data-act="forecast" data-id="' + r.id + '" disabled title="资料未齐不可预报">预报资料</button>';
+          } else if (r.status === "forecasted") {
+            ops = '<button type="button" class="btn" data-act="view" data-id="' + r.id + '">查看预报</button>';
+          } else {
+            ops = '<button type="button" class="btn" data-act="view" data-id="' + r.id + '">仅查看</button>';
+          }
+          return (
+            '<tr class="' + rowClass(r.status) + '">' +
+              '<td>' + r.id + '</td>' +
+              '<td>' + r.customer + '</td>' +
+              '<td>' + r.checkinAt + '</td>' +
+              '<td>' + (r.isCustoms ? '<span class="tag yes">是</span>' : '<span class="tag skip">否</span>') + '</td>' +
+              '<td>' + (r.isCustoms
+                ? (r.uploaded ? '<span class="tag yes">已上传</span>' : '<span class="tag no">未上传</span>')
+                : '<span class="tag skip">—</span>') + '</td>' +
+              '<td>' + statusTag(r.status) + '</td>' +
+              '<td style="white-space:normal;max-width:280px">' + tip + '</td>' +
+              '<td><div class="ops">' + ops + '</div></td>' +
+            '</tr>'
+          );
+        }).join("") || '<tr><td colspan="8" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+      }
+
+      function find(id) {
+        for (var i = 0; i < rows.length; i++) if (rows[i].id === id) return rows[i];
+        return null;
+      }
+
+      function addSim(partial) {
+        var n = rows.length + 1;
+        var id = "WY260820" + (100 + n);
+        var r = Object.assign({
+          id: id,
+          customer: "演示客户" + n,
+          checkinAt: nowStr(),
+          isCustoms: true,
+          uploaded: false,
+          status: "ready"
+        }, partial);
+        var d = decide(r);
+        if (r.status !== "forecasted") r.status = d.status;
+        rows.unshift(r);
+        render();
+        toast("已模拟签入 " + r.id + " → " + tipStatus(r.status));
+      }
+
+      function tipStatus(s) {
+        return ({ ready: "可预报", blocked: "待催传", forecasted: "已预报", skipped: "已跳过" })[s] || s;
+      }
+
+      tbody.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-act]");
+        if (!btn) return;
+        var r = find(btn.getAttribute("data-id"));
+        if (!r) return;
+        var act = btn.getAttribute("data-act");
+        if (act === "forecast") {
+          if (!r.isCustoms || !r.uploaded) {
+            toast("不可预报：需「报关件=是」且「资料已上传」");
+            return;
+          }
+          r.status = "forecasted";
+          toast(r.id + " 已预报资料（推送预录/预报通道）");
+          render();
+        } else if (act === "urge") {
+          toast(r.id + " 已催传：业务员+客服代办「签入后上传报关资料」");
+        } else if (act === "upload") {
+          r.uploaded = true;
+          r.status = "ready";
+          toast(r.id + " 资料已上传 → 自动转为可预报");
+          render();
+        } else if (act === "view") {
+          toast(r.id + " · 报关件=" + (r.isCustoms ? "是" : "否") + " · 资料=" + (r.uploaded ? "已上传" : "未上传") + " · " + tipStatus(r.status));
+        }
+      });
+
+      document.getElementById("tabs").addEventListener("click", function (e) {
+        var t = e.target.closest(".tab");
+        if (!t) return;
+        tab = t.getAttribute("data-tab");
+        Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (el) {
+          el.classList.toggle("active", el === t);
+        });
+        render();
+      });
+
+      document.getElementById("btnSearch").addEventListener("click", render);
+      document.getElementById("btnResetFilter").addEventListener("click", function () {
+        document.getElementById("qNo").value = "";
+        document.getElementById("qCustomer").value = "";
+        document.getElementById("qCustoms").value = "";
+        document.getElementById("qUpload").value = "";
+        document.getElementById("qStatus").value = "";
+        render();
+      });
+
+      document.getElementById("btnSimOk").addEventListener("click", function () {
+        addSim({ customer: "报关齐套客户", isCustoms: true, uploaded: true });
+      });
+      document.getElementById("btnSimBlock").addEventListener("click", function () {
+        addSim({ customer: "待传资料客户", isCustoms: true, uploaded: false });
+      });
+      document.getElementById("btnSimSkip").addEventListener("click", function () {
+        addSim({ customer: "买单客户", isCustoms: false, uploaded: false });
+      });
+      document.getElementById("btnReset").addEventListener("click", function () {
+        rows = seed.map(function (r) { return Object.assign({}, r); });
+        tab = "all";
+        Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (el, i) {
+          el.classList.toggle("active", i === 0);
+        });
+        document.getElementById("btnResetFilter").click();
+        toast("列表已重置");
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>

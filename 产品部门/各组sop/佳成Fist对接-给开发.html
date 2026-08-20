@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>佳成 Fist 对接 · 给开发</title>
+  <style>
+    :root {
+      --bg: #f5f7fa; --card: #fff; --line: #e5e7eb;
+      --text: #1f2937; --sub: #6b7280; --blue: #2563eb;
+      --ok: #059669; --warn: #d97706; --ink: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 14px; color: var(--text); background: var(--bg); line-height: 1.55;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 48px; }
+    header {
+      background: var(--ink); color: #fff; padding: 20px 24px; border-radius: 8px; margin-bottom: 16px;
+    }
+    header h1 { margin: 0 0 6px; font-size: 22px; }
+    header p { margin: 0; color: #94a3b8; font-size: 13px; }
+    header .links { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+    header .links a {
+      color: #93c5fd; font-size: 12px; padding: 4px 8px;
+      border: 1px solid #334155; border-radius: 4px; background: #1e293b;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 10px; font-size: 15px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0;
+    }
+    .card h3 { margin: 14px 0 8px; font-size: 13px; color: #1e3a8a; }
+    .hint { margin: 0 0 10px; font-size: 12px; color: var(--sub); line-height: 1.65; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f8fafc; color: var(--sub); font-weight: 600; font-size: 12px; white-space: nowrap; }
+    .mono { font-family: Consolas,"Courier New",monospace; font-size: 12px; }
+    pre {
+      margin: 8px 0 0; padding: 10px 12px; background: #0f172a; color: #e2e8f0;
+      border-radius: 8px; font-size: 12px; line-height: 1.5; overflow: auto;
+    }
+    .pill {
+      display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .pill.ok { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
+    .pill.warn { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
+    .pill.info { background: #eff6ff; color: var(--blue); border-color: #bfdbfe; }
+    .callout {
+      padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.65; margin: 8px 0 0;
+    }
+    .callout.yellow { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+    .callout.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin: 4px 0; }
+    footer { text-align: center; color: var(--sub); font-size: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>佳成 Fist 对接 · 给开发</h1>
+      <p>来源：其他/佳成Fist对接文档(1).pdf（5 页）。本期只接 3 个 method：查 DW、改 DW、改运输信息。无回调接口。</p>
+      <div class="links">
+        <a href="海外对接组-导航.html">海外对接组导航</a>
+        <a href="海外对接组-DW预警自查和修正-SR智能转仓-MVP.html">DW 预警原型</a>
+        <a href="../../其他/佳成Fist对接文档(1).pdf">原 PDF</a>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>0. 本期范围</h2>
+      <table>
+        <thead>
+          <tr><th>#</th><th>method（请求头）</th><th>业务</th><th>ESS 落点</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td class="mono">trk.fist.dw.query</td>
+            <td>按 FBA 单号查 DW 时段</td>
+            <td>DW 预警列表回写窗口 / 是否允许修改 / 是否有差异</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td class="mono">trk.fist.dw.update</td>
+            <td>按 FBA 单号改预计送达，从而改 DW</td>
+            <td>业务修正预计送达后推佳成（须带产生节点）</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td class="mono">trk.fist.transportation.update</td>
+            <td>改干线预计开到、港口、服务等级、时效、可选提单/柜号</td>
+            <td>干线节点或提单柜号变更后推佳成</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout blue">
+        文档<strong>没有</strong>回调 / Webhook。ESS 侧主动 POST。建议：列表进入或定时任务调 query；业务保存节点时调 update。
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>1. 公共：网关、请求头、签名</h2>
+      <table>
+        <thead>
+          <tr><th>项</th><th>约定</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>生产网关</td><td class="mono">https://link.jcex.com/gateway/link.do</td></tr>
+          <tr><td>测试网关</td><td>PDF <strong>未提供</strong>。示例代码写「测试环境不能用域名，防火墙问题」，却仍填了生产 URL。联调前向佳成要测试地址。</td></tr>
+          <tr><td>Method / Content-Type</td><td>POST · <span class="mono">application/json; charset=UTF-8</span></td></tr>
+          <tr><td>超时</td><td>示例 30s</td></tr>
+          <tr><td>密钥</td><td>佳成分配 <span class="mono">app_key / app_secret</span>，放配置中心。PDF 里 Java 示例密钥仅对照签名，<strong>禁止写死进代码</strong>。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>请求头（PDF 表格缺失，按 Java 示例补齐）</h3>
+      <table>
+        <thead>
+          <tr><th>Header</th><th>示例 / 规则</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">app_key</td><td>平台分配</td></tr>
+          <tr><td class="mono">format</td><td>固定 <span class="mono">json</span></td></tr>
+          <tr><td class="mono">method</td><td>三个 method 之一</td></tr>
+          <tr><td class="mono">nonce</td><td>每次请求新 UUID</td></tr>
+          <tr><td class="mono">sign_type</td><td>固定 <span class="mono">md5</span></td></tr>
+          <tr><td class="mono">timestamp</td><td>毫秒时间戳字符串</td></tr>
+          <tr><td class="mono">version</td><td>固定 <span class="mono">1.0</span></td></tr>
+          <tr><td class="mono">sign</td><td>见下方，小写 32 位 MD5</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">签名只拼请求头值，<strong>不拼 Body</strong>。顺序固定，中间无分隔符：</p>
+      <pre>sign = MD5( app_key + format + method + nonce + sign_type + timestamp + version + app_secret ).toLowerCase()</pre>
+      <div class="callout yellow">
+        Body 是业务 JSON。改 method 或 nonce/timestamp 必须重算 sign。响应信封：<span class="mono">code / msg / data / timestamp</span>。文档只给了 <span class="mono">code=200</span>，其它码、空单、权限拒绝待佳成补。
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. 接口 1 · 获取 DW 时段</h2>
+      <p><span class="pill info">method</span> <span class="mono">trk.fist.dw.query</span></p>
+      <h3>请求 Body</h3>
+      <pre>{
+  "fbaShipmentId": "FBA19CXS685Y"
+}</pre>
+      <h3>响应 data（需落库 / 回写列表）</h3>
+      <table>
+        <thead>
+          <tr><th>字段</th><th>类型</th><th>含义</th><th>ESS 建议</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">fbaShipmentId</td><td>string</td><td>FBA 单号</td><td>查询键，对齐 DW 预警「FBA 单号」</td></tr>
+          <tr><td class="mono">waybillNumber</td><td>string</td><td>佳成单号</td><td>存对照，列表可展示</td></tr>
+          <tr><td class="mono">sellerAllowCarrierUpdateDw</td><td>bool</td><td>是否允许物流商改 DW</td><td>对齐「是否允许卖家/物流商修改」；<strong>false 时禁止调 update</strong></td></tr>
+          <tr><td class="mono">estimatedDeliveryDate</td><td>ISO UTC</td><td>预计送达</td><td>修正 DW 的输入基准</td></tr>
+          <tr><td class="mono">dwChoiceStartDate</td><td>ISO UTC</td><td>DW 开始</td><td>对齐亚马逊窗口起</td></tr>
+          <tr><td class="mono">dwChoiceEndDate</td><td>ISO UTC</td><td>DW 结束</td><td>对齐亚马逊窗口止</td></tr>
+          <tr><td class="mono">differenceFlag</td><td>bool</td><td>是否有差异</td><td>预警着色 / 筛「缺失或差异」</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">时间均为 <span class="mono">2026-07-03T00:00:00Z</span>。入库建议转业务时区后展示，回推仍用 UTC。</p>
+    </section>
+
+    <section class="card">
+      <h2>3. 接口 2 · 修改 DW 时段</h2>
+      <p><span class="pill info">method</span> <span class="mono">trk.fist.dw.update</span></p>
+      <h3>请求 Body</h3>
+      <table>
+        <thead>
+          <tr><th>字段</th><th>必填</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">fbaShipmentId</td><td>是</td><td>FBA 单号</td></tr>
+          <tr><td class="mono">estimatedDeliveryDate</td><td>是</td><td>新的预计送达，UTC</td></tr>
+          <tr><td class="mono">estimatedDeliveryDateSource</td><td>是</td><td>产生该时间的业务节点，见枚举</td></tr>
+        </tbody>
+      </table>
+      <h3>estimatedDeliveryDateSource</h3>
+      <table>
+        <thead>
+          <tr><th>代码</th><th>节点</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">PC</td><td>提柜</td></tr>
+          <tr><td class="mono">UC</td><td>拆柜</td></tr>
+          <tr><td class="mono">IB</td><td>入库</td></tr>
+          <tr><td class="mono">PO</td><td>计划</td></tr>
+          <tr><td class="mono">OB</td><td>出库</td></tr>
+          <tr><td class="mono">AP</td><td>约仓</td></tr>
+          <tr><td class="mono">CC</td><td>目的国清关</td></tr>
+          <tr><td class="mono">OTHER</td><td>其他</td></tr>
+          <tr><td><span class="pill warn">待确认</span></td><td>文档还写了「干线到达 LA」，<strong>未给代码</strong>。上线前问佳成（是否 <span class="mono">LA</span> 或并入 OTHER）。</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">返回 data 结构与 query 相同。调用成功后用返回的 start/end 覆盖本地 DW，不要自己算窗口。</p>
+      <div class="callout yellow">
+        调用前先 query：<span class="mono">sellerAllowCarrierUpdateDw !== true</span> 则只提示、不调 update。失败重试需记操作日志（DW 预警已有「DW操作日志」入口）。
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>4. 接口 3 · 修改运输信息</h2>
+      <p><span class="pill info">method</span> <span class="mono">trk.fist.transportation.update</span></p>
+      <table>
+        <thead>
+          <tr><th>字段</th><th>必填</th><th>说明</th><th>ESS 建议来源</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">fbaShipmentId</td><td>是</td><td>FBA 单号</td><td>运单 / FBA</td></tr>
+          <tr><td class="mono">middleLegEstimatedDepartureTime</td><td>是</td><td>干线预计出发 UTC</td><td>船期 ETD</td></tr>
+          <tr><td class="mono">middleLegEstimatedArrivalTime</td><td>是</td><td>干线预计到达 UTC</td><td>船期 ETA</td></tr>
+          <tr><td class="mono">originPort</td><td>是</td><td>始发港，如 CNSHA</td><td>提单起运港 UN/LOCODE</td></tr>
+          <tr><td class="mono">destinationPort</td><td>是</td><td>目的港，如 USLGB</td><td>提单目的港</td></tr>
+          <tr><td class="mono">middleLegServiceLevel</td><td>是</td><td>STANDARD / FAST / EXPEDITED</td><td>产品等级映射，需主数据表</td></tr>
+          <tr><td class="mono">minTransitDays</td><td>是</td><td>运输最小天数</td><td>产品时效下限</td></tr>
+          <tr><td class="mono">maxTransitDays</td><td>是</td><td>运输最长天数</td><td>产品时效上限</td></tr>
+          <tr><td class="mono">transportMode</td><td>是</td><td>示例仅 <span class="mono">OCEAN</span></td><td>空运代码待佳成确认</td></tr>
+          <tr><td class="mono">billOfLading</td><td>否</td><td>提单号</td><td>提单</td></tr>
+          <tr><td class="mono">containerNumber</td><td>否</td><td>柜号</td><td>柜子</td></tr>
+          <tr><td class="mono">masterNumber</td><td>否</td><td>主单号</td><td>主单；示例与提单号相同，以业务为准</td></tr>
+          <tr><td class="mono">distributionType</td><td>否</td><td>装箱类型</td><td>枚举未给</td></tr>
+          <tr><td class="mono">boxType</td><td>否</td><td>箱型</td><td>枚举未给</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">响应把请求字段原样带回，并多 <span class="mono">waybillNumber</span>。PDF 把 minTransitDays 注释写成「运输最新时间」，按请求侧「最小时间」实现。</p>
+    </section>
+
+    <section class="card">
+      <h2>5. 建议开发任务拆分</h2>
+      <table>
+        <thead>
+          <tr><th>序号</th><th>任务</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>D1</td>
+            <td>Fist 客户端</td>
+            <td>统一 POST 网关 + 签名 + 超时 + 把非 200 / 网络失败打成可重试错误。method、nonce、timestamp、sign 每次现算。</td>
+          </tr>
+          <tr>
+            <td>D2</td>
+            <td>配置</td>
+            <td>gatewayUrl、app_key、app_secret、version。测试/生产隔离。密钥不进仓库。</td>
+          </tr>
+          <tr>
+            <td>D3</td>
+            <td>DW 查询同步</td>
+            <td>按 FBA 单号调 query，回写 7 个 data 字段；differenceFlag、不允许修改要能筛、能标。</td>
+          </tr>
+          <tr>
+            <td>D4</td>
+            <td>DW 更新</td>
+            <td>业务改预计送达 → update。source 按当前轨迹节点映射枚举。成功后用返回窗口覆盖本地。</td>
+          </tr>
+          <tr>
+            <td>D5</td>
+            <td>运输信息更新</td>
+            <td>ETD/ETA/港口/提单/柜号变更触发。服务等级、海空运映射做成配置，不要写死 EXPEDITED/OCEAN。</td>
+          </tr>
+          <tr>
+            <td>D6</td>
+            <td>操作日志</td>
+            <td>每次 query/update 记：FBA、method、请求摘要、code/msg、耗时、操作人（定时任务记系统）。对齐 DW 页「DW操作日志」。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>6. 待佳成 / 产品确认（挡联调）</h2>
+      <ul>
+        <li>测试环境网关 URL（不要用生产域名测）。</li>
+        <li>非 200 的 code 字典；FBA 不存在、不允许改 DW、重复提交怎么返回。</li>
+        <li>「干线到达 LA」的 <span class="mono">estimatedDeliveryDateSource</span> 代码。</li>
+        <li><span class="mono">transportMode</span> 是否有 AIR 等；<span class="mono">distributionType / boxType</span> 枚举。</li>
+        <li>港口是否必须 UN/LOCODE 五位。</li>
+        <li>是否限流、是否要幂等键。</li>
+        <li>产品：销售产品 → STANDARD / FAST / EXPEDITED 对照表。</li>
+      </ul>
+      <div class="callout red">
+        文档范围止于上述 3 个写接口。轨迹推送、POD、下单创运单不在本 PDF，不要按本页扩 scope。
+      </div>
+    </section>
+
+    <footer>海外对接组 · 佳成 Fist · 据 PDF 2026-08-19 整理给开发</footer>
+  </div>
+</body>
+</html>
