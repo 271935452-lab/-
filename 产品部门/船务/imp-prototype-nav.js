@@ -8,7 +8,10 @@
   var GROUPS = [
     {
       label: "导航",
-      links: [{ file: "原型导航-进口商模块.html", label: "模块导航" }],
+      links: [
+        { file: "船务组-导航.html", label: "船务组导航" },
+        { file: "原型导航-进口商模块.html", label: "模块导航" },
+      ],
     },
     {
       label: "进口商",
@@ -17,6 +20,7 @@
         { file: "进口商管理-MVP.html#usage", label: "进口商管理（使用管理）" },
         { file: "进口商管理-MVP.html?action=create", label: "新增进口商（弹窗）" },
         { file: "进口商管理-MVP.html?action=edit&code=IMP-US-2024-018", label: "编辑进口商（弹窗）" },
+        { file: "进口商-清关行港口配置-MVP.html", label: "清关行·港口配置" },
       ],
     },
     {
@@ -27,7 +31,7 @@
     },
     {
       label: "返回",
-      links: [{ file: "index.html", label: "项目导航首页" }],
+      links: [{ file: "../../index.html", label: "项目导航首页" }],
     },
   ];
 

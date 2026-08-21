@@ -122,6 +122,32 @@
     }
     .fcl-ms.invalid .fcl-ms-trigger { border-color: #fca5a5; box-shadow: 0 0 0 1px #fca5a5; }
     .prod-hint { margin: 6px 0 0; font-size: 12px; color: var(--sub); line-height: 1.5; }
+    /* 一产品多仓地址：下拉选项占一行，不按仓拆多行 */
+    #productMs .fcl-ms-option {
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    #productMs .prod-opt-line {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+    #productMs .prod-opt-name {
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+    #productMs .prod-opt-addrs {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #6b7280;
+      font-size: 12px;
+    }
+    #productMs .prod-opt-addrs::before { content: "· "; color: #94a3b8; }
     .unit-wrap {
       display: flex;
       align-items: stretch;
@@ -536,7 +562,7 @@
           <div class="field field-lcl-only full" id="fieldSalesProduct">
             <label>销售产品<span class="req">*</span><span class="tag-chg">改</span></label>
             <div id="productMs"></div>
-            <p class="prod-hint">下拉多选；保存后由<strong>后台</strong>按各产品海外仓测距并出 AI 价——本页不展示海外仓、距离与仓地址。</p>
+            <p class="prod-hint">下拉多选：一产品多仓地址时拆成<strong>多条</strong>选项，选时展示<strong>仓名+仓地址</strong>；选完后文本框只显示<strong>产品 · 仓名</strong>（不带门牌地址）。</p>
           </div>
         </div>
       </div>
@@ -550,7 +576,7 @@
           <button type="button" class="mode-btn active" data-mode="lcl" aria-checked="true">散货（LCL）</button>
           <button type="button" class="mode-btn" data-mode="fcl" aria-checked="false">整柜（FCL）</button>
         </div>
-        <p class="mode-desc" id="modeDesc">散货：下拉多选销售产品；测距与算价由后台完成，本页不填海外仓与距离。</p>
+        <p class="mode-desc" id="modeDesc">散货：下拉多选销售产品（一产品多仓拆多条；选时带地址，回显不带门牌）；测距与算价由后台完成。</p>
 
         <div class="form-grid">
           <!-- ===== 散货字段 ===== -->
@@ -762,11 +788,11 @@
       var validInquiryTypes = Object.keys(inquiryTypeLabels);
 
       var modeText = {
-        lcl: "散货：下拉多选销售产品；测距与算价由后台完成，本页不展示海外仓与距离。",
+        lcl: "散货：下拉多选销售产品（一产品多仓拆多条；选时带地址，回显不带门牌）；测距与算价由后台完成。",
         fcl: "整柜维度：按起运港/目的港、箱型询价；选择服务类型。整柜手报价，不走 AI 测算。"
       };
       var aiHintText = {
-        lcl: "提示：销售产品 美西私人卡派，邮编 94591，城市 Vallejo，州 CA，总重量 1610，总体积 7.97，住宅地址，产品信息：季洁垫",
+        lcl: "提示：销售产品 中美快运私人卡派，邮编 94591，城市 Vallejo，州 CA，总重量 1610，总体积 7.97，住宅地址，产品信息：季洁垫",
         fcl: "提示：起运港 盐田，目的港 洛杉矶，箱型 40HQ，毛重 18500，邮编 92374，船司 COSCO"
       };
       var aiParseHint = document.getElementById("aiParseHint");
@@ -817,8 +843,11 @@
       }
 
       function warehouseState() {
-        var names = getSelectedProducts();
-        if (names.length && inferWh(names[0]).localStates) return inferWh(names[0]).localStates[0] || "";
+        var codes = getSelectedProducts();
+        if (!codes.length) return "";
+        var opt = findProductOpt(codes[0]);
+        var key = opt ? (opt.whName || opt.product || opt.trigger) : codes[0];
+        if (inferWh(key).localStates) return inferWh(key).localStates[0] || "";
         return "";
       }
 
@@ -957,30 +986,102 @@
         return { key: "LA", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761", incl: 1, localStates: ["CA"] };
       }
 
-      var PRODUCT_OPTIONS = [
-        { id: "sp-la", label: "中美快运私人卡派(洛杉矶)" },
-        { id: "sp-oak", label: "中美快运私人卡派(奥克兰)" },
-        { id: "sp-air", label: "美国空派 LAX" },
-        { id: "sp-west", label: "美西私人卡派" },
-        { id: "sp-mid", label: "美中私人卡派" },
-        { id: "sp-east", label: "美东私人卡派" }
+      var PRODUCT_CATALOG = [
+        {
+          id: "sp-private",
+          label: "中美快运私人卡派",
+          addrs: [
+            { id: "la", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761" },
+            { id: "oak", name: "奥克兰仓", addr: "1997 Davis St, San Leandro, CA 94577", zip: "94577" }
+          ]
+        },
+        {
+          id: "sp-air",
+          label: "美国空派 LAX",
+          addrs: [{ id: "la", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761" }]
+        },
+        {
+          id: "sp-west",
+          label: "美西私人卡派",
+          addrs: [{ id: "la", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761" }]
+        },
+        {
+          id: "sp-mid",
+          label: "美中私人卡派",
+          addrs: [{ id: "chi", name: "芝加哥仓", addr: "Chicago, IL 60601", zip: "60601" }]
+        },
+        {
+          id: "sp-east",
+          label: "美东私人卡派",
+          addrs: [{ id: "ny", name: "纽约仓", addr: "7 Slater Dr, Elizabeth, NJ 07206", zip: "07206" }]
+        }
       ];
-      var selectedProducts = ["中美快运私人卡派(洛杉矶)"];
+      /** 一产品多仓 → 下拉多条；code 唯一；选时带地址，回显不带门牌 */
+      var PRODUCT_OPTIONS = [];
+      PRODUCT_CATALOG.forEach(function (p) {
+        (p.addrs && p.addrs.length ? p.addrs : [{ id: "0", name: "", addr: "", zip: "" }]).forEach(function (a) {
+          var whPart = a.name || "";
+          var addrPart = a.addr || "";
+          PRODUCT_OPTIONS.push({
+            code: p.id + "#" + (a.id || a.zip || whPart),
+            product: p.label,
+            whName: whPart,
+            addr: addrPart,
+            zip: a.zip || "",
+            trigger: whPart ? p.label + " · " + whPart : p.label,
+            selectLine: whPart
+              ? p.label + " · " + whPart + (addrPart ? " " + addrPart : "")
+              : p.label
+          });
+        });
+      });
+      var selectedProducts = PRODUCT_OPTIONS.length ? [PRODUCT_OPTIONS[0].code] : [];
       var productMs = null;
+
+      function findProductOpt(code) {
+        return PRODUCT_OPTIONS.find(function (x) { return x.code === code; });
+      }
+      function productOptionLabelHtml(opt) {
+        if (!opt) return "";
+        var sub = opt.whName || "";
+        if (opt.addr) sub += (sub ? " " : "") + opt.addr;
+        if (!sub) return '<span class="prod-opt-line"><span class="prod-opt-name">' + opt.product + "</span></span>";
+        return (
+          '<span class="prod-opt-line">' +
+            '<span class="prod-opt-name">' + opt.product + "</span>" +
+            '<span class="prod-opt-addrs" title="' + String(opt.selectLine).replace(/"/g, "&quot;") + '">' + sub + "</span>" +
+          "</span>"
+        );
+      }
+      function formatProductTrigger(sel) {
+        return (sel || []).map(function (code) {
+          var opt = findProductOpt(code);
+          return opt ? opt.trigger : code;
+        }).join("、");
+      }
 
       function initProductMs() {
         var host = document.getElementById("productMs");
         if (!host || !window.mountFclMultiselect) return;
         productMs = mountFclMultiselect(host, {
-          items: PRODUCT_OPTIONS.map(function (p) { return { code: p.label, label: p.label }; }),
+          items: PRODUCT_OPTIONS.map(function (opt) {
+            return {
+              code: opt.code,
+              label: opt.trigger,
+              search: (opt.selectLine + " " + opt.product + " " + opt.whName + " " + opt.addr).toUpperCase()
+            };
+          }),
           defaultSelected: selectedProducts.slice(),
           maxSelect: PRODUCT_OPTIONS.length,
           placeholder: "请选择销售产品（可多选）",
-          searchPlaceholder: "搜索销售产品",
+          searchPlaceholder: "搜索销售产品 / 仓址",
           emptyText: "无匹配产品",
           limitTip: "已达可选上限",
-          getLabelHtml: function (c) { return c.label; },
-          getSearchText: function (c) { return String(c.label || "").toUpperCase(); },
+          getLabelHtml: function (c) {
+            return productOptionLabelHtml(findProductOpt(c.code));
+          },
+          getSearchText: function (c) { return c.search || String(c.label || "").toUpperCase(); },
+          formatValue: formatProductTrigger,
           onChange: function (sel) {
             selectedProducts = sel.slice();
             whDestMismatchConfirmed = false;
@@ -993,6 +1094,13 @@
         if (productMs) return productMs.getSelected();
         return selectedProducts.slice();
       }
+      /** 选中项对应的展示名（产品 · 仓名），供保存/校验文案 */
+      function getSelectedProductLabels() {
+        return getSelectedProducts().map(function (code) {
+          var opt = findProductOpt(code);
+          return opt ? opt.trigger : code;
+        });
+      }
 
       function setSelectedProducts(arr) {
         selectedProducts = (arr || []).filter(Boolean);
@@ -1004,14 +1112,22 @@
       function applyProductSelect(text) {
         var t = String(text || "");
         var hits = [];
-        PRODUCT_OPTIONS.forEach(function (p) {
-          if (t.indexOf(p.label) >= 0) hits.push(p.label);
+        PRODUCT_OPTIONS.forEach(function (opt) {
+          if (t.indexOf(opt.product) >= 0 || t.indexOf(opt.trigger) >= 0 || (opt.whName && t.indexOf(opt.whName) >= 0)) {
+            if (hits.indexOf(opt.code) < 0) hits.push(opt.code);
+          }
         });
         if (!hits.length) {
-          if (/美西|洛杉矶|LAX/.test(t)) hits.push("美西私人卡派");
-          else if (/奥克兰|OAK/.test(t)) hits.push("中美快运私人卡派(奥克兰)");
-          else if (/美中|芝加哥/.test(t)) hits.push("美中私人卡派");
-          else if (/美东|纽约/.test(t)) hits.push("美东私人卡派");
+          var prefer = "";
+          if (/美西|洛杉矶|LAX/.test(t)) prefer = "美西私人卡派";
+          else if (/奥克兰|OAK|私人卡派/.test(t)) prefer = "中美快运私人卡派";
+          else if (/美中|芝加哥/.test(t)) prefer = "美中私人卡派";
+          else if (/美东|纽约/.test(t)) prefer = "美东私人卡派";
+          if (prefer) {
+            PRODUCT_OPTIONS.forEach(function (opt) {
+              if (opt.product === prefer && hits.indexOf(opt.code) < 0) hits.push(opt.code);
+            });
+          }
         }
         if (!hits.length) return false;
         var merged = getSelectedProducts();
@@ -1097,7 +1213,7 @@
           dist: null,
           addr: getAddrType(),
           sales: getSelectedProducts(),
-          salesText: getSelectedProducts().join("、"),
+          salesText: getSelectedProductLabels().join("、"),
           product: (document.getElementById("productInfo").value || "").trim()
         };
       }

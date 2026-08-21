@@ -89,6 +89,16 @@
     #productMs { flex: 1; min-width: 0; }
     #productMs.fcl-ms-app-sheet .fcl-ms-trigger { border: none; padding: 0; min-height: auto; background: transparent; }
     #productMs.fcl-ms-app-sheet .fcl-ms-value { font-size: 15px; text-align: right; }
+    #productMs .fcl-ms-option { white-space: nowrap; overflow: hidden; }
+    #productMs .prod-opt-line {
+      display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1; overflow: hidden;
+    }
+    #productMs .prod-opt-name { flex-shrink: 0; font-weight: 600; }
+    #productMs .prod-opt-addrs {
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      color: #6b7280; font-size: 12px;
+    }
+    #productMs .prod-opt-addrs::before { content: "· "; color: #94a3b8; }
     .prod-hint { margin: 0; padding: 0 14px 10px; font-size: 12px; color: var(--sub); line-height: 1.5; }
     .form-row .label .req { color: var(--req); margin-left: 2px; }
     .form-row .value {
@@ -288,7 +298,7 @@
       <div class="label">销售产品<span class="req">*</span><span class="tag-chg">改</span></div>
       <div id="productMs"></div>
     </div>
-    <p class="prod-hint">下拉多选；测距与算价由后台完成，本页不展示海外仓、距离与仓地址。</p>
+    <p class="prod-hint">一产品多仓拆成多条；选时带仓地址，选完文本框只显示产品 · 仓名。</p>
     <div class="form-row">
       <div class="label">委托业务员</div>
       <div class="value">
@@ -472,14 +482,68 @@
         return el ? el.value : "";
       }
 
-      var PRODUCT_OPTIONS = [
-        { id: "sp-la", label: "中美快运私人卡派(洛杉矶)" },
-        { id: "sp-oak", label: "中美快运私人卡派(奥克兰)" },
-        { id: "sp-air", label: "美国空派 LAX" },
-        { id: "sp-west", label: "美西私人卡派" }
+      var PRODUCT_CATALOG = [
+        {
+          id: "sp-private",
+          label: "中美快运私人卡派",
+          addrs: [
+            { id: "la", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761" },
+            { id: "oak", name: "奥克兰仓", addr: "1997 Davis St, San Leandro, CA 94577", zip: "94577" }
+          ]
+        },
+        {
+          id: "sp-air",
+          label: "美国空派 LAX",
+          addrs: [{ id: "la", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761" }]
+        },
+        {
+          id: "sp-west",
+          label: "美西私人卡派",
+          addrs: [{ id: "la", name: "洛杉矶仓", addr: "1495 E Locust St, Ontario, CA 91761", zip: "91761" }]
+        }
       ];
-      var selectedProducts = ["中美快运私人卡派(洛杉矶)"];
+      var PRODUCT_OPTIONS = [];
+      PRODUCT_CATALOG.forEach(function (p) {
+        (p.addrs && p.addrs.length ? p.addrs : [{ id: "0", name: "", addr: "", zip: "" }]).forEach(function (a) {
+          var whPart = a.name || "";
+          var addrPart = a.addr || "";
+          PRODUCT_OPTIONS.push({
+            code: p.id + "#" + (a.id || a.zip || whPart),
+            product: p.label,
+            whName: whPart,
+            addr: addrPart,
+            zip: a.zip || "",
+            trigger: whPart ? p.label + " · " + whPart : p.label,
+            selectLine: whPart
+              ? p.label + " · " + whPart + (addrPart ? " " + addrPart : "")
+              : p.label
+          });
+        });
+      });
+      var selectedProducts = PRODUCT_OPTIONS.length ? [PRODUCT_OPTIONS[0].code] : [];
       var productMs = null;
+
+      function findProductOpt(code) {
+        return PRODUCT_OPTIONS.find(function (x) { return x.code === code; });
+      }
+      function productOptionLabelHtml(opt) {
+        if (!opt) return "";
+        var sub = opt.whName || "";
+        if (opt.addr) sub += (sub ? " " : "") + opt.addr;
+        if (!sub) return '<span class="prod-opt-line"><span class="prod-opt-name">' + opt.product + "</span></span>";
+        return (
+          '<span class="prod-opt-line">' +
+            '<span class="prod-opt-name">' + opt.product + "</span>" +
+            '<span class="prod-opt-addrs" title="' + String(opt.selectLine).replace(/"/g, "&quot;") + '">' + sub + "</span>" +
+          "</span>"
+        );
+      }
+      function formatProductTrigger(sel) {
+        return (sel || []).map(function (code) {
+          var opt = findProductOpt(code);
+          return opt ? opt.trigger : code;
+        }).join("、");
+      }
 
       function initProductMs() {
         var host = document.getElementById("productMs");
@@ -487,15 +551,24 @@
         productMs = mountFclMultiselect(host, {
           appMode: true,
           sheetTitle: "销售产品",
-          items: PRODUCT_OPTIONS.map(function (p) { return { code: p.label, label: p.label }; }),
+          items: PRODUCT_OPTIONS.map(function (opt) {
+            return {
+              code: opt.code,
+              label: opt.trigger,
+              search: (opt.selectLine + " " + opt.product + " " + opt.whName + " " + opt.addr).toUpperCase()
+            };
+          }),
           defaultSelected: selectedProducts.slice(),
           maxSelect: PRODUCT_OPTIONS.length,
           placeholder: "请选择（可多选）",
-          searchPlaceholder: "搜索产品",
+          searchPlaceholder: "搜索产品 / 仓址",
           emptyText: "无匹配产品",
           limitTip: "已达可选上限",
-          getLabelHtml: function (c) { return c.label; },
-          getSearchText: function (c) { return String(c.label || "").toUpperCase(); },
+          getLabelHtml: function (c) {
+            return productOptionLabelHtml(findProductOpt(c.code));
+          },
+          getSearchText: function (c) { return c.search || String(c.label || "").toUpperCase(); },
+          formatValue: formatProductTrigger,
           onChange: function (sel) {
             selectedProducts = sel.slice();
             whDestMismatchConfirmed = false;
@@ -507,6 +580,12 @@
       function getSelectedProducts() {
         if (productMs) return productMs.getSelected();
         return selectedProducts.slice();
+      }
+      function getSelectedProductLabels() {
+        return getSelectedProducts().map(function (code) {
+          var opt = findProductOpt(code);
+          return opt ? opt.trigger : code;
+        });
       }
 
       function setSelectedProducts(arr) {
@@ -528,9 +607,11 @@
       }
 
       function warehouseStateApp() {
-        var names = getSelectedProducts();
-        if (names.length) {
-          var wh = inferWh(names[0]);
+        var codes = getSelectedProducts();
+        if (codes.length) {
+          var opt = findProductOpt(codes[0]);
+          var key = opt ? (opt.whName || opt.product || opt.trigger) : codes[0];
+          var wh = inferWh(key);
           var m = (wh.addr || "").match(/\b([A-Z]{2})\s+\d{5}\b/);
           if (m) return m[1];
         }
@@ -591,7 +672,7 @@
         var box = document.getElementById("aiQuoteResult");
         box.innerHTML =
           "<div><b>已提交后台测算</b>（测距与算价在报价员端日志可见）</div>" +
-          "<div>销售产品 " + sales.join("、") + "</div>" +
+          "<div>销售产品 " + getSelectedProductLabels().join("、") + "</div>" +
           "<div style=\"margin-top:6px;color:#6b7280\">本页不展示海外仓、距离与金额。报价员核对确认后，业务员只收到最优 1 条。</div>";
         box.classList.remove("hidden");
       }
@@ -605,11 +686,21 @@
         var n = 0;
         var sales = pick(text, [/销售产品[:：\s]*([^\n]+)/, /(中美快运私人卡派[^\n,，;；]*)/, /([^\n]*私人卡派[（(][^）)]+[）)])/]);
         if (sales) {
-          PRODUCT_OPTIONS.forEach(function (p) {
-            if (sales.indexOf(p.label) >= 0 && selectedProducts.indexOf(p.label) < 0) selectedProducts.push(p.label);
+          PRODUCT_OPTIONS.forEach(function (opt) {
+            if (
+              (sales.indexOf(opt.product) >= 0 || sales.indexOf(opt.trigger) >= 0 || (opt.whName && sales.indexOf(opt.whName) >= 0)) &&
+              selectedProducts.indexOf(opt.code) < 0
+            ) {
+              selectedProducts.push(opt.code);
+            }
           });
-          if (/奥克兰|OAK/i.test(sales) && selectedProducts.indexOf("中美快运私人卡派(奥克兰)") < 0) selectedProducts.push("中美快运私人卡派(奥克兰)");
-          if (/洛杉矶|LAX/i.test(sales) && selectedProducts.indexOf("中美快运私人卡派(洛杉矶)") < 0) selectedProducts.push("中美快运私人卡派(洛杉矶)");
+          if (/奥克兰|OAK|洛杉矶|LAX|私人卡派/i.test(sales)) {
+            PRODUCT_OPTIONS.forEach(function (opt) {
+              if (opt.product === "中美快运私人卡派" && selectedProducts.indexOf(opt.code) < 0) {
+                selectedProducts.push(opt.code);
+              }
+            });
+          }
           setSelectedProducts(selectedProducts);
           n += 2;
         }

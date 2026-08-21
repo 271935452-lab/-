@@ -109,8 +109,12 @@
         valueEl.textContent = placeholder;
         valueEl.classList.add("is-placeholder");
       } else {
-        valueEl.textContent = selected.join("、");
-        valueEl.classList.remove("is-placeholder");
+        var text =
+          typeof opts.formatValue === "function"
+            ? opts.formatValue(selected.slice())
+            : selected.join("、");
+        valueEl.textContent = text || placeholder;
+        valueEl.classList.toggle("is-placeholder", !text);
       }
     }
 

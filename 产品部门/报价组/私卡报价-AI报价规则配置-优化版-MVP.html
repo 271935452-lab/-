@@ -105,6 +105,14 @@
       display: grid; grid-template-columns: 132px minmax(0, 1fr) minmax(300px, 360px);
       gap: 0; background: #fff; border: 1px solid var(--line); border-radius: 2px; min-height: 640px;
     }
+    .workbench.no-trial {
+      grid-template-columns: 132px minmax(0, 1fr);
+    }
+    .workbench.no-trial .trial-dock { display: none; }
+    .workbench.no-trial .rail-main { max-height: none; }
+    #tab-maintain.active .tbl { width: 100%; }
+    #tab-maintain.active #prodBindTbl .prod-cell { min-width: 300px; }
+    #tab-maintain.active #prodBindTbl select[data-f="warehouseId"] { min-width: 280px; }
     @media (max-width: 1280px) {
       .workbench { grid-template-columns: 132px minmax(0, 1fr); }
       .trial-dock { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: none; }
@@ -174,11 +182,9 @@
     table.tbl input {
       width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font: inherit; text-align: center;
     }
-    #prodBindTbl select[data-f="wh"] { height: 28px; min-width: 140px; font: inherit; }
-    #prodBindTbl input[data-f="origin"] { text-align: left; min-width: 180px; }
-    #prodBindTbl input[data-f="city"] { min-width: 88px; }
-    #prodBindTbl input[data-f="st"] { width: 52px; text-transform: uppercase; }
-    #prodBindTbl input[data-f="zip"] { width: 72px; }
+    #prodBindTbl select[data-f="warehouseId"] { height: 28px; min-width: 220px; font: inherit; text-align: left; }
+    #prodBindTbl input[data-f="whName"] { text-align: left; min-width: 140px; }
+    #prodBindTbl .ro { background: #f5f5f5; color: #595959; cursor: default; }
     .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 14px; }
     @media (max-width: 960px) { .form-grid { grid-template-columns: 1fr 1fr; } }
     .fi label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 3px; }
@@ -374,7 +380,7 @@
       <button type="button" class="btn btn-primary" id="btnPublish">发布（到点生效）</button>
     </div>
 
-    <div class="workbench">
+    <div class="workbench" id="workbench">
       <nav class="rail" id="mainTabs" aria-label="规则分区">
         <button type="button" class="tab active" data-tab="local">内州价表</button>
         <button type="button" class="tab" data-tab="out">外州规则</button>
@@ -399,7 +405,7 @@
               <div class="row"><span class="k">返回业务员的单价</span><span>（AI规则配置 + 头程运价）÷ 计费重，个位 USD/KG</span></div>
             </div>
           </div>
-          <p class="note-sm">改完点顶栏「保存草稿」，右边试算立刻用草稿。发布并填生效时间后，到点询价才走新版。</p>
+          <p class="note-sm">海外仓从<strong>现网仓库列表</strong>（仓库类型=海外仓）搜索选取；仓地址为可选下拉，已绑定过的地址在其他行中过滤。改完点顶栏「保存草稿」。</p>
           <table class="tbl" id="prodBindTbl">
             <thead>
               <tr>
@@ -414,6 +420,7 @@
             </thead>
             <tbody></tbody>
           </table>
+          <datalist id="whNameList"></datalist>
           <div class="acts" style="justify-content:flex-start">
             <button type="button" class="btn" id="btnAddProd">新增绑定</button>
           </div>
@@ -823,7 +830,7 @@
     <span class="ess-prd-chip">PRD · AI报价规则 · 优化版交互</span>
     <h3>优化版：维护与试算同屏</h3>
     <ul>
-      <li>原 6 个 Tab 改成左侧分区（内州价表 / 外州 / 仓绑定 / 有效期 / 版本），<strong>试算固定在右侧</strong>。</li>
+      <li>原 6 个 Tab 改成左侧分区（内州价表 / 外州 / 仓绑定 / 有效期 / 版本），<strong>试算固定在右侧</strong>（<strong>仓绑定分区隐藏试算坞</strong>，列表全宽）。</li>
       <li>保存草稿、试算、发布钉在顶栏，改完不用切页。</li>
       <li>保存草稿后右侧按草稿立刻重算；询价仍走当前生效版，须填生效时间发布、到点才切线上。</li>
       <li>规则口径与<a href="私卡报价-AI报价规则配置-MVP.html">原版</a>相同，只改交互。</li>
@@ -852,7 +859,7 @@
       <li><strong>入口：</strong>运单模块独立菜单「AI报价规则」，与询价报价（报价员）并列。报价员 / 规则管理员可见，业务员菜单不展示。</li>
       <li><strong>谁：</strong>报价组规则管理员。询价员 / 业务员只读已发布版本，不能在询价里改价表。</li>
       <li><strong>流程：</strong>改价表或仓绑定 → 保存草稿（本页试算可用草稿）→ 发布时必填<strong>生效时间</strong> → 到点前询价仍走当前生效版；到点后新询价走新版。不是改完或点发布立刻切。在期未过期票默认仅提示可重算。</li>
-      <li><strong>可改：</strong>六仓本地距离档（起步价 / 续托 / 53 整车价 / 含托数）、内州拆车上限与折算、内州迈数、外州单迈价档、$ / mile、外州拆车上限与尾量系数、万物智联品牌启用、销售产品↔仓（产品、海外仓、仓地址、城市、州、邮编均可改）。</li>
+      <li><strong>可改：</strong>六仓本地距离档（起步价 / 续托 / 53 整车价 / 含托数）、内州拆车上限与折算、内州迈数、外州单迈价档、$ / mile、外州拆车上限与尾量系数、万物智联品牌启用、销售产品↔仓（产品多选 + 从现网仓库列表选海外仓与地址）。</li>
       <li><strong>锁定：</strong>询价/试算不可手切内外州（仍按距离自动切）、有效期 7 天+15/30 截断、尾端派送费（确认台按票登记）、万物智联附加费（<strong>对接返回已含，本页不维护、不本地叠加</strong>，见 <a href="散货AI询价报价-需求PRD.html#m2-fee">PRD 2.5.1</a>）。</li>
     </ul>
     <p>规则来源：713.xls 六仓价表 + 8/14 袁华君外州单迈价 + <a href="报价组-会议纪要_2026-08-15-AI报价.html">8/15 会议纪要</a> + <a href="海外仓至本州地址报价系统.html">本州测算页</a> / <a href="海外仓至外州地址报价系统.html">外州测算页</a>。内州/外州默认按 ≤150 / &gt;150 迈（规则页可改迈数与拆车上限）；纽约 NY/NJ 按收货地址；外州小车万物智联优先 8 品牌各取最便宜 1 条，<strong>没有则再取其他最便宜</strong>（<strong>仅报价员</strong>）；外州大车按距离档 × 单迈单价。报价员确认台仍登记<strong>尾端派送费（取整、不做计算）</strong>并绑运单。</p>
@@ -1262,11 +1269,100 @@
     "美东加班卡派"
   ];
   var PROD_BINDS = [
-    { prods: ["中美快运私人卡派(洛杉矶)", "美国空派 LAX"], wh: "LA" },
-    { prods: ["中美快运私人卡派(奥克兰)"], wh: "OAK" },
-    { prods: ["中美快运私人卡派(纽约)"], wh: "NY" }
+    { prods: ["中美快运私人卡派(洛杉矶)", "美国空派 LAX"], warehouseId: "master-LA" },
+    { prods: ["中美快运私人卡派(奥克兰)"], warehouseId: "master-OAK" },
+    { prods: ["中美快运私人卡派(纽约)"], warehouseId: "master-NY" }
   ];
   var openMsI = -1;
+
+  /** 现网仓库列表示意：仅仓库类型=海外仓 可出现在绑定表 */
+  function buildWarehouseMaster() {
+    var list = [];
+    WH_ORDER.forEach(function (id) {
+      var w = WH[id];
+      list.push({
+        id: "master-" + id,
+        type: "海外仓",
+        name: w.name,
+        origin: w.origin,
+        city: w.city,
+        st: w.st,
+        zip: w.zip,
+        whKey: id
+      });
+    });
+    list.push({
+      id: "master-NY-ny",
+      type: "海外仓",
+      name: "纽约海外仓",
+      origin: "NY Metro Service Area",
+      city: "New York",
+      st: "NY",
+      zip: "10001",
+      whKey: "NY"
+    });
+    list.push({
+      id: "master-dom-yw",
+      type: "国内仓",
+      name: "义乌总仓",
+      origin: "义乌市某路",
+      city: "义乌",
+      st: "ZJ",
+      zip: "322000",
+      whKey: null
+    });
+    return list;
+  }
+  var WAREHOUSE_MASTER = buildWarehouseMaster();
+
+  function masterOverseas() {
+    return WAREHOUSE_MASTER.filter(function (w) { return w.type === "海外仓"; });
+  }
+  function masterById(id) {
+    return WAREHOUSE_MASTER.find(function (w) { return w.id === id; }) || null;
+  }
+  function whNameOptions() {
+    var seen = {};
+    return masterOverseas().filter(function (w) {
+      if (seen[w.name]) return false;
+      seen[w.name] = true;
+      return true;
+    }).map(function (w) { return w.name; });
+  }
+  function usedWarehouseIds(skipRow) {
+    var used = {};
+    PROD_BINDS.forEach(function (p, i) {
+      if (i === skipRow || !p.warehouseId) return;
+      used[p.warehouseId] = true;
+    });
+    return used;
+  }
+  function addrOptionsForRow(rowIndex, whName) {
+    var used = usedWarehouseIds(rowIndex);
+    var name = (whName || "").trim();
+    return masterOverseas().filter(function (w) {
+      if (used[w.id]) return false;
+      if (name && w.name !== name) return false;
+      return true;
+    });
+  }
+  function syncWhNameList() {
+    var dl = $("whNameList");
+    if (!dl) return;
+    dl.innerHTML = whNameOptions().map(function (n) {
+      return "<option value='" + escHtml(n) + "'></option>";
+    }).join("");
+  }
+  function rowWhName(row) {
+    var m = masterById(row.warehouseId);
+    return m ? m.name : (row.whName || "");
+  }
+  function applyWarehouseToRow(row, warehouseId) {
+    row.warehouseId = warehouseId || "";
+    var m = masterById(warehouseId);
+    row.whName = m ? m.name : (row.whName || "");
+    if (m && m.whKey) row.wh = m.whKey;
+  }
 
   function normalizeBand(r) {
     if (r.base == null || r.tray == null) {
@@ -1703,20 +1799,29 @@
       "</div></div>";
   }
   function renderProdBind() {
+    syncWhNameList();
     var box = $("prodBindTbl");
     if (!box) return;
     box.querySelector("tbody").innerHTML = PROD_BINDS.map(function (p, i) {
       p.prods = prodList(p);
-      var w = WH[p.wh] || {};
-      var opts = WH_ORDER.map(function (id) {
-        return "<option value='" + id + "'" + (p.wh === id ? " selected" : "") + ">" + WH[id].name + "</option>";
+      var m = masterById(p.warehouseId);
+      if (m && m.whKey) p.wh = m.whKey;
+      var whName = rowWhName(p);
+      var addrOpts = addrOptionsForRow(i, whName);
+      var addrHtml = "<option value=''>请选择仓地址</option>" + addrOpts.map(function (w) {
+        var label = w.origin + " · " + w.city + ", " + w.st + " " + w.zip;
+        return "<option value='" + w.id + "'" + (p.warehouseId === w.id ? " selected" : "") + ">" + escHtml(label) + "</option>";
       }).join("");
+      if (p.warehouseId && m && addrOpts.every(function (w) { return w.id !== p.warehouseId; })) {
+        var curLabel = m.origin + " · " + m.city + ", " + m.st + " " + m.zip;
+        addrHtml += "<option value='" + m.id + "' selected>" + escHtml(curLabel) + "</option>";
+      }
       return "<tr data-i='" + i + "'><td class='left prod-cell'>" + renderMs(p, i) + "</td>" +
-        "<td><select data-f='wh'>" + opts + "</select></td>" +
-        "<td class='left'><input data-f='origin' value='" + escHtml(w.origin || "") + "' placeholder='街道地址' /></td>" +
-        "<td><input data-f='city' value='" + escHtml(w.city || "") + "' placeholder='城市' /></td>" +
-        "<td><input data-f='st' value='" + escHtml(w.st || "") + "' placeholder='州' maxlength='2' /></td>" +
-        "<td><input data-f='zip' value='" + escHtml(w.zip || "") + "' placeholder='邮编' /></td>" +
+        "<td class='left'><input data-f='whName' list='whNameList' value='" + escHtml(whName) + "' placeholder='搜索或输入海外仓' title='现网仓库列表 · 类型=海外仓' /></td>" +
+        "<td class='left'><select data-f='warehouseId'>" + addrHtml + "</select></td>" +
+        "<td><input class='ro' readonly value='" + escHtml(m ? m.city : "") + "' /></td>" +
+        "<td><input class='ro' readonly value='" + escHtml(m ? m.st : "") + "' /></td>" +
+        "<td><input class='ro' readonly value='" + escHtml(m ? m.zip : "") + "' /></td>" +
         "<td class='op'><button type='button' class='link-btn' data-del-prod='" + i + "'>删除</button></td></tr>";
     }).join("");
   }
@@ -1724,8 +1829,9 @@
   function cloneJson(o) { return JSON.parse(JSON.stringify(o)); }
   function captureRuleSnapshot(ver, note, eff, st) {
     var binds = PROD_BINDS.map(function (p) {
-      var w = WH[p.wh] || {};
-      return (p.prods || []).join("、") + " → " + (w.name || p.wh);
+      var m = masterById(p.warehouseId);
+      var addr = m ? (m.origin + " · " + m.city + ", " + m.st + " " + m.zip) : "未选地址";
+      return (p.prods || []).join("、") + " → " + (m ? m.name : rowWhName(p)) + "（" + addr + "）";
     });
     var whLocal = WH_ORDER.map(function (id) {
       var w = WH[id];
@@ -2151,16 +2257,24 @@
     $("calcResult").textContent = lines.join("\n");
   }
 
+  function syncTrialDock(tabId) {
+    var wb = $("workbench");
+    var hide = tabId === "maintain";
+    if (wb) wb.classList.toggle("no-trial", hide);
+  }
+
   $("mainTabs").onclick = function (e) {
     var tab = e.target.closest(".tab");
     if (!tab) return;
+    var tabId = tab.getAttribute("data-tab");
     document.querySelectorAll("#mainTabs .tab").forEach(function (t) { t.classList.remove("active"); });
     document.querySelectorAll(".bd").forEach(function (b) { b.classList.remove("active"); });
     tab.classList.add("active");
-    $("tab-" + tab.getAttribute("data-tab")).classList.add("active");
-    if (tab.getAttribute("data-tab") === "local") renderLocalTab();
-    if (tab.getAttribute("data-tab") === "out") renderOutTab();
-    if (tab.getAttribute("data-tab") === "maintain") renderProdBind();
+    $("tab-" + tabId).classList.add("active");
+    syncTrialDock(tabId);
+    if (tabId === "local") renderLocalTab();
+    if (tabId === "out") renderOutTab();
+    if (tabId === "maintain") renderProdBind();
   };
 
   $("eDist").oninput = function () {
@@ -2294,19 +2408,20 @@
     markDraft();
   });
   $("prodBindTbl").addEventListener("input", function (e) {
-    var inp = e.target.closest("input[data-f='origin'], input[data-f='city'], input[data-f='st'], input[data-f='zip']");
+    var inp = e.target.closest("input[data-f='whName']");
     if (!inp) return;
     var tr0 = inp.closest("tr[data-i]");
     if (!tr0) return;
     var row0 = PROD_BINDS[+tr0.getAttribute("data-i")];
-    var w0 = row0 && WH[row0.wh];
-    if (!w0) return;
-    var f0 = inp.getAttribute("data-f");
-    if (f0 === "origin") w0.origin = inp.value.trim();
-    else if (f0 === "city") w0.city = inp.value.trim();
-    else if (f0 === "st") w0.st = inp.value.trim().toUpperCase();
-    else w0.zip = inp.value.trim();
+    if (!row0) return;
+    row0.whName = inp.value.trim();
+    var cur = masterById(row0.warehouseId);
+    if (cur && cur.name !== row0.whName) {
+      row0.warehouseId = "";
+      row0.wh = "";
+    }
     markDraft();
+    renderProdBind();
   });
   $("prodBindTbl").addEventListener("change", function (e) {
     var tr = e.target.closest("tr[data-i]");
@@ -2314,9 +2429,9 @@
     var i = +tr.getAttribute("data-i");
     var row = PROD_BINDS[i];
     if (!row) return;
-    var whSel = e.target.closest("select[data-f='wh']");
-    if (whSel) {
-      row.wh = whSel.value;
+    var addrSel = e.target.closest("select[data-f='warehouseId']");
+    if (addrSel) {
+      applyWarehouseToRow(row, addrSel.value || "");
       markDraft();
       renderProdBind();
       return;
@@ -2419,10 +2534,9 @@
     };
   }
   $("btnAddProd").onclick = function () {
-    var used = {};
-    PROD_BINDS.forEach(function (p) { used[p.wh] = true; });
-    var wh = WH_ORDER.filter(function (id) { return !used[id]; })[0] || "LA";
-    PROD_BINDS.push({ prods: [], wh: wh });
+    var used = usedWarehouseIds(-1);
+    var next = masterOverseas().find(function (w) { return !used[w.id]; });
+    PROD_BINDS.push({ prods: [], warehouseId: next ? next.id : "", whName: next ? next.name : "", wh: next ? next.whKey : "" });
     openMsI = PROD_BINDS.length - 1;
     markDraft();
     renderProdBind();
