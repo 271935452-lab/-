@@ -584,6 +584,67 @@
     .rel-tbl .chk { width: 36px; text-align: center; }
     .rel-filter-note { margin: 0 0 8px; font-size: 11px; color: #8c8c8c; }
 
+    /* 查货详情弹窗（现网「详情」三页签） */
+    .det-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 90;
+      display: none; align-items: center; justify-content: center; padding: 12px;
+    }
+    .det-mask.open { display: flex; }
+    .det-modal {
+      width: min(1120px, 98vw); height: min(88vh, 820px); background: #fff; border-radius: 2px;
+      box-shadow: 0 10px 32px rgba(0,0,0,.22); display: flex; flex-direction: column;
+    }
+    .det-modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .det-modal-hd h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .det-modal-hd .sub { font-size: 12px; color: var(--sub); font-weight: 400; margin-left: 8px; }
+    .det-tabs {
+      display: flex; gap: 0; padding: 0 16px; border-bottom: 1px solid var(--line); background: #fafafa;
+    }
+    .det-tabs button {
+      border: none; background: transparent; padding: 10px 18px; font: inherit; font-size: 13px;
+      cursor: pointer; color: var(--sub); border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .det-tabs button.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; background: #fff; }
+    .det-modal-bd { padding: 12px 16px; overflow: auto; flex: 1; min-height: 0; }
+    .det-tip {
+      margin: 0 0 10px; padding: 8px 10px; font-size: 12px; line-height: 1.55;
+      background: #f6ffed; border: 1px solid #b7eb8f; color: #135200; border-radius: 2px;
+    }
+    .det-tbl-wrap { border: 1px solid var(--line); border-radius: 2px; overflow: auto; max-height: calc(88vh - 220px); }
+    .det-tbl {
+      width: 100%; border-collapse: collapse; font-size: 12px; min-width: 900px;
+    }
+    .det-tbl th {
+      position: sticky; top: 0; background: #fafafa; border-bottom: 1px solid #f0f0f0;
+      padding: 0; text-align: left; font-weight: 600; color: var(--sub); white-space: nowrap; z-index: 1;
+    }
+    .det-tbl th .th-inner { padding: 8px 10px; border-right: 1px solid #f0f0f0; }
+    .det-tbl th .flt {
+      display: block; width: 100%; border: none; border-top: 1px solid #f0f0f0; padding: 4px 8px;
+      font: inherit; font-size: 11px; background: #fff;
+    }
+    .det-tbl td { padding: 7px 10px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+    .det-tbl tr:hover td { background: #fafafa; }
+    .det-tbl .mono { font-family: Consolas, monospace; font-size: 11px; }
+    .det-tbl .sub-no { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .det-thumb {
+      width: 44px; height: 44px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: linear-gradient(135deg, #e6f7ff, #f9f0ff); display: inline-flex;
+      align-items: center; justify-content: center; font-size: 10px; color: #8c8c8c; cursor: pointer;
+    }
+    .det-thumb:hover { border-color: var(--primary); color: var(--primary); }
+    .det-empty {
+      padding: 32px 12px; text-align: center; color: #8c8c8c; font-size: 12px;
+      border: 1px dashed #d9d9d9; border-radius: 2px; background: #fafafa;
+    }
+    .det-modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+
     .ai-feed {
       margin: 0 0 12px; padding: 10px 12px; background: #f9f0ff; border: 1px solid #d3adf7;
       border-radius: 2px; font-size: 12px; line-height: 1.55;
@@ -1006,6 +1067,7 @@
           </div>
           <button type="button" class="btn primary" id="btnProductConfirm" title="批量：勾选的运单作为一批进入确认操作台，本批处理完自动关闭；单票：仅 1 票">产品确认<span id="btnPcLabel"></span> <span class="badge chg">改</span></button>
           <button type="button" class="btn">查询数据</button>
+          <button type="button" class="btn" id="btnInspectDetail" title="查看所选运单的子单明细、查货记录与附件（只读）">查货详情</button>
           <button type="button" class="btn light" id="btnHoldBatch">+ 查货扣件</button>
           <button type="button" class="btn dark" id="btnHoldRelease" title="仅展示查货相关扣件放行（不含查验柜场景）">查货扣件放行 <span class="badge chg">改</span></button>
           <button type="button" class="btn chg" id="btnBatchAddSvc" title="勾选 2 票及以上，批量维护附加服务">批量添加附加服务 <span class="badge chg">改</span></button>
@@ -1347,6 +1409,25 @@
     </div>
   </div>
 
+  <!-- 查货详情（现网三页签：详情 / 查货记录 / 附件信息） -->
+  <div class="det-mask" id="detMask" aria-hidden="true">
+    <div class="det-modal" role="dialog" aria-labelledby="detTitle">
+      <div class="det-modal-hd">
+        <h3 id="detTitle">详情 <span class="sub" id="detSub">—</span></h3>
+        <button type="button" class="btn" id="detClose">关闭</button>
+      </div>
+      <div class="det-tabs" id="detTabs">
+        <button type="button" class="on" data-det-tab="detail">详情</button>
+        <button type="button" data-det-tab="log">查货记录</button>
+        <button type="button" data-det-tab="attach">附件信息</button>
+      </div>
+      <div class="det-modal-bd" id="detBody"></div>
+      <div class="det-modal-ft">
+        <button type="button" class="btn" id="detCancel">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 附加服务（批量添加 / 修改 · 回显已有 · 可勾选可勾除） -->
   <div class="svc-mask" id="svcMask" aria-hidden="true">
     <div class="svc-modal" role="dialog" aria-labelledby="svcTitle">
@@ -1440,7 +1521,7 @@
     <h4>现网能力</h4>
     <ul>
       <li>筛选：到货时间、产品组、运单号、销售产品、客户、到货网点、终配舱单号、扣件状态、记录状态、查货员、业务员、客户类型等。</li>
-      <li>按钮：查询、查货扣件、<strong>查货扣件放行</strong>（仅查货相关）、产品确认、<strong>批量添加附加服务</strong>（≥2 票）、<strong>修改附加服务</strong>（仅 1 票）、添加费用等；工具栏分批量/单票（产品确认 / 扣件 / 加费用）。</li>
+      <li>按钮：查询、<strong>查货详情</strong>、查货扣件、<strong>查货扣件放行</strong>（仅查货相关）、产品确认、<strong>批量添加附加服务</strong>（≥2 票）、<strong>修改附加服务</strong>（仅 1 票）、添加费用等；工具栏分批量/单票（产品确认 / 扣件 / 加费用）。</li>
       <li>状态页签：全部 / 查货中 / 查货扣件中 / 产品已确认 / 已退件。</li>
       <li>列表列：状态、收货时间、客户单号、运单状态、查货率、计费重、件数、扣件状态、客户简称、主品名、查货标记/备注/员/时间、核对人/时间/备注、附加服务、各类备注、收货仓、销售产品、业务员/客服、客户类型、业务类型、报关编号、终配舱单号、财务、所在仓、创建人/时间。</li>
     </ul>
@@ -1451,6 +1532,13 @@
       <li><strong>AI 输出（回传风控）</strong>：识图状态、建议品名、识别品牌、侵权风险结论、带电判断、品名识别状态。</li>
       <li>列表列：AI识图状态、查货图、AI建议品名、品名识别状态、AI识别品牌、侵权/带电结论。</li>
       <li>人工确认入口合并进「产品确认」侧栏（批量入队 · 须看图 · 确认并下一条）。</li>
+    </ul>
+    <h4>查货详情弹窗（现网三页签）</h4>
+    <ul>
+      <li>入口：工具栏「查货详情」（须勾 1 票）、行操作「详情」、<strong>客户单号</strong>列链接；只读查看，不在此编辑。</li>
+      <li><strong>详情</strong>：子单级表格 — 序号 / 运单号 / 子单号 / 是否查货 / 查货人 / 查货时间 / 查货备注 / 查货标记 / 是否核对；列头带筛选行（对齐现网）。</li>
+      <li><strong>查货记录</strong>：操作时间 / 操作人 / 单号 / 主品名 / 图片缩略 / 备注；按时间倒序。</li>
+      <li><strong>附件信息</strong>：查货图 + 保函/授权类附件列表；支持下载（原型占位）。</li>
     </ul>
     <h4>改 · 查货扣件放行弹窗</h4>
     <ul>
@@ -1531,7 +1619,11 @@
       material: "PE塑料", usage: "商品包装",
       names: ["塑料包装袋", "气泡膜", "封箱胶带", "纸箱", "吊牌", "说明书"],
       packType: "包装",
-      attach: { letter: "保函_浩泽_HZBZ0804.pdf", authCn: "", authOs: "" }
+      attach: { letter: "保函_浩泽_HZBZ0804.pdf", authCn: "", authOs: "" },
+      inspectLogs: [
+        { at: "2026-08-21 00:54:23", op: "袁寒", no: "ICBU000011872820001", name: "塑料包装袋", remark: "" },
+        { at: "2026-08-06 09:51:02", op: "张富坤", no: "ICBU000011872820001", name: "包装袋", remark: "初查" }
+      ]
     },
     {
       st: "查货中", recv: "2026-08-06 09:48:33", custNo: "MTTY0806-12", waySt: "已签入",
@@ -1666,6 +1758,8 @@
   var filterSt = "";
   var activeRow = null;
   var activeIdx = -1;
+  var detailRow = null;
+  var detailTab = "detail";
   var infrRow = null;
   var infrStep = 1;
   var infrRes = "";
@@ -1694,6 +1788,212 @@
     el.textContent = msg;
     el.style.display = "block";
     setTimeout(function () { el.style.display = "none"; }, 2000);
+  }
+
+  function detailWaybillNo(r) {
+    if (!r) return "—";
+    return (r.decl || "").trim() || String(r.custNo || "").replace(/-/g, "");
+  }
+
+  function buildSubOrders(r) {
+    if (r.subOrders && r.subOrders.length) return r.subOrders;
+    var base = detailWaybillNo(r);
+    var total = Math.max(parseInt(r.pcs, 10) || 1, 1);
+    var showN = Math.min(total, 24);
+    var verified = !!(r.verifier && r.verifyAt);
+    var list = [];
+    for (var i = 1; i <= showN; i++) {
+      var subNo = base + String(i).padStart(3, "0");
+      var done = r.st !== "查货中" || i <= Math.ceil(showN / 2);
+      list.push({
+        idx: i,
+        waybill: base,
+        subNo: subNo,
+        inspected: done ? "已查货" : "未查货",
+        checker: done ? (r.checker || "") : "",
+        chkTime: done ? (r.lastChk || "") : "",
+        remark: done ? (r.remark || "") : "",
+        mark: done ? (r.mark || "") : "",
+        verified: verified && done ? "已核对" : "未核对",
+        totalPcs: total
+      });
+    }
+    return list;
+  }
+
+  function buildInspectLogs(r) {
+    if (r.inspectLogs && r.inspectLogs.length) return r.inspectLogs.slice();
+    var logs = [];
+    if (r.lastChk && r.checker) {
+      logs.push({
+        at: r.lastChk, op: r.checker,
+        no: detailWaybillNo(r) + "001",
+        name: r.nameCn || r.name || r.suggest || "—",
+        remark: r.remark || ""
+      });
+    }
+    if (r.verifyAt && r.verifier) {
+      logs.push({
+        at: r.verifyAt, op: r.verifier,
+        no: detailWaybillNo(r) + "001",
+        name: r.nameCn || r.name || "—",
+        remark: r.verifyRm || "产品核对"
+      });
+    }
+    return logs.sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+  }
+
+  function buildDetailAttach(r) {
+    var list = [];
+    var n = Math.min(r.photos || 0, 8);
+    for (var i = 1; i <= n; i++) {
+      list.push({
+        type: "查货图",
+        name: "查货图_" + (r.custNo || "way") + "_" + i + ".jpg",
+        uploader: r.checker || r.creator || "—",
+        at: r.lastChk || r.created || "—",
+        remark: ""
+      });
+    }
+    var a = r.attach || {};
+    var labels = { letter: "保函", authCn: "国内授权", authOs: "国外授权" };
+    Object.keys(labels).forEach(function (k) {
+      if (a[k]) {
+        list.push({
+          type: labels[k],
+          name: a[k],
+          uploader: r.verifier || r.checker || "—",
+          at: r.verifyAt || r.lastChk || r.created || "—",
+          remark: ""
+        });
+      }
+    });
+    return list;
+  }
+
+  function renderDetailTabDetail(r) {
+    var subs = buildSubOrders(r);
+    var totalNote = subs.length && subs[0].totalPcs > subs.length
+      ? '<p class="det-tip">共 <b>' + subs[0].totalPcs + '</b> 件子单；原型演示前 ' + subs.length + ' 条，现网分页展示全部。</p>'
+      : "";
+    return totalNote +
+      '<div class="det-tbl-wrap"><table class="det-tbl">' +
+      '<thead><tr>' +
+      '<th><span class="th-inner">序号</span><input class="flt" placeholder="筛选" /></th>' +
+      '<th><span class="th-inner">运单号</span><input class="flt" placeholder="筛选" /></th>' +
+      '<th><span class="th-inner">子单号</span><input class="flt" placeholder="筛选" /></th>' +
+      '<th><span class="th-inner">是否查货</span><input class="flt" placeholder="筛选" /></th>' +
+      '<th><span class="th-inner">查货人名称</span><input class="flt" placeholder="筛选" /></th>' +
+      '<th><span class="th-inner">查货时间</span><input class="flt" placeholder="筛选" /></th>' +
+      '<th><span class="th-inner">查货备注</span><input class="flt" placeholder="筛选" /></th>' +
+      '<th><span class="th-inner">查货标记</span><input class="flt" placeholder="筛选" /></th>' +
+      '<th><span class="th-inner">是否核对</span><input class="flt" placeholder="筛选" /></th>' +
+      '</tr></thead><tbody>' +
+      subs.map(function (s) {
+        return '<tr>' +
+          '<td>' + s.idx + '</td>' +
+          '<td class="mono">' + escAttr(s.waybill) + '</td>' +
+          '<td class="mono sub-no" title="' + escAttr(s.subNo) + '">' + escAttr(s.subNo) + '</td>' +
+          '<td>' + s.inspected + '</td>' +
+          '<td>' + (s.checker || "") + '</td>' +
+          '<td>' + (s.chkTime || "") + '</td>' +
+          '<td>' + (s.remark || "") + '</td>' +
+          '<td>' + (s.mark || "") + '</td>' +
+          '<td>' + s.verified + '</td>' +
+          '</tr>';
+      }).join("") +
+      '</tbody></table></div>';
+  }
+
+  function renderDetailTabLog(r) {
+    var logs = buildInspectLogs(r);
+    if (!logs.length) {
+      return '<div class="det-empty">暂无查货记录</div>';
+    }
+    return '<div class="det-tbl-wrap"><table class="det-tbl" style="min-width:720px">' +
+      '<thead><tr>' +
+      '<th><span class="th-inner">操作时间</span></th>' +
+      '<th><span class="th-inner">操作人</span></th>' +
+      '<th><span class="th-inner">单号</span></th>' +
+      '<th><span class="th-inner">主品名</span></th>' +
+      '<th><span class="th-inner">图片</span></th>' +
+      '<th><span class="th-inner">备注</span></th>' +
+      '</tr></thead><tbody>' +
+      logs.map(function (l) {
+        return '<tr>' +
+          '<td>' + l.at + '</td>' +
+          '<td>' + escAttr(l.op) + '</td>' +
+          '<td class="mono">' + escAttr(l.no) + '</td>' +
+          '<td>' + escAttr(l.name) + '</td>' +
+          '<td><span class="det-thumb" title="查看查货图">图</span></td>' +
+          '<td>' + escAttr(l.remark || "") + '</td>' +
+          '</tr>';
+      }).join("") +
+      '</tbody></table></div>';
+  }
+
+  function renderDetailTabAttach(r) {
+    var files = buildDetailAttach(r);
+    if (!files.length) {
+      return '<div class="det-empty">暂无附件</div>';
+    }
+    return '<div class="det-tbl-wrap"><table class="det-tbl" style="min-width:760px">' +
+      '<thead><tr>' +
+      '<th><span class="th-inner">附件类型</span></th>' +
+      '<th><span class="th-inner">文件名</span></th>' +
+      '<th><span class="th-inner">上传人</span></th>' +
+      '<th><span class="th-inner">上传时间</span></th>' +
+      '<th><span class="th-inner">备注</span></th>' +
+      '<th><span class="th-inner">操作</span></th>' +
+      '</tr></thead><tbody>' +
+      files.map(function (f) {
+        return '<tr>' +
+          '<td>' + escAttr(f.type) + '</td>' +
+          '<td>' + escAttr(f.name) + '</td>' +
+          '<td>' + escAttr(f.uploader) + '</td>' +
+          '<td>' + escAttr(f.at) + '</td>' +
+          '<td>' + escAttr(f.remark || "") + '</td>' +
+          '<td><a class="link" href="#">下载</a></td>' +
+          '</tr>';
+      }).join("") +
+      '</tbody></table></div>';
+  }
+
+  function renderDetailBody() {
+    if (!detailRow) return;
+    var el = document.getElementById("detBody");
+    if (detailTab === "log") el.innerHTML = renderDetailTabLog(detailRow);
+    else if (detailTab === "attach") el.innerHTML = renderDetailTabAttach(detailRow);
+    else el.innerHTML = renderDetailTabDetail(detailRow);
+  }
+
+  function openDetailModal(idx) {
+    detailRow = ROWS[idx];
+    if (!detailRow) return;
+    detailTab = "detail";
+    document.querySelectorAll("#detTabs button").forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-det-tab") === "detail");
+    });
+    document.getElementById("detSub").textContent =
+      (detailRow.custNo || "—") + " · " + detailWaybillNo(detailRow);
+    renderDetailBody();
+    document.getElementById("detMask").classList.add("open");
+    document.getElementById("detMask").setAttribute("aria-hidden", "false");
+  }
+
+  function closeDetailModal() {
+    document.getElementById("detMask").classList.remove("open");
+    document.getElementById("detMask").setAttribute("aria-hidden", "true");
+    detailRow = null;
+  }
+
+  function openDetailFromSelection() {
+    var idxs = getSelectedIdxs();
+    if (idxs.length !== 1) {
+      toast("请勾选 1 票，或点行操作「详情」");
+      return;
+    }
+    openDetailModal(idxs[0]);
   }
 
   function aiImgTag(v) {
@@ -2017,7 +2317,7 @@
         '<td>' + (i + 1) + '</td>' +
         '<td>' + r.st + '</td>' +
         '<td>' + r.recv + '</td>' +
-        '<td><a class="link" href="#">' + r.custNo + '</a></td>' +
+        '<td><a class="link" href="#" data-detail="' + ROWS.indexOf(r) + '" title="查货详情">' + r.custNo + '</a></td>' +
         '<td>' + r.waySt + '</td>' +
         '<td>' + r.rate + '</td>' +
         '<td>' + r.weight + '</td>' +
@@ -2064,6 +2364,7 @@
         '<td>' + r.creator + '</td>' +
         '<td>' + r.created + '</td>' +
         '<td style="position:sticky;right:0;background:#fff;white-space:nowrap">' +
+          '<button type="button" class="btn" style="height:24px;padding:0 6px" data-detail="' + ROWS.indexOf(r) + '">详情</button> ' +
           '<button type="button" class="btn new" style="height:24px;padding:0 6px" data-open="' + ROWS.indexOf(r) + '">识图</button> ' +
           '<button type="button" class="btn new" style="height:24px;padding:0 6px" data-fee="' + ROWS.indexOf(r) + '">加费用</button> ' +
           '<button type="button" class="btn chg" style="height:24px;padding:0 6px" data-svc-modify="' + ROWS.indexOf(r) + '" title="带出本票已有附加服务并修改">改附加</button>' +
@@ -2619,6 +2920,12 @@
     if (e.target.classList.contains("row-chk")) syncSel();
   });
   document.getElementById("tbody").addEventListener("click", function (e) {
+    var detBtn = e.target.closest("[data-detail]");
+    if (detBtn) {
+      e.preventDefault();
+      openDetailModal(+detBtn.getAttribute("data-detail"));
+      return;
+    }
     var infrBtn = e.target.closest("[data-infr]");
     if (infrBtn) {
       openInfrDrawer(+infrBtn.getAttribute("data-infr"));
@@ -3801,6 +4108,22 @@
   document.getElementById("relCancel").onclick = closeReleaseModal;
   document.getElementById("relOk").onclick = applyRelease;
   document.getElementById("relReply").addEventListener("input", refreshRelReplyCnt);
+
+  document.getElementById("btnInspectDetail").onclick = openDetailFromSelection;
+  document.getElementById("detClose").onclick = closeDetailModal;
+  document.getElementById("detCancel").onclick = closeDetailModal;
+  document.getElementById("detMask").addEventListener("click", function (e) {
+    if (e.target === document.getElementById("detMask")) closeDetailModal();
+  });
+  document.getElementById("detTabs").addEventListener("click", function (e) {
+    var tab = e.target.closest("[data-det-tab]");
+    if (!tab || !detailRow) return;
+    detailTab = tab.getAttribute("data-det-tab") || "detail";
+    document.querySelectorAll("#detTabs button").forEach(function (b) {
+      b.classList.toggle("on", b === tab);
+    });
+    renderDetailBody();
+  });
 
   document.getElementById("dualNotifyClose").onclick = function () {
     document.getElementById("dualNotify").classList.remove("open");
