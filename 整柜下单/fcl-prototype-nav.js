@@ -6,6 +6,7 @@
   window.__FCL_PROTOTYPE_NAV__ = true;
 
   var ERQI = "../二期/";
+  var APP = "../APP/";
 
   var GROUPS = [
     {
@@ -50,16 +51,16 @@
       links: [
         { file: ERQI + "ESS我的报价-列表-MVP.html", label: "我的询价（业务员）" },
         { file: ERQI + "ESS询价报价-报价员列表-MVP.html", label: "询价报价（报价员）" },
-        { file: ERQI + "ESS询价报价-APP-列表-MVP.html", label: "询价报价 · APP 列表" },
+        { file: APP + "ESS询价报价-APP-列表-MVP.html", label: "询价报价 · APP 列表" },
       ],
     },
     {
       label: "整柜询价",
       links: [
         { file: ERQI + "ESS询价编辑-MVP.html", label: "询价编辑（PC · 含整柜）" },
-        { file: "ESS询价编辑-APP-整柜-MVP.html", label: "询价编辑 · APP 整柜" },
+        { file: APP + "ESS询价编辑-APP-整柜-MVP.html", label: "询价编辑 · APP 整柜" },
         { file: "ESS整柜询价详情-MVP.html", label: "整柜 · 询价方案详情" },
-        { file: "ESS整柜询价详情-APP-MVP.html", label: "整柜 · 询价详情 · APP" },
+        { file: APP + "ESS整柜询价详情-APP-MVP.html", label: "整柜 · 询价详情 · APP" },
       ],
     },
     {

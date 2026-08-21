@@ -234,6 +234,16 @@
     .tag.ck-pass { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
     .tag.ck-ticket { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
     .tag.ck-none { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.cabin-wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.cabin-final { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+    .tag.pre-yes { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.pre-no { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.pre-lock { color: #595959; background: #f5f5f5; border-color: #d9d9d9; }
+    .pre-confirm-cell { display: flex; align-items: center; gap: 6px; }
+    .pre-confirm-cell label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+    .pre-confirm-cell.locked { color: var(--sub); }
+    .pre-confirm-cell.locked label { cursor: not-allowed; }
+    .pre-confirm-cell .lock-tip { font-size: 11px; color: #8c8c8c; }
     tr.waybill-ck td { background: #fff7e6; }
     tr.waybill-ck:hover td { background: #ffe7ba; }
     tr.waybill-ck td:first-child { box-shadow: inset 3px 0 0 #d46b08; }
@@ -365,8 +375,8 @@
       <button type="button" class="btn-demo" id="btnSimCheckin">模拟签入（未上传报关资料）</button>
       <button type="button" class="btn-demo" id="btnSimPush">模拟服务端推送（无需刷新）</button>
       <button type="button" class="btn-demo" id="btnClearTodo">清空代办</button>
-      <span class="hint">签入后若为报关件且报关资料未上传 → 序号列/菜单/铃铛角标 +1 · 关联关务「签入即预报资料」</span>
-      <a href="产品部门/各组sop/关务组-签入即预报资料-MVP.html" style="color:#d46b08;margin-left:8px">签入即预报资料 →</a>
+      <span class="hint">签入后若为报关件且报关资料未上传 → 角标 +1 · 待终配舱已拆成待配舱/终配舱 · 预录确认可勾选，放行后锁定</span>
+      <a href="产品部门/各组sop/关务组-签入即预报资料-MVP.html" style="color:#d46b08;margin-left:8px">签入即做资料 →</a>
     </div>
 
     <header class="top-header">
@@ -457,7 +467,14 @@
                 <option value="无">无查验</option>
               </select>
             </div>
-            <div class="filter-item"><label>扣件类型</label><select><option>全部</option></select></div>
+            <div class="filter-item">
+              <label>配舱阶段 <span class="badge-new">NEW</span></label>
+              <select id="qCabin">
+                <option value="">全部</option>
+                <option value="wait">待配舱</option>
+                <option value="final">终配舱</option>
+              </select>
+            </div>
           </div>
         </section>
 
@@ -473,8 +490,10 @@
         </div>
 
         <div class="status-bar">
-          <button type="button" class="status-tab active" data-all>全部(3)</button>
+          <button type="button" class="status-tab active" data-all>全部(5)</button>
           <button type="button" class="status-tab">待提仓到(1)</button>
+          <button type="button" class="status-tab" data-cabin="wait">待配舱(3) <span class="badge-new">NEW</span></button>
+          <button type="button" class="status-tab" data-cabin="final">终配舱(2) <span class="badge-new">NEW</span></button>
           <button type="button" class="status-tab">待出库(1)</button>
           <button type="button" class="status-tab">已出库(1)</button>
           <button type="button" class="status-tab" id="tabCk" style="color:#d46b08;">查验中(1) <span class="badge-new">NEW</span></button>
@@ -499,10 +518,14 @@
                 <th>关联提单/柜</th>
                 <th>报关资料</th>
                 <th>签入状态</th>
+                <th>配舱阶段 <span class="badge-new">NEW</span></th>
+                <th>报关行 <span class="badge-new">NEW</span></th>
+                <th>预录单已确认 <span class="badge-new">NEW</span></th>
+                <th>放行单</th>
               </tr>
             </thead>
             <tbody id="wbBody">
-              <tr id="rowWaybill" class="waybill-has-todo" data-ck="无">
+              <tr id="rowWaybill" class="waybill-has-todo" data-ck="无" data-cabin="wait" data-pre-issued="0" data-released="0">
                 <td class="col-index" id="cellIndex">
                   <span class="cell-index-wrap">
                     <div class="cell-index-stack">
@@ -521,8 +544,16 @@
                 <td style="color:rgba(0,0,0,.45)">—</td>
                 <td id="cellCustomsDoc"><span style="color:#ff4d4f">未上传</span></td>
                 <td id="cellCheckin">未签入</td>
+                <td><span class="tag cabin-wait">待配舱</span></td>
+                <td id="cellBroker"><span class="tag ck-none">—</span></td>
+                <td>
+                  <div class="pre-confirm-cell">
+                    <label><input type="checkbox" class="pre-confirm" disabled /> 未确认</label>
+                  </div>
+                </td>
+                <td><span class="tag ck-none">未上传</span></td>
               </tr>
-              <tr class="waybill-ck" data-ck="查验挂票">
+              <tr class="waybill-ck" data-ck="查验挂票" data-cabin="final" data-pre-issued="1" data-released="0">
                 <td class="col-index">
                   <span class="cell-index-wrap">
                     <div class="cell-index-stack">
@@ -546,8 +577,16 @@
                 </td>
                 <td><span style="color:#389e0d">已上传</span></td>
                 <td>已签入</td>
+                <td><span class="tag cabin-final">终配舱</span></td>
+                <td>青岛港兴报关行</td>
+                <td>
+                  <div class="pre-confirm-cell">
+                    <label title="手动勾选，允许取消/修改"><input type="checkbox" class="pre-confirm" checked /> 已确认</label>
+                  </div>
+                </td>
+                <td><span class="tag ck-none">未上传</span></td>
               </tr>
-              <tr data-ck="查验中">
+              <tr data-ck="查验中" data-cabin="final" data-pre-issued="1" data-released="1">
                 <td class="col-index">
                   <span class="cell-index-wrap">
                     <div class="cell-index-stack">
@@ -568,26 +607,91 @@
                 </td>
                 <td><span style="color:#389e0d">已上传</span></td>
                 <td>已签入</td>
+                <td><span class="tag cabin-final">终配舱</span></td>
+                <td>深圳联通报关行</td>
+                <td>
+                  <div class="pre-confirm-cell locked">
+                    <label title="已上传放行单，不可取消/修改"><input type="checkbox" class="pre-confirm" checked disabled /> 已确认</label>
+                    <span class="lock-tip">放行后锁定</span>
+                  </div>
+                </td>
+                <td><span class="tag pre-yes">已上传</span></td>
+              </tr>
+              <tr data-ck="无" data-cabin="wait" data-pre-issued="1" data-released="0">
+                <td class="col-index">
+                  <span class="cell-index-wrap">
+                    <div class="cell-index-stack">
+                      <input type="checkbox" class="wb-ck" aria-label="选择第 4 行" />
+                      <span class="cell-index-num">4</span>
+                    </div>
+                  </span>
+                </td>
+                <td>青岛嘉运</td>
+                <td>2026-08-18</td>
+                <td><a class="waybill-no" href="#">TX-20260820-031</a></td>
+                <td>直客</td>
+                <td>海运</td>
+                <td><span class="tag ck-none">—</span></td>
+                <td style="color:rgba(0,0,0,.45)">—</td>
+                <td><span style="color:#389e0d">已上传</span></td>
+                <td>已签入</td>
+                <td><span class="tag cabin-wait">待配舱</span></td>
+                <td>青岛港兴报关行</td>
+                <td>
+                  <div class="pre-confirm-cell">
+                    <label title="已出预录，待手动确认"><input type="checkbox" class="pre-confirm" /> 未确认</label>
+                  </div>
+                </td>
+                <td><span class="tag ck-none">未上传</span></td>
+              </tr>
+              <tr data-ck="无" data-cabin="wait" data-pre-issued="0" data-released="0">
+                <td class="col-index">
+                  <span class="cell-index-wrap">
+                    <div class="cell-index-stack">
+                      <input type="checkbox" class="wb-ck" aria-label="选择第 5 行" />
+                      <span class="cell-index-num">5</span>
+                    </div>
+                  </span>
+                </td>
+                <td>苏州机电</td>
+                <td>2026-08-19</td>
+                <td><a class="waybill-no" href="#">TX-20260820-044</a></td>
+                <td>同行</td>
+                <td>海运</td>
+                <td><span class="tag ck-none">—</span></td>
+                <td style="color:rgba(0,0,0,.45)">—</td>
+                <td><span style="color:#389e0d">已上传</span></td>
+                <td>已签入</td>
+                <td><span class="tag cabin-wait">待配舱</span></td>
+                <td><span class="tag ck-none">—</span></td>
+                <td>
+                  <div class="pre-confirm-cell">
+                    <label><input type="checkbox" class="pre-confirm" disabled /> 未确认</label>
+                  </div>
+                </td>
+                <td><span class="tag ck-none">未上传</span></td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <div class="pager">
-          <span>共 3 条</span>
+          <span>共 5 条</span>
           <span>500 条/页</span>
           <button type="button" class="tool-btn outline" style="height:24px;padding:0 8px;font-size:12px">1</button>
         </div>
 
         <div class="prd-note">
-          <strong>PRD · 签入后报关资料代办（3 / 3.1 / 3.2）+ 查验标记</strong>
+          <strong>PRD · 签入代办 + 查验标记 + 配舱拆分 / 预录标识</strong>
           <ul>
             <li><strong>触发条件：</strong>运单已签入，且<strong>报关资料未上传</strong> → 在对应<strong>业务员</strong>、<strong>客服</strong>的待办列表各生成一条代办。</li>
             <li><strong>3.1 弹窗：</strong>右下角弹出「您有一件代办事项，请及时处理：<em>流程名称</em>」（如：签入后上传报关资料）。</li>
             <li><strong>3.2 角标：</strong>「运单管理」「我的待办」顶栏 Tab、左侧「运单」模块菜单、<strong>列表运单行（序号列）</strong>展示未读角标；<strong>服务端推送/WebSocket 或轮询</strong>更新，<strong>无需手动刷新</strong>页面。</li>
             <li><strong>运单行角标：</strong>该运单存在未处理代办（如签入后报关资料未上传）时，<strong>序号列（复选框+序号合并列）</strong>右上角显示红色角标「1」，整行浅橙底色提示；上传报关资料或处理完成后清除。</li>
             <li><strong>消息铃铛：</strong>右上角铃铛角标展示三类未读总和（与 Tab/侧栏同步）；点击下拉：<strong>我的消息</strong>、<strong>我的代办</strong>、<strong>我的审批</strong>，各分类独立角标。</li>
-            <li><strong>查验标记（NEW）：</strong>与提单管理联动。默认随柜「查验中」；若因本票货物导致查验 →「查验挂票」（责任票）。列表可筛、工具栏可写回；关联提单/柜号可见。</li>
+            <li><strong>查验挂票（NEW）：</strong>单票责任标打在<strong>运单列表</strong>（本页可筛、可见）。提单管理只提供「查验挂票」入口，<strong>提单业务标记列不展示</strong>挂票/运单号。查验中/查验放行仍在提单侧按轨迹编号打标。</li>
+            <li><strong>待配舱 / 终配舱（NEW）：</strong>原「待终配舱」拆成两个独立状态；页签与筛选分开，禁止再写合并态。关务预录作业见 <a href="产品部门/各组sop/关务组-签入即预报资料-MVP.html">签入即做资料</a>。</li>
+            <li><strong>预录标识（NEW）：</strong>列表展示<strong>报关行</strong>、<strong>预录单已确认</strong>（手动勾选，允许取消/修改）。<strong>上传放行单后锁定</strong>，不可再取消/修改。只看报关件的预录进度在关务独立页。</li>
           </ul>
         </div>
       </main>
@@ -856,31 +960,62 @@
         if (e.key === "Escape") toggleMsgDropdown(false);
       });
 
-      /* 查验标记 · 筛选 / 写回（与提单联动示意） */
+      /* 查验标记 · 配舱阶段 · 预录确认 */
       var qCk = document.getElementById("qCk");
+      var qCabin = document.getElementById("qCabin");
       var wbBody = document.getElementById("wbBody");
-      function filterCkRows() {
-        if (!wbBody || !qCk) return;
-        var v = qCk.value;
+      function filterRows() {
+        if (!wbBody) return;
+        var v = qCk ? qCk.value : "";
+        var cabinFilter = qCabin ? qCabin.value : "";
+        var activeTab = document.querySelector(".status-tab.active");
+        var tabCabin = activeTab ? (activeTab.getAttribute("data-cabin") || "") : "";
+        var cabin = cabinFilter || tabCabin;
         Array.prototype.forEach.call(wbBody.querySelectorAll("tr"), function (tr) {
           var ck = tr.getAttribute("data-ck") || "无";
-          tr.style.display = (!v || ck === v) ? "" : "none";
+          var rowCabin = tr.getAttribute("data-cabin") || "";
+          var showCk = !v || ck === v;
+          var showCabin = !cabin || rowCabin === cabin;
+          tr.style.display = (showCk && showCabin) ? "" : "none";
         });
       }
-      if (qCk) qCk.addEventListener("change", filterCkRows);
+      if (qCk) qCk.addEventListener("change", filterRows);
+      if (qCabin) qCabin.addEventListener("change", function () {
+        document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
+        var allTab = document.querySelector(".status-tab[data-all]");
+        if (!qCabin.value && allTab) allTab.classList.add("active");
+        else {
+          document.querySelectorAll(".status-tab[data-cabin]").forEach(function (t) {
+            t.classList.toggle("active", t.getAttribute("data-cabin") === qCabin.value);
+          });
+        }
+        filterRows();
+      });
       var tabCk = document.getElementById("tabCk");
       if (tabCk) {
         tabCk.addEventListener("click", function () {
           document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
           tabCk.classList.add("active");
-          if (qCk) { qCk.value = "查验中"; filterCkRows(); }
+          if (qCabin) qCabin.value = "";
+          if (qCk) { qCk.value = "查验中"; filterRows(); }
         });
       }
       document.querySelectorAll(".status-tab[data-all]").forEach(function (t) {
         t.addEventListener("click", function () {
           document.querySelectorAll(".status-tab").forEach(function (x) { x.classList.remove("active"); });
           t.classList.add("active");
-          if (qCk) { qCk.value = ""; filterCkRows(); }
+          if (qCk) qCk.value = "";
+          if (qCabin) qCabin.value = "";
+          filterRows();
+        });
+      });
+      document.querySelectorAll(".status-tab[data-cabin]").forEach(function (t) {
+        t.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (x) { x.classList.remove("active"); });
+          t.classList.add("active");
+          if (qCk) qCk.value = "";
+          if (qCabin) qCabin.value = t.getAttribute("data-cabin");
+          filterRows();
         });
       });
       var btnCkMark = document.getElementById("btnCkMark");
@@ -911,7 +1046,28 @@
             else cell.innerHTML = '<span class="tag ck-none">—</span>';
           });
           alert("已更新查验标记 ×" + checked.length + "（示意同步提单侧）");
-          filterCkRows();
+          filterRows();
+        });
+      }
+
+      if (wbBody) {
+        wbBody.addEventListener("change", function (e) {
+          var cb = e.target.closest(".pre-confirm");
+          if (!cb) return;
+          var tr = cb.closest("tr");
+          if (!tr) return;
+          var label = cb.parentNode;
+          if (tr.getAttribute("data-released") === "1") {
+            cb.checked = true;
+            alert("已上传放行单，不可再取消/修改预录确认");
+            return;
+          }
+          if (tr.getAttribute("data-pre-issued") !== "1") {
+            cb.checked = false;
+            alert("尚未出预录单，不能确认");
+            return;
+          }
+          if (label) label.lastChild.textContent = cb.checked ? " 已确认" : " 未确认";
         });
       }
 

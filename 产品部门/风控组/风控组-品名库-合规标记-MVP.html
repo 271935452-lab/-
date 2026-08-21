@@ -171,15 +171,7 @@
           </div>
           <div class="fi">
             <label>HS / 材质</label>
-            <input id="qHs" placeholder="HS 或材质" />
-          </div>
-          <div class="fi">
-            <label>来源</label>
-            <select id="qSrc">
-              <option value="">全部</option>
-              <option>人工维护</option>
-              <option>查货沉淀</option>
-            </select>
+            <input id="qHs" placeholder="报关/清关 HS 或材质" />
           </div>
           <button type="button" class="btn primary" id="btnSearch">查询</button>
           <button type="button" class="btn" id="btnReset">重置</button>
@@ -199,12 +191,10 @@
                 <th style="width:40px">#</th>
                 <th>中文品名</th>
                 <th>英文品名</th>
-                <th>HS码</th>
+                <th>报关 HS code</th>
+                <th>清关 HS code</th>
                 <th>材质/用途</th>
                 <th>合规标记</th>
-                <th>来源</th>
-                <th>沉淀次数</th>
-                <th>更新时间</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -222,15 +212,16 @@
       <button type="button" class="btn" id="btnClose">关闭</button>
     </div>
     <div class="drawer-bd">
-      <div class="kv" id="drawerMeta"></div>
       <h4>基础信息</h4>
       <div class="drawer-form">
         <label>中文品名 *</label>
         <input id="fCn" />
         <label>英文品名</label>
         <input id="fEn" />
-        <label>HS码</label>
-        <input id="fHs" />
+        <label>报关 HS code</label>
+        <input id="fHsDecl" placeholder="出口报关税则号" />
+        <label>清关 HS code</label>
+        <input id="fHsClear" placeholder="目的国清关税则号" />
         <label>材质 / 用途</label>
         <input id="fMat" />
         <label>备注</label>
@@ -267,13 +258,13 @@
   ];
 
   var ROWS = [
-    { cn: "塑料包装袋", en: "Plastic packaging bag", hs: "3923.21", mat: "PE / 商品包装", marks: ["0税率"], src: "查货沉淀", hit: 12, at: "2026-08-14 22:10", rm: "" },
-    { cn: "运动卫衣", en: "Sports hoodie", hs: "6110.30", mat: "棉涤 / 穿着", marks: ["CPC"], src: "查货沉淀", hit: 5, at: "2026-08-14 21:40", rm: "童装需 CPC" },
-    { cn: "电源适配器", en: "Power adapter", hs: "8504.40", mat: "电子 / 充电", marks: ["DOT", "EPA"], src: "人工维护", hit: 3, at: "2026-08-12 16:00", rm: "" },
-    { cn: "不锈钢水杯", en: "Stainless steel cup", hs: "7323.93", mat: "不锈钢", marks: ["FDA", "0税率"], src: "查货沉淀", hit: 2, at: "2026-08-11 11:20", rm: "" },
-    { cn: "轮胎", en: "Tire", hs: "4011.10", mat: "橡胶", marks: ["DOT", "反倾销"], src: "人工维护", hit: 8, at: "2026-08-10 09:15", rm: "关注反倾销税则" },
-    { cn: "儿童玩具车", en: "Toy car", hs: "9503.00", mat: "塑胶", marks: ["CPC", "GCC"], src: "查货沉淀", hit: 6, at: "2026-08-09 18:30", rm: "" },
-    { cn: "空气净化器滤芯", en: "Air filter", hs: "8421.39", mat: "滤材", marks: ["EPA"], src: "人工维护", hit: 1, at: "2026-08-08 14:00", rm: "" }
+    { cn: "塑料包装袋", en: "Plastic packaging bag", hsDecl: "3923.21", hsClear: "3923.21", mat: "PE / 商品包装", marks: ["0税率"], rm: "" },
+    { cn: "运动卫衣", en: "Sports hoodie", hsDecl: "6110.30", hsClear: "6110.20", mat: "棉涤 / 穿着", marks: ["CPC"], rm: "童装需 CPC" },
+    { cn: "电源适配器", en: "Power adapter", hsDecl: "8504.40", hsClear: "8504.40", mat: "电子 / 充电", marks: ["DOT", "EPA"], rm: "" },
+    { cn: "不锈钢水杯", en: "Stainless steel cup", hsDecl: "7323.93", hsClear: "7323.99", mat: "不锈钢", marks: ["FDA", "0税率"], rm: "" },
+    { cn: "轮胎", en: "Tire", hsDecl: "4011.10", hsClear: "4011.10", mat: "橡胶", marks: ["DOT", "反倾销"], rm: "关注反倾销税则" },
+    { cn: "儿童玩具车", en: "Toy car", hsDecl: "9503.00", hsClear: "9503.00", mat: "塑胶", marks: ["CPC", "GCC"], rm: "" },
+    { cn: "空气净化器滤芯", en: "Air filter", hsDecl: "8421.39", hsClear: "8421.39", mat: "滤材", marks: ["EPA"], rm: "" }
   ];
 
   var filterMarks = {};
@@ -307,12 +298,10 @@
   function filtered() {
     var q = (document.getElementById("qName").value || "").trim().toLowerCase();
     var hs = (document.getElementById("qHs").value || "").trim().toLowerCase();
-    var src = document.getElementById("qSrc").value;
     var need = Object.keys(filterMarks).filter(function (k) { return filterMarks[k]; });
     return ROWS.filter(function (r) {
       if (q && (r.cn + r.en).toLowerCase().indexOf(q) < 0) return false;
-      if (hs && (r.hs + r.mat).toLowerCase().indexOf(hs) < 0) return false;
-      if (src && r.src !== src) return false;
+      if (hs && ((r.hsDecl || "") + (r.hsClear || "") + r.mat).toLowerCase().indexOf(hs) < 0) return false;
       if (need.length && !need.every(function (m) { return r.marks.indexOf(m) >= 0; })) return false;
       return true;
     });
@@ -326,29 +315,23 @@
         "<td>" + (i + 1) + "</td>" +
         "<td><b>" + r.cn + "</b></td>" +
         "<td>" + (r.en || "—") + "</td>" +
-        "<td>" + (r.hs || "—") + "</td>" +
+        "<td>" + (r.hsDecl || "—") + "</td>" +
+        "<td>" + (r.hsClear || "—") + "</td>" +
         "<td>" + (r.mat || "—") + "</td>" +
         "<td>" + markTags(r.marks) + "</td>" +
-        "<td>" + r.src + "</td>" +
-        "<td>" + r.hit + "</td>" +
-        "<td>" + r.at + "</td>" +
-        '<td><button type="button" class="btn" data-edit="' + idx + '" style="height:24px;padding:0 8px">编辑</button> ' +
-        '<button type="button" class="btn" data-sink="' + idx + '" style="height:24px;padding:0 8px" title="模拟从查货沉淀+1">沉淀+1</button></td>' +
+        '<td><button type="button" class="btn" data-edit="' + idx + '" style="height:24px;padding:0 8px">编辑</button></td>' +
         "</tr>";
-    }).join("") || '<tr><td colspan="10" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+    }).join("") || '<tr><td colspan="8" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
   }
 
   function openDrawer(idx) {
     editIdx = idx;
-    var r = idx >= 0 ? ROWS[idx] : { cn: "", en: "", hs: "", mat: "", marks: [], src: "人工维护", hit: 0, at: "", rm: "" };
+    var r = idx >= 0 ? ROWS[idx] : { cn: "", en: "", hsDecl: "", hsClear: "", mat: "", marks: [], rm: "" };
     document.getElementById("drawerTitle").textContent = idx >= 0 ? "编辑品名 · " + r.cn : "新增品名";
-    document.getElementById("drawerMeta").innerHTML =
-      idx >= 0
-        ? ("<span>来源</span><b>" + r.src + "</b><span>沉淀次数</span><b>" + r.hit + "</b>")
-        : "<span>来源</span><b>人工维护</b><span>沉淀次数</span><b>0</b>";
     document.getElementById("fCn").value = r.cn || "";
     document.getElementById("fEn").value = r.en || "";
-    document.getElementById("fHs").value = r.hs || "";
+    document.getElementById("fHsDecl").value = r.hsDecl || "";
+    document.getElementById("fHsClear").value = r.hsClear || "";
     document.getElementById("fMat").value = r.mat || "";
     document.getElementById("fRm").value = r.rm || "";
     document.getElementById("editMarks").innerHTML = MARKS.map(function (m) {
@@ -377,7 +360,6 @@
   document.getElementById("btnReset").onclick = function () {
     document.getElementById("qName").value = "";
     document.getElementById("qHs").value = "";
-    document.getElementById("qSrc").value = "";
     filterMarks = {};
     renderMarkFilters();
     render();
@@ -389,16 +371,7 @@
 
   document.getElementById("tbody").addEventListener("click", function (e) {
     var ed = e.target.closest("[data-edit]");
-    if (ed) { openDrawer(+ed.getAttribute("data-edit")); return; }
-    var sk = e.target.closest("[data-sink]");
-    if (sk) {
-      var i = +sk.getAttribute("data-sink");
-      ROWS[i].hit += 1;
-      ROWS[i].src = "查货沉淀";
-      ROWS[i].at = "2026-08-15 18:40";
-      render();
-      toast("已模拟查货沉淀 +1 · 「" + ROWS[i].cn + "」");
-    }
+    if (ed) { openDrawer(+ed.getAttribute("data-edit")); }
   });
 
   document.getElementById("btnSave").onclick = function () {
@@ -409,17 +382,17 @@
     var payload = {
       cn: cn,
       en: document.getElementById("fEn").value.trim(),
-      hs: document.getElementById("fHs").value.trim(),
+      hsDecl: document.getElementById("fHsDecl").value.trim(),
+      hsClear: document.getElementById("fHsClear").value.trim(),
       mat: document.getElementById("fMat").value.trim(),
       rm: document.getElementById("fRm").value.trim(),
-      marks: marks,
-      at: "2026-08-15 18:45"
+      marks: marks
     };
     if (editIdx >= 0) {
       Object.assign(ROWS[editIdx], payload);
       toast("已保存 · 品名库已更新（可供查货引用）");
     } else {
-      ROWS.unshift(Object.assign({ src: "人工维护", hit: 0 }, payload));
+      ROWS.unshift(payload);
       toast("已新增品名");
     }
     closeDrawer();

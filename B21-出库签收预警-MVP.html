@@ -747,147 +747,6 @@
   <div class="warn-alert-stack" id="alertToastStack" aria-live="polite" aria-atomic="false"></div>
   <div class="mini-toast" id="miniToast" role="status" aria-live="polite"></div>
 
-  <div class="ess-prd-source" hidden aria-hidden="true">
-    <span class="ess-prd-chip">PRD · B21 出库签收预警</span>
-    <h3>出库签收预警 PRD</h3>
-
-    <h4>背景与目标</h4>
-    <p>面向<strong>私卡</strong>等尾程派送场景，以<strong>拆柜时间</strong>为时效起点，对未按时出库、签收及 POD 未回传的运单进行监控预警；结合待办角标与消息推送，督促港后客服与业务员及时跟进。</p>
-
-    <h4>用户与场景</h4>
-    <ul>
-      <li><strong>管理员</strong>：查看全部预警，批量轨迹维护。</li>
-      <li><strong>业务员</strong>：仅可见本人负责运单的预警。</li>
-      <li><strong>港后客服</strong>：仅可见<strong>销售产品配置的港后客服字段</strong>与当前登录人一致的运单（配置来源见 <a href="销售产品编辑-港后客服分配方式-MVP.html">销售产品 · 港后客服分配</a>）。</li>
-    </ul>
-
-    <h4>1. 数据范围</h4>
-    <ol>
-      <li><strong>权限</strong>：管理员全部；业务员按业务员字段；港后客服按销售产品「港后客服」配置匹配（与客户类型直客/同行及分公司规则一并解析）。</li>
-      <li><strong>时间</strong>：拆柜开始日期 ≥ 当日 00:00:00，且 &lt; （当前日期 − 1 天）00:00:00。</li>
-      <li><strong>行色</strong>：超时预警 → 红；即将超时 → 橙；已处理 → 黑。</li>
-      <li><strong>排序</strong>：预警在前、已处理在后；同组按超时预警天数降序。</li>
-      <li><strong>刷新</strong>：每小时提取一次；产生新预警时触发待办推送（见 §6）。</li>
-    </ol>
-
-    <h4>2. 基础字段</h4>
-    <ul>
-      <li><strong>运单号</strong>：点击跳转运单查询详情。</li>
-      <li><strong>港后客服</strong>：取自运单关联销售产品在「港后客服分配」中解析出的客服姓名/标签。</li>
-      <li><strong>最新轨迹</strong>：运单当前最新轨迹节点名称。</li>
-      <li><strong>列标记</strong>：表头 <span class="mark-adj">调</span> = 本期调整（原提柜基准改为拆柜）；<span class="mark-new">新</span> = 本期新增列。</li>
-      <li><strong>拆柜时间 / 拆柜天数</strong><span class="mark-adj">调</span>：时效基准由提柜改为拆柜，见 §3.4、§3.5。</li>
-      <li><strong>预计POD回传时间 / 实际POD回传时间</strong><span class="mark-new">新</span>：POD 回传预警专用，见 §3.3、§3.7、§3.8。</li>
-    </ul>
-
-    <h4>3. 动态计算字段</h4>
-    <p><strong>3.1 出库预警</strong></p>
-    <ul>
-      <li>依据：<strong>拆柜时间 + 配置出库时效</strong>（销售产品 + 邮编）。</li>
-      <li>超时且未更新出库节点（<code>TC00105</code> / <code>TC001031</code>）→ 预警分类「出库预警」。</li>
-      <li>例外：已有签收轨迹（<code>TC0010401</code>）不再发出库预警。</li>
-    </ul>
-    <p><strong>3.2 签收预警</strong></p>
-    <ul>
-      <li>依据：实际出库时间（或预计出库时间）+ 配置签收时效。</li>
-      <li>超时且未更新签收节点（<code>TC001051</code> / <code>TC0010401</code>）→「签收预警」。</li>
-    </ul>
-    <p><strong>3.3 POD回传预警</strong><span class="mark-new">新</span></p>
-    <ul>
-      <li>前置：运单已出库且已签收（或至少已签收，以实现轨迹字典为准）。</li>
-      <li>依据：<strong>实际签收时间 + 配置 POD 回传时效</strong>（销售产品 + 邮编，可与签收时效同表扩展字段）。</li>
-      <li>若超过预计 POD 回传时间，且 POD 附件/轨迹节点（<code>TC0010601</code> 或 POD 上传记录）未回传 → 预警分类「POD回传预警」。</li>
-      <li>页签档位与出库/签收/POD 预警共用（超时预警 / 即将超时 / 已处理）。</li>
-    </ul>
-    <p><strong>3.4 拆柜时间（时效基准）</strong></p>
-    <ul>
-      <li>来源：轨迹节点「海外拆柜」(<code>TA0001</code>) 的<strong>最早发生时间</strong>；多记录取最早。</li>
-      <li><strong>原提柜/提货时间不再作为本页时效基准</strong>；原误用 <code>TC00070</code> / 状态 70 已更正为 <code>TA0001</code>。</li>
-    </ul>
-    <p><strong>3.5 拆柜天数</strong></p>
-    <ul>
-      <li><code>拆柜天数 = floor((当前时间 − 拆柜时间) / 1天)</code></li>
-    </ul>
-    <p><strong>3.6 超时预警天数</strong></p>
-    <ul>
-      <li>按当前预警类型取对应配置截止时点 − 当前时间（或 − 实际完成时间）。</li>
-    </ul>
-    <p><strong>3.7 预计出库 / 签收 / POD 回传时间</strong></p>
-    <ul>
-      <li>预计出库 = 拆柜时间 + 出库时效。</li>
-      <li>预计签收 = 预计出库 + 签收时效。</li>
-      <li>预计POD回传 = 实际签收时间（无则用预计签收）+ POD回传时效。</li>
-    </ul>
-    <p><strong>3.8 实际出库 / 签收 / POD 时间</strong></p>
-    <ul>
-      <li>出库 <code>TC001031</code>、签收 <code>TC0010401</code>、POD <code>TC0010601</code> 或 POD 上传表最早记录。</li>
-    </ul>
-
-    <p><strong>3.9 轨迹编码对照（本模块引用）</strong></p>
-    <ul>
-      <li><strong>拆柜</strong>：<code>TA0001</code>（海外拆柜，时效基准）</li>
-      <li><strong>出库</strong>：<code>TC00105</code> / <code>TC001031</code></li>
-      <li><strong>签收</strong>：<code>TC001051</code> / <code>TC0010401</code></li>
-      <li><strong>POD 回传</strong>：<code>TC0010601</code> 或 POD 上传记录</li>
-    </ul>
-
-    <h4>4. 规则配置</h4>
-    <ul>
-      <li>按<strong>销售产品 + 目的邮编</strong>配置出库、签收、<strong>POD回传</strong>时效。</li>
-      <li>配置页本版暂不处理；参数表维护。</li>
-    </ul>
-
-    <h4>5. 页签口径</h4>
-    <ul>
-      <li><strong>全部</strong>：符合数据范围的全部记录。</li>
-      <li><strong>超时预警</strong>：已超出配置截止时点且未处理（红色）。</li>
-      <li><strong>即将超时</strong>：临近截止（如剩余 ≤ 1 天）或次级预警档（橙色）；<strong>非「已出库超时」语义</strong>，表示即将到达出库/签收/POD 截止时点。</li>
-      <li><strong>已处理</strong>：人工标记已处理，或轨迹已补齐至对应节点后自动归档。</li>
-      <li>出库 / 签收 / POD 回传三类预警均计入上述页签档位。</li>
-    </ul>
-
-    <h4>6. 待办消息推送与角标（新增）</h4>
-    <ul>
-      <li><strong>触发</strong>：小时任务或实时轨迹变更产生<strong>新的未处理预警</strong>时，向相关港后客服 / 业务员推送待办。</li>
-      <li><strong>推送文案</strong>：「您有一件待办事项，请及时处理：出库签收预警 · {预警分类} · {运单号}」。</li>
-      <li><strong>弹窗提醒</strong>（新增）：产生新预警时，页面<strong>右下角</strong>滑入卡片式弹窗（私卡预警 · {分类}），展示运单号与拆柜基准说明；支持「稍后处理」「立即处理」与手动关闭；约 8 秒无操作自动收起；同屏最多堆叠 3 条。顶部同步轻提示（mini toast）。</li>
-      <li><strong>角标位置</strong>：
-        <ul>
-          <li>左侧菜单「B21 出库签收预警」：未处理预警总数；</li>
-          <li>页面标题旁：同上（当前用户可见范围）；</li>
-          <li>状态 Tab「超时预警」「即将超时」：各 Tab 下未处理条数；</li>
-          <li>顶部消息铃铛：待办总数（含本模块及其他待办，本原型仅演示本模块增量）。</li>
-        </ul>
-      </li>
-      <li><strong>消角标</strong>：运单标记已处理或轨迹补齐至对应节点后，下次刷新扣减；用户进入页面处理后可同步已读（以实现为准）。</li>
-      <li><strong>渠道</strong>：站内消息 + 铃铛待办（必做）；钉钉/企业微信推送（后续）。</li>
-    </ul>
-
-    <h4>交互说明</h4>
-    <ul>
-      <li>筛选含预警分类（含 POD回传预警）、港后客服；查询 / 重置 / 列设置同前。</li>
-      <li>轨迹维护、修改出库件：勾选后操作。</li>
-    </ul>
-
-    <h4>与其他模块联动</h4>
-    <ul>
-      <li>运单管理、轨迹中心、<strong>销售产品港后客服配置</strong>、消息中心。</li>
-      <li>港后客服解析规则与「销售产品编辑 · 港后客服分配方式」一致。</li>
-    </ul>
-
-    <h4>非功能性要求</h4>
-    <ul>
-      <li>角标与列表计数 eventual consistency，延迟 ≤ 1 小时（与提取频率一致）；实时推送可选。</li>
-      <li>港后客服数据隔离在接口层强制过滤。</li>
-    </ul>
-
-    <h4>本次范围与后续规划</h4>
-    <ul>
-      <li><strong>本次</strong>：拆柜基准（轨迹 <code>TA0001</code>）、POD回传预警、港后客服权限、待办角标与消息推送原型。</li>
-      <li><strong>后续</strong>：时效规则配置页、钉钉推送、POD 上传快捷入口。</li>
-    </ul>
-  </div>
-
   <script>
     (function () {
       var CUSTOMERS = ["YANTIAN", "SHEKOU", "NINGBO", "SHANGHAI", "QINGDAO"];
@@ -1392,6 +1251,9 @@
       render();
     })();
   </script>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="B21-出库签收预警-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD · 出库签收预警 PRD</span>
+  </div>
   <script src="二期/ess-prototype-prd.js"></script>
 </body>
 </html>

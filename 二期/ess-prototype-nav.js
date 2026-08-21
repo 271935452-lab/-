@@ -19,21 +19,23 @@
       label: "配置",
       links: [
         { file: "报价员配置-MVP.html", label: "报价员配置" },
+        { file: "../产品部门/报价组/私卡报价-AI报价规则配置-优化版-MVP.html", label: "AI报价规则" },
       ],
     },
     {
       label: "列表",
       links: [
-        { file: "ESS我的报价-列表-MVP.html", label: "我的询价（业务员）" },
-        { file: "ESS询价报价-报价员列表-MVP.html", label: "询价报价（报价员）" },
-        { file: "ESS询价报价-APP-列表-MVP.html", label: "询价报价 · APP 列表" },
+        { file: "../产品部门/报价组/ESS我的报价-列表-MVP.html", label: "我的询价（业务员）" },
+        { file: "../产品部门/报价组/ESS询价报价-报价员列表-MVP.html", label: "询价报价（报价员）" },
+        { file: "../APP/ESS询价报价-APP-列表-MVP.html", label: "询价报价 · APP 列表" },
       ],
     },
     {
       label: "询价",
       links: [
-        { file: "ESS询价编辑-MVP.html", label: "询价编辑（散货 / 整柜）" },
-        { file: "ESS询价编辑-APP-散货-MVP.html", label: "询价编辑 · APP 散货" },
+        { file: "../产品部门/报价组/ESS询价编辑-MVP.html", label: "询价编辑（散货 / 整柜）" },
+        { file: "../产品部门/报价组/ESS散货询价方案详情-MVP.html", label: "报价员 · 散货报价详情" },
+        { file: "../产品部门/报价组/ESS询价编辑-APP-散货-MVP.html", label: "询价编辑 · APP 散货" },
       ],
     },
     {

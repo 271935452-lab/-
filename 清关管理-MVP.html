@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>清关管理 · 查验一键通知（MVP）</title>
+  <link rel="stylesheet" href="二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --header-tab: #132d52; --sidebar: #001529;
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --green: #52c41a; --orange: #fa8c16; --red: #ff4d4f; --purple: #722ed1;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff; display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; flex: 1; overflow-x: auto; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right { display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 12px; }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar { width: 180px; background: var(--sidebar); color: rgba(255,255,255,.75); padding: 12px 0; }
+    .side-title { padding: 8px 16px; font-size: 12px; color: rgba(255,255,255,.45); }
+    .side-item { padding: 8px 16px; font-size: 13px; }
+    .side-item.on { background: rgba(24,144,255,.25); color: #fff; border-right: 3px solid var(--blue); }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .proto-link { font-size: 12px; color: var(--sub); padding: 8px 12px 0; }
+    .filter-panel { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 12px 6px; }
+    .filter-grid {
+      display: grid; grid-template-columns: repeat(6, minmax(0,1fr)) auto; gap: 6px 10px; align-items: end;
+    }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font-size: 12px;
+    }
+    .tip-bar {
+      margin: 0 12px; padding: 8px 10px; font-size: 12px; line-height: 1.55;
+      background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; color: #0050b3;
+    }
+    .tip-bar.inspect {
+      background: #fff7e6; border-color: #ffd591; color: #ad6800;
+    }
+    .toolbar {
+      padding: 6px 12px; background: var(--card); border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .tool-btn {
+      height: 28px; padding: 0 10px; border-radius: 2px; border: 1px solid transparent;
+      background: var(--blue); color: #fff; cursor: pointer; font-size: 12px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .tool-btn.outline { background: #fff; color: var(--blue); border-color: #91d5ff; }
+    .tool-btn.warn { background: var(--orange); }
+    .tool-btn.ok { background: var(--green); }
+    .tool-btn.purple { background: var(--purple); }
+    .tool-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .badge-new {
+      display: inline-block; padding: 0 4px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .status-tabs {
+      display: flex; gap: 0; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--line);
+      overflow-x: auto;
+    }
+    .status-tab {
+      height: 36px; padding: 0 14px; border: none; background: transparent; cursor: pointer;
+      color: var(--sub); border-bottom: 2px solid transparent; white-space: nowrap;
+    }
+    .status-tab.active { color: var(--orange); border-bottom-color: var(--orange); font-weight: 600; }
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table.data { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; }
+    table.data th, table.data td {
+      border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; white-space: nowrap;
+    }
+    table.data th {
+      background: #fafafa; color: var(--sub); font-weight: 600; position: sticky; top: 0; z-index: 2;
+    }
+    table.data tr:hover td { background: #f5faff; }
+    table.data tr.selected td { background: #e6f7ff; }
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; border: 1px solid;
+    }
+    .tag.wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.check { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
+    .tag.ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.it { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.it-off { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.notify { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.fee-warn { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .pager {
+      padding: 8px 12px; background: var(--card); border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px; font-size: 12px; color: var(--sub);
+    }
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: none; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 4px; width: min(620px, 96vw);
+      max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    }
+    .modal.wide { width: min(720px, 96vw); }
+    .modal-hd, .modal-ft {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .modal-ft { border-bottom: none; border-top: 1px solid var(--line); justify-content: flex-end; }
+    .modal-hd h3 { margin: 0; font-size: 15px; }
+    .modal-bd { padding: 14px 16px; overflow: auto; }
+    .alert {
+      padding: 8px 10px; border-radius: 2px; font-size: 12px; line-height: 1.55; margin-bottom: 12px;
+      background: #fffbe6; border: 1px solid #ffe58f; color: #614700;
+    }
+    .alert.info { background: #e6f7ff; border-color: #91d5ff; color: #0050b3; }
+    .alert.ok { background: #f6ffed; border-color: #b7eb8f; color: #135200; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .form-item input, .form-item select, .form-item textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px;
+    }
+    .form-item textarea { min-height: 88px; resize: vertical; }
+    .chat-shell { border: 1px solid #d9d9d9; border-radius: 8px; background: #ededed; padding: 12px; }
+    .chat-bubble {
+      width: 100%; background: #95ec69; border-radius: 6px; padding: 10px 12px;
+      font-size: 13px; line-height: 1.65; white-space: pre-wrap; border: none; resize: vertical;
+      min-height: 160px; font-family: "Microsoft YaHei", sans-serif;
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%);
+      background: #001529; color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; display: none; z-index: 1100;
+    }
+    .toast.show { display: block; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">LOGO</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab">提单管理</button>
+        <button type="button" class="nav-tab active">清关管理</button>
+        <button type="button" class="nav-tab">查验操作</button>
+      </div>
+      <div class="header-right"><span>腾信物流 · 关务/清关</span></div>
+    </header>
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-title">清关管理</div>
+        <div class="side-item on">清关管理</div>
+        <div class="side-item">查验操作</div>
+      </aside>
+      <main class="main">
+        <p class="proto-link">
+          原型 ·
+          <a href="产品部门/各组sop/船务组-提单管理-按周分组与分配-MVP.html">船务·取消IT（提单侧）</a> ·
+          <a href="产品部门/各组sop/关务组-0729-查验分柜装授权-大致方案.html">关务查验方案</a> ·
+          <a href="产品部门/产品部门-导航.html">导航</a>
+        </p>
+
+        <div class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>提单号</label><input id="qBl" /></div>
+            <div class="filter-item"><label>柜号</label><input id="qCntr" /></div>
+            <div class="filter-item">
+              <label>IT状态 <span class="badge-new">NEW</span></label>
+              <select id="qIt">
+                <option value="">全部</option>
+                <option value="有IT">有IT</option>
+                <option value="已取消IT">已取消IT</option>
+                <option value="无IT">无IT</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>客户通知</label>
+              <select id="qNotify">
+                <option value="">全部</option>
+                <option value="已通知">已通知</option>
+                <option value="未通知">未通知</option>
+              </select>
+            </div>
+            <div class="filter-item"><label>船公司</label>
+              <select id="qCarrier"><option value="">全部</option><option>Hapag</option><option>MSC</option><option>COSCO</option><option>ONE</option></select>
+            </div>
+            <div class="filter-item"><label>目的港</label><input id="qPod" placeholder="USLAX" /></div>
+            <div>
+              <button type="button" class="tool-btn" id="btnSearch">查询数据</button>
+              <button type="button" class="tool-btn outline" id="btnReset">重置</button>
+            </div>
+          </div>
+        </div>
+
+        <p class="tip-bar" id="tipDefault">
+          <strong>本期增量：</strong>
+          进入「清关查验」页签后出现<strong>一键通知客户</strong>，生成查验通知文案可复制/发送。
+          IT 取消仅在船务「提单管理」操作，本页只展示 IT 状态供协同。
+        </p>
+        <p class="tip-bar inspect hidden" id="tipInspect">
+          <strong>清关查验页签：</strong>勾选查验中提单 → 点「一键通知客户」→ 预览站内/企微/邮件文案 → 发送或复制。通知后行内显示「已通知」。
+          清关过久时可登记<strong>改港费</strong>（金额待业务固化）；示例行可带「费用异常」标记。
+        </p>
+
+        <div class="toolbar">
+          <button type="button" class="tool-btn">查询数据</button>
+          <button type="button" class="tool-btn">清关信息修改</button>
+          <button type="button" class="tool-btn">上传资料</button>
+          <button type="button" class="tool-btn">清关查验</button>
+          <button type="button" class="tool-btn outline">撤销清关查验</button>
+          <button type="button" class="tool-btn ok">清关放行</button>
+          <button type="button" class="tool-btn outline">撤销清关放行</button>
+          <button type="button" class="tool-btn outline" id="btnDetail">清关详情</button>
+          <button type="button" class="tool-btn purple hidden" id="btnNotify">一键通知客户 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn outline">舱单导出</button>
+        </div>
+
+        <div class="status-tabs" id="statusTabs">
+          <button type="button" class="status-tab active" data-st="">全部 <b>(10)</b></button>
+          <button type="button" class="status-tab" data-st="资料准备">资料准备 <b>(0)</b></button>
+          <button type="button" class="status-tab" data-st="待清关">待清关 <b>(4)</b></button>
+          <button type="button" class="status-tab" data-st="清关放行">清关放行 <b>(2)</b></button>
+          <button type="button" class="status-tab" data-st="清关查验">清关查验 <b>(3)</b></button>
+          <button type="button" class="status-tab" data-st="查验放行">查验放行 <b>(1)</b></button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="chkAll" /></th>
+                <th>序号</th>
+                <th>提单号</th>
+                <th>柜号</th>
+                <th>清关状态</th>
+                <th>IT标记 <span class="badge-new">NEW</span></th>
+                <th>客户通知 <span class="badge-new">NEW</span></th>
+                <th>清关供应商</th>
+                <th>清关客服</th>
+                <th>柜型</th>
+                <th>船公司</th>
+                <th>船名航次</th>
+                <th>目的港</th>
+                <th>预计到港</th>
+                <th>客户/业务员</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="pager">共 <span id="totalCnt">10</span> 条 · 示意</div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 清关详情 -->
+  <div class="mask" id="detailMask">
+    <div class="modal wide">
+      <div class="modal-hd">
+        <h3>清关详情 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="detailClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="form-grid">
+          <div class="form-item"><label>提单号</label><input id="detailBl" readonly /></div>
+          <div class="form-item"><label>柜号</label><input id="detailCntr" readonly /></div>
+          <div class="form-item"><label>出口报关品名</label><input id="detailExportName" placeholder="国内报关申报品名" /></div>
+          <div class="form-item"><label>海外清关品名 <span class="badge-new">NEW</span></label><input id="detailOverseasName" placeholder="目的港清关申报品名（可与出口品名不同）" /></div>
+          <div class="form-item full">
+            <label>品名说明</label>
+            <div class="alert info" style="margin-bottom:0">
+              出口报关品名用于国内申报；<strong>海外清关品名</strong>用于目的港清关资料，二者可不一致，需分别维护。
+            </div>
+          </div>
+        </div>
+        <div id="detailFeeArea" class="hidden" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+          <div class="alert" style="margin-bottom:10px">
+            清关查验周期较长时，可能产生改港/滞港等附加费；金额规则待业务固化。
+          </div>
+          <button type="button" class="tool-btn outline warn" id="btnPortChangeFee">清关过久 · 改港费 <span class="badge-new">NEW</span></button>
+          <span style="margin-left:8px;font-size:12px;color:var(--sub)">占位 · 金额待业务固化</span>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="detailCancel">取消</button>
+        <button type="button" class="tool-btn" id="detailSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 一键通知客户 -->
+  <div class="mask" id="ntMask">
+    <div class="modal wide">
+      <div class="modal-hd">
+        <h3>查验 · 一键通知客户 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="ntClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info">
+          针对「清关查验」中的提单，一键生成通知文案发给业务员/客户（站内待办 + 企微/邮件可选），减少口头转告遗漏。
+          国内出口侧见 <a href="报关行对接/报关管理-列表-MVP.html?tab=check">报关管理 · 报关查验 · 一键通知</a>。
+        </div>
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-item"><label>通知渠道</label>
+            <select id="ntChannel">
+              <option>站内待办 + 企微</option>
+              <option>站内待办 + 邮件</option>
+              <option>仅站内待办</option>
+              <option>仅复制文案（人工发群）</option>
+            </select>
+          </div>
+          <div class="form-item"><label>收件对象</label>
+            <select id="ntTo">
+              <option>业务员 → 再转客户</option>
+              <option>业务员 + 客服</option>
+              <option>仅业务员</option>
+            </select>
+          </div>
+          <div class="form-item full"><label>查验说明（写入消息）</label>
+            <input id="ntExtra" placeholder="例：海关要求补原产地证，预计 2–3 个工作日" />
+          </div>
+        </div>
+        <div class="chat-shell">
+          <textarea class="chat-bubble" id="ntMsg" rows="10"></textarea>
+        </div>
+        <div class="alert ok" style="margin-top:10px;margin-bottom:0">发送后列表「客户通知」列更新为已通知；可再次打开补发。</div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="ntCancel">取消</button>
+        <button type="button" class="tool-btn ok" id="ntCopy">复制文案</button>
+        <button type="button" class="tool-btn purple" id="ntSend">确认发送通知</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd" data-ess-prd>
+    <h3>产品说明 · 清关管理增量</h3>
+    <h4>IT 状态（只读协同）</h4>
+    <ul>
+      <li>「取消IT」仅在船务 <a href="产品部门/各组sop/船务组-提单管理-按周分组与分配-MVP.html">提单管理</a> 操作；清关管理<strong>不设</strong>取消IT工具栏入口。</li>
+      <li>本页列表「IT标记」列只读展示有IT / 已取消IT / 无IT，供清关协同与筛选。</li>
+    </ul>
+    <h4>查验页一键通知客户</h4>
+    <ul>
+      <li>仅在「清关查验」页签展示「一键通知客户」按钮。</li>
+      <li>勾选查验中记录 → 生成含提单/柜号/目的港/查验说明的消息 → 发送或复制。</li>
+      <li>对齐关务「查验一键通知 + 处置状态」能力，减少口头转告。</li>
+    </ul>
+    <h4>海外清关品名</h4>
+    <ul>
+      <li>清关详情中<strong>出口报关品名</strong>与<strong>海外清关品名</strong>分字段维护；目的港清关资料以海外清关品名为准。</li>
+    </ul>
+    <h4>查验 · 改港费占位</h4>
+    <ul>
+      <li>清关查验页签详情区展示「清关过久 · 改港费」占位按钮；金额待业务固化。</li>
+      <li>示例查验行可带「费用异常」标记，便于后续费用对账。</li>
+    </ul>
+  </div>
+
+  <script src="二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var ROWS = [
+        { id: 1, bl: "MEDU9988776655", cntr: "MEDU1122334", st: "待清关", it: "有IT", notify: "未通知", broker: "赛因清关", cs: "王敏", type: "40HQ", carrier: "MSC", voy: "MSC OSCAR 12W", pod: "USLGB", eta: "2026-08-20", cust: "宁波华贸 / 陈芳", exportName: "塑料收纳盒", overseasName: "Plastic Storage Box" },
+        { id: 2, bl: "HLCUTS12698AZMK1", cntr: "HLBU2877104", st: "待清关", it: "有IT", notify: "未通知", broker: "关关通", cs: "李倩", type: "20GP", carrier: "Hapag", voy: "YM MOVEMENT 0TH5FE1MA", pod: "USNYC", eta: "2026-08-18", cust: "天津保税 / 宋立业", exportName: "LED台灯", overseasName: "LED Desk Lamp" },
+        { id: 3, bl: "COSU1234567890", cntr: "CSNU6688123", st: "待清关", it: "无IT", notify: "未通知", broker: "赛因清关", cs: "王敏", type: "40HQ", carrier: "COSCO", voy: "COSCO SHIPPING 088E", pod: "USLAX", eta: "2026-08-22", cust: "上海迅达 / 张立明", exportName: "不锈钢厨具", overseasName: "Stainless Steel Kitchenware" },
+        { id: 4, bl: "ONEY5566778899", cntr: "NYKU4455667", st: "待清关", it: "已取消IT", notify: "未通知", broker: "关关通", cs: "周杰", type: "40HQ", carrier: "ONE", voy: "ONE CONTINUITY 021E", pod: "USHOU", eta: "2026-08-25", cust: "深圳盐田客户 / 陈芳", exportName: "棉质T恤", overseasName: "Cotton T-Shirt" },
+        { id: 5, bl: "MEDU20260818001", cntr: "MSCU3344556", st: "清关查验", it: "有IT", notify: "未通知", broker: "赛因清关", cs: "王敏", type: "40HQ", carrier: "MSC", voy: "MSC MIRJA 08E", pod: "USLGB", eta: "2026-08-16", cust: "青岛黄岛 / 刘洋", exportName: "电动工具配件", overseasName: "Power Tool Accessories", feeAnomaly: true },
+        { id: 6, bl: "HLCUTS12699BB001", cntr: "HLCU9900112", st: "清关查验", it: "无IT", notify: "未通知", broker: "关关通", cs: "李倩", type: "40HQ", carrier: "Hapag", voy: "AL RAWDAH 009E", pod: "USNYC", eta: "2026-08-15", cust: "上海外高桥 / 赵敏", exportName: "办公椅", overseasName: "Office Chair" },
+        { id: 7, bl: "COSU20260813001", cntr: "CSNU7788990", st: "清关查验", it: "已取消IT", notify: "已通知", broker: "赛因清关", cs: "周杰", type: "40HQ", carrier: "COSCO", voy: "COSCO FORTUNE 055E", pod: "USLAX", eta: "2026-08-14", cust: "宁波慈溪 / 陈芳", exportName: "瑜伽垫", overseasName: "Yoga Mat" },
+        { id: 8, bl: "ONEY5566778800", cntr: "NYKU4455778", st: "清关放行", it: "无IT", notify: "未通知", broker: "关关通", cs: "李倩", type: "20GP", carrier: "ONE", voy: "ONE CONTINUITY 021E", pod: "USHOU", eta: "2026-08-10", cust: "东莞客户 / 王强", exportName: "塑料花盆", overseasName: "Plastic Flower Pot" },
+        { id: 9, bl: "MEDU20260818002", cntr: "MSCU3344667", st: "清关放行", it: "已取消IT", notify: "未通知", broker: "赛因清关", cs: "王敏", type: "20GP", carrier: "MSC", voy: "MSC MIRJA 08E", pod: "USLGB", eta: "2026-08-11", cust: "青岛保税 / 刘洋", exportName: "运动水壶", overseasName: "Sports Water Bottle" },
+        { id: 10, bl: "HLCUTS12700CC100", cntr: "HLCU5566778", st: "查验放行", it: "无IT", notify: "已通知", broker: "关关通", cs: "周杰", type: "40HQ", carrier: "Hapag", voy: "YM WARMTH 0TH6WE1MA", pod: "USNYC", eta: "2026-08-08", cust: "上海临港 / 赵敏", exportName: "蓝牙耳机", overseasName: "Bluetooth Earbuds" }
+      ];
+
+      var stFilter = "";
+      var selected = {};
+      var detailCtx = { row: null };
+
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        setTimeout(function () { el.classList.remove("show"); }, 2200);
+      }
+
+      function itTag(it) {
+        if (it === "有IT") return '<span class="tag it">有IT</span>';
+        if (it === "已取消IT") return '<span class="tag it-off">已取消IT</span>';
+        return '<span class="tag it-off">无IT</span>';
+      }
+      function stTag(st) {
+        var cls = st === "清关查验" ? "check" : st.indexOf("放行") >= 0 ? "ok" : "wait";
+        return '<span class="tag ' + cls + '">' + st + "</span>";
+      }
+      function ntTag(n) {
+        return n === "已通知"
+          ? '<span class="tag notify">已通知</span>'
+          : '<span class="tag it-off">未通知</span>';
+      }
+
+      function filtered() {
+        var bl = (document.getElementById("qBl").value || "").trim().toUpperCase();
+        var cntr = (document.getElementById("qCntr").value || "").trim().toUpperCase();
+        var it = document.getElementById("qIt").value;
+        var nt = document.getElementById("qNotify").value;
+        var carrier = document.getElementById("qCarrier").value;
+        var pod = (document.getElementById("qPod").value || "").trim().toUpperCase();
+        return ROWS.filter(function (r) {
+          if (stFilter && r.st !== stFilter) return false;
+          if (bl && r.bl.indexOf(bl) < 0) return false;
+          if (cntr && r.cntr.indexOf(cntr) < 0) return false;
+          if (it && r.it !== it) return false;
+          if (nt && r.notify !== nt) return false;
+          if (carrier && r.carrier !== carrier) return false;
+          if (pod && r.pod.indexOf(pod) < 0) return false;
+          return true;
+        });
+      }
+
+      function checkedRows() {
+        return ROWS.filter(function (r) { return selected[r.id]; });
+      }
+
+      function syncInspectUi() {
+        var on = stFilter === "清关查验";
+        document.getElementById("btnNotify").classList.toggle("hidden", !on);
+        document.getElementById("tipDefault").classList.toggle("hidden", on);
+        document.getElementById("tipInspect").classList.toggle("hidden", !on);
+      }
+
+      function render() {
+        var list = filtered();
+        document.getElementById("totalCnt").textContent = String(list.length);
+        var html = "";
+        list.forEach(function (r, i) {
+          var ck = selected[r.id] ? " checked" : "";
+          var sel = selected[r.id] ? " selected" : "";
+          html += '<tr class="' + sel + '" data-id="' + r.id + '">' +
+            '<td><input type="checkbox" class="row-ck"' + ck + " /></td>" +
+            "<td>" + (i + 1) + "</td>" +
+            '<td><a href="#" class="js-open-detail" data-id="' + r.id + '">' + r.bl + "</a></td>" +
+            "<td>" + r.cntr + "</td>" +
+            "<td>" + stTag(r.st) + (r.feeAnomaly ? ' <span class="tag fee-warn">费用异常</span>' : "") + "</td>" +
+            "<td>" + itTag(r.it) + "</td>" +
+            "<td>" + ntTag(r.notify) + "</td>" +
+            "<td>" + r.broker + "</td>" +
+            "<td>" + r.cs + "</td>" +
+            "<td>" + r.type + "</td>" +
+            "<td>" + r.carrier + "</td>" +
+            "<td>" + r.voy + "</td>" +
+            "<td>" + r.pod + "</td>" +
+            "<td>" + r.eta + "</td>" +
+            "<td>" + r.cust + "</td>" +
+            "</tr>";
+        });
+        document.getElementById("tbody").innerHTML = html ||
+          '<tr><td colspan="15" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+        syncInspectUi();
+      }
+
+      document.getElementById("tbody").addEventListener("change", function (e) {
+        var ck = e.target.closest(".row-ck");
+        if (!ck) return;
+        var tr = ck.closest("tr");
+        var id = Number(tr.getAttribute("data-id"));
+        if (ck.checked) selected[id] = true; else delete selected[id];
+        tr.classList.toggle("selected", ck.checked);
+      });
+      document.getElementById("chkAll").addEventListener("change", function () {
+        var on = this.checked;
+        filtered().forEach(function (r) {
+          if (on) selected[r.id] = true; else delete selected[r.id];
+        });
+        render();
+      });
+
+      document.querySelectorAll(".status-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          stFilter = btn.getAttribute("data-st") || "";
+          render();
+        });
+      });
+
+      document.getElementById("btnSearch").onclick = render;
+      document.getElementById("btnReset").onclick = function () {
+        ["qBl", "qCntr", "qPod"].forEach(function (id) { document.getElementById(id).value = ""; });
+        document.getElementById("qIt").value = "";
+        document.getElementById("qNotify").value = "";
+        document.getElementById("qCarrier").value = "";
+        render();
+      };
+
+      /* 一键通知 */
+      function buildNotify(rows) {
+        var extra = document.getElementById("ntExtra").value.trim();
+        var lines = [];
+        lines.push("【清关查验通知】");
+        lines.push("贵司以下提单在目的港进入海关查验，请知悉并配合补充资料：");
+        lines.push("————————");
+        rows.forEach(function (r, i) {
+          lines.push((i + 1) + ". 提单 " + r.bl + "　柜号 " + r.cntr);
+          lines.push("   目的港 " + r.pod + "　船名航次 " + r.voy);
+          lines.push("   清关行 " + r.broker + "　客服 " + r.cs);
+          lines.push("   客户侧 " + r.cust);
+          lines.push("");
+        });
+        if (extra) lines.push("说明：" + extra);
+        lines.push("————————");
+        lines.push("请业务员尽快转告客户；资料齐套后回复本消息。");
+        return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+      }
+
+      function openNt() {
+        if (stFilter !== "清关查验") { toast("请先进入「清关查验」页签"); return; }
+        var rows = checkedRows().filter(function (r) { return r.st === "清关查验"; });
+        if (!rows.length) { toast("请勾选清关查验中的提单"); return; }
+        document.getElementById("ntMsg").value = buildNotify(rows);
+        document.getElementById("ntMask").classList.add("open");
+      }
+      function closeNt() { document.getElementById("ntMask").classList.remove("open"); }
+      document.getElementById("btnNotify").onclick = openNt;
+      document.getElementById("ntClose").onclick = closeNt;
+      document.getElementById("ntCancel").onclick = closeNt;
+      document.getElementById("ntMask").onclick = function (e) { if (e.target === this) closeNt(); };
+      document.getElementById("ntExtra").addEventListener("input", function () {
+        var rows = checkedRows().filter(function (r) { return r.st === "清关查验"; });
+        if (rows.length) document.getElementById("ntMsg").value = buildNotify(rows);
+      });
+      document.getElementById("ntCopy").onclick = function () {
+        var text = document.getElementById("ntMsg").value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { toast("已复制查验通知文案"); });
+        } else {
+          document.getElementById("ntMsg").select();
+          document.execCommand("copy");
+          toast("已复制查验通知文案");
+        }
+      };
+      document.getElementById("ntSend").onclick = function () {
+        var rows = checkedRows().filter(function (r) { return r.st === "清关查验"; });
+        rows.forEach(function (r) { r.notify = "已通知"; });
+        closeNt();
+        render();
+        toast("已通知客户/业务员 ×" + rows.length + "（" + document.getElementById("ntChannel").value + "）");
+      };
+
+      var params = new URLSearchParams(location.search || "");
+      if (params.get("tab") === "inspect") {
+        stFilter = "清关查验";
+        document.querySelectorAll(".status-tab").forEach(function (b) {
+          b.classList.toggle("active", b.getAttribute("data-st") === "清关查验");
+        });
+      }
+      render();
+    })();
+  </script>
+</body>
+</html>

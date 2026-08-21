@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜客户岗位绑定（独立子表） · PRD</title>
+  <style>
+    :root { --bg:#f5f7fb; --card:#fff; --line:#e5e7eb; --text:#111827; --sub:#6b7280; --blue:#2563eb; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif; font-size:14px; }
+    a { color:var(--blue); }
+    .page { max-width:920px; margin:0 auto; padding:20px 16px 48px; }
+    .hero { background:linear-gradient(135deg,#1e3a5f,#2563eb); color:#fff;
+      border-radius:12px; padding:16px 18px; margin-bottom:14px; }
+    .hero h1 { margin:0 0 6px; font-size:18px; }
+    .hero p { margin:0; font-size:13px; line-height:1.65; opacity:.95; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+      padding:16px 18px; line-height:1.7; }
+    .card h3 { margin:14px 0 8px; font-size:15px; }
+    .card h4 { margin:12px 0 6px; font-size:14px; }
+    .card ul { margin:0; padding-left:18px; }
+    .foot { text-align:center; font-size:12px; color:var(--sub); margin-top:16px; }
+  
+    html.ess-prd-embed body { background: #f8fafc; }
+    html.ess-prd-embed .page { max-width: none; margin: 0; padding: 8px 8px 24px; }
+    html.ess-prd-embed .hero { padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; }
+    html.ess-prd-embed .hero h1 { font-size: 16px; }
+    html.ess-prd-embed .card { padding: 12px 14px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+        <script>
+    if (window.self !== window.top) document.documentElement.classList.add("ess-prd-embed");
+    (function () {
+      function scrollToHash() {
+        var id = (location.hash || "").replace(/^#/, "");
+        if (!id) return;
+        var el = document.getElementById(id);
+        if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scrollToHash);
+      else scrollToHash();
+      window.addEventListener("hashchange", scrollToHash);
+    })();
+  </script>
+<div class="page">
+    <section class="hero">
+      <h1>整柜客户岗位绑定（独立子表） · PRD</h1>
+      <p>2026-08-17 · 原型：<a href="整柜客户岗位绑定-MVP.html" style="color:#fff">整柜客户岗位绑定-MVP.html</a></p>
+    </section>
+    <section class="card" id="prd-body">
+      <h3>整柜客户岗位绑定（独立子表）</h3>
+          <h4>为何与客户主档分离</h4>
+          <ul>
+            <li>客户表含电话、地址、信用额度、银行账号等<strong>高隐私</strong>字段，权限面应小于客户管理。</li>
+            <li>整柜岗位绑定由产品/操作维护，不应强制开通「客户管理」菜单。</li>
+            <li>子表仅引用 <strong>customer_code + customer_short_name</strong>（简称只读同步，不可在子表修改客户档案）。</li>
+          </ul>
+          <h4>列表与表单布局</h4>
+          <ul>
+            <li><strong>列表</strong>：一行一个客户；含<strong>绑定业务员</strong>（只读）；岗位横向为列（客服、订舱员、报关员、海外对接）。</li>
+            <li><strong>编辑弹窗</strong>：四个岗位横向排列，一次维护全岗位主责人员。</li>
+            <li>存储仍为明细表（客户+岗位+员工）；列表/表单为 pivot 展示。</li>
+            <li>报价员不进客户维度权限（询价路由仍走独立「报价员配置」）。</li>
+          </ul>
+          <h4>关系模型</h4>
+          <ul>
+            <li><strong>客户主档</strong>绑定业务员（已有字段）。</li>
+            <li><strong>业务员</strong>在员工管理维护「整柜岗位团队」（横向四岗）。</li>
+            <li><strong>本表</strong>：客户默认继承业务员团队；支持单向修改（default/custom）。</li>
+            <li><strong>运单/舱位/提单</strong>：权限与待办路由读<strong>客户最终配置</strong>，不直接读业务员团队。</li>
+            <li>散货仍用组织架构 + 客户主档业务员/客服；本表仅服务整柜。</li>
+          </ul>
+          <h4>与业务员团队联动（单向）</h4>
+          <ul>
+            <li>选客户 / 「从业务员团队带入」：读客户绑定业务员 → 带入其岗位团队。</li>
+            <li>客户修改岗位人员 → 仅写本表 <code>bind_source=custom</code>，不回写员工管理。</li>
+            <li>「恢复默认」：重新读当前绑定业务员的团队配置。</li>
+            <li>客户更换业务员：提示重新带入；仅覆盖 default 格。</li>
+          </ul>
+          <h4>数据模型</h4>
+          <ul>
+            <li>表名示意：<code>fcl_customer_role_binding</code></li>
+            <li>粒度：客户代码 + 岗位角色 + 员工工号 + 生效区间</li>
+            <li>列表展示：按客户 pivot 成横向四列；未配置显示「—」</li>
+            <li>岗位枚举：<code>cs</code> 客服 / <code>booking</code> 订舱员 / <code>customs</code> 报关员 / <code>overseas</code> 海外对接</li>
+            <li>字段 <code>bind_source</code>：<code>default</code> | <code>custom</code></li>
+          </ul>
+          <h4>与客户管理联动</h4>
+          <ul>
+            <li>客户管理列表可增加操作「配置整柜岗位」→ 跳转本子表并带 customer_code 筛选（不嵌表单）。</li>
+            <li>散货仍用客户主档业务员/客服；整柜运单读本子表。</li>
+          </ul>
+          <h4>菜单权限建议</h4>
+          <ul>
+            <li>客户管理：销售/财务/admin</li>
+            <li>整柜客户岗位绑定：产品、订舱主管、admin</li>
+          </ul>
+    </section>
+    <p class="foot">产品部门 · 由原型页 ess-prd-source 剥离</p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>订单管理 · 客户端 MVP（含 POD 下载）</title>
+  <style>
+    :root {
+      --sidebar: #001529;
+      --header: #001529;
+      --orange: #fa8c16;
+      --orange-btn: #e8943a;
+      --bg: #f0f2f5;
+      --line: #e8e8e8;
+      --text: rgba(0,0,0,.85);
+      --sub: rgba(0,0,0,.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --red: #ff4d4f;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; font-size: 12px; color: var(--text); }
+    button, input { font: inherit; }
+    a { text-decoration: none; }
+
+    .app { display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar {
+      width: 188px; background: var(--sidebar); color: rgba(255,255,255,.65);
+      flex-shrink: 0; display: flex; flex-direction: column; font-size: 13px;
+    }
+    .sidebar-logo {
+      padding: 14px 12px; color: #fff; font-weight: 700; font-size: 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 8px;
+    }
+    .sidebar-logo .logo { width: 28px; height: 28px; background: var(--orange); border-radius: 4px; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 6px 0 20px; }
+    .nav-item {
+      display: block; padding: 9px 16px 9px 20px; color: inherit; cursor: pointer;
+    }
+    .nav-item:hover { color: #fff; }
+    .nav-item.active { background: var(--orange); color: #fff; }
+    .nav-sub { padding-left: 12px; }
+    .nav-sub .nav-item { padding-left: 28px; font-size: 12px; }
+    .nav-sub .nav-item.active { background: rgba(250,140,22,.85); }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg); overflow: hidden; }
+    .topbar {
+      height: 46px; background: var(--header); color: rgba(255,255,255,.85);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .topbar-tab {
+      background: var(--orange); color: #fff; padding: 0 14px; height: 46px; line-height: 46px; font-weight: 600;
+    }
+    .topbar-user { font-size: 12px; color: rgba(255,255,255,.65); }
+
+    .demo-bar {
+      background: #e6f7ff; border-bottom: 1px solid #91d5ff;
+      padding: 6px 12px; font-size: 11px; color: #0050b3; line-height: 1.55;
+    }
+
+    .filter-panel {
+      background: #fff; padding: 10px 12px 8px; border-bottom: 1px solid var(--line);
+    }
+    .filter-panel .filter-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 8px; }
+    .filter-panel .filter-row label { font-size: 12px; color: var(--sub); margin-right: 4px; }
+    .filter-panel .filter-row input, .filter-panel .filter-row select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; width: 140px;
+    }
+    .filter-more { margin-left: auto; color: var(--blue); cursor: pointer; font-size: 12px; }
+
+    .status-tabs {
+      display: flex; flex-wrap: wrap; gap: 0; background: #fff; border-bottom: 1px solid var(--line); padding: 0 8px;
+    }
+    .st-tab {
+      padding: 8px 12px; border: none; background: none; font: inherit; font-size: 12px;
+      color: var(--sub); cursor: pointer; white-space: nowrap;
+    }
+    .st-tab.active { color: var(--orange); font-weight: 600; border-bottom: 2px solid var(--orange); margin-bottom: -1px; }
+
+    .toolbar {
+      padding: 6px 8px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .tbtn {
+      height: 28px; padding: 0 10px; border-radius: 3px; border: 1px solid #d9d9d9;
+      background: #fff; font-size: 12px; cursor: pointer; white-space: nowrap;
+    }
+    .tbtn-orange { background: var(--orange-btn); border-color: var(--orange-btn); color: #fff; }
+    .tbtn-orange:disabled { opacity: .5; cursor: not-allowed; }
+    .tbtn-new { position: relative; }
+    .mark-new {
+      position: absolute; top: -5px; right: -4px; background: var(--red); color: #fff;
+      font-size: 9px; padding: 0 3px; border-radius: 2px; line-height: 12px;
+    }
+
+    .grid-wrap {
+      flex: 1; overflow: auto; background: #fff; min-height: 0;
+    }
+    .data-grid {
+      border-collapse: collapse; min-width: 3200px; font-size: 12px; width: max-content;
+    }
+    .data-grid th, .data-grid td {
+      border: 1px solid var(--line); padding: 5px 8px; white-space: nowrap; vertical-align: middle;
+    }
+    .data-grid thead tr:first-child th {
+      background: #fafafa; font-weight: 600; color: var(--text);
+      position: sticky; top: 0; z-index: 3;
+    }
+    .data-grid thead tr.col-filter-row th {
+      background: #fff; padding: 2px 4px; height: 28px;
+      position: sticky; top: 31px; z-index: 3;
+    }
+    .data-grid thead tr.col-filter-row input {
+      width: 100%; height: 22px; border: 1px solid #e8e8e8; border-radius: 2px; padding: 0 4px; font-size: 11px;
+    }
+    .data-grid tbody tr:hover td { background: #fafafa; }
+    .data-grid tbody tr.selected td { background: #fff7e6; }
+    .data-grid tfoot td { background: #fafafa; font-weight: 600; }
+
+    .col-check { width: 32px; text-align: center; }
+    .col-ops {
+      position: sticky; right: 0; background: #fff; z-index: 2;
+      box-shadow: -3px 0 6px rgba(0,0,0,.06); min-width: 200px;
+    }
+    .data-grid thead .col-ops { z-index: 4; background: #fafafa; }
+    .data-grid tbody tr:hover .col-ops { background: #fafafa; }
+    .data-grid tbody tr.selected .col-ops { background: #fff7e6; }
+    .data-grid tfoot .col-ops { background: #fafafa; }
+
+    .link-orange { color: var(--orange); cursor: pointer; }
+    .link-orange:hover { text-decoration: underline; }
+    .ops a, .ops span { color: var(--orange); cursor: pointer; margin-right: 6px; font-size: 12px; }
+    .ops a:hover, .ops span:hover { text-decoration: underline; }
+    .tag-ok { color: var(--green); }
+    .tag-no { color: var(--sub); }
+    .tag-warn { color: var(--orange); }
+    .pod-dl { color: var(--blue); cursor: pointer; margin-left: 4px; font-size: 11px; }
+    .pod-dl.off { color: #ccc; cursor: not-allowed; }
+
+    /* 弹窗 */
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .mask.hidden { display: none; }
+    .modal {
+      width: 700px; max-width: 100%; max-height: 88vh; background: #fff;
+      border-radius: 2px; display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+    }
+    .modal-hd {
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-hd h2 { margin: 0; font-size: 14px; }
+    .modal-x { border: none; background: none; font-size: 18px; color: var(--sub); cursor: pointer; }
+    .modal-tabs { display: flex; border-bottom: 1px solid var(--line); background: #fafafa; padding: 0 12px; }
+    .mtab {
+      padding: 8px 14px; border: none; background: none; font: inherit; font-size: 12px;
+      color: var(--sub); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .mtab.active { color: var(--orange); border-bottom-color: var(--orange); font-weight: 600; }
+    .modal-bd { padding: 14px; overflow-y: auto; flex: 1; font-size: 12px; }
+    .track-meta { color: var(--sub); line-height: 1.8; margin-bottom: 10px; }
+    .route { text-align: center; padding: 10px; background: #fafafa; margin-bottom: 12px; }
+    .timeline { padding-left: 16px; border-left: 2px solid #e8e8e8; margin-left: 8px; }
+    .tl { position: relative; padding: 0 0 16px 12px; display: flex; gap: 10px; }
+    .tl::before {
+      content: ""; position: absolute; left: -21px; top: 4px; width: 8px; height: 8px;
+      border-radius: 50%; background: #fff; border: 2px solid var(--blue);
+    }
+    .tl.pod::before { border-color: var(--green); background: var(--green); }
+    .tl-time { color: var(--sub); font-size: 11px; }
+    .tl-act { flex-shrink: 0; }
+    .attach-item {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      border: 1px solid var(--line); margin-bottom: 6px; background: #fafafa;
+    }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 2px;
+      font-size: 12px; z-index: 200; opacity: 0; transition: opacity .25s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-logo"><span class="logo"></span>腾信物流</div>
+      <nav class="sidebar-nav">
+        <a class="nav-item">管理首页</a>
+        <div class="nav-sub">
+          <a class="nav-item">录入FBA订单</a>
+          <a class="nav-item">导入FBA订单</a>
+          <a class="nav-item">批量导入FBA订单</a>
+          <a class="nav-item active">订单管理</a>
+        </div>
+        <a class="nav-item">提货管理</a>
+        <a class="nav-item">偏远查询</a>
+        <a class="nav-item">问题件</a>
+        <a class="nav-item">账户设置</a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <span style="opacity:.7">腾信物流</span>
+          <span class="topbar-tab">订单管理</span>
+        </div>
+        <div class="topbar-user">宁波江北区敢宜贸易有限公司</div>
+      </header>
+
+      <div class="demo-bar">
+        <strong>更新：</strong>对齐客户订单管理真实列与工具栏 · 新增 <strong>POD</strong> 列（标签打印后）· 工具栏 <strong>批量下载POD</strong> · 操作列保留 预报/轨迹信息/附件信息 · API 见 客户API-POD对接调整说明.md
+      </div>
+
+      <div class="filter-panel">
+        <div class="filter-row">
+          <label>运单号</label><input type="text" placeholder="" />
+          <label>FBA号</label><input type="text" placeholder="" />
+          <span class="filter-more">更多筛选 ▼</span>
+        </div>
+      </div>
+
+      <div class="status-tabs">
+        <button class="st-tab active">全部(2075)</button>
+        <button class="st-tab">草稿(0)</button>
+        <button class="st-tab">已预报(0)</button>
+        <button class="st-tab">已收货(1)</button>
+        <button class="st-tab">已出仓(1273)</button>
+        <button class="st-tab">已签收(766)</button>
+        <button class="st-tab">已退件(0)</button>
+        <button class="st-tab">已作废(86)</button>
+      </div>
+
+      <div class="toolbar">
+        <button class="tbtn tbtn-orange" type="button">查询</button>
+        <button class="tbtn tbtn-orange" type="button">订单导入</button>
+        <button class="tbtn tbtn-orange" type="button">订单预报</button>
+        <button class="tbtn tbtn-orange" type="button">订单取消</button>
+        <button class="tbtn tbtn-orange" type="button">提交预报</button>
+        <button class="tbtn tbtn-orange" type="button">拆分报关</button>
+        <button class="tbtn tbtn-orange" type="button">合并报关</button>
+        <button class="tbtn tbtn-orange" type="button">标签打印</button>
+        <button class="tbtn tbtn-orange" type="button">订单拦截</button>
+        <button class="tbtn tbtn-orange" type="button">修改PO信息</button>
+        <button class="tbtn tbtn-orange" type="button">批量导出</button>
+        <button class="tbtn tbtn-orange tbtn-new" type="button" id="btnBatchPod" disabled>
+          批量下载POD<span class="mark-new">新</span>
+        </button>
+        <button class="tbtn" type="button">模板下载</button>
+        <button class="tbtn" type="button">材积箱单导出</button>
+        <button class="tbtn" type="button">标签压缩包</button>
+        <span id="selHint" style="font-size:11px;color:var(--sub);margin-left:4px">已选 0 条</span>
+      </div>
+
+      <div class="grid-wrap">
+        <table class="data-grid">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="checkAll" /></th>
+              <th>序号</th>
+              <th>运单状态</th>
+              <th>轨迹状态</th>
+              <th>标签打印</th>
+              <th>POD</th>
+              <th>原单号</th>
+              <th>服务商单号</th>
+              <th>客户简称</th>
+              <th>产品编号</th>
+              <th>国家</th>
+              <th>FBA单号</th>
+              <th>REFERENCE ID</th>
+              <th>主品名</th>
+              <th>扣件状态</th>
+              <th>创建时间</th>
+              <th>到货件数</th>
+              <th>收货重</th>
+              <th>计费重</th>
+              <th>船名航次</th>
+              <th>总费用</th>
+              <th>转单号</th>
+              <th>附加服务</th>
+              <th>到货时间</th>
+              <th>到货网点</th>
+              <th class="col-ops">操作</th>
+            </tr>
+            <tr class="col-filter-row">
+              <th></th>
+              <th></th><th><input /></th><th><input /></th><th></th><th></th>
+              <th><input /></th><th><input /></th><th></th><th></th><th></th>
+              <th><input /></th><th><input /></th><th></th><th></th><th></th>
+              <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+              <th class="col-ops"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="16">合计</td>
+              <td>5238</td>
+              <td>72764.09</td>
+              <td>—</td>
+              <td colspan="4"></td>
+              <td>936516.5</td>
+              <td colspan="4"></td>
+              <td class="col-ops"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask hidden" id="modal">
+    <div class="modal">
+      <div class="modal-hd">
+        <h2 id="modalTitle">轨迹信息</h2>
+        <button class="modal-x" type="button" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="mtab active" data-tab="track" onclick="switchTab('track')">轨迹信息</button>
+        <button class="mtab" data-tab="attach" onclick="switchTab('attach')">附件信息</button>
+        <button class="mtab" data-tab="ref" onclick="switchTab('ref')">参考编号</button>
+      </div>
+      <div class="modal-bd" id="modalBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const ROWS = [
+      { id:1, st:"装柜完成", tr:"清关放行", lb:"已打印", pod:"complete", podN:2,
+        orig:"9545451WFA", hawb:"ICBU0000118082", cust:"敢宜贸易", prod:"中美快运FBA卡派特惠", cty:"美国",
+        fba:"FBA19J5KT6YF", ref:"33FX3W7I", name:"清香剂", hold:"正常件", ct:"2026-07-17 10:22",
+        pcs:120, wt:462.2, cw:480, vessel:"CSCL SUMMER 028E", fee:7408, trans:"874601301090", extra:"产品附加+1.0",
+        arrT:"2026-07-20", arrP:"义乌总部",
+        tracks:[
+          { t:"2026-07-23 18:18:51", d:"已签收，POD已回传", de:"Delivered, POD uploaded", pod:true, f:"POD_9545451WFA.pdf" },
+          { t:"2026-07-23 10:00:00", d:"国内报关已放行，等待出发", de:"Customs released, waiting departure", pod:false }
+        ], files:[{n:"POD_9545451WFA.pdf",s:"240KB"},{n:"POD_photo.jpg",s:"1.2MB"}] },
+      { id:2, st:"已打单", tr:"已收货", lb:"已打印", pod:"none", podN:0,
+        orig:"9545452WFB", hawb:"ICBU0000118083", cust:"敢宜贸易", prod:"中美快运FBA卡派特惠", cty:"美国",
+        fba:"FBA19J5KT6YG", ref:"3KEFVA9T", name:"清香剂,吸色片", hold:"正常件", ct:"2026-07-17 11:05",
+        pcs:45, wt:94.76, cw:102, vessel:"OOCL IRIS 001W", fee:1785, trans:"", extra:"偏远",
+        arrT:"2026-07-20", arrP:"义乌总部", tracks:[{ t:"2026-07-22 15:30", d:"已出仓", de:"Departed", pod:false }], files:[] },
+      { id:3, st:"装柜完成", tr:"未知", lb:"已打印", pod:"partial", podN:1,
+        orig:"9545453WFC", hawb:"ICBU0000118084", cust:"敢宜贸易", prod:"中美快运FBA卡派标快", cty:"美国",
+        fba:"FBA19J5KT6YH", ref:"3KEFVA9U", name:"清香剂", hold:"正常件", ct:"2026-07-18 09:12",
+        pcs:88, wt:210.5, cw:225, vessel:"OOCL IRIS 001W", fee:1155, trans:"874601301092", extra:"合并报关",
+        arrT:"2026-07-20", arrP:"义乌总部",
+        tracks:[{ t:"2026-07-23 09:00", d:"部分签收", de:"Partial POD", pod:true, f:"POD_partial.pdf" }],
+        files:[{n:"POD_partial.pdf",s:"180KB"}] },
+      { id:4, st:"装柜完成", tr:"清关放行", lb:"已打印", pod:"complete", podN:1,
+        orig:"9545454WFD", hawb:"ICBU0000118085", cust:"敢宜贸易", prod:"中美快运FBA卡派特惠", cty:"美国",
+        fba:"FBA19J5KT6YI", ref:"3KEFVA9V", name:"清香剂", hold:"正常件", ct:"2026-07-18 14:20",
+        pcs:200, wt:680, cw:710, vessel:"OOCL IRIS 001W", fee:3200, trans:"874601301093", extra:"",
+        arrT:"2026-07-20", arrP:"义乌总部",
+        tracks:[{ t:"2026-07-23 16:00", d:"已签收", de:"Delivered", pod:true, f:"POD_9545454.pdf" }],
+        files:[{n:"POD_9545454.pdf",s:"210KB"}] },
+    ];
+
+    let cur = null, tab = "track";
+    const sel = new Set();
+
+    function podCell(r) {
+      if (r.pod === "none") return '<span class="tag-no">未回传</span>';
+      const tag = r.pod === "complete" ? '<span class="tag-ok">已回传</span>' : '<span class="tag-warn">部分</span>';
+      return tag + ` <span class="pod-dl" onclick="event.stopPropagation();dlPod(${r.id})">下载(${r.podN})</span>`;
+    }
+
+    function render() {
+      document.getElementById("tbody").innerHTML = ROWS.map((r,i) => `
+        <tr data-id="${r.id}" class="${sel.has(r.id)?'selected':''}">
+          <td class="col-check"><input type="checkbox" class="rc" data-id="${r.id}" ${sel.has(r.id)?'checked':''} /></td>
+          <td>${i+1}</td>
+          <td>${r.st}</td>
+          <td>${r.tr}</td>
+          <td>${r.lb}</td>
+          <td>${podCell(r)}</td>
+          <td>${r.orig}</td>
+          <td><span class="link-orange" onclick="openModal(${r.id},'track')">${r.hawb}</span></td>
+          <td>${r.cust}</td>
+          <td>${r.prod}</td>
+          <td>${r.cty}</td>
+          <td>${r.fba}</td>
+          <td>${r.ref}</td>
+          <td>${r.name}</td>
+          <td class="tag-ok">${r.hold}</td>
+          <td>${r.ct}</td>
+          <td>${r.pcs}</td>
+          <td>${r.wt}</td>
+          <td>${r.cw}</td>
+          <td>${r.vessel}</td>
+          <td>${r.fee}</td>
+          <td>${r.trans||'—'}</td>
+          <td>${r.extra||'—'}</td>
+          <td>${r.arrT}</td>
+          <td>${r.arrP}</td>
+          <td class="col-ops ops">
+            <span>预报</span>
+            <span onclick="openModal(${r.id},'track')">轨迹信息</span>
+            <span onclick="openModal(${r.id},'attach')">附件信息</span>
+            <span>查看Reference</span>
+            <span>复制</span>
+          </td>
+        </tr>`).join("");
+      document.querySelectorAll(".rc").forEach(c => {
+        c.onchange = () => {
+          const id = +c.dataset.id;
+          if (c.checked) sel.add(id); else sel.delete(id);
+          render();
+        };
+      });
+      document.getElementById("checkAll").onchange = e => {
+        sel.clear();
+        if (e.target.checked) ROWS.forEach(r => { if (r.pod !== "none") sel.add(r.id); });
+        render();
+      };
+      const ok = [...sel].filter(id => ROWS.find(r=>r.id===id)?.pod !== "none");
+      document.getElementById("btnBatchPod").disabled = !ok.length;
+      document.getElementById("selHint").textContent = `已选 ${sel.size} 条，可下载POD ${ok.length} 条`;
+    }
+
+    function toast(m) {
+      const t = document.getElementById("toast");
+      t.textContent = m; t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 2200);
+    }
+
+    function dlPod(id, name) {
+      const r = ROWS.find(x => x.id === id);
+      if (!r || r.pod === "none") return toast("暂无 POD");
+      toast("下载 " + (name || r.files[0]?.n || "POD") + " → downloadpod API");
+    }
+
+    document.getElementById("btnBatchPod").onclick = () => {
+      const n = [...sel].filter(id => ROWS.find(r=>r.id===id)?.pod !== "none").length;
+      toast(`批量打包 ${n} 票 POD.zip → downloadpod(pack_format=zip)`);
+    };
+
+    function openModal(id, t) {
+      cur = ROWS.find(r => r.id === id);
+      tab = t || "track";
+      document.getElementById("modal").classList.remove("hidden");
+      document.getElementById("modalTitle").textContent = "轨迹信息 · " + cur.hawb;
+      document.querySelectorAll(".mtab").forEach(m => m.classList.toggle("active", m.dataset.tab === tab));
+      renderModal();
+    }
+
+    function closeModal() { document.getElementById("modal").classList.add("hidden"); cur = null; }
+
+    function switchTab(t) {
+      if (t === "ref") { toast("参考编号（现有 Tab）"); return; }
+      tab = t;
+      document.querySelectorAll(".mtab").forEach(m => m.classList.toggle("active", m.dataset.tab === tab));
+      renderModal();
+    }
+
+    function renderModal() {
+      if (!cur) return;
+      const b = document.getElementById("modalBody");
+      if (tab === "attach") {
+        b.innerHTML = cur.files.length
+          ? cur.files.map(f => `<div class="attach-item"><span>📄 ${f.n}</span><span style="color:var(--sub)">${f.s}</span><span class="pod-dl" onclick="dlPod(${cur.id},'${f.n}')">下载</span></div>`).join("")
+          : "<p style='text-align:center;color:var(--sub);padding:30px'>暂无 POD 附件</p>";
+        return;
+      }
+      b.innerHTML = `
+        <div class="track-meta">服务商单号 <b>${cur.hawb}</b> · 原单号 <b>${cur.orig}</b> · 转单号 <b>${cur.trans||'—'}</b></div>
+        <div class="route">中国 🚢 美国</div>
+        <div class="timeline">
+          ${cur.tracks.map(t => `
+            <div class="tl ${t.pod?'pod':''}">
+              <div style="flex:1">
+                <div class="tl-time">${t.t}</div>
+                <div>${t.d}</div>
+                <div style="color:var(--sub);font-size:11px">${t.de}</div>
+              </div>
+              <div class="tl-act">${t.pod ? `<span class="pod-dl" onclick="dlPod(${cur.id},'${t.f}')">下载POD</span>` : ""}</div>
+            </div>`).join("")}
+        </div>`;
+    }
+
+    document.getElementById("modal").onclick = e => { if (e.target.id === "modal") closeModal(); };
+    render();
+  </script>
+</body>
+</html>

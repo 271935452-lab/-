@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>提单管理 · 费用登记（含水单）· 邮件对接（MVP）</title>
+  <title>提单管理 · 按周分组与分配（MVP）</title>
   <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
   <style>
     :root {
@@ -67,7 +67,7 @@
     }
     .side-item.on { background: rgba(24,144,255,.25); color: #fff; border-right: 3px solid var(--blue); }
 
-    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-bottom: 40px; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-bottom: 36px; }
 
     .filter-panel {
       background: var(--card); border-bottom: 1px solid var(--line);
@@ -111,6 +111,7 @@
     .tool-btn.danger { background: #fff; color: #cf1322; border-color: #ffa39e; }
     .tool-btn.danger:hover { border-color: #cf1322; color: #a8071a; }
     .tool-btn:disabled { opacity: .45; cursor: not-allowed; }
+    a.tool-btn { text-decoration: none; box-sizing: border-box; }
     .badge-new, .badge-chg {
       display: inline-block; margin-left: 3px; padding: 0 3px; height: 14px; line-height: 13px;
       font-size: 9px; font-weight: 600; border-radius: 2px; vertical-align: 1px;
@@ -156,6 +157,36 @@
     .status-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
     .status-tab b { font-weight: 600; }
 
+    .warn-bar {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      padding: 6px 12px; background: #fffbe6; border-bottom: 1px solid #ffe58f;
+      font-size: 12px;
+    }
+    .warn-lab {
+      color: #ad6800; font-weight: 600; flex-shrink: 0; margin-right: 4px;
+    }
+    .warn-chip {
+      height: 26px; padding: 0 10px; border-radius: 12px;
+      border: 1px solid #ffd591; background: #fff; cursor: pointer;
+      color: #ad6800; font-size: 12px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .warn-chip:hover { border-color: #fa8c16; color: #d46b08; }
+    .warn-chip.active {
+      background: #fa8c16; border-color: #fa8c16; color: #fff; font-weight: 600;
+    }
+    .warn-chip b { font-weight: 600; }
+    .warn-hint { color: #ad6800; opacity: .75; margin-left: 4px; }
+    .dim-split {
+      width: 1px; height: 16px; background: #ffd591; margin: 0 6px; flex-shrink: 0;
+    }
+    .load-chip.active {
+      background: #389e0d; border-color: #389e0d; color: #fff;
+    }
+    .load-chip[data-color="未装完"].active {
+      background: #d46b08; border-color: #d46b08;
+    }
+
     .view-bar {
       display: flex; align-items: center; gap: 10px;
       padding: 6px 12px; background: #fafafa; border-bottom: 1px solid var(--line);
@@ -171,7 +202,7 @@
 
     .table-wrap { flex: 1; overflow: auto; background: var(--card); margin: 0 0 0; }
       table.data {
-      width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1480px;
+      width: 100%; border-collapse: collapse; font-size: 12px; min-width: 3200px;
     }
     table.data th, table.data td {
       border-bottom: 1px solid var(--line); padding: 7px 8px;
@@ -182,6 +213,14 @@
     }
     table.data tr:hover td { background: #f5faff; }
     table.data tr.selected td { background: #e6f7ff; }
+    .ft-auto {
+      display: inline-block; padding: 0 8px; border-radius: 2px;
+      background: #d9f7be; color: #389e0d; font-size: 12px; line-height: 22px;
+    }
+    .ft-pending {
+      display: inline-block; padding: 0 8px; border-radius: 2px;
+      background: #fff7e6; color: #d46b08; font-size: 12px; line-height: 22px;
+    }
     /* Excel 式周页签 · 悬浮底部 */
     .week-sheet-bar {
       position: fixed; left: 180px; right: 0; bottom: 0; z-index: 80;
@@ -235,9 +274,9 @@
       .week-sheet-bar { left: 0; }
       .week-sheet-bar .sheet-hint { display: none; }
     }
-    .voy-cell { line-height: 1.35; min-width: 160px; white-space: normal; }
+    .voy-cell { white-space: nowrap; }
     .voy-cell .voy-main { font-weight: 600; color: var(--text); }
-    .voy-cell .voy-sub { font-size: 11px; color: #8c8c8c; margin-top: 2px; }
+    .voy-cell .voy-sub { font-size: 11px; color: #8c8c8c; margin-left: 6px; }
     .tag {
       display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
       border-radius: 2px; font-size: 11px; border: 1px solid #d9d9d9;
@@ -259,7 +298,10 @@
     .tag.arr-no, .tag.warn-over, .tag.imp-over {
       color: #cf1322; background: #fff2f0; border-color: #ffccc7;
     }
-    .tag.it-none, .tag.ck-none, .tag.amd-none, .tag.ft-pend { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.it-none, .tag.ck-none, .tag.amd-none, .tag.ft-pend, .tag.mute { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.ok { color: #389e0d; background: #f6ffed; border-color: #d9f7be; }
+    .tag.bad { color: #cf1322; background: #fff2f0; border-color: #ffccc7; }
+    .port-code-cell { line-height: 1.35; min-width: 88px; }
     .tag.it { font-weight: 600; }
     .tag.warn-over, .tag.imp-over { font-weight: 600; }
     .send-cell { line-height: 1.35; display: inline; }
@@ -269,37 +311,45 @@
       display: block; font-size: 11px; color: #8c8c8c; margin-top: 2px;
     }
     .filter-send-hint b { color: #1677ff; font-weight: 600; }
-    .it-cell { line-height: 1.35; display: inline; }
-    .it-cell .it-sub { font-size: 11px; color: #8c8c8c; margin-top: 2px; }
+    .it-cell { display: inline; white-space: nowrap; }
+    .it-cell .it-sub { font-size: 11px; color: #8c8c8c; margin-left: 4px; }
     .marks-cell {
-      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 6px;
-      min-width: 168px; max-width: 280px; line-height: 1.35;
+      display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 4px 6px;
+      white-space: nowrap;
     }
     .marks-cell .it-cell,
     .marks-cell .send-cell,
+    .marks-cell .rel-pair,
     .marks-cell .amd-cell,
-    .marks-cell .ck-block { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; }
+    .marks-cell .ck-block { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 2px 4px; }
     .marks-cell .it-sub,
     .marks-cell .amd-sub,
-    .marks-cell .ck-sub { width: 100%; margin-top: 0; font-size: 11px; }
+    .marks-cell .ck-sub { margin: 0 0 0 4px; font-size: 11px; }
     .marks-cell .tag { margin: 0; }
     .marks-cell .link-btn { font-size: 11px; }
     tr.it-cancelled td { background: transparent; }
     tr.it-cancelled:hover td { background: #f5f5f5; }
     tr.it-cancelled td:first-child { box-shadow: inset 3px 0 0 #bfbfbf; }
     tr.it-has td:first-child { box-shadow: inset 3px 0 0 #ffccc7; }
-    .amd-cell { line-height: 1.35; display: inline; }
-    .amd-cell .amd-sub { font-size: 11px; color: #8c8c8c; margin-top: 2px; }
+    .amd-cell { display: inline; white-space: nowrap; }
+    .amd-cell .amd-sub { font-size: 11px; color: #8c8c8c; margin-left: 4px; }
     tr.amd-row td { background: transparent; }
     tr.amd-row:hover td { background: #f5f5f5; }
     tr.amd-row td:nth-child(1) { box-shadow: inset 3px 0 0 #91d5ff; }
-    .rel-pair { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+    .rel-pair { display: inline-flex; flex-wrap: nowrap; gap: 3px; align-items: center; white-space: nowrap; }
     .warn-cell { line-height: 1.4; }
     .warn-cell .warn-sub { font-size: 11px; color: #8c8c8c; margin-top: 2px; }
     tr.warn-cut-row td { }
     tr.warn-sail-row td { }
     tr.warn-sail-row td:nth-child(1) { box-shadow: inset 3px 0 0 #ffccc7; }
     tr.warn-cut-row td:nth-child(1) { box-shadow: inset 3px 0 0 #ffe58f; }
+    tr.warn-seal-row td:nth-child(1) { box-shadow: inset 3px 0 0 #ff4d4f; }
+    tr.load-done.warn-seal-row td:nth-child(1) { box-shadow: inset 3px 0 0 #d9f7be, inset 6px 0 0 #ff4d4f; }
+    tr.load-pending.warn-seal-row td:nth-child(1) { box-shadow: inset 3px 0 0 #ffe58f, inset 6px 0 0 #ff4d4f; }
+    .cntr-seal { white-space: nowrap; }
+    .cntr-seal .cntr-main { font-weight: 600; }
+    .cntr-seal .seal-sub { font-size: 11px; color: #8c8c8c; margin-left: 6px; }
+    .cntr-seal .miss { color: #cf1322; font-weight: 600; }
     .color-dot {
       display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px;
     }
@@ -386,9 +436,27 @@
     .upload-box .file-name { margin-top: 6px; color: #0958d9; font-weight: 600; }
 
     .pager {
-      padding: 8px 12px; background: var(--card); border-top: 1px solid var(--line);
-      display: flex; justify-content: flex-end; gap: 8px; font-size: 12px; color: var(--sub);
+      position: sticky; bottom: 36px; z-index: 79;
+      padding: 8px 12px; background: var(--card);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -2px 6px rgba(0,0,0,.05);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px 16px; flex-wrap: wrap; font-size: 12px; color: var(--sub);
     }
+    .pager-scope {
+      color: #135200; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 4px; padding: 4px 8px; line-height: 1.45; max-width: 52%;
+    }
+    .pager-scope b { color: #092b00; }
+    .pager-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+    .pager-main button {
+      height: 28px; min-width: 28px; padding: 0 8px; border: 1px solid #d9d9d9;
+      background: #fff; border-radius: 2px; cursor: pointer; color: var(--text);
+    }
+    .pager-main button:hover { border-color: var(--blue); color: var(--blue); }
+    .pager-main button.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .pager-main button:disabled { opacity: .4; cursor: not-allowed; color: var(--sub); border-color: #d9d9d9; }
+    .pager-main select { height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; }
 
     .mask {
       position: fixed; inset: 0; background: rgba(0,0,0,.45);
@@ -413,6 +481,26 @@
     }
     .alert.info { background: #e6f7ff; border-color: #91d5ff; color: #0050b3; }
     .alert.ok { background: #f6ffed; border-color: #b7eb8f; color: #135200; }
+    .dt-hint {
+      padding: 8px 10px; border-radius: 2px; font-size: 12px; line-height: 1.65;
+      background: #fff7e6; border: 1px solid #ffd591; color: #ad4e00;
+    }
+    .dt-hint.over { background: #fff7e6; border-color: #ffd591; color: #ad4e00; }
+    .dt-hint.ok { background: #f6ffed; border-color: #b7eb8f; color: #135200; }
+    .msg-box {
+      background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .msg-box label.chk {
+      display: flex; align-items: center; gap: 6px; font-size: 13px; color: #0050b3; font-weight: 600;
+    }
+    .msg-box .hang-hint { margin: 6px 0 0; color: #0050b3; }
+    .msg-preview {
+      margin-top: 8px; padding: 8px 10px; background: #fff; border: 1px dashed #91d5ff;
+      border-radius: 2px; font-size: 12px; color: #334155; line-height: 1.65; white-space: pre-wrap;
+    }
+    .msg-box.off { background: #f5f5f5; border-color: #d9d9d9; }
+    .msg-box.off label.chk { color: #8c8c8c; }
     .form-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
     }
@@ -628,6 +716,15 @@
     .as-quote .q-name { font-weight: 600; color: #262626; }
     .as-quote .q-meta { color: #8c8c8c; }
     .drawer .chat-bubble { min-height: 120px; width: 100%; border: 0; resize: vertical; }
+    .drawer.log-drawer { width: min(720px, 100vw); }
+    .log-filter { padding: 8px 16px; border-bottom: 1px solid #f0f0f0; }
+    .log-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .log-tbl th, .log-tbl td {
+      border-bottom: 1px solid #f0f0f0; padding: 8px 10px; text-align: left; vertical-align: top;
+    }
+    .log-tbl th { background: #fafafa; color: #8c8c8c; font-weight: 600; white-space: nowrap; }
+    .log-tbl .log-text { white-space: normal; line-height: 1.5; color: #262626; }
+    .log-tbl .log-sys { color: #8c8c8c; }
     .toast {
       position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%);
       background: #001529; color: #fff; padding: 8px 16px; border-radius: 4px;
@@ -656,20 +753,13 @@
       <aside class="sidebar">
         <div class="side-title">提单管理</div>
         <div class="side-item on">提单管理</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html?mode=single'">提单创建</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">批量创建提单</div>
         <div class="side-item">待配仓</div>
         <div class="side-item">舱位播报</div>
       </aside>
 
       <main class="main">
-        <p class="proto-link">
-          原型 · 对齐：
-          <a href="船务组-0730-费用节点提单配仓-大致方案.html">船务 0730 方案</a> ·
-          <a href="船务组-提单创建批量-AI识别-MVP.html">批量创建 · AI识别</a> ·
-          <a href="关务组-查验报表-提单运单维度-MVP.html">查验报表（提单/运单）</a> ·
-          <a href="../调研纪要_2026-07-30_上午下午.txt">0730 纪要</a> ·
-          <a href="../产品部门-导航.html">导航</a>
-        </p>
-
         <div class="filter-panel">
           <div class="filter-grid">
             <div class="filter-item"><label>提单号</label><input id="qBl" placeholder="支持模糊" /></div>
@@ -698,15 +788,15 @@
             <div class="filter-item"><label>船名航次</label><input id="qVoy" placeholder="例 YM MOVEMENT" /></div>
             <div class="filter-item">
               <label>订舱供应商</label>
-              <select id="qBooker"><option value="">全部</option><option>上海新洋</option><option>青港物流</option><option>甬港拖车</option></select>
+              <select id="qBooker"><option value="">全部</option><option>大海</option><option>聚航</option><option>兰益</option><option>满舱</option><option>中外运</option></select>
             </div>
             <div class="filter-item">
               <label>国内拖车供应商</label>
-              <select id="qTrailer"><option value="">全部</option><option>甬港拖车</option><option>上海新洋</option><option>青港物流</option><option>盐田畅通</option></select>
+              <select id="qTrailer"><option value="">全部</option><option>万达</option><option>良承</option><option>打聚</option><option>聚源</option><option>甬港拖车</option><option>上海新洋</option><option>青港物流</option><option>盐田畅通</option></select>
             </div>
             <div class="filter-item">
               <label>报关供应商</label>
-              <select id="qCustoms"><option value="">全部</option><option>宁波报关行A</option><option>上海报关行B</option><option>青岛报关行C</option></select>
+              <select id="qCustoms"><option value="">全部</option><option>硕博</option><option>鸿岸</option><option>良承</option></select>
             </div>
             <div class="filter-actions">
               <button type="button" class="tool-btn outline" id="btnMoreFilter">更多筛选</button>
@@ -718,14 +808,14 @@
               <label>IT 状态 <span class="badge-new">新</span></label>
               <select id="qIt">
                 <option value="">全部</option>
-                <option value="有IT">有IT</option>
-                <option value="已取消IT">已取消IT</option>
-                <option value="无IT">无IT</option>
+                <option value="有IT">有IT（列表不标）</option>
+                <option value="已取消IT">取消IT</option>
+                <option value="无IT">无IT（列表不标）</option>
               </select>
             </div>
             <div class="filter-item">
               <label>发送标记 <span class="badge-new">新</span></label>
-              <select id="qSend" title="对应工具栏 AMS / ISF">
+              <select id="qSend" title="关务在报关管理打 AMS/ISF 后回写">
                 <option value="">全部</option>
                 <option value="ams_no">AMS 未发</option>
                 <option value="ams_ok">AMS 已发</option>
@@ -741,7 +831,6 @@
                 <option value="">全部</option>
                 <option value="查验中">查验中</option>
                 <option value="查验放行">查验放行</option>
-                <option value="查验挂票">查验挂票</option>
                 <option value="无">无查验</option>
               </select>
             </div>
@@ -749,30 +838,28 @@
               <label>改单标记 <span class="badge-new">新</span></label>
               <select id="qAmd">
                 <option value="">全部</option>
-                <option value="改单中">改单中</option>
+                <option value="改单中">改单</option>
                 <option value="已改单">已改单</option>
                 <option value="无">无改单</option>
               </select>
             </div>
             <div class="filter-item">
-              <label>海放 <span class="badge-new">新</span></label>
-              <select id="qSeaRel">
+              <label>放行标记 <span class="badge-chg">改</span></label>
+              <select id="qRel" title="海放=海关放行，码放=码头放行；并入业务标记">
                 <option value="">全部</option>
-                <option value="未放行">未海放</option>
-                <option value="已放行">已海放</option>
-              </select>
-            </div>
-            <div class="filter-item">
-              <label>码放 <span class="badge-new">新</span></label>
-              <select id="qTermRel">
-                <option value="">全部</option>
-                <option value="未放行">未码放</option>
-                <option value="已放行">已码放</option>
+                <option value="sea_no">未海放</option>
+                <option value="sea_ok">已海放</option>
+                <option value="term_no">未码放</option>
+                <option value="term_ok">已码放</option>
+                <option value="sea_ok_term_no">海放过 · 码放未</option>
+                <option value="term_ok_sea_no">码放过 · 海放未</option>
+                <option value="both_ok">海放+码放均已放</option>
+                <option value="both_no">海放+码放均未放</option>
               </select>
             </div>
             <div class="filter-item">
               <label>预警标记 <span class="badge-new">新</span></label>
-              <select id="qWarn">
+              <select id="qWarn" title="与列表下方预警条同步；开船未海放等仅在此选">
                 <option value="">全部</option>
                 <option value="临近截单">临近截单（提前24h）</option>
                 <option value="临近未海放">临近未海放</option>
@@ -780,6 +867,7 @@
                 <option value="开船未海放">开船未海放（已过ETD）</option>
                 <option value="开船未码放">开船未码放（已过ETD）</option>
                 <option value="未进港">未进港预警</option>
+                <option value="装完缺柜号铅封">装完缺柜号/铅封</option>
                 <option value="sail_any">临近/开船·任一未放</option>
                 <option value="any">任一预警</option>
               </select>
@@ -792,70 +880,47 @@
                 <option value="未进港">未进港</option>
               </select>
             </div>
-            <div class="filter-item">
-              <label>装完色标 <span class="badge-chg">改</span></label>
-              <select id="qColor">
-                <option value="">全部</option>
-                <option value="未装完">未装完</option>
-                <option value="装完">装完</option>
-                <option value="已装完">已装完</option>
-              </select>
-            </div>
           </div>
-        </div>
-
-        <div class="legend-bar" id="loadLegend">
-          <span style="font-weight:600;color:var(--text)">装完色标：</span>
-          <span class="lg"><span class="legend-swatch pending"></span>未装完</span>
-          <span class="lg"><span class="legend-swatch done"></span>装完</span>
-          <span style="color:#8c8c8c">｜ 底部周页签切周 · 同船名航次 → 船内未装完优先</span>
         </div>
 
         <div class="toolbar">
           <button type="button" class="tool-btn primary" id="btnSearch">查询数据</button>
+          <a class="tool-btn" href="船务组-提单创建批量-AI识别-MVP.html?mode=single">提单创建</a>
+          <a class="tool-btn" href="船务组-提单创建批量-AI识别-MVP.html">批量创建提单</a>
           <button type="button" class="tool-btn" id="btnBlEdit">提单修改</button>
           <button type="button" class="tool-btn" data-live="批量提单修改">批量提单修改</button>
           <button type="button" class="tool-btn" id="btnAssign">提单分配 <span class="badge-chg">改</span></button>
-          <button type="button" class="tool-btn" data-live="提单公告">提单公告</button>
+          <button type="button" class="tool-btn" id="btnOpLog">操作日志 <span class="badge-new">新</span></button>
           <button type="button" class="tool-btn" id="btnBindImp">绑定进口商 <span class="badge-chg">改</span></button>
           <button type="button" class="tool-btn danger" data-live="提单删除">提单删除</button>
           <button type="button" class="tool-btn" data-live="提单导出">提单导出</button>
-          <button type="button" class="tool-btn" data-live="修改装车提单">修改装车提单</button>
           <button type="button" class="tool-btn" data-live="复制提单">复制提单</button>
-          <button type="button" class="tool-btn" id="btnVoidBl" title="评审待定：作废后费用清不清">作废提单 <span class="badge-ask">待定</span></button>
-          <button type="button" class="tool-btn" data-live="换单撤销">换单撤销</button>
-          <button type="button" class="tool-btn" data-live="船单">船单</button>
-          <button type="button" class="tool-btn" data-live="换柜换船">换柜换船</button>
-          <button type="button" class="tool-btn" data-live="截单">截单</button>
-          <button type="button" class="tool-btn" id="btnAms" title="勾选后写入业务标记 · 与筛选联动">AMS <span class="badge-chg">改</span></button>
-          <button type="button" class="tool-btn" id="btnIsf" title="勾选后写入业务标记 · 与筛选联动">ISF <span class="badge-chg">改</span></button>
+          <button type="button" class="tool-btn" id="btnCkShip">查验换船 <span class="badge-chg">改</span></button>
+          <button type="button" class="tool-btn" id="btnSwapCntr">换柜换船 <span class="badge-chg">改</span></button>
           <span class="tb-split" aria-hidden="true"></span>
           <button type="button" class="tool-btn" id="btnBroadcast">舱位播报 <span class="badge-new">新</span></button>
           <button type="button" class="tool-btn" id="btnCancelIt">取消IT标记 <span class="badge-new">新</span></button>
-          <button type="button" class="tool-btn" id="btnCheckMark">查验标记 <span class="badge-new">新</span></button>
-          <button type="button" class="tool-btn" id="btnAmendMark">改单标记 <span class="badge-new">新</span></button>
-          <button type="button" class="tool-btn" id="btnMiscFee" title="免用箱超期 / 尾端异常 / 表格导入 / 供应商台账 同一入口">费用登记 ·水单 <span class="badge-new">新</span></button>
         </div>
-        <div class="review-flag" id="voidFeeFlag">
-          <strong>评审待定 · CW016</strong>
-          作废 / 删除的提单，<strong>已登记费用要不要清掉</strong>？不用的提单若还留费用，会导致分摊错误。点「提单删除 / 作废」展开选项，本次不落开发口径。
-        </div>
-
         <div class="status-tabs">
           <button type="button" class="status-tab active" data-st="">全部 <b id="cntAll">(18)</b></button>
           <button type="button" class="status-tab" data-st="待分配">待分配 <b>(5)</b></button>
           <button type="button" class="status-tab" data-st="待装柜" title="相对现网「待录卸」">待装柜 <span class="badge-chg">改</span> <b>(4)</b></button>
           <button type="button" class="status-tab" data-st="待离港">待离港 <b>(2)</b></button>
           <button type="button" class="status-tab" data-st="已离港">已离港 <b>(1)</b></button>
-          <button type="button" class="status-tab" data-warn="临近截单">临近截单 <span class="badge-new">新</span> <b id="cntCut">(0)</b></button>
-          <button type="button" class="status-tab" data-warn="临近未海放">临近未海放 <span class="badge-new">新</span> <b id="cntSea">(0)</b></button>
-          <button type="button" class="status-tab" data-warn="临近未码放">临近未码放 <span class="badge-new">新</span> <b id="cntTerm">(0)</b></button>
-          <button type="button" class="status-tab" data-warn="未进港">未进港 <span class="badge-new">新</span> <b id="cntArr">(0)</b></button>
         </div>
-
-        <div class="view-bar">
-          <span>列表视图</span>
-          <span id="viewHint">周改底部 Excel 式页签悬浮切换；表内只保留「船名航次」汇集列；排序：同船 → 未装完优先</span>
+        <div class="warn-bar" role="toolbar" aria-label="装完与预警筛选">
+          <input type="hidden" id="qColor" value="" />
+          <span class="warn-lab">装完 <span class="badge-new">新</span></span>
+          <button type="button" class="warn-chip load-chip" data-color="未装完">未装完</button>
+          <button type="button" class="warn-chip load-chip" data-color="已装完">已装完</button>
+          <span class="dim-split" aria-hidden="true"></span>
+          <span class="warn-lab">预警 <span class="badge-new">新</span></span>
+          <button type="button" class="warn-chip" data-warn="临近截单">临近截单 <b id="cntCut">(0)</b></button>
+          <button type="button" class="warn-chip" data-warn="临近未海放">临近未海放 <b id="cntSea">(0)</b></button>
+          <button type="button" class="warn-chip" data-warn="临近未码放">临近未码放 <b id="cntTerm">(0)</b></button>
+          <button type="button" class="warn-chip" data-warn="未进港">未进港 <b id="cntArr">(0)</b></button>
+          <button type="button" class="warn-chip" data-warn="装完缺柜号铅封">装完缺柜/铅封 <b id="cntSeal">(0)</b></button>
+          <span class="warn-hint">不选=全部 · 单选 · 可与上方状态叠用 · 预警点选后看全部周</span>
         </div>
 
         <div class="table-wrap">
@@ -865,36 +930,74 @@
                 <th style="width:36px"><input type="checkbox" id="chkAll" /></th>
                 <th>序号</th>
                 <th>提单号</th>
-                <th>柜号</th>
+                <th>柜号 / 铅封号 <span class="badge-chg">改</span></th>
                 <th>船名航次 <span class="badge-chg">改</span></th>
                 <th>提单状态</th>
-                <th style="min-width:168px">业务标记 <span class="badge-chg">改</span><div style="font-weight:400;font-size:11px;color:#8c8c8c;margin-top:2px">IT · AMS/ISF · 查验 · 改单</div></th>
+                <th style="min-width:260px">业务标记 <span class="badge-chg">改</span></th>
                 <th>截单时间 <span class="badge-new">新</span></th>
-                <th>海放 / 码放 / 预警 <span class="badge-new">新</span></th>
+                <th>装柜时间 <span class="badge-new">新</span></th>
+                <th>进港代码 <span class="badge-new">新</span></th>
                 <th>进港时间 <span class="badge-new">新</span></th>
                 <th>柜型</th>
                 <th>运输方式</th>
                 <th>预计出发时间</th>
                 <th>配舱单号</th>
+                <th>船公司(航运)</th>
                 <th>出发港</th>
                 <th>目的港</th>
-                <th>拖车代理</th>
-                <th>装柜地址</th>
+                <th>中转港</th>
+                <th>配舱票数</th>
+                <th>配舱件数</th>
+                <th>重量</th>
+                <th>方数</th>
+                <th>材积重</th>
+                <th>收货计费重</th>
+                <th>订柜供应商</th>
+                <th>报关供应商</th>
+                <th>拖车供应商</th>
+                <th>装柜地址1</th>
+                <th>装柜地址2</th>
+                <th>装柜地址3</th>
                 <th>预计装柜时间</th>
+                <th>飞驼轨迹自动抓取状态</th>
+                <th>备注</th>
+                <th>到仓库时间</th>
+                <th>离开仓库时间</th>
+                <th>海运费</th>
+                <th>国内免用箱</th>
+                <th>国外免用箱</th>
+                <th>创建时间</th>
+                <th>创建人</th>
+                <th>预计到达时间</th>
               </tr>
             </thead>
             <tbody id="tbody"></tbody>
           </table>
         </div>
-        <div class="pager">共 <span id="totalCnt">18</span> 条 · 示意数据 · 预警基准 2026-08-07 10:00 · 截单提前24h</div>
+        <div class="pager" id="pagerBar">
+          <div class="pager-scope" id="pagerScope"></div>
+          <div class="pager-main">
+            <span id="pagerSummary">共 0 条</span>
+            <button type="button" id="pgPrev">上一页</button>
+            <span id="pgNums"></span>
+            <button type="button" id="pgNext">下一页</button>
+            <label>每页
+              <select id="pgSize">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+            </label>
+          </div>
+        </div>
       </main>
     </div>
 
     <!-- 周 · Excel 式页签（悬浮页面下方） -->
     <div class="week-sheet-bar" id="weekSheetBar" aria-label="按预计出发周切换">
-      <span class="sheet-label">周页签 <span class="badge-chg">改</span></span>
+      <span class="sheet-label">周页签</span>
       <div class="week-sheet-tabs" id="weekSheetTabs" role="tablist"></div>
-      <span class="sheet-hint">类 Excel 工作表 · 悬浮底栏</span>
     </div>
   </div>
 
@@ -907,7 +1010,7 @@
       </div>
       <div class="modal-bd">
         <div class="alert">
-          取消 IT 牵动：提单标记 · 清关 · 报关 · 加费。确认后写入「已取消IT」，并通知关务清关待办（可含中转港）。
+          有 IT / 无 IT 由接口回写（旁支对接），列表<strong>不打标</strong>。<strong>取消IT是手打</strong>：勾选有IT后点本按钮，确认后列表只出「取消IT」标签，并通知关务清关待办。
         </div>
         <div class="form-grid">
           <div class="form-item full">
@@ -965,7 +1068,7 @@
       </div>
       <div class="modal-bd">
         <div class="alert">
-          口径（0730）：查验<strong>默认挂柜</strong>（本提单/柜可见）；若因<strong>某票货物</strong>导致查验 → 选「查验挂票」，运单侧同步打标，柜上仍可见汇总。
+          国内 / 国外分开。对准轨迹节点：已登记<strong>轨迹编号（编号:）</strong>才打查验标记；放行节点有编号才打查验放行。无编号不打标。挂票请用独立入口。
         </div>
         <div class="form-grid">
           <div class="form-item full">
@@ -973,17 +1076,22 @@
             <input id="ckTargets" readonly />
           </div>
           <div class="form-item">
-            <label>查验状态</label>
-            <select id="ckStatus">
-              <option value="查验中">查验中（挂柜）</option>
-              <option value="查验挂票">查验挂票（单票责任）</option>
-              <option value="查验放行">查验放行</option>
-              <option value="无">清除标记</option>
+            <label>查验区域</label>
+            <select id="ckArea">
+              <option value="国内">国内查验</option>
+              <option value="国外">国外查验</option>
             </select>
           </div>
           <div class="form-item">
-            <label>关联运单号（挂票时）</label>
-            <input id="ckWaybill" placeholder="例 TX-20260806-009" />
+            <label>轨迹节点</label>
+            <select id="ckNode">
+              <option value="查验">查验</option>
+              <option value="放行">放行</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>轨迹编号（编号:）</label>
+            <input id="ckTrackNo" placeholder="有编号才打标；空则不打" />
           </div>
           <div class="form-item">
             <label>通知关务</label>
@@ -992,23 +1100,52 @@
               <option value="0">仅标记</option>
             </select>
           </div>
-          <div class="form-item">
-            <label>是否加费</label>
-            <select id="ckFee">
-              <option>后续柜上加费</option>
-              <option>本次无加费</option>
-              <option>已确认加费金额</option>
-            </select>
-          </div>
           <div class="form-item full">
             <label>备注</label>
-            <textarea id="ckRemark" placeholder="例：海关布控查验；责任票 TX-20260806-009"></textarea>
+            <textarea id="ckRemark" placeholder="例：国内查验节点已登记编号"></textarea>
           </div>
         </div>
       </div>
       <div class="modal-ft">
         <button type="button" class="tool-btn outline" id="ckCancel">取消</button>
         <button type="button" class="tool-btn primary" id="ckConfirm">确认写入查验标记</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查验挂票 · 独立入口 -->
+  <div class="mask" id="ckTicketMask" aria-hidden="true">
+    <div class="modal" role="dialog">
+      <div class="modal-hd">
+        <h3>查验挂票 <span class="badge-new">新</span></h3>
+        <button type="button" class="tool-btn outline" id="cktClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert">
+          单票责任独立入口，须填运单号。提单列表<strong>不</strong>展示挂票；已挂责任票在本弹窗、费用登记「挂票列表」、运单管理可见。
+        </div>
+        <p id="cktNow" style="margin:0 0 10px;font-size:12px;color:#595959;line-height:1.65"></p>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="cktTargets" readonly />
+          </div>
+          <div class="form-item">
+            <label>动作</label>
+            <select id="cktAct">
+              <option value="挂">挂票</option>
+              <option value="清">清除挂票</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>关联运单号</label>
+            <input id="cktWaybill" placeholder="例 TX-20260806-009" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="cktCancel">取消</button>
+        <button type="button" class="tool-btn primary" id="cktConfirm">确认挂票</button>
       </div>
     </div>
   </div>
@@ -1033,7 +1170,7 @@
           <div class="form-item">
             <label>改单状态</label>
             <select id="amdStatus">
-              <option value="改单中">改单中</option>
+              <option value="改单中">改单</option>
               <option value="已改单">已改单</option>
               <option value="无">清除标记</option>
             </select>
@@ -1088,7 +1225,7 @@
       </div>
       <div class="modal-bd">
         <div class="alert info">
-          免用箱超期、尾端异常、表格导入、供应商筛选都走本入口（不另开模块）。规则见 PRD §6.9。
+          尾端异常、表格导入、供应商筛选走本入口。免用箱天数在<strong>提单创建</strong>登记，这里只录超期产生的滞箱/滞港费用。
         </div>
         <div class="form-grid" style="margin-bottom:8px">
           <div class="form-item full">
@@ -1098,7 +1235,6 @@
         </div>
         <div class="fee-tabs" id="feeTabs">
           <button type="button" class="fee-tab on" data-fee-tab="reg">登记费用</button>
-          <button type="button" class="fee-tab" data-fee-tab="ft">免用箱待确认</button>
           <button type="button" class="fee-tab" data-fee-tab="xls">表格导入</button>
           <button type="button" class="fee-tab" data-fee-tab="led">供应商台账</button>
         </div>
@@ -1117,7 +1253,6 @@
             <select id="feeSource">
               <option value="manual">手工登记</option>
               <option value="mail">从关联邮件带入</option>
-              <option value="freetime">免用箱超期带入</option>
               <option value="sheet">从表格导入</option>
             </select>
           </div>
@@ -1137,11 +1272,14 @@
             </select>
           </div>
           <div class="form-item fee-only">
-            <label>费用场景</label>
-            <select id="feeSide">
-              <option value="国内港前">国内港前</option>
-              <option value="国外尾端">国外尾端</option>
+            <label>费用大类 <span class="badge-chg">改</span></label>
+            <select id="feeSide" title="国外费用须发送邮件">
+              <option value="国内">国内</option>
+              <option value="国外">国外</option>
             </select>
+          </div>
+          <div class="form-item full" id="dtHintWrap" style="display:none">
+            <div class="dt-hint" id="dtHint"></div>
           </div>
           <div class="form-item fee-only">
             <label>费用节点</label>
@@ -1217,10 +1355,25 @@
           <div class="form-item fee-only">
             <label>同步对象</label>
             <select id="feeSync">
-              <option value="1">财务台账 + 业务成本（推荐）</option>
-              <option value="2">仅财务台账</option>
+              <option value="1">财务预估 + 业务成本（推荐）</option>
+              <option value="2">仅财务预估</option>
               <option value="0">仅本柜标记</option>
             </select>
+          </div>
+          <div class="form-item full fee-only" id="loadReasonWrap" style="display:none;background:#fff7e6;border:1px solid #ffd591;border-radius:4px;padding:10px 12px">
+            <label>加载原因 <span style="color:#cf1322">*</span> <span class="badge-new">CW021</span></label>
+            <select id="feeLoadReason" style="width:100%;height:30px;margin-bottom:8px">
+              <option value="">请选择加载原因</option>
+              <option>船司要求加载</option>
+              <option>码头加急 / 插队</option>
+              <option>查验后重装加载</option>
+              <option>甩柜后重装加载</option>
+              <option>客户加急</option>
+              <option>其他</option>
+            </select>
+            <label style="margin-top:4px">原因说明（选「其他」必填）</label>
+            <textarea id="feeLoadReasonNote" placeholder="例：码头通知当日必须加载，产生加班/加班费" style="min-height:52px"></textarea>
+            <p class="hang-hint" style="margin:6px 0 0">加载加费默认<strong>挂柜</strong>；原因写入费用明细，供财务与客服追溯。</p>
           </div>
           <div class="form-item full fee-only">
             <label>费用说明</label>
@@ -1229,15 +1382,17 @@
         </div>
 
         <div class="mail-dock fee-only" id="feeMailDock">
-          <h4><span class="tag-mail">MAIL</span> 对接邮件 · 费用归集</h4>
-          <p style="margin:0 0 8px;font-size:12px;color:#595959">
-            按柜号/提单匹配通知邮箱费用邮件；勾选后回填类型·金额·说明并关联线程。
+          <h4><span class="tag-mail">MAIL</span> 对接邮件 · 费用归集
+            <span id="feeMailNeedHint" class="badge-new" style="display:none;margin-left:6px">国外须发邮件</span>
+          </h4>
+          <p style="margin:0 0 8px;font-size:12px;color:#595959" id="feeMailNeedText">
+            按柜号/提单匹配费用邮件。发件账号下拉选我司邮箱；收件账号仅手填（点选邮件可带出对方地址，无收件下拉）。
           </p>
           <div class="mail-list" id="feeMailList"></div>
           <div class="mail-preview" id="feeMailPreview">选择上方邮件预览正文摘录…</div>
           <div class="form-grid">
             <div class="form-item">
-              <label>关联邮箱账号</label>
+              <label>发件账号</label>
               <select id="feeMailBox">
                 <option>LAX-notify@ess.demo</option>
                 <option>NYC-notify@ess.demo</option>
@@ -1245,10 +1400,14 @@
               </select>
             </div>
             <div class="form-item">
+              <label>收件账号</label>
+              <input id="feeMailTo" type="text" placeholder="仅手填，如 agent@carrier.com" autocomplete="off" />
+            </div>
+            <div class="form-item">
               <label>登记后动作</label>
               <select id="feeMailAction">
+                <option value="reply">发送邮件（关联 + 回复「已登记待付」）</option>
                 <option value="link">仅关联邮件线程</option>
-                <option value="reply">关联 + 回复「已登记待付」</option>
                 <option value="none">不对接邮件</option>
               </select>
             </div>
@@ -1296,14 +1455,10 @@
             </div>
           </div>
           <p style="margin:10px 0 8px;font-size:12px;color:#595959">
-            点选原费用邮件作回复线程，或手填收件邮箱；附件自动带水单。
+            发件账号下拉选我司邮箱；收件账号仅手填（点选原费用邮件可带出对方地址，无收件下拉）。附件自动带水单。
           </p>
           <div class="mail-list" id="slipMailList"></div>
           <div class="form-grid">
-            <div class="form-item">
-              <label>收件邮箱</label>
-              <input id="slipMailTo" placeholder="agent@carrier.com" />
-            </div>
             <div class="form-item">
               <label>发件账号</label>
               <select id="slipMailFrom">
@@ -1311,6 +1466,10 @@
                 <option>NYC-notify@ess.demo</option>
                 <option>importer-star@ess.demo</option>
               </select>
+            </div>
+            <div class="form-item">
+              <label>收件账号</label>
+              <input id="slipMailTo" type="text" placeholder="仅手填，如 agent@carrier.com" autocomplete="off" />
             </div>
             <div class="form-item full">
               <label>邮件主题</label>
@@ -1337,17 +1496,9 @@
         </div>
         </div>
 
-        <div class="fee-pane" id="feePaneFt">
-          <p style="margin:0 0 8px;font-size:12px;color:#595959;line-height:1.65">
-            国内/国外免用箱天数在<strong>提单创建</strong>时登记；超期后在这里确认，带入「登记费用」生成滞箱/滞港，不另开处理页。
-          </p>
-          <table class="mini-tbl" id="feeFtSummary"></table>
-          <div id="feeFtCards" style="margin-top:10px"></div>
-        </div>
-
         <div class="fee-pane" id="feePaneXls">
           <p style="margin:0 0 8px;font-size:12px;color:#595959;line-height:1.65">
-            把船务现在 Excel 沉淀表粘贴进来（Tab 分隔）：柜号、供应商、环节、国内外、费用类型、金额、币种。解析后写入与手工登记同一套费用。
+            把船务现在 Excel 沉淀表粘贴进来（Tab 分隔）：柜号、供应商、环节、费用大类、费用类型、金额、币种。解析后写入与手工登记同一套费用。
           </p>
           <textarea class="sheet-box" id="feeSheetText"></textarea>
           <div style="margin:8px 0;display:flex;gap:8px">
@@ -1359,7 +1510,7 @@
 
         <div class="fee-pane" id="feePaneLed">
           <p style="margin:0 0 8px;font-size:12px;color:#595959;line-height:1.65">
-            费用沉淀后按<strong>供应商 × 环节 × 国内外 × 类型</strong>筛选（0730 F4）。台账只查，登记仍回「登记费用」。
+            费用沉淀后按<strong>供应商 × 环节 × 费用大类 × 类型</strong>筛选（0730 F4）。台账只查，登记仍回「登记费用」。
           </p>
           <div class="ledger-bar">
             <div class="form-item">
@@ -1376,11 +1527,11 @@
               </select>
             </div>
             <div class="form-item">
-              <label>国内外</label>
+              <label>费用大类</label>
               <select id="ledSide">
                 <option value="">全部</option>
-                <option>国内港前</option>
-                <option>国外尾端</option>
+                <option value="国内">国内</option>
+                <option value="国外">国外</option>
               </select>
             </div>
             <div class="form-item">
@@ -1619,6 +1770,35 @@
     </div>
   </div>
 
+  <!-- 操作日志抽屉 -->
+  <div class="mask drawer-mask" id="logMask" aria-hidden="true">
+    <div class="drawer log-drawer" role="dialog">
+      <div class="modal-hd">
+        <h3>操作日志 <span class="badge-new">新</span></h3>
+        <button type="button" class="tool-btn outline" id="logClose">关闭</button>
+      </div>
+      <div class="as-sum" id="logSum">请勾选一条提单</div>
+      <div class="log-filter">
+        <select id="logTypeFilter">
+          <option value="">全部类型</option>
+        </select>
+      </div>
+      <div class="modal-bd" style="padding:0">
+        <table class="log-tbl">
+          <thead>
+            <tr>
+              <th style="width:132px">时间</th>
+              <th style="width:72px">操作人</th>
+              <th style="width:92px">类型</th>
+              <th>内容</th>
+            </tr>
+          </thead>
+          <tbody id="logTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- 仓位播报 · 飞驼近一周船期 + 手选/手改 -->
   <div class="mask" id="bcMask" aria-hidden="true">
     <div class="modal wide" role="dialog" style="width:1140px;max-width:98vw">
@@ -1627,7 +1807,39 @@
         <button type="button" class="tool-btn outline" id="bcClose">关闭</button>
       </div>
       <div class="modal-bd">
+        <div class="alert" style="margin-bottom:12px">
+          <strong>0820 口径（张亚晨 / 卢慧恒）：</strong>
+          先选<strong>仓库</strong> → <strong>起运港</strong> → <strong>目的港</strong> → <strong>渠道</strong> → 再从飞驼船期里勾<strong>船</strong>生成播报。
+          不再用「航线绑定过滤港口」。
+        </div>
         <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-item">
+            <label>① 仓库 <span style="color:#cf1322">*</span></label>
+            <select id="bcWh">
+              <option value="宁波仓">宁波仓</option>
+              <option value="青岛仓">青岛仓（当地装柜）</option>
+              <option value="厦门仓">厦门仓</option>
+              <option value="义乌仓">义乌仓</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>② 起运港</label>
+            <select id="bcPol" title="不选=该仓全部可选起运港">
+            </select>
+            <p class="hang-hint" style="margin:4px 0 0">按仓带出。不选=该仓全部起运港。</p>
+          </div>
+          <div class="form-item">
+            <label>③ 目的港</label>
+            <select id="bcPod" title="不选=全部目的港">
+            </select>
+            <p class="hang-hint" style="margin:4px 0 0">按当前仓/起运港带出。不选=全部目的港。</p>
+          </div>
+          <div class="form-item">
+            <label>④ 渠道 <span style="color:#cf1322">*</span></label>
+            <select id="bcChannel">
+              <option value="">请先选仓库/港口</option>
+            </select>
+          </div>
           <div class="form-item">
             <label>数据来源</label>
             <select id="bcSrc">
@@ -1651,22 +1863,13 @@
               <option value="push">生成后一键推群</option>
             </select>
           </div>
-          <div class="form-item">
-            <label>播报仓口</label>
-            <select id="bcWh">
-              <option value="青岛仓">青岛仓（当地装柜）</option>
-              <option value="宁波仓">宁波仓</option>
-              <option value="厦门仓">厦门仓</option>
-              <option value="义乌仓">义乌仓</option>
-            </select>
-          </div>
         </div>
         <div class="voy-box">
           <h5>
-            <span>选择要播报的船期 <span style="font-weight:400;color:#8c8c8c">默认近一周 + 常用航线；已过截单标「须更新」。船期不合适可改。</span></span>
+            <span>⑤ 选择船期（飞驼） <span style="font-weight:400;color:#8c8c8c">按仓→起运港→目的港→渠道过滤；已过截单标「须更新」。船期可手改。</span></span>
             <span class="hang-acts">
               <button type="button" id="bcFtRefresh">用飞驼刷新</button>
-              <button type="button" id="bcVoyAll">全选当前航线</button>
+              <button type="button" id="bcVoyAll">全选当前列表</button>
               <button type="button" id="bcVoyNone">清空</button>
             </span>
           </h5>
@@ -1682,7 +1885,7 @@
           </table>
           <div class="bc-note" id="bcNote" contenteditable="true"></div>
         </div>
-        <p class="hang-hint" id="bcHint" style="margin-top:8px">默认按现用表的常用航线生成；可点芯片增减航线，其它飞驼船期在「其他船期」里手选。</p>
+        <p class="hang-hint" id="bcHint" style="margin-top:8px">流程：仓库 → 起运港 → 目的港 → 渠道 → 勾选飞驼船期 → 生成播报。渠道随仓/港变化；不按固定「航线过滤港口」。</p>
       </div>
       <div class="modal-ft">
         <button type="button" class="tool-btn outline" id="bcCancel">关闭</button>
@@ -1693,31 +1896,172 @@
     </div>
   </div>
 
-  <!-- 评审待定：作废提单与费用 -->
-  <div class="mask" id="voidMask" aria-hidden="true">
-    <div class="modal" role="dialog" style="width:560px;max-width:96vw">
+  <!-- 进港代码 · 抓取匹配 / 中转港确认 CW022 -->
+  <div class="mask" id="pcMask" aria-hidden="true">
+    <div class="modal" role="dialog" style="width:min(720px,96vw)">
       <div class="modal-hd">
-        <h3>提单删除 / 作废 <span class="badge-ask">评审待定</span></h3>
-        <button type="button" class="tool-btn outline" id="voidClose">关闭</button>
+        <h3>进港代码 · 抓取匹配 / 中转港确认 <span class="badge-new">CW022</span></h3>
+        <button type="button" class="tool-btn outline" id="pcClose">关闭</button>
       </div>
       <div class="modal-bd">
-        <div class="alert" style="margin-top:0">
-          评审提出：<strong>作废的提单，费用需不需要清掉？</strong>
-          不用的提单若还留一两笔费用，会导致分摊错误（CW016）。
+        <div class="alert">
+          来源：波特云 / EDI / 港行纵横 / 口岸网站抓取（或机器人回传）。
+          <strong>非必填</strong>：有则落库并可导出；排装柜计划时建议登记。
+          改运抵：码放前可直接改或保函；已码放须船司改。
         </div>
-        <p id="voidTargets" style="margin:0 0 8px;font-size:12px;color:#8c8c8c"></p>
-        <ul class="review-opts">
-          <li><strong>A · 作废时清空费用</strong>：该票已挂柜/挂票费用（含未分摊）一并作废或冲销，不再参与分摊。</li>
-          <li><strong>B · 只作废提单、费用保留</strong>：状态改作废，费用仍留台账，需另有人背或手工清。</li>
-          <li><strong>C · 作废时强提示</strong>：有费用则必须先清/改挂，否则不允许作废。</li>
-        </ul>
-        <p style="margin:8px 0 0;font-size:12px;color:#8c8c8c">以上仅备选，点选只记评审意见，<strong>不写回、不开发</strong>。</p>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="pcTargets" readonly />
+          </div>
+          <div class="form-item">
+            <label>抓取来源</label>
+            <select id="pcSrc">
+              <option>波特云</option>
+              <option>EDI</option>
+              <option>港行纵横</option>
+              <option>口岸网站</option>
+              <option>手工录入</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>系统建议代码</label>
+            <input id="pcSuggest" readonly placeholder="点「抓取匹配」后带出" />
+          </div>
+          <div class="form-item">
+            <label>进港代码（确认）</label>
+            <input id="pcCode" placeholder="例 SHA / NGB / YTN…" />
+          </div>
+          <div class="form-item">
+            <label>匹配结果</label>
+            <select id="pcMatch">
+              <option value="待抓取">待抓取</option>
+              <option value="一致">一致</option>
+              <option value="不一致">不一致 · 需人工确认</option>
+              <option value="未覆盖">网站未覆盖</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>中转港代码</label>
+            <input id="pcTransit" placeholder="有中转则确认，例 BUSAN / KRPUS" />
+          </div>
+          <div class="form-item full">
+            <label>匹配提示</label>
+            <textarea id="pcHint" readonly style="min-height:56px"></textarea>
+          </div>
+        </div>
       </div>
       <div class="modal-ft">
-        <button type="button" class="tool-btn outline" id="voidCancel">关闭</button>
-        <button type="button" class="tool-btn warn" data-void="A">记 A · 清空费用</button>
-        <button type="button" class="tool-btn outline" data-void="B">记 B · 费用保留</button>
-        <button type="button" class="tool-btn outline" data-void="C">记 C · 先清再废</button>
+        <button type="button" class="tool-btn outline" id="pcCancel">取消</button>
+        <button type="button" class="tool-btn outline" id="pcFetch">抓取匹配</button>
+        <button type="button" class="tool-btn primary" id="pcConfirm">确认写入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查验换船 · 替代现网「换单撤销」 -->
+  <div class="mask" id="ckShipMask" aria-hidden="true">
+    <div class="modal" role="dialog" style="width:520px">
+      <div class="modal-hd">
+        <h3>查验换船 <span class="badge-chg">改</span></h3>
+        <button type="button" class="tool-btn outline" id="ckShipClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info">
+          查验后<strong>换提单、同柜、换船</strong>。柜号不变，轨迹按柜号延续到新提单。换柜请走「换柜换船」。
+        </div>
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <div class="form-item">
+            <label>原提单号 <span class="req">*</span></label>
+            <input id="ckShipOldBl" readonly />
+          </div>
+          <div class="form-item">
+            <label>新提单号 <span class="req">*</span></label>
+            <input id="ckShipNewBl" placeholder="新提单号" />
+          </div>
+          <div class="form-item">
+            <label>船名航次 <span class="req">*</span></label>
+            <input id="ckShipVoy" placeholder="船名航次" />
+          </div>
+          <div class="form-item">
+            <label>柜号（不变）</label>
+            <input id="ckShipCntr" readonly />
+          </div>
+          <div class="form-item">
+            <label>轨迹策略</label>
+            <input id="ckShipTrack" value="延续 · 不拆分（按柜号继承到新提单）" readonly />
+          </div>
+          <div class="form-item full">
+            <div class="msg-box" id="ckShipMsgBox">
+              <label class="chk">
+                <input type="checkbox" id="ckShipNotify" checked />
+                发送站内消息给业务员、客服 <span class="badge-new">新</span>
+              </label>
+              <p class="hang-hint" id="ckShipNotifyHint">收件按提单关联带出，确认时写入站内消息。</p>
+              <div class="msg-preview" id="ckShipMsgPreview"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="ckShipCancel">取消</button>
+        <button type="button" class="tool-btn primary" id="ckShipConfirm">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 换柜换船 · 现网弹窗 + 站内消息 -->
+  <div class="mask" id="swapMask" aria-hidden="true">
+    <div class="modal" role="dialog" style="width:520px">
+      <div class="modal-hd">
+        <h3>换柜换船 <span class="badge-chg">改</span></h3>
+        <button type="button" class="tool-btn outline" id="swapClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <div class="form-item">
+            <label>原提单号 <span class="req">*</span></label>
+            <input id="swapOldBl" readonly />
+          </div>
+          <div class="form-item">
+            <label>新提单号 <span class="req">*</span></label>
+            <input id="swapNewBl" placeholder="新提单号" />
+          </div>
+          <div class="form-item">
+            <label>船名航次 <span class="req">*</span></label>
+            <input id="swapVoy" placeholder="船名航次" />
+          </div>
+          <div class="form-item">
+            <label>柜号</label>
+            <input id="swapCntr" placeholder="柜号" />
+          </div>
+          <div class="form-item">
+            <label>铅封号</label>
+            <input id="swapSeal" placeholder="铅封号" />
+          </div>
+          <div class="form-item">
+            <label>预计装柜时间</label>
+            <input id="swapLoadAt" type="datetime-local" />
+          </div>
+          <div class="form-item">
+            <label>预计送达时间</label>
+            <input id="swapDlvAt" type="datetime-local" />
+          </div>
+          <div class="form-item full">
+            <div class="msg-box" id="swapMsgBox">
+              <label class="chk">
+                <input type="checkbox" id="swapNotify" checked />
+                发送站内消息给业务员、客服 <span class="badge-new">新</span>
+              </label>
+              <p class="hang-hint" id="swapNotifyHint">收件按提单关联带出，确认时写入站内消息。</p>
+              <div class="msg-preview" id="swapMsgPreview"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="swapCancel">取消</button>
+        <button type="button" class="tool-btn primary" id="swapConfirm">确定</button>
       </div>
     </div>
   </div>
@@ -1734,14 +2078,14 @@
         { id: 1, bl: "HLCUTS12698AZMK1", cntr: "HLBU2877104", st: "待分配", it: "有IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-02 17:00", color: "", type: "20GP", etd: "2026-08-04 00:00:00", carrier: "Hapag", voy: "YM MOVEMENT 0TH5FE1MA", pol: "CNTJN", pod: "USNYC", agent: "", addr: "天津保税区××路1号", loadAt: "", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
         { id: 2, bl: "HLCUTS12698AZMK2", cntr: "HLBU2877110", st: "待分配", it: "有IT", ck: "查验中", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-02 17:00", color: "", type: "40HQ", etd: "2026-08-04 00:00:00", carrier: "Hapag", voy: "YM MOVEMENT 0TH5FE1MA", pol: "CNTJN", pod: "USNYC", agent: "", addr: "天津开发区××道", loadAt: "", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
         { id: 3, bl: "COSU1234567890", cntr: "CSNU6688123", st: "待装柜", it: "无IT", ck: "无", amd: "改单中", amdType: "件毛体", amdLetter: "改单保函", amdReason: "件数 40→38", amdAt: "2026-08-05 10:20", release: "已放行", cutOff: "2026-08-04 17:00", color: "装完", type: "40HQ", etd: "2026-08-06 00:00:00", carrier: "COSCO", voy: "COSCO SHIPPING 088E", pol: "CNSHA", pod: "USLAX", agent: "上海新洋", addr: "上海市浦东新区××路66号", loadAt: "2026-08-05 09:00", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
-        { id: 4, bl: "COSU1234567891", cntr: "CSNU6688456", st: "待装柜", it: "无IT", ck: "查验挂票", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-04 17:00", color: "装完", type: "40HQ", etd: "2026-08-06 00:00:00", carrier: "COSCO", voy: "COSCO SHIPPING 088E", pol: "CNSHA", pod: "USLAX", agent: "上海新洋", addr: "上海市松江区××工业园", loadAt: "2026-08-05 14:00", week: "2026-W32", ckWb: "TX-20260806-009", itReason: "", itTransit: "", itAt: "" },
+        { id: 4, bl: "COSU1234567891", cntr: "CSNU6688456", st: "待装柜", it: "无IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-04 17:00", color: "装完", type: "40HQ", etd: "2026-08-06 00:00:00", carrier: "COSCO", voy: "COSCO SHIPPING 088E", pol: "CNSHA", pod: "USLAX", agent: "上海新洋", addr: "上海市松江区××工业园", loadAt: "2026-08-05 14:00", week: "2026-W32", ckWb: "TX-20260806-009", itReason: "", itTransit: "", itAt: "" },
         { id: 5, bl: "MEDU9988776655", cntr: "MEDU1122334", st: "待分配", it: "有IT", ck: "无", amd: "改单中", amdType: "HS / 品名", amdLetter: "改单保函", amdReason: "HS 6204.44→6204.43", amdAt: "2026-08-06 09:10", release: "未放行", cutOff: "2026-08-08 06:00", color: "", type: "40HQ", etd: "2026-08-07 00:00:00", carrier: "MSC", voy: "MSC OSCAR 12W", pol: "CNNGB", pod: "USLGB", agent: "", addr: "宁波北仑××路88号", loadAt: "", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
         { id: 6, bl: "ONEY5566778899", cntr: "NYKU4455667", st: "待装柜", it: "已取消IT", ck: "查验放行", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "已放行", cutOff: "2026-08-09 17:00", color: "装完", type: "40HQ", etd: "2026-08-11 00:00:00", carrier: "ONE", voy: "ONE CONTINUITY 021E", pol: "CNYTN", pod: "USHOU", agent: "盐田畅通", addr: "深圳市盐田区××物流园", loadAt: "2026-08-09 10:00", week: "2026-W33", ckWb: "", itReason: "以星取消 IT / 重审 AN", itTransit: "BUSAN", itAt: "2026-08-09 11:20" },
         { id: 7, bl: "ONEY5566778800", cntr: "NYKU4455778", st: "待分配", it: "有IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-09 12:00", color: "", type: "20GP", etd: "2026-08-11 00:00:00", carrier: "ONE", voy: "ONE CONTINUITY 021E", pol: "CNYTN", pod: "USHOU", agent: "", addr: "东莞××工业区", loadAt: "", week: "2026-W33", ckWb: "", itReason: "", itTransit: "", itAt: "" },
         { id: 8, bl: "HLCUTS12699BB001", cntr: "HLCU9900112", st: "待离港", it: "无IT", ck: "无", amd: "已改单", amdType: "VGM", amdLetter: "改 VGM 保函", amdReason: "VGM 重报", amdAt: "2026-08-10 16:40", release: "已放行", cutOff: "2026-08-10 17:00", color: "装完", type: "40HQ", etd: "2026-08-12 00:00:00", carrier: "Hapag", voy: "AL RAWDAH 009E", pol: "CNSHA", pod: "USNYC", agent: "上海新洋", addr: "上海外高桥", loadAt: "2026-08-10 08:30", week: "2026-W33", ckWb: "", itReason: "", itTransit: "", itAt: "" },
         { id: 9, bl: "COSU20260813001", cntr: "CSNU7788990", st: "待分配", it: "有IT", ck: "查验中", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-11 17:00", color: "", type: "40HQ", etd: "2026-08-13 00:00:00", carrier: "COSCO", voy: "COSCO FORTUNE 055E", pol: "CNNGB", pod: "USLAX", agent: "", addr: "宁波慈溪××仓", loadAt: "", week: "2026-W33", ckWb: "", itReason: "", itTransit: "", itAt: "" },
         { id: 10, bl: "MEDU20260818001", cntr: "MSCU3344556", st: "待装柜", it: "无IT", ck: "无", amd: "改单中", amdType: "铅封", amdLetter: "", amdReason: "铅封号更正", amdAt: "2026-08-16 11:00", release: "未放行", cutOff: "2026-08-16 17:00", color: "", type: "40HQ", etd: "2026-08-18 00:00:00", carrier: "MSC", voy: "MSC MIRJA 08E", pol: "CNTAO", pod: "USLGB", agent: "青港物流", addr: "青岛黄岛××路", loadAt: "2026-08-16 13:00", week: "2026-W34", ckWb: "", itReason: "", itTransit: "", itAt: "" },
-        { id: 11, bl: "MEDU20260818002", cntr: "MSCU3344667", st: "待离港", it: "已取消IT", ck: "查验挂票", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "已放行", cutOff: "2026-08-16 17:00", color: "装完", type: "20GP", etd: "2026-08-18 00:00:00", carrier: "MSC", voy: "MSC MIRJA 08E", pol: "CNTAO", pod: "USLGB", agent: "青港物流", addr: "青岛保税区", loadAt: "2026-08-16 15:00", week: "2026-W34", ckWb: "FBA19DFXK542", itReason: "船司要求取消 IT", itTransit: "", itAt: "2026-08-16 16:05" },
+        { id: 11, bl: "MEDU20260818002", cntr: "MSCU3344667", st: "待离港", it: "已取消IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "已放行", cutOff: "2026-08-16 17:00", color: "装完", type: "20GP", etd: "2026-08-18 00:00:00", carrier: "MSC", voy: "MSC MIRJA 08E", pol: "CNTAO", pod: "USLGB", agent: "青港物流", addr: "青岛保税区", loadAt: "2026-08-16 15:00", week: "2026-W34", ckWb: "FBA19DFXK542", itReason: "船司要求取消 IT", itTransit: "", itAt: "2026-08-16 16:05" },
         { id: 12, bl: "HLCUTS12700CC100", cntr: "HLCU5566778", st: "已离港", it: "无IT", ck: "无", amd: "已改单", amdType: "收发通", amdLetter: "改单保函", amdReason: "收货人地址更正", amdAt: "2026-08-14 09:30", release: "已放行", cutOff: "2026-08-17 17:00", color: "装完", type: "40HQ", etd: "2026-08-19 00:00:00", carrier: "Hapag", voy: "YM WARMTH 0TH6WE1MA", pol: "CNSHA", pod: "USNYC", agent: "上海新洋", addr: "上海临港", loadAt: "2026-08-15 11:00", week: "2026-W34", ckWb: "", itReason: "", itTransit: "", itAt: "" },
         { id: 13, bl: "COSU20260808088", cntr: "CSNU8800123", st: "待离港", it: "无IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-06 17:00", color: "装完", type: "40HQ", etd: "2026-08-08 00:00:00", carrier: "COSCO", voy: "COSCO HOPE 066E", pol: "CNSHA", pod: "USLAX", agent: "上海新洋", addr: "上海外高桥", loadAt: "2026-08-06 10:00", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" },
         { id: 14, bl: "MEDU20260807001", cntr: "MSCU7700112", st: "待装柜", it: "无IT", ck: "查验中", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-07 12:00", color: "", type: "40HQ", etd: "2026-08-09 00:00:00", carrier: "MSC", voy: "MSC LISA 03E", pol: "CNNGB", pod: "USLGB", agent: "甬港拖车", addr: "宁波北仑", loadAt: "2026-08-07 15:00", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" }
@@ -1787,6 +2131,17 @@
         });
       })();
 
+      (function seedStaff() {
+        var salesMap = { CNSHA: "王敏", CNNGB: "刘洋", CNTJN: "赵倩", CNYTN: "周宁", CNTAO: "孙悦" };
+        var csMap = { CNSHA: "陈洁", CNNGB: "吴芳", CNTJN: "郑华", CNYTN: "黄莉", CNTAO: "马超" };
+        ROWS.forEach(function (r) {
+          r.sales = r.sales || salesMap[r.pol] || "王敏";
+          r.cs = r.cs || csMap[r.pol] || "陈洁";
+          r.seal = r.seal || "";
+          r.dlvAt = r.dlvAt || "";
+        });
+      })();
+
       /* 海放 / 码放：从旧 release 迁移，并造区分样例 */
       (function seedSeaTermRel() {
         ROWS.forEach(function (r) {
@@ -1824,7 +2179,22 @@
         });
       })();
 
-      /* 进港 / 飞驼：开船后盯进港；飞驼不能抓 → 人工；未进港预警 */
+      /* 查验：国内/国外 + 轨迹编号；挂票独立 ckWb */
+      (function seedCheckTrack() {
+        ROWS.forEach(function (r) {
+          if (r.ck === "查验挂票") {
+            r.ck = "无";
+          }
+          if (r.ck === "查验中" && !r.ckArea) {
+            r.ckArea = "国内";
+            r.ckTrackNo = r.ckTrackNo || ("CK" + r.id);
+          }
+          if (r.ck === "查验放行" && !r.ckArea) {
+            r.ckArea = "国内";
+            r.ckTrackNo = r.ckTrackNo || ("RL" + r.id);
+          }
+        });
+      })();
       (function seedArriveFt() {
         ROWS.forEach(function (r) {
           if (r.ftGrab == null) r.ftGrab = "能"; /* 飞驼能否抓进港时间 */
@@ -1848,6 +2218,26 @@
         if (byId[6]) { byId[6].ftGrab = "能"; byId[6].arriveAt = ""; }
       })();
 
+      /* CW022 进港代码 / 中转港代码样例 */
+      (function seedPortCode() {
+        var demo = {
+          3: { portCode: "SHA", portCodeSrc: "波特云", portCodeMatch: "一致", transitPortCode: "" },
+          4: { portCode: "SHA", portCodeSrc: "EDI", portCodeMatch: "不一致", transitPortCode: "" },
+          5: { portCode: "", portCodeSrc: "", portCodeMatch: "待抓取", transitPortCode: "" },
+          6: { portCode: "YTN", portCodeSrc: "港行纵横", portCodeMatch: "一致", transitPortCode: "BUSAN" },
+          13: { portCode: "SHA", portCodeSrc: "口岸网站", portCodeMatch: "一致", transitPortCode: "" },
+          14: { portCode: "NGB", portCodeSrc: "波特云", portCodeMatch: "未覆盖", transitPortCode: "KRPUS" }
+        };
+        ROWS.forEach(function (r) {
+          var d = demo[r.id];
+          r.portCode = d ? d.portCode : (r.portCode || "");
+          r.portCodeSrc = d ? d.portCodeSrc : (r.portCodeSrc || "");
+          r.portCodeMatch = d ? d.portCodeMatch : (r.portCodeMatch || "待抓取");
+          r.transitPortCode = d ? d.transitPortCode : (r.transitPortCode || "");
+          r.dumpLeg = r.transitPortCode ? "中转" : "头程";
+        });
+      })();
+
       /* 发送标记：AMS / ISF（默认未发；部分示意已发） */
       (function seedSend() {
         ROWS.forEach(function (r) {
@@ -1867,23 +2257,27 @@
       /* 现网筛选项补齐：运单号 / 订舱 / 拖车 / 报关 / 配舱单号 */
       (function seedLiveFields() {
         var customsMap = {
-          CNNGB: "宁波报关行A", CNSHA: "上海报关行B", CNTAO: "青岛报关行C",
-          CNTJN: "宁波报关行A", CNYTN: "上海报关行B"
+          CNNGB: "鸿岸", CNSHA: "硕博", CNTAO: "良承",
+          CNTJN: "硕博", CNYTN: "良承"
         };
         var bookerMap = {
-          CNTJN: "上海新洋", CNSHA: "上海新洋", CNNGB: "甬港拖车",
-          CNYTN: "上海新洋", CNTAO: "青港物流"
+          CNTJN: "兰益", CNSHA: "大海", CNNGB: "聚航",
+          CNYTN: "满舱", CNTAO: "中外运"
+        };
+        var trailerMap = {
+          CNTJN: "万达", CNSHA: "良承", CNNGB: "打聚",
+          CNYTN: "聚源", CNTAO: "良承"
         };
         ROWS.forEach(function (r) {
           r.trans = r.trans || "海运";
           r.wb = r.wb || r.ckWb || ("TX" + String(100000 + r.id));
-          r.booker = r.booker || bookerMap[r.pol] || "上海新洋";
-          r.trailer = r.trailer || r.agent || "";
-          r.customs = r.customs || customsMap[r.pol] || "宁波报关行A";
+          r.booker = r.booker || bookerMap[r.pol] || "大海";
+          r.trailer = r.trailer || r.agent || trailerMap[r.pol] || "良承";
+          r.customs = r.customs || customsMap[r.pol] || "硕博";
           if (!r.spaceNo) {
+            var names = { CNTJN: "李天飞", CNSHA: "李天飞", CNNGB: "雪伦", CNYTN: "李天飞", CNTAO: "中外运" };
             var wk = String(r.week || "").replace("2026-W", "");
-            var ship = String(r.voy || "").split(" ")[0] || "舱";
-            r.spaceNo = "2508" + wk + "-" + ship;
+            r.spaceNo = "2508" + wk + (names[r.pol] || "舱") + r.id;
           }
         });
       })();
@@ -1899,14 +2293,14 @@
           byId[4].fees.push({
             type: "查验加费", amount: 200, ccy: "USD", hang: "票",
             wb: "TX-20260806-009", remark: "单票责任查验", at: "2026-08-05 16:00",
-            vendor: "上海新洋", node: "查验", side: "国内港前"
+            vendor: "上海新洋", node: "查验", side: "国内"
           });
         }
         if (byId[6]) {
           byId[6].fees.push({
             type: "改港费", amount: 450, ccy: "USD", hang: "柜",
             wb: "", remark: "目的港改港", at: "2026-08-10 09:30",
-            vendor: "HOU堆场C", node: "尾端异常", side: "国外尾端"
+            vendor: "HOU堆场C", node: "尾端异常", side: "国外"
           });
         }
         if (byId[11]) {
@@ -1915,13 +2309,13 @@
               type: "滞港费", amount: 320, ccy: "USD", hang: "柜", wb: "",
               remark: "滞港 2 天", at: "2026-08-17 11:00",
               fromMail: true, mailSub: "Demurrage notice MSCU3344667",
-              vendor: "LAX堆场A", node: "尾端异常", side: "国外尾端"
+              vendor: "LAX堆场A", node: "尾端异常", side: "国外"
             },
             {
               type: "滞箱费", amount: 180, ccy: "USD", hang: "柜", wb: "",
               remark: "超免用箱期", at: "2026-08-17 11:05",
               fromMail: true, mailSub: "Detention invoice MSCU3344667",
-              vendor: "LAX堆场A", node: "尾端异常", side: "国外尾端"
+              vendor: "LAX堆场A", node: "尾端异常", side: "国外"
             }
           );
           byId[11].slips = [{
@@ -1933,7 +2327,7 @@
           byId[13].fees.push({
             type: "落箱费", amount: 800, ccy: "CNY", hang: "柜",
             wb: "", remark: "进港落箱", at: "2026-08-06 18:20",
-            vendor: "上海外高桥码头", node: "落箱", side: "国内港前"
+            vendor: "上海外高桥码头", node: "落箱", side: "国内"
           });
           byId[13].slips = [{
             file: "水单_CSNU8800123.pdf", amount: 800, ccy: "CNY",
@@ -1945,13 +2339,16 @@
         });
       })();
 
-      /* 国内/国外免用箱：创建时登记天数；超期待确认 → 费用登记带入 */
+      /* 国内/国外免用箱：创建时登记天数；超期按提柜/还柜/进港提示 */
       (function seedFreeTime() {
         ROWS.forEach(function (r) {
           if (r.freeCn == null) r.freeCn = 7;
           if (r.freeOs == null) r.freeOs = 4;
           r.pickAt = r.pickAt || "";
           r.retAt = r.retAt || "";
+          r.pickOs = r.pickOs || "";
+          r.retOs = r.retOs || "";
+          r.arriveOs = r.arriveOs || "";
           r.lfd = r.lfd || "";
           r.vendorCn = r.vendorCn || r.agent || "待指定拖车";
           r.vendorOs = r.vendorOs || ((r.pod === "USLAX" || r.pod === "USLGB") ? "LAX堆场A" : (r.pod === "USHOU" ? "HOU堆场C" : "NYC堆场B"));
@@ -1979,12 +2376,121 @@
           byId[11].freeOs = 4;
           byId[11].lfd = "2026-08-14";
           byId[11].osUsed = 6;
+          byId[11].arriveOs = "2026-08-10";
+          byId[11].pickOs = "2026-08-16";
+          byId[11].retOs = "2026-08-22";
           byId[11].ftOsStatus = "已登记";
           byId[11].vendorOs = "LAX堆场A";
         }
       })();
 
-      var FEE_SHEET_SAMPLE = "柜号\t供应商\t环节\t国内外\t费用类型\t金额\t币种\nMSCU3344667\tLAX堆场A\t尾端异常\t国外尾端\t滞箱费\t180\tUSD\nCSNU8800123\t上海外高桥码头\t落箱\t国内港前\t落箱费\t800\tCNY\nMSCU7700112\t甬港拖车\t还柜\t国内港前\t滞箱费\t800\tCNY";
+      /* 现网列表缺列：件毛体 / 地址拆分 / 飞驼抓取状态 / 海运费 / 免用箱 / 创建人等 */
+      (function seedListCols() {
+        var polLabel = { CNTJN: "天津", CNSHA: "上海", CNNGB: "宁波", CNYTN: "盐田", CNTAO: "青岛" };
+        var podLabel = { USNYC: "纽约", USLAX: "洛杉矶", USLGB: "长滩", USHOU: "休斯顿" };
+        var carrierLabel = {
+          Hapag: "HAPAG/赫伯罗特", COSCO: "COSCO/中远海运",
+          MSC: "MSC/地中海", ONE: "ONE/海洋网联"
+        };
+        var addr2Map = { CNSHA: "义乌总部", CNNGB: "宁波分公司", CNTAO: "青岛分公司", CNYTN: "深圳盐田", CNTJN: "天津保税" };
+        function pad(n) { return n < 10 ? "0" + n : String(n); }
+        function fmtDt(d) {
+          return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+            " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+        }
+        function shift(etd, days, hh, mm) {
+          var d = new Date(String(etd || "").replace(/-/g, "/"));
+          if (isNaN(d.getTime())) return "";
+          d.setDate(d.getDate() + days);
+          d.setHours(hh == null ? 0 : hh, mm == null ? 0 : mm, 0, 0);
+          return fmtDt(d);
+        }
+        ROWS.forEach(function (r) {
+          r.polName = (r.pol || "") + (polLabel[r.pol] ? "/" + polLabel[r.pol] : "");
+          r.podName = (r.pod || "") + (podLabel[r.pod] ? "/" + podLabel[r.pod] : "");
+          r.carrierName = carrierLabel[r.carrier] || r.carrier || "";
+          r.transitPort = r.transitPort || r.transitPortCode || r.itTransit || "";
+          if (r.ticketCnt == null) r.ticketCnt = 8 + (r.id % 48);
+          if (r.pcs == null) r.pcs = 380 + r.id * 41;
+          if (r.weight == null) r.weight = +(8500 + r.id * 417.321).toFixed(3);
+          if (r.cbm == null) r.cbm = +(62.4 + (r.id % 17) * 0.88).toFixed(2);
+          if (r.cbmW == null) r.cbmW = +(11200 + r.id * 83.4).toFixed(3);
+          if (r.chgW == null) r.chgW = +(12800 + r.id * 91.2).toFixed(3);
+          r.addr1 = r.addr1 || r.addr || "";
+          r.addr2 = r.addr2 || (r.trailer ? (addr2Map[r.pol] || "") : "");
+          r.addr3 = r.addr3 || "";
+          if (!r.seal) r.seal = (r.trailer ? "SML" : "A") + String(240000000 + r.id * 137).slice(-9);
+          r.remark = r.remark || "";
+          r.createdBy = r.createdBy || (r.id % 7 === 0 ? "潘俊凌" : "黎小清");
+          r.createdAt = r.createdAt || shift(r.etd, -42, 9, 17);
+          r.eta = r.eta || shift(r.etd, 12 + (r.id % 8), 20, 0);
+          if (r.freight == null) r.freight = 1900 + (r.id % 8) * 350;
+          if (r.loadAt && !r.whIn) r.whIn = r.loadAt.length > 10 ? r.loadAt : r.loadAt + " 08:00:00";
+          r.whOut = r.whOut || "";
+        });
+        var byId = {};
+        ROWS.forEach(function (r) { byId[r.id] = r; });
+        if (byId[6]) byId[6].transitPort = "BUSAN/釜山";
+        if (byId[14]) byId[14].transitPort = "KRPUS/釜山";
+        if (byId[8]) { byId[8].whOut = "2026-08-11 18:20:00"; byId[8].freight = 4300; }
+        if (byId[12]) { byId[12].whOut = "2026-08-18 09:40:00"; byId[12].freight = 4300; }
+        if (byId[3]) { byId[3].freight = 2300; byId[3].seal = ""; }
+        if (byId[11]) byId[11].freight = 2650;
+        if (byId[13]) { byId[13].cntr = ""; byId[13].seal = ""; }
+      })();
+
+      var OP_LOGS = [];
+      var logSeq = 0;
+      function nowLogAt() { return "2026-08-07 10:05:00"; }
+      function addLog(row, type, text, opts) {
+        if (!row) return;
+        opts = opts || {};
+        logSeq += 1;
+        OP_LOGS.unshift({
+          id: "L" + logSeq,
+          rowId: row.id,
+          bl: row.bl,
+          cntr: row.cntr || "",
+          at: opts.at || nowLogAt(),
+          user: opts.sys ? "系统" : (opts.user || "黎小清"),
+          type: type,
+          text: text,
+          sys: !!opts.sys
+        });
+      }
+      function logsForRow(r) {
+        if (!r) return [];
+        return OP_LOGS.filter(function (l) {
+          return l.rowId === r.id || l.bl === r.bl ||
+            (r.swapFrom && l.bl === r.swapFrom) ||
+            (r.ckShipFrom && l.bl === r.ckShipFrom);
+        });
+      }
+      (function seedOpLogs() {
+        var byId = {};
+        ROWS.forEach(function (r) { byId[r.id] = r; });
+        function L(id, type, text, at, sys) {
+          addLog(byId[id], type, text, { at: at, sys: sys, user: sys ? "系统" : "黎小清" });
+        }
+        L(3, "创建提单", "创建提单: [提单号: COSU1234567890, 柜号: CSNU6688123, 船司: COSCO, 船名航次: COSCO SHIPPING 088E, 柜型: 40HQ, 港向: CNSHA→USLAX, 海运费: 2300, 国内免用箱: 7, 国外免用箱: 4, 来源: 单票]", "2026-06-25 09:17:00");
+        L(3, "修改提单", "修改提单: [截单时间: 2026-08-04 12:00→2026-08-04 17:00, 国外免用箱: 4→10]", "2026-06-26 14:20:00");
+        L(3, "提单分配", "提单分配: [装柜方式: 仓库, 拖车供应商: 空→上海新洋, 装柜地址1: 上海市浦东新区××路66号, 状态: 待分配→待装柜]", "2026-08-04 11:02:00");
+        L(3, "绑定进口商", "绑定进口商: [进口商: 空→PACIFIC GATEWAY INC, 同船已绑: 0→1, 强制超限: 否]", "2026-08-04 11:08:00");
+        L(3, "查验标记", "查验标记: [区域: 国内, 结果: 查验中, 轨迹编号: CK3]", "2026-08-05 09:40:00");
+        L(3, "费用登记", "费用登记: [类型: 件毛体改单相关, 金额: USD 0, 费用大类: 国内, 挂柜: CSNU6688123]", "2026-08-05 10:22:00");
+        L(3, "改单标记", "改单标记: [状态: 无→改单中, 类型: 件毛体, 原因: 件数 40→38]", "2026-08-05 10:20:00");
+        L(3, "装柜完成", "装柜完成: [色标: 未装完→装完]", "2026-08-05 16:40:00", true);
+        L(3, "AMS/ISF 回写", "AMS/ISF 回写: [AMS: 未发→已发, 来源: 报关管理]", "2026-08-05 18:10:00", true);
+        L(6, "取消IT", "取消IT: [IT: 有IT→已取消IT, 原因: 以星取消 IT / 重审 AN, 中转港: BUSAN, 通知关务: 是]", "2026-08-09 11:20:00");
+        L(6, "查验标记", "查验标记: [区域: 国内, 结果: 查验放行, 轨迹编号: RL6]", "2026-08-09 15:00:00");
+        L(8, "换柜换船", "换柜换船: [提单号: HLCUTS12699AA001→HLCUTS12699BB001, 柜号: HLCU9900001→HLCU9900112, 船名航次: AL RAWDAH 008E→AL RAWDAH 009E, 铅封号: 已更新, 站内消息: 已发]", "2026-08-10 09:12:00");
+        L(11, "查验换船", "查验换船: [提单号: MEDU20260818000→MEDU20260818002, 船名航次: MSC MIRJA 07E→MSC MIRJA 08E, 柜号: 不变, 轨迹: 延续, 站内消息: 已发]", "2026-08-16 10:08:00");
+        L(12, "进港时间", "进港时间: [空→2026-08-20 09:30, 来源: 飞驼]", "2026-08-20 09:31:00", true);
+        L(12, "状态回写", "状态回写: [海放: 无→有, 码放: 无→有]", "2026-08-18 11:00:00", true);
+        L(4, "查验挂票", "查验挂票: [运单号: TX-20260806-009, 动作: 挂票]", "2026-08-05 16:05:00");
+      })();
+
+      var FEE_SHEET_SAMPLE = "柜号\t供应商\t环节\t费用大类\t费用类型\t金额\t币种\nMSCU3344667\tLAX堆场A\t尾端异常\t国外\t滞箱费\t180\tUSD\nCSNU8800123\t上海外高桥码头\t落箱\t国内\t落箱费\t800\tCNY\nMSCU7700112\t甬港拖车\t还柜\t国内\t滞箱费\t800\tCNY";
 
       /* 示意：柜子通知邮箱费用邮件（按柜号匹配） */
       var FEE_MAILS = [
@@ -2038,10 +2544,10 @@
       var stFilter = "";
       var itFilter = "";
       var amdFilter = "";
-      var warnFilter = "";
-      var colorFilter = "";
       /* 底部周页签：默认当前示意周；"" = 全部周 */
       var weekFilter = "2026-W32";
+      var pageNo = 1;
+      var pageSize = 10;
       var selected = {};
       var itSingleId = null;
 
@@ -2066,6 +2572,149 @@
 
       function daysBetween(a, b) {
         return Math.round((b.getTime() - a.getTime()) / 86400000);
+      }
+
+      function dayLabel(str) {
+        if (!str) return "—";
+        return String(str).slice(0, 10);
+      }
+
+      function usedDays(startStr, endStr) {
+        var a = parseDay(startStr);
+        var b = parseDay(endStr);
+        if (!a || !b) return null;
+        return daysBetween(a, b);
+      }
+
+      function isOverseasSide(side) {
+        return /国外/.test(String(side || ""));
+      }
+      function normFeeSide(side) {
+        if (isOverseasSide(side)) return "国外";
+        if (/国内/.test(String(side || ""))) return "国内";
+        return side || "国内";
+      }
+      function defaultDtNode(type, side) {
+        if (type === "滞箱费") return isOverseasSide(side) ? "尾端异常" : "还柜";
+        if (type === "滞港费") return isOverseasSide(side) ? "尾端异常" : "落箱";
+        return null;
+      }
+
+      function dtCalcForRow(r, type, side) {
+        var overseas = isOverseasSide(side);
+        var free = Number(overseas ? r.freeOs : r.freeCn);
+        if (isNaN(free)) free = 0;
+        var start = "";
+        var end = "";
+        var spanName = "用箱";
+        var miss = [];
+        if (type === "滞箱费") {
+          start = overseas ? r.pickOs : r.pickAt;
+          end = overseas ? r.retOs : r.retAt;
+          spanName = "用箱";
+          if (!start) miss.push(overseas ? "国外提柜" : "国内提柜");
+          if (!end) miss.push(overseas ? "国外还柜" : "国内还柜");
+        } else {
+          start = overseas ? r.arriveOs : r.arriveAt;
+          end = overseas ? r.pickOs : r.etd;
+          spanName = "在港";
+          if (!start) miss.push(overseas ? "目的港进港" : "起运港进港");
+          if (!end) miss.push(overseas ? "国外提柜" : "开船时间");
+        }
+        var used = usedDays(start, end);
+        var over = used == null ? null : used - free;
+        return {
+          cntr: r.cntr,
+          free: free,
+          start: start,
+          end: end,
+          spanName: spanName,
+          used: used,
+          over: over,
+          miss: miss
+        };
+      }
+
+      function dtHintHtml(rows, type, side) {
+        if (!rows.length) return { cls: "miss", html: "请先勾选提单" };
+        var parts = [];
+        var anyMiss = false;
+        var anyOver = false;
+        rows.forEach(function (r) {
+          var d = dtCalcForRow(r, type, side);
+          var head = "<b>" + d.cntr + "</b> · " + type + " · " + side;
+          if (d.miss.length) {
+            anyMiss = true;
+            parts.push(head + "：缺 " + d.miss.join("、") + "，不算超期、不出费");
+            return;
+          }
+          if (d.used < 0) {
+            anyMiss = true;
+            parts.push(head + "：止日早于起日，请核对提还柜/进港时间");
+            return;
+          }
+          var line = head + "：免用箱 " + d.free + " 天 · " + d.spanName + " " + d.used +
+            " 天（" + dayLabel(d.start) + " → " + dayLabel(d.end) + "）";
+          if (d.over > 0) {
+            anyOver = true;
+            parts.push(line + " · <b>超期 " + d.over + " 天</b>，金额请手填或邮件带入");
+          } else {
+            parts.push(line + " · 未超期，可不登记");
+          }
+        });
+        var cls = anyMiss ? "miss" : (anyOver ? "over" : "ok");
+        return { cls: cls, html: parts.join("<br/>") };
+      }
+
+      function syncDtHint() {
+        var wrap = document.getElementById("dtHintWrap");
+        var box = document.getElementById("dtHint");
+        if (!wrap || !box) return;
+        var mode = document.getElementById("feeMode").value;
+        var showFee = mode === "fee" || mode === "both";
+        var type = document.getElementById("feeType").value;
+        var side = document.getElementById("feeSide").value;
+        var isDt = type === "滞箱费" || type === "滞港费";
+        if (!showFee || !isDt) {
+          wrap.style.display = "none";
+          return;
+        }
+        var node = defaultDtNode(type, side);
+        if (node) document.getElementById("feeNode").value = node;
+        var hint = dtHintHtml(checkedRows(), type, side);
+        box.className = "dt-hint " + hint.cls;
+        box.innerHTML = hint.html;
+        wrap.style.display = "";
+      }
+
+      function syncFeeMailBySide() {
+        var overseas = isOverseasSide(document.getElementById("feeSide").value);
+        var act = document.getElementById("feeMailAction");
+        var noneOpt = act.querySelector('option[value="none"]');
+        var linkOpt = act.querySelector('option[value="link"]');
+        var hint = document.getElementById("feeMailNeedHint");
+        var text = document.getElementById("feeMailNeedText");
+        if (noneOpt) {
+          noneOpt.disabled = overseas;
+          noneOpt.hidden = overseas;
+        }
+        if (linkOpt) {
+          linkOpt.disabled = overseas;
+          linkOpt.hidden = overseas;
+        }
+        if (hint) hint.style.display = overseas ? "" : "none";
+        if (text) {
+          text.textContent = overseas
+            ? "费用大类为国外：必须发送邮件。发件账号下拉选我司邮箱；收件账号仅手填。"
+            : "国内费用可不发邮件。按柜号/提单匹配费用邮件；收件账号仅手填。";
+        }
+        if (overseas && (act.value === "none" || act.value === "link")) act.value = "reply";
+      }
+
+      function syncFeeTypeUi() {
+        syncLoadReasonUi();
+        syncDtHint();
+        syncFeeMailBySide();
       }
 
       function hoursBetween(a, b) {
@@ -2110,6 +2759,10 @@
           var dEtd2 = daysBetween(todayDay2, etd);
           if (dEtd2 < 0 && !(r.arriveAt || "").trim()) noArrive = true;
         }
+        var missCntr = !(r.cntr || "").trim();
+        var missSeal = !(r.seal || "").trim();
+        var missCntrSeal = loadStatus(r) === "装完" && (missCntr || missSeal);
+        /* 开船未海放/码放走「更多筛选」，不单独做甩柜提醒页签 */
         return {
           nearCut: nearCut,
           hoursToCut: hoursToCut,
@@ -2119,7 +2772,10 @@
           overTerm: overTerm,
           nearSail: nearSea || nearTerm,
           overSail: overSea || overTerm,
-          noArrive: noArrive
+          noArrive: noArrive,
+          missCntr: missCntr,
+          missSeal: missSeal,
+          missCntrSeal: missCntrSeal
         };
       }
 
@@ -2131,10 +2787,11 @@
         if (kind === "开船未海放") return f.overSea;
         if (kind === "开船未码放") return f.overTerm;
         if (kind === "未进港") return f.noArrive;
+        if (kind === "装完缺柜号铅封") return f.missCntrSeal;
         if (kind === "临近开船未放行") return f.nearSail;
         if (kind === "开船未放行") return f.overSail;
         if (kind === "sail_any") return f.nearSail || f.overSail;
-        if (kind === "any") return f.nearCut || f.nearSail || f.overSail || f.noArrive;
+        if (kind === "any") return f.nearCut || f.nearSail || f.overSail || f.noArrive || f.missCntrSeal;
         return false;
       }
 
@@ -2164,56 +2821,29 @@
       }
 
       function itTag(r) {
-        var it = r.it;
-        if (it === "有IT") {
-          return '<div class="it-cell"><span class="tag it">有IT</span>' +
-            '<button type="button" class="link-btn" data-cancel-it="' + r.id + '" style="border:none;background:none;color:#cf1322;cursor:pointer;padding:0;">取消IT →</button></div>';
-        }
-        if (it === "已取消IT") {
-          var sub = [];
-          if (r.itReason) sub.push(r.itReason);
-          if (r.itTransit) sub.push("中转 " + r.itTransit);
-          if (r.itAt) sub.push(r.itAt);
-          return '<div class="it-cell"><span class="tag it-off">已取消IT</span>' +
-            (sub.length ? '<div class="it-sub">' + sub.join(" · ") + "</div>" : "") +
-            "</div>";
-        }
-        return '<span class="tag it-none">无IT</span>';
+        if (r.it === "已取消IT") return '<span class="tag it-off">取消IT</span>';
+        return "";
       }
 
       function ckTag(r) {
+        var parts = [];
         var ck = r.ck || "无";
-        if (ck === "查验中") return '<span class="tag ck" title="默认挂柜">查验中</span>';
-        if (ck === "查验放行") return '<span class="tag ck-pass">查验放行</span>';
-        if (ck === "查验挂票") {
-          var tip = r.ckWb ? ("责任票 " + r.ckWb) : "单票责任";
-          return '<div class="ck-block"><span class="tag ck-ticket" title="' + tip + '">查验挂票</span>' +
-            (r.ckWb ? '<div class="ck-sub">' + r.ckWb + "</div>" : "") +
-            "</div>";
+        var area = r.ckArea || "";
+        var no = r.ckTrackNo || "";
+        if (ck === "查验中") {
+          parts.push('<span class="tag ck" title="编号: ' + no + '">' + (area ? area : "国内") + "查验</span>");
+        } else         if (ck === "查验放行") {
+          parts.push('<span class="tag ck-pass" title="编号: ' + no + '">' + (area ? area : "") + "查验放行</span>");
         }
-        return ""; /* 无查验：合并列不占位 */
+        if (!parts.length) return "";
+        return '<div class="ck-block">' + parts.join("") + "</div>";
       }
 
       function amdTag(r) {
         var amd = r.amd || "无";
-        if (amd === "改单中") {
-          var sub = [];
-          if (r.amdType) sub.push(r.amdType);
-          if (r.amdLetter) sub.push(r.amdLetter);
-          if (r.amdAt) sub.push(r.amdAt);
-          return '<div class="amd-cell"><span class="tag amd">改单中</span>' +
-            (sub.length ? '<div class="amd-sub">' + sub.join(" · ") + "</div>" : "") +
-            "</div>";
-        }
-        if (amd === "已改单") {
-          var sub2 = [];
-          if (r.amdType) sub2.push(r.amdType);
-          if (r.amdAt) sub2.push(r.amdAt);
-          return '<div class="amd-cell"><span class="tag amd-done">已改单</span>' +
-            (sub2.length ? '<div class="amd-sub">' + sub2.join(" · ") + "</div>" : "") +
-            "</div>";
-        }
-        return ""; /* 无改单：合并列不占位 */
+        if (amd === "改单中") return '<span class="tag amd">改单</span>';
+        if (amd === "已改单") return '<span class="tag amd-done">已改单</span>';
+        return "";
       }
 
       function sendTag(r) {
@@ -2228,10 +2858,10 @@
         return '<div class="send-cell">' + amsHtml + isfHtml + "</div>";
       }
 
-      /** 业务标记：IT + AMS/ISF + 查验 + 改单 合并一列 */
+      /** 业务标记：IT + AMS/ISF + 海放/码放 + 查验 + 改单 */
       function marksCell(r) {
         return '<div class="marks-cell">' +
-          itTag(r) + sendTag(r) + ckTag(r) + amdTag(r) +
+          itTag(r) + sendTag(r) + relWarnCell(r) + ckTag(r) + amdTag(r) +
           "</div>";
       }
 
@@ -2248,35 +2878,27 @@
         return true;
       }
 
-      function relWarnCell(r) {
-        var f = warnFlags(r);
+      function matchRelFilter(r, rel) {
+        if (!rel) return true;
         var sea = seaOk(r);
         var term = termOk(r);
-        var relHtml = '<div class="rel-pair">' +
+        if (rel === "sea_no") return !sea;
+        if (rel === "sea_ok") return sea;
+        if (rel === "term_no") return !term;
+        if (rel === "term_ok") return term;
+        if (rel === "sea_ok_term_no") return sea && !term;
+        if (rel === "term_ok_sea_no") return term && !sea;
+        if (rel === "both_ok") return sea && term;
+        if (rel === "both_no") return !sea && !term;
+        return true;
+      }
+
+      function relWarnCell(r) {
+        var sea = seaOk(r);
+        var term = termOk(r);
+        return '<div class="rel-pair">' +
           (sea ? '<span class="tag sea-ok" title="海关放行">海放✓</span>' : '<span class="tag sea-no" title="海关未放行">未海放</span>') +
           (term ? '<span class="tag term-ok" title="码头放行">码放✓</span>' : '<span class="tag term-no" title="码头未放行">未码放</span>') +
-          "</div>";
-        var tags = [];
-        if (f.overSea) tags.push('<span class="tag warn-over" title="已过ETD仍未海放，可触发智能甩柜">开船未海放</span>');
-        else if (f.nearSea) tags.push('<span class="tag warn-sail" title="ETD≤3天且未海放">临近未海放</span>');
-        if (f.overTerm) tags.push('<span class="tag warn-over" title="已过ETD仍未码放">开船未码放</span>');
-        else if (f.nearTerm) tags.push('<span class="tag warn-sail" title="ETD≤3天且未码放">临近未码放</span>');
-        if (f.nearCut) tags.push('<span class="tag warn-cut" title="距截单≤24小时">临近截单</span>');
-        var sub = "";
-        if (f.nearSail || f.overSail) {
-          var etd = parseDay(r.etd);
-          var todayDay = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
-          var d = etd ? daysBetween(todayDay, etd) : null;
-          if (d != null) {
-            sub = d < 0 ? ("已过开船 " + (-d) + " 天") : ("距开船 " + d + " 天");
-          }
-        } else if (f.nearCut && f.hoursToCut != null) {
-          var h = Math.max(0, Math.round(f.hoursToCut * 10) / 10);
-          sub = h < 1 ? ("距截单约 " + Math.round(h * 60) + " 分钟") : ("距截单 " + h + " 小时");
-        }
-        return '<div class="warn-cell">' + relHtml +
-          (tags.length ? '<div style="margin-top:3px">' + tags.join(" ") + "</div>" : "") +
-          (sub ? '<div class="warn-sub">' + sub + "</div>" : "") +
           "</div>";
       }
 
@@ -2284,6 +2906,23 @@
         var arr = (r.arriveAt || "").trim();
         if (arr) return arr;
         return '<span class="tag arr-no">未进港</span>';
+      }
+
+      function portCodeCell(r) {
+        var code = (r.portCode || "").trim();
+        var match = r.portCodeMatch || "待抓取";
+        var transit = (r.transitPortCode || "").trim();
+        var html = '<div class="port-code-cell">';
+        if (code) {
+          var mCls = match === "一致" ? "ok" : (match === "不一致" ? "bad" : "mute");
+          html += '<span class="tag ' + mCls + '" title="' + (r.portCodeSrc || "") + '">' + code + "</span>";
+          if (match === "不一致") html += '<span class="tag bad">匹配异</span>';
+          else if (match === "未覆盖") html += '<span class="tag mute">未覆盖</span>';
+        } else {
+          html += '<span class="tag mute">待登记</span>';
+        }
+        if (transit) html += '<span style="color:#8c8c8c;font-size:11px;margin-left:4px">中转 ' + transit + "</span>";
+        return html + "</div>";
       }
 
       function cutOffCell(r) {
@@ -2388,8 +3027,7 @@
         var send = document.getElementById("qSend").value;
         var ck = document.getElementById("qCk").value;
         var amd = document.getElementById("qAmd").value;
-        var seaRel = document.getElementById("qSeaRel").value;
-        var termRel = document.getElementById("qTermRel").value;
+        var rel = document.getElementById("qRel").value;
         var warn = document.getElementById("qWarn").value;
         var ftQ = document.getElementById("qFt").value;
         var colorQ = document.getElementById("qColor").value;
@@ -2397,8 +3035,6 @@
           if (stFilter && r.st !== stFilter) return false;
           if (itFilter && r.it !== itFilter) return false;
           if (amdFilter && (r.amd || "无") !== amdFilter) return false;
-          if (warnFilter && !hasWarn(r, warnFilter)) return false;
-          if (colorFilter && !matchColorFilter(r, colorFilter)) return false;
           if (bl && r.bl.indexOf(bl) < 0) return false;
           if (wb) {
             var hay = ((r.wb || "") + " " + (r.ckWb || "")).toUpperCase();
@@ -2416,10 +3052,10 @@
           if (customs && (r.customs || "") !== customs) return false;
           if (it && r.it !== it) return false;
           if (send && !matchSendFilter(r, send)) return false;
-          if (ck && (r.ck || "无") !== ck) return false;
+          if (ck === "查验挂票") { if (!r.ckWb) return false; }
+          else if (ck && (r.ck || "无") !== ck) return false;
           if (amd && (r.amd || "无") !== amd) return false;
-          if (seaRel && (r.seaRel || "未放行") !== seaRel) return false;
-          if (termRel && (r.termRel || "未放行") !== termRel) return false;
+          if (rel && !matchRelFilter(r, rel)) return false;
           if (warn && !hasWarn(r, warn)) return false;
           if (ftQ === "未进港" && (r.arriveAt || "").trim()) return false;
           if (ftQ === "已进港" && !(r.arriveAt || "").trim()) return false;
@@ -2460,10 +3096,50 @@
         return ROWS.filter(function (r) { return selected[r.id]; });
       }
 
+      function resetPage() { pageNo = 1; }
+
+      function weekScopeLabel() {
+        if (!weekFilter) return "全部周";
+        var meta = WEEK_LABEL[weekFilter];
+        return meta ? meta.title : weekFilter;
+      }
+
+      function pageSlice(list) {
+        var total = list.length;
+        var pages = Math.max(1, Math.ceil(total / pageSize) || 1);
+        if (pageNo > pages) pageNo = pages;
+        if (pageNo < 1) pageNo = 1;
+        var start = (pageNo - 1) * pageSize;
+        return { total: total, pages: pages, start: start, rows: list.slice(start, start + pageSize) };
+      }
+
+      function renderPager(pg) {
+        var scope = document.getElementById("pagerScope");
+        var summary = document.getElementById("pagerSummary");
+        var nums = document.getElementById("pgNums");
+        var prev = document.getElementById("pgPrev");
+        var next = document.getElementById("pgNext");
+        if (!scope) return;
+        var from = pg.total ? pg.start + 1 : 0;
+        var to = pg.start + pg.rows.length;
+        scope.innerHTML = "<b>" + weekScopeLabel() + "</b>" + (weekFilter ? "" : "（全部周）");
+        summary.textContent = "本范围 " + pg.total + " 条 · 第 " + pageNo + "/" + pg.pages + " 页" +
+          (pg.total ? "（" + from + "–" + to + "）" : "");
+        prev.disabled = pageNo <= 1;
+        next.disabled = pageNo >= pg.pages;
+        var html = "";
+        for (var i = 1; i <= pg.pages; i++) {
+          html += '<button type="button" class="pg-num' + (i === pageNo ? " on" : "") +
+            '" data-page="' + i + '">' + i + "</button>";
+        }
+        nums.innerHTML = html;
+      }
+
       function render() {
         renderWeekTabs();
-        var list = filtered();
-        document.getElementById("totalCnt").textContent = String(list.length);
+        var list = sortByWeekVessel(filtered());
+        var pg = pageSlice(list);
+        renderPager(pg);
         document.getElementById("cntAll").textContent = "(" + ROWS.length + ")";
         document.getElementById("cntCut").textContent = "(" + ROWS.filter(function (r) { return hasWarn(r, "临近截单"); }).length + ")";
         document.getElementById("cntSea").textContent = "(" + ROWS.filter(function (r) {
@@ -2475,21 +3151,67 @@
         document.getElementById("cntArr").textContent = "(" + ROWS.filter(function (r) {
           return hasWarn(r, "未进港");
         }).length + ")";
+        document.getElementById("cntSeal").textContent = "(" + ROWS.filter(function (r) {
+          return hasWarn(r, "装完缺柜号铅封");
+        }).length + ")";
+        var warnVal = document.getElementById("qWarn").value;
+        document.querySelectorAll(".warn-chip[data-warn]").forEach(function (btn) {
+          btn.classList.toggle("active", btn.getAttribute("data-warn") === warnVal);
+        });
+        var colorVal = document.getElementById("qColor").value;
+        document.querySelectorAll(".load-chip").forEach(function (btn) {
+          btn.classList.toggle("active", btn.getAttribute("data-color") === colorVal);
+        });
 
         var html = "";
         var seq = 0;
 
         function voyCell(r) {
-          return '<div class="voy-cell"><div class="voy-main">' + (r.voy || "—") + "</div>" +
-            '<div class="voy-sub">' + (r.carrier || "—") + " · " + (r.pol || "") + "→" + (r.pod || "") +
-            " · " + (r.type || "") + "</div></div>";
+          return r.voy || "—";
+        }
+
+        function cntrSealCell(r) {
+          var f = warnFlags(r);
+          var warn = f.missCntrSeal;
+          var cntr = (r.cntr || "").trim();
+          var seal = (r.seal || "").trim();
+          var cntrHtml = cntr
+            ? cntr
+            : (warn ? '<span class="miss">无柜号</span>' : "—");
+          var sealHtml = seal
+            ? ("铅封 " + seal)
+            : (warn ? '<span class="miss">无铅封</span>' : "铅封 —");
+          return '<div class="cntr-seal' + (warn ? " warn" : "") + '">' +
+            '<span class="cntr-main">' + cntrHtml + "</span>" +
+            '<span class="seal-sub">' + sealHtml + "</span></div>";
+        }
+
+        function dash(v) {
+          return (v == null || v === "") ? "" : v;
+        }
+
+        function num3(v) {
+          if (v == null || v === "") return "";
+          return Number(v).toFixed(3);
+        }
+
+        function num2(v) {
+          if (v == null || v === "") return "";
+          return Number(v).toFixed(2);
+        }
+
+        function ftAutoCell(r) {
+          if (r.ftGrab === "能") return '<span class="ft-auto">自动</span>';
+          if (r.ftGrab === "待确认") return '<span class="ft-pending">待确认</span>';
+          return "";
         }
 
         function rowHtml(r) {
           seq += 1;
+          var n = pg.start + seq;
           var ck = selected[r.id] ? " checked" : "";
           var sel = selected[r.id] ? " selected" : "";
-          var itCls = r.it === "已取消IT" ? " it-cancelled" : (r.it === "有IT" ? " it-has" : "");
+          var itCls = r.it === "已取消IT" ? " it-cancelled" : "";
           var amdCls = (r.amd === "改单中") ? " amd-row" : "";
           var ls = loadStatus(r);
           var loadCls = ls === "装完" ? " load-done" : " load-pending";
@@ -2498,33 +3220,57 @@
           var f = warnFlags(r);
           if (f.nearSail || f.overSail) warnBorder = " warn-sail-row";
           else if (f.nearCut) warnBorder = " warn-cut-row";
+          if (f.missCntrSeal) warnBorder += " warn-seal-row";
           return '<tr class="data-row' + sel + itCls + amdCls + loadCls + warnBorder + '" data-id="' + r.id + '">' +
             '<td><input type="checkbox" class="row-ck"' + ck + ' /></td>' +
-            "<td>" + seq + "</td>" +
+            "<td>" + n + "</td>" +
             '<td><a href="#">' + r.bl + "</a></td>" +
-            "<td>" + r.cntr + "</td>" +
+            "<td>" + cntrSealCell(r) + "</td>" +
             "<td>" + voyCell(r) + "</td>" +
             "<td>" + stTag(r.st) + "</td>" +
             "<td>" + marksCell(r) + "</td>" +
             "<td>" + cutOffCell(r) + "</td>" +
-            "<td>" + relWarnCell(r) + "</td>" +
+            "<td>" + dash(r.loadAt) + "</td>" +
+            "<td>" + portCodeCell(r) + "</td>" +
             "<td>" + arriveFtCell(r) + "</td>" +
             "<td>" + r.type + "</td>" +
             "<td>" + (r.trans || "海运") + "</td>" +
             "<td>" + r.etd + "</td>" +
-            "<td>" + (r.spaceNo || "—") + "</td>" +
-            "<td>" + r.pol + "</td>" +
-            "<td>" + r.pod + "</td>" +
-            "<td>" + (r.agent || "—") + "</td>" +
-            "<td>" + (r.addr || "—") + "</td>" +
-            "<td>" + (r.loadAt || "—") + "</td>" +
+            "<td>" + (r.spaceNo || "") + "</td>" +
+            "<td>" + (r.carrierName || r.carrier || "") + "</td>" +
+            "<td>" + (r.polName || r.pol || "") + "</td>" +
+            "<td>" + (r.podName || r.pod || "") + "</td>" +
+            "<td>" + dash(r.transitPort) + "</td>" +
+            "<td>" + (r.ticketCnt != null ? r.ticketCnt : "") + "</td>" +
+            "<td>" + (r.pcs != null ? r.pcs : "") + "</td>" +
+            "<td>" + num3(r.weight) + "</td>" +
+            "<td>" + num2(r.cbm) + "</td>" +
+            "<td>" + num3(r.cbmW) + "</td>" +
+            "<td>" + num3(r.chgW) + "</td>" +
+            "<td>" + dash(r.booker) + "</td>" +
+            "<td>" + dash(r.customs) + "</td>" +
+            "<td>" + dash(r.trailer) + "</td>" +
+            "<td>" + dash(r.addr1 || r.addr) + "</td>" +
+            "<td>" + dash(r.addr2) + "</td>" +
+            "<td>" + dash(r.addr3) + "</td>" +
+            "<td>" + dash(r.loadAt) + "</td>" +
+            "<td>" + ftAutoCell(r) + "</td>" +
+            "<td>" + dash(r.remark) + "</td>" +
+            "<td>" + dash(r.whIn) + "</td>" +
+            "<td>" + dash(r.whOut) + "</td>" +
+            "<td>" + (r.freight != null ? r.freight : "") + "</td>" +
+            "<td>" + (r.freeCn != null ? r.freeCn : "") + "</td>" +
+            "<td>" + (r.freeOs != null ? r.freeOs : "") + "</td>" +
+            "<td>" + dash(r.createdAt) + "</td>" +
+            "<td>" + dash(r.createdBy) + "</td>" +
+            "<td>" + dash(r.eta) + "</td>" +
             "</tr>";
         }
 
-        sortByWeekVessel(list).forEach(function (r) { html += rowHtml(r); });
+        pg.rows.forEach(function (r) { html += rowHtml(r); });
 
         document.getElementById("tbody").innerHTML = html ||
-          '<tr><td colspan="19" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+          '<tr><td colspan="43" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
       }
 
       document.getElementById("tbody").addEventListener("change", function (e) {
@@ -2538,7 +3284,8 @@
 
       document.getElementById("chkAll").addEventListener("change", function () {
         var on = this.checked;
-        filtered().forEach(function (r) {
+        var pg = pageSlice(sortByWeekVessel(filtered()));
+        pg.rows.forEach(function (r) {
           if (on) selected[r.id] = true; else delete selected[r.id];
         });
         render();
@@ -2551,23 +3298,35 @@
           stFilter = btn.getAttribute("data-st") || "";
           itFilter = "";
           amdFilter = "";
-          warnFilter = btn.getAttribute("data-warn") || "";
-          colorFilter = btn.getAttribute("data-color") || "";
           document.getElementById("qIt").value = "";
           document.getElementById("qAmd").value = "";
-          document.getElementById("qWarn").value = "";
-          document.getElementById("qSeaRel").value = "";
-          document.getElementById("qTermRel").value = "";
-          document.getElementById("qColor").value = "";
+          document.getElementById("qRel").value = "";
           document.getElementById("qFt").value = "";
-          if (warnFilter) {
-            document.getElementById("qWarn").value = warnFilter;
-            stFilter = ""; colorFilter = "";
+          resetPage();
+          render();
+        });
+      });
+
+      document.querySelectorAll(".warn-chip[data-warn]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var key = btn.getAttribute("data-warn") || "";
+          var sel = document.getElementById("qWarn");
+          if (sel.value === key) {
+            sel.value = "";
+          } else {
+            sel.value = key;
             weekFilter = ""; /* 预警跨周看，底栏切到「全部周」 */
-          } else if (colorFilter) {
-            document.getElementById("qColor").value = colorFilter;
-            stFilter = ""; warnFilter = "";
           }
+          resetPage();
+          render();
+        });
+      });
+      document.querySelectorAll(".load-chip").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var key = btn.getAttribute("data-color") || "";
+          var sel = document.getElementById("qColor");
+          sel.value = (sel.value === key) ? "" : key;
+          resetPage();
           render();
         });
       });
@@ -2584,7 +3343,7 @@
         openIt();
       });
 
-      document.getElementById("btnSearch").onclick = render;
+      document.getElementById("btnSearch").onclick = function () { resetPage(); render(); };
       document.getElementById("btnMoreFilter").onclick = function () {
         var el = document.getElementById("moreFilters");
         el.classList.toggle("hidden");
@@ -2593,12 +3352,11 @@
       document.getElementById("btnReset").onclick = function () {
         ["qBl", "qWb", "qCntr", "qVoy"].forEach(function (id) { document.getElementById(id).value = ""; });
         ["qTrans", "qType", "qPol", "qPod", "qCarrier", "qBooker", "qTrailer", "qCustoms",
-          "qIt", "qSend", "qCk", "qAmd", "qSeaRel", "qTermRel", "qWarn", "qFt", "qColor"
+          "qIt", "qSend", "qCk", "qAmd", "qRel", "qWarn", "qFt", "qColor"
         ].forEach(function (id) { document.getElementById(id).value = ""; });
         amdFilter = "";
-        warnFilter = "";
-        colorFilter = "";
         weekFilter = "2026-W32";
+        resetPage();
         render();
       };
       document.querySelectorAll("[data-live]").forEach(function (btn) {
@@ -2607,31 +3365,207 @@
         };
       });
 
+      var swapRow = null;
+      function toDatetimeLocal(str) {
+        if (!str) return "";
+        var m = String(str).match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})/);
+        if (!m) return "";
+        var hh = m[2].length === 1 ? "0" + m[2] : m[2];
+        return m[1] + "T" + hh + ":" + m[3];
+      }
+      function fromDatetimeLocal(str) {
+        if (!str) return "";
+        return str.replace("T", " ") + (str.length <= 16 ? ":00" : "");
+      }
+      function swapMsgText() {
+        var r = swapRow;
+        if (!r) return "";
+        var newBl = (document.getElementById("swapNewBl").value || "").trim() || "（待填）";
+        var voy = (document.getElementById("swapVoy").value || "").trim() || "—";
+        var cntr = (document.getElementById("swapCntr").value || "").trim() || "—";
+        return "【换柜换船】原提单 " + r.bl + " → 新提单 " + newBl +
+          "\n船名航次 " + voy + " · 柜号 " + cntr +
+          "\n请业务员、客服知悉并跟进下游。";
+      }
+      function refreshSwapMsg() {
+        var on = document.getElementById("swapNotify").checked;
+        document.getElementById("swapMsgBox").classList.toggle("off", !on);
+        document.getElementById("swapMsgPreview").style.display = on ? "" : "none";
+        document.getElementById("swapMsgPreview").textContent = swapMsgText();
+        var r = swapRow;
+        document.getElementById("swapNotifyHint").textContent = r
+          ? (on
+            ? ("将发给：业务员 " + r.sales + "、客服 " + r.cs + "（按提单关联带出）")
+            : "不发送站内消息，仅保存换柜换船")
+          : "";
+      }
+      function openSwap() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        if (rows.length > 1) { toast("换柜换船请只勾选一条提单"); return; }
+        swapRow = rows[0];
+        document.getElementById("swapOldBl").value = swapRow.bl;
+        document.getElementById("swapNewBl").value = "";
+        document.getElementById("swapVoy").value = swapRow.voy || "";
+        document.getElementById("swapCntr").value = swapRow.cntr || "";
+        document.getElementById("swapSeal").value = swapRow.seal || "";
+        document.getElementById("swapLoadAt").value = toDatetimeLocal(swapRow.loadAt);
+        document.getElementById("swapDlvAt").value = toDatetimeLocal(swapRow.dlvAt);
+        document.getElementById("swapNotify").checked = true;
+        refreshSwapMsg();
+        document.getElementById("swapMask").classList.add("open");
+      }
+      function closeSwap() {
+        document.getElementById("swapMask").classList.remove("open");
+        swapRow = null;
+      }
+      document.getElementById("btnSwapCntr").onclick = openSwap;
+      document.getElementById("swapClose").onclick = closeSwap;
+      document.getElementById("swapCancel").onclick = closeSwap;
+      document.getElementById("swapNotify").onchange = refreshSwapMsg;
+      ["swapNewBl", "swapVoy", "swapCntr"].forEach(function (id) {
+        document.getElementById(id).oninput = refreshSwapMsg;
+      });
+      document.getElementById("swapConfirm").onclick = function () {
+        if (!swapRow) return;
+        var newBl = document.getElementById("swapNewBl").value.trim();
+        var voy = document.getElementById("swapVoy").value.trim();
+        if (!newBl) { toast("请填写新提单号"); return; }
+        if (!voy) { toast("请填写船名航次"); return; }
+        if (newBl === swapRow.bl) { toast("新提单号不能与原提单号相同"); return; }
+        var cntr = document.getElementById("swapCntr").value.trim();
+        var seal = document.getElementById("swapSeal").value.trim();
+        var loadAt = fromDatetimeLocal(document.getElementById("swapLoadAt").value);
+        var dlvAt = fromDatetimeLocal(document.getElementById("swapDlvAt").value);
+        var notify = document.getElementById("swapNotify").checked;
+        var oldBl = swapRow.bl;
+        var oldVoy = swapRow.voy;
+        var oldCntr = swapRow.cntr || "";
+        var oldSeal = swapRow.seal || "";
+        swapRow.bl = newBl;
+        swapRow.voy = voy;
+        if (cntr) swapRow.cntr = cntr;
+        swapRow.seal = seal;
+        swapRow.loadAt = loadAt;
+        swapRow.dlvAt = dlvAt;
+        swapRow.swapFrom = oldBl;
+        swapRow.swapAt = "2026-08-20 16:12";
+        swapRow.swapNotified = notify;
+        addLog(swapRow, "换柜换船",
+          "换柜换船: [提单号: " + oldBl + "→" + newBl +
+          ", 柜号: " + (oldCntr || "空") + "→" + (swapRow.cntr || "空") +
+          ", 船名航次: " + oldVoy + "→" + voy +
+          ", 铅封号: " + (oldSeal || "空") + "→" + (seal || "空") +
+          ", 站内消息: " + (notify ? "已发" : "未发") + "]");
+        var sales = swapRow.sales;
+        var cs = swapRow.cs;
+        closeSwap();
+        render();
+        toast(notify
+          ? ("已换柜换船，站内消息已发给业务员 " + sales + "、客服 " + cs)
+          : "已换柜换船（未发站内消息）");
+      };
+
+      var ckShipRow = null;
+      function ckShipMsgText() {
+        var r = ckShipRow;
+        if (!r) return "";
+        var newBl = (document.getElementById("ckShipNewBl").value || "").trim() || "（待填）";
+        var voy = (document.getElementById("ckShipVoy").value || "").trim() || "—";
+        return "【查验换船】原提单 " + r.bl + " → 新提单 " + newBl +
+          "\n船名航次 " + voy + " · 柜号 " + (r.cntr || "—") + "（不变，轨迹延续）" +
+          "\n请业务员、客服知悉并跟进下游。";
+      }
+      function refreshCkShipMsg() {
+        var on = document.getElementById("ckShipNotify").checked;
+        document.getElementById("ckShipMsgBox").classList.toggle("off", !on);
+        document.getElementById("ckShipMsgPreview").style.display = on ? "" : "none";
+        document.getElementById("ckShipMsgPreview").textContent = ckShipMsgText();
+        var r = ckShipRow;
+        document.getElementById("ckShipNotifyHint").textContent = r
+          ? (on
+            ? ("将发给：业务员 " + r.sales + "、客服 " + r.cs + "（按提单关联带出）")
+            : "不发送站内消息，仅保存查验换船")
+          : "";
+      }
+      function openCkShip() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        if (rows.length > 1) { toast("查验换船请只勾选一条提单"); return; }
+        ckShipRow = rows[0];
+        document.getElementById("ckShipOldBl").value = ckShipRow.bl;
+        document.getElementById("ckShipNewBl").value = "";
+        document.getElementById("ckShipVoy").value = ckShipRow.voy || "";
+        document.getElementById("ckShipCntr").value = ckShipRow.cntr || "";
+        document.getElementById("ckShipNotify").checked = true;
+        refreshCkShipMsg();
+        document.getElementById("ckShipMask").classList.add("open");
+      }
+      function closeCkShip() {
+        document.getElementById("ckShipMask").classList.remove("open");
+        ckShipRow = null;
+      }
+      document.getElementById("btnCkShip").onclick = openCkShip;
+      document.getElementById("ckShipClose").onclick = closeCkShip;
+      document.getElementById("ckShipCancel").onclick = closeCkShip;
+      document.getElementById("ckShipNotify").onchange = refreshCkShipMsg;
+      ["ckShipNewBl", "ckShipVoy"].forEach(function (id) {
+        document.getElementById(id).oninput = refreshCkShipMsg;
+      });
+      document.getElementById("ckShipConfirm").onclick = function () {
+        if (!ckShipRow) return;
+        var newBl = document.getElementById("ckShipNewBl").value.trim();
+        var voy = document.getElementById("ckShipVoy").value.trim();
+        if (!newBl) { toast("请填写新提单号"); return; }
+        if (!voy) { toast("请填写船名航次"); return; }
+        if (newBl === ckShipRow.bl) { toast("新提单号不能与原提单号相同"); return; }
+        var notify = document.getElementById("ckShipNotify").checked;
+        var oldBl = ckShipRow.bl;
+        var oldVoy = ckShipRow.voy;
+        ckShipRow.bl = newBl;
+        ckShipRow.voy = voy;
+        ckShipRow.ckShipFrom = oldBl;
+        ckShipRow.ckShipVoyFrom = oldVoy;
+        ckShipRow.ckShipAt = "2026-08-20 16:19";
+        ckShipRow.ckShipNotified = notify;
+        addLog(ckShipRow, "查验换船",
+          "查验换船: [提单号: " + oldBl + "→" + newBl +
+          ", 船名航次: " + oldVoy + "→" + voy +
+          ", 柜号: 不变, 轨迹: 延续, 站内消息: " + (notify ? "已发" : "未发") + "]");
+        var sales = ckShipRow.sales;
+        var cs = ckShipRow.cs;
+        closeCkShip();
+        render();
+        toast(notify
+          ? ("已查验换船（柜号不变），站内消息已发给业务员 " + sales + "、客服 " + cs)
+          : "已查验换船（柜号不变，未发站内消息）");
+      };
+
       document.getElementById("weekSheetTabs").addEventListener("click", function (e) {
         var tab = e.target.closest(".week-sheet-tab");
         if (!tab) return;
         weekFilter = tab.getAttribute("data-week") || "";
+        resetPage();
         render();
       });
 
-      function markSend(kind) {
-        var rows = checkedRows();
-        if (!rows.length) { toast("请先勾选提单"); return; }
-        var now = "2026-08-07 17:40";
-        rows.forEach(function (r) {
-          if (kind === "AMS") {
-            r.ams = "已发";
-            r.amsAt = now;
-          } else {
-            r.isf = "已发";
-            r.isfAt = now;
-          }
-        });
-        toast("已写入发送标记 · " + kind + " 已发 ×" + rows.length);
+      document.getElementById("pgPrev").onclick = function () {
+        if (pageNo > 1) { pageNo -= 1; render(); }
+      };
+      document.getElementById("pgNext").onclick = function () {
+        pageNo += 1; render();
+      };
+      document.getElementById("pgNums").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-page]");
+        if (!btn) return;
+        pageNo = Number(btn.getAttribute("data-page")) || 1;
         render();
-      }
-      document.getElementById("btnAms").onclick = function () { markSend("AMS"); };
-      document.getElementById("btnIsf").onclick = function () { markSend("ISF"); };
+      });
+      document.getElementById("pgSize").onchange = function () {
+        pageSize = Number(this.value) || 10;
+        resetPage();
+        render();
+      };
 
       /* —— 取消 IT —— */
       function openIt() {
@@ -2676,6 +3610,9 @@
           r.itReason = reason;
           r.itTransit = transit;
           r.itAt = now;
+          addLog(r, "取消IT",
+            "取消IT: [IT: 有IT→已取消IT, 原因: " + reason +
+            ", 中转港: " + (transit || "空") + ", 通知关务: " + (notify ? "是" : "否") + "]");
         });
         itSingleId = null;
         closeIt();
@@ -2683,23 +3620,21 @@
         toast("已打「取消IT」标记 ×" + rows.length + (notify ? " · 已通知关务清关" : "") + (transit ? " · 中转港已记" : ""));
       };
 
-      /* —— 查验标记 —— */
+      /* —— 查验标记（轨迹编号） —— */
       function openCk() {
         var rows = checkedRows();
         if (!rows.length) { toast("请先勾选提单"); return; }
         document.getElementById("ckTargets").value = rows.map(function (r) {
           return r.bl + " / " + r.cntr;
         }).join("；");
-        var hasTicket = rows.some(function (r) { return r.ck === "查验挂票" && r.ckWb; });
-        document.getElementById("ckWaybill").value = hasTicket
-          ? (rows.filter(function (r) { return r.ckWb; })[0].ckWb || "")
-          : "";
+        var first = rows[0];
+        if (first.ckArea) document.getElementById("ckArea").value = first.ckArea === "国外" ? "国外" : "国内";
+        document.getElementById("ckTrackNo").value = first.ckTrackNo || "";
         document.getElementById("ckMask").classList.add("open");
       }
       function closeCk() {
         document.getElementById("ckMask").classList.remove("open");
       }
-      document.getElementById("btnCheckMark").onclick = openCk;
       document.getElementById("ckClose").onclick = closeCk;
       document.getElementById("ckCancel").onclick = closeCk;
       document.getElementById("ckMask").addEventListener("click", function (e) {
@@ -2707,22 +3642,73 @@
       });
       document.getElementById("ckConfirm").onclick = function () {
         var rows = checkedRows();
-        var st = document.getElementById("ckStatus").value;
-        var wb = document.getElementById("ckWaybill").value.trim();
+        var area = document.getElementById("ckArea").value;
+        var node = document.getElementById("ckNode").value;
+        var no = document.getElementById("ckTrackNo").value.trim();
         var notify = document.getElementById("ckNotify").value === "1";
-        if (st === "查验挂票" && !wb) {
+        if (!no) {
+          toast("无轨迹编号，不打查验标记");
+          return;
+        }
+        rows.forEach(function (r) {
+          r.ckArea = area;
+          r.ckTrackNo = no;
+          r.ck = node === "放行" ? "查验放行" : "查验中";
+          addLog(r, "查验标记",
+            "查验标记: [区域: " + area + ", 结果: " + (node === "放行" ? "查验放行" : "查验中") +
+            ", 轨迹编号: " + no + "]");
+        });
+        closeCk();
+        render();
+        toast((area + (node === "放行" ? "查验放行" : "查验") + " · 编号: " + no + " ×" + rows.length) +
+          (notify ? " · 已通知关务" : ""));
+      };
+
+      /* —— 查验挂票（独立入口） —— */
+      function openCkTicket() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        document.getElementById("cktTargets").value = rows.map(function (r) {
+          return r.bl + " / " + r.cntr;
+        }).join("；");
+        var hung = rows.filter(function (r) { return r.ckWb; });
+        var hasWb = hung[0];
+        document.getElementById("cktWaybill").value = hasWb ? hasWb.ckWb : "";
+        var now = document.getElementById("cktNow");
+        if (!hung.length) {
+          now.textContent = "所选提单尚未挂责任票。";
+        } else {
+          now.textContent = "已挂责任票：" + hung.map(function (r) {
+            return r.cntr + " → " + r.ckWb;
+          }).join("；");
+        }
+        document.getElementById("ckTicketMask").classList.add("open");
+      }
+      function closeCkTicket() {
+        document.getElementById("ckTicketMask").classList.remove("open");
+      }
+      document.getElementById("cktClose").onclick = closeCkTicket;
+      document.getElementById("cktCancel").onclick = closeCkTicket;
+      document.getElementById("ckTicketMask").addEventListener("click", function (e) {
+        if (e.target === this) closeCkTicket();
+      });
+      document.getElementById("cktConfirm").onclick = function () {
+        var rows = checkedRows();
+        var act = document.getElementById("cktAct").value;
+        var wb = document.getElementById("cktWaybill").value.trim();
+        if (act === "挂" && !wb) {
           toast("查验挂票须填写关联运单号");
           return;
         }
         rows.forEach(function (r) {
-          r.ck = st;
-          r.ckWb = st === "查验挂票" ? wb : (st === "无" ? "" : r.ckWb);
+          if (act === "清") r.ckWb = "";
+          else r.ckWb = wb;
+          addLog(r, "查验挂票",
+            "查验挂票: [运单号: " + (wb || r.ckWb || "空") + ", 动作: " + (act === "清" ? "取消挂票" : "挂票") + "]");
         });
-        closeCk();
+        closeCkTicket();
         render();
-        toast("查验标记已更新 ×" + rows.length +
-          (st === "查验挂票" ? " · 运单 " + wb + " 同步挂票" : "") +
-          (notify && st !== "无" ? " · 已通知关务" : ""));
+        toast(act === "清" ? ("已清除挂票 ×" + rows.length) : ("已挂票 " + wb + " ×" + rows.length));
       };
 
       /* —— 改单标记 —— */
@@ -2753,8 +3739,25 @@
       function closeAmd() {
         document.getElementById("amdMask").classList.remove("open");
       }
-      document.getElementById("btnAmendMark").onclick = openAmd;
-      document.getElementById("btnBlEdit").onclick = openAmd;
+      document.getElementById("btnBlEdit").onclick = function () {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        if (rows.length > 1) { toast("请只勾选一条"); return; }
+        var r = rows[0];
+        try {
+          sessionStorage.setItem("ess_bl_form", JSON.stringify({
+            bl: r.bl, cntr: r.cntr, mode: r.trans || "海运", type: r.type,
+            pol: r.pol, pod: r.pod, carrier: r.carrier, voy: r.voy,
+            etd: r.etd, cutOff: r.cutOff, loadAt: r.loadAt, seal: r.seal,
+            booker: r.booker, cs: r.cs, agent: r.agent, st: r.st,
+            transit: r.itTransit || r.transitPortCode || "",
+            freeCn: r.freeCn != null ? r.freeCn : "7",
+            freeOs: r.freeOs != null ? r.freeOs : "10",
+            freight: r.freight || "", remark: ""
+          }));
+        } catch (e) {}
+        location.href = "船务组-提单创建批量-AI识别-MVP.html?mode=edit";
+      };
       document.getElementById("amdClose").onclick = closeAmd;
       document.getElementById("amdCancel").onclick = closeAmd;
       document.getElementById("amdMask").addEventListener("click", function (e) {
@@ -2769,6 +3772,7 @@
         var remark = document.getElementById("amdRemark").value.trim();
         var now = "2026-08-07 00:15";
         rows.forEach(function (r) {
+          var oldAmd = r.amd || "无";
           r.amd = st;
           if (st === "无") {
             r.amdType = "";
@@ -2781,6 +3785,9 @@
             r.amdReason = remark;
             r.amdAt = now;
           }
+          addLog(r, "改单标记",
+            "改单标记: [状态: " + oldAmd + "→" + st +
+            (st === "无" ? "" : ", 类型: " + type + ", 原因: " + (remark || "空")) + "]");
         });
         closeAmd();
         render();
@@ -2866,8 +3873,10 @@
             return '<label class="hang-row">' +
               '<input type="checkbox" class="fee-wb-ck" value="' + i + '"' +
               (on ? " checked" : "") + " data-wb=\"" + o.wb.replace(/"/g, "&quot;") + "\" />" +
-              '<div><div class="hr-main">' + o.wb + "</div>" +
-              '<div class="hr-sub">' + o.tip + " · " + o.cntr + " / " + o.bl + "</div></div></label>";
+              '<div><div class="hr-main">' + o.wb +
+              (o.tip === "责任票" ? ' <span class="tag ck-ticket">责任票</span>' : "") +
+              "</div>" +
+              '<div class="hr-sub">' + o.cntr + " / " + o.bl + "</div></div></label>";
           }).join("");
         }
         updateFeeHangHint();
@@ -2966,7 +3975,25 @@
         });
         var linkWrap = document.getElementById("slipFeeLinkWrap");
         if (linkWrap) linkWrap.style.display = mode === "slip" ? "" : "none";
-        if (showFee) updateFeeHangHint();
+        if (showFee) {
+          updateFeeHangHint();
+          syncFeeTypeUi();
+        }
+      }
+
+      /** CW021：加载加费须填加载原因；节点默认加载、倾向挂柜 */
+      function syncLoadReasonUi() {
+        var wrap = document.getElementById("loadReasonWrap");
+        if (!wrap) return;
+        var type = document.getElementById("feeType").value;
+        var isLoad = type === "加载加费";
+        var mode = document.getElementById("feeMode").value;
+        var showFee = mode === "fee" || mode === "both";
+        wrap.style.display = showFee && isLoad ? "" : "none";
+        if (isLoad) {
+          document.getElementById("feeNode").value = "加载";
+          document.getElementById("feeSide").value = "国内";
+        }
       }
 
       function fillSlipFeeOptions(rows) {
@@ -3011,7 +4038,7 @@
         var list = mailsForRows(rows);
         var box = document.getElementById("slipMailList");
         if (!list.length) {
-          box.innerHTML = '<div style="padding:10px;color:#8c8c8c;font-size:12px">无匹配邮件时可手填收件邮箱</div>';
+          box.innerHTML = '<div style="padding:10px;color:#8c8c8c;font-size:12px">无匹配邮件时请手填收件账号</div>';
           selectedSlipMail = null;
           return;
         }
@@ -3056,9 +4083,10 @@
         document.getElementById("feeCcy").value = m.ccy;
         document.getElementById("feeRemark").value = "来自邮件：" + m.sub;
         document.getElementById("feeMailBox").value = m.box;
+        document.getElementById("feeMailTo").value = m.from || "";
         document.getElementById("feeMailPreview").textContent = m.body;
         if (m.type === "滞箱费" || m.type === "滞港费" || m.type === "改港费") {
-          document.getElementById("feeSide").value = "国外尾端";
+          document.getElementById("feeSide").value = "国外";
           document.getElementById("feeNode").value = "尾端异常";
         }
         if (!document.getElementById("slipAmount").value) {
@@ -3066,8 +4094,9 @@
           document.getElementById("slipCcy").value = m.ccy;
         }
         if (document.getElementById("feeMailAction").value === "none") {
-          document.getElementById("feeMailAction").value = "link";
+          document.getElementById("feeMailAction").value = "reply";
         }
+        syncFeeTypeUi();
       }
 
       var currentFeeTab = "reg";
@@ -3079,97 +4108,13 @@
           btn.classList.toggle("on", btn.getAttribute("data-fee-tab") === tab);
         });
         document.getElementById("feePaneReg").classList.toggle("on", tab === "reg");
-        document.getElementById("feePaneFt").classList.toggle("on", tab === "ft");
         document.getElementById("feePaneXls").classList.toggle("on", tab === "xls");
         document.getElementById("feePaneLed").classList.toggle("on", tab === "led");
         var confirmBtn = document.getElementById("feeConfirm");
         if (tab === "reg") confirmBtn.textContent = "确认提交";
-        else if (tab === "ft") confirmBtn.textContent = "请先带入登记";
         else if (tab === "xls") confirmBtn.textContent = "写入费用";
         else confirmBtn.textContent = "回登记页提交";
-        if (tab === "ft") renderFeeFreeTime(checkedRows());
         if (tab === "led") renderFeeLedger();
-      }
-
-      function renderFeeFreeTime(rows) {
-        var sum = document.getElementById("feeFtSummary");
-        var box = document.getElementById("feeFtCards");
-        if (!rows.length) {
-          sum.innerHTML = "";
-          box.innerHTML = '<div class="ft-card">请先勾选提单</div>';
-          return;
-        }
-        sum.innerHTML = "<thead><tr><th>柜号</th><th>国内免用箱</th><th>提/还</th><th>国内状态</th><th>国外免用箱</th><th>LFD</th><th>国外状态</th></tr></thead><tbody>" +
-          rows.map(function (r) {
-            return "<tr><td>" + r.cntr + "</td><td>" + (r.freeCn || "—") + " 天</td><td>" +
-              ((r.pickAt || "—") + " / " + (r.retAt || "—")) + "</td><td>" + (r.ftCnStatus || "—") +
-              "</td><td>" + (r.freeOs || "—") + " 天</td><td>" + (r.lfd || "—") + "</td><td>" +
-              (r.ftOsStatus || "—") + "</td></tr>";
-          }).join("") + "</tbody>";
-        var cards = [];
-        rows.forEach(function (r) {
-          if (r.ftCnStatus === "待确认") {
-            var over = Math.max((r.cnUsed || 0) - (r.freeCn || 0), 0);
-            cards.push({
-              row: r, side: "国内港前", node: "还柜", type: "滞箱费",
-              vendor: r.vendorCn, ccy: "CNY", amount: over * 200,
-              title: r.cntr + " · 国内免用箱超期",
-              remark: "国内免用箱 " + r.freeCn + " 天，提 " + r.pickAt + " 还 " + r.retAt +
-                "，用箱 " + r.cnUsed + " 天，超 " + over + " 天",
-              status: "待确认", kind: "cn"
-            });
-          }
-          if (r.ftOsStatus === "待确认") {
-            var over2 = Math.max((r.osUsed || 0) - (r.freeOs || 0), 0);
-            cards.push({
-              row: r, side: "国外尾端", node: "尾端异常", type: "滞箱费",
-              vendor: r.vendorOs, ccy: "USD", amount: over2 * 160,
-              title: r.cntr + " · 国外免用箱超期（尾端异常）",
-              remark: "国外免用箱 " + r.freeOs + " 天，LFD " + r.lfd +
-                "，已用 " + r.osUsed + " 天，超 " + over2 + " 天",
-              status: "待确认", kind: "os"
-            });
-          }
-          if (r.ftOsStatus === "已登记" || r.ftCnStatus === "已登记") {
-            cards.push({
-              row: r, status: "已登记",
-              title: r.cntr + " · 免用箱超期已登记",
-              remark: "已在费用中有滞箱/滞港，无需重复带入"
-            });
-          }
-        });
-        if (!cards.length) {
-          box.innerHTML = '<div class="ft-card">所选提单暂无超期待确认。可勾选 MSCU7700112（国内）或 NYKU4455667（国外尾端）看示意。</div>';
-          return;
-        }
-        box.innerHTML = cards.map(function (c, i) {
-          var btn = c.status === "待确认"
-            ? '<div class="ft-act"><button type="button" class="tool-btn primary" data-ft-apply="' + i + '">带入登记</button></div>'
-            : "";
-          return '<div class="ft-card" data-ft-i="' + i + '"><div class="ft-ttl">' + c.title +
-            " · " + c.status + "</div><div class=\"ft-meta\">" + c.remark +
-            (c.amount ? " → " + c.type + " " + c.ccy + " " + c.amount + " · " + (c.vendor || "") : "") +
-            "</div>" + btn + "</div>";
-        }).join("");
-        box.querySelectorAll("[data-ft-apply]").forEach(function (btn) {
-          btn.onclick = function () {
-            var c = cards[parseInt(btn.getAttribute("data-ft-apply"), 10)];
-            if (!c || c.status !== "待确认") return;
-            document.getElementById("feeMode").value = "fee";
-            document.getElementById("feeSource").value = "freetime";
-            document.getElementById("feeSide").value = c.side;
-            document.getElementById("feeNode").value = c.node;
-            document.getElementById("feeVendor").value = c.vendor || "";
-            document.getElementById("feeType").value = c.type;
-            document.getElementById("feeAmount").value = c.amount;
-            document.getElementById("feeCcy").value = c.ccy;
-            document.getElementById("feeRemark").value = c.remark;
-            renderFeeHangLists([c.row], { checkAllCntr: true, checkedWbs: {} });
-            syncFeeModeUi();
-            setFeeTab("reg");
-            toast("已带入登记，核对金额后点确认提交");
-          };
-        });
       }
 
       function parseFeeSheetText(text) {
@@ -3183,7 +4128,7 @@
             cntr: (c[0] || "").trim(),
             vendor: (c[1] || "").trim(),
             node: (c[2] || "").trim(),
-            side: (c[3] || "").trim(),
+            side: normFeeSide((c[3] || "").trim()),
             type: (c[4] || "").trim(),
             amount: parseFloat(c[5], 10) || 0,
             ccy: (c[6] || "USD").trim()
@@ -3198,7 +4143,7 @@
           box.textContent = "没有可解析的行";
           return;
         }
-        box.innerHTML = '<table class="mini-tbl"><thead><tr><th>柜号</th><th>匹配</th><th>供应商</th><th>环节</th><th>国内外</th><th>类型</th><th>金额</th></tr></thead><tbody>' +
+        box.innerHTML = '<table class="mini-tbl"><thead><tr><th>柜号</th><th>匹配</th><th>供应商</th><th>环节</th><th>费用大类</th><th>类型</th><th>金额</th></tr></thead><tbody>' +
           list.map(function (row) {
             var hit = ROWS.filter(function (r) { return r.cntr === row.cntr; })[0];
             return "<tr><td>" + row.cntr + "</td><td>" + (hit ? hit.bl : "未匹配") + "</td><td>" +
@@ -3260,7 +4205,7 @@
         var list = allFeeLedgerRows().filter(function (f) {
           if (v && f.vendor !== v) return false;
           if (n && f.node !== n) return false;
-          if (s && f.side !== s) return false;
+          if (s && normFeeSide(f.side) !== s) return false;
           if (t && f.type !== t) return false;
           return true;
         });
@@ -3277,10 +4222,10 @@
           tbl.innerHTML = "<tbody><tr><td>无匹配费用</td></tr></tbody>";
           return;
         }
-        tbl.innerHTML = "<thead><tr><th>柜号</th><th>供应商</th><th>环节</th><th>国内外</th><th>类型</th><th>金额</th><th>时间</th></tr></thead><tbody>" +
+        tbl.innerHTML = "<thead><tr><th>柜号</th><th>供应商</th><th>环节</th><th>费用大类</th><th>类型</th><th>金额</th><th>时间</th></tr></thead><tbody>" +
           list.map(function (f) {
             return "<tr><td>" + f.cntr + "</td><td>" + f.vendor + "</td><td>" + f.node +
-              "</td><td>" + f.side + "</td><td>" + f.type + "</td><td>" + f.ccy + " " + f.amount +
+              "</td><td>" + normFeeSide(f.side) + "</td><td>" + f.type + "</td><td>" + f.ccy + " " + f.amount +
               "</td><td>" + f.at + "</td></tr>";
           }).join("") + "</tbody>";
       }
@@ -3298,13 +4243,16 @@
         document.getElementById("feeSource").value = "manual";
         document.getElementById("feeAmount").value = "";
         document.getElementById("feeRemark").value = "";
+        document.getElementById("feeLoadReason").value = "";
+        document.getElementById("feeLoadReasonNote").value = "";
         document.getElementById("feeType").value = "改港费";
         document.getElementById("feeCcy").value = "USD";
-        document.getElementById("feeSide").value = "国内港前";
+        document.getElementById("feeSide").value = "国内";
         document.getElementById("feeNode").value = "落箱";
         document.getElementById("feeVendor").value = "";
         document.getElementById("feeSync").value = "1";
-        document.getElementById("feeMailAction").value = "link";
+        document.getElementById("feeMailAction").value = "none";
+        document.getElementById("feeMailTo").value = "";
         document.getElementById("feeMailPreview").textContent = "选择上方邮件预览正文摘录…";
         document.getElementById("feeWbAdd").value = "";
         document.getElementById("slipAmount").value = "";
@@ -3334,30 +4282,79 @@
         document.getElementById("feeMask").classList.remove("open");
       }
 
-      document.getElementById("btnMiscFee").onclick = openFee;
-
-      function openVoidReview() {
+      function openPortCode() {
         var rows = checkedRows();
-        if (!rows.length) { toast("请先勾选要作废 / 删除的提单"); return; }
-        document.getElementById("voidTargets").textContent =
-          "已勾选 " + rows.length + " 票：" + rows.map(function (r) { return r.bl; }).join("、");
-        document.getElementById("voidMask").classList.add("open");
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        var r0 = rows[0];
+        document.getElementById("pcTargets").value = rows.map(function (r) {
+          return r.bl + " / " + r.cntr;
+        }).join("；");
+        document.getElementById("pcSrc").value = r0.portCodeSrc || "波特云";
+        document.getElementById("pcSuggest").value = "";
+        document.getElementById("pcCode").value = r0.portCode || "";
+        document.getElementById("pcMatch").value = r0.portCodeMatch || "待抓取";
+        document.getElementById("pcTransit").value = r0.transitPortCode || "";
+        document.getElementById("pcHint").value = "点「抓取匹配」从网站/EDI 拉数并与系统建议比对。中转港有值须确认。";
+        document.getElementById("pcMask").classList.add("open");
       }
-      function closeVoidReview() {
-        document.getElementById("voidMask").classList.remove("open");
+      function closePortCode() {
+        document.getElementById("pcMask").classList.remove("open");
       }
-      document.getElementById("btnVoidBl").onclick = openVoidReview;
-      document.getElementById("voidClose").onclick = closeVoidReview;
-      document.getElementById("voidCancel").onclick = closeVoidReview;
-      document.getElementById("voidMask").querySelectorAll("[data-void]").forEach(function (btn) {
-        btn.onclick = function () {
-          toast("已记下评审倾向 " + btn.getAttribute("data-void") + "（不作废、不清费用）");
-          closeVoidReview();
-        };
+      document.getElementById("pcClose").onclick = closePortCode;
+      document.getElementById("pcCancel").onclick = closePortCode;
+      document.getElementById("pcMask").addEventListener("click", function (e) {
+        if (e.target === this) closePortCode();
       });
+      document.getElementById("pcFetch").onclick = function () {
+        var rows = checkedRows();
+        if (!rows.length) return;
+        var polMap = { CNSHA: "SHA", CNNGB: "NGB", CNYTN: "YTN", CNTAO: "TAO", CNTJN: "TJN" };
+        var suggest = polMap[rows[0].pol] || "PORT";
+        var cur = (document.getElementById("pcCode").value || "").trim();
+        document.getElementById("pcSuggest").value = suggest + "（" + document.getElementById("pcSrc").value + "）";
+        if (!cur) {
+          document.getElementById("pcCode").value = suggest;
+          document.getElementById("pcMatch").value = "一致";
+          document.getElementById("pcHint").value = "抓取成功：建议代码 " + suggest + " 与系统匹配一致。可直接确认写入。";
+        } else if (cur === suggest) {
+          document.getElementById("pcMatch").value = "一致";
+          document.getElementById("pcHint").value = "当前登记码与抓取一致。";
+        } else {
+          document.getElementById("pcMatch").value = "不一致";
+          document.getElementById("pcHint").value = "抓取建议 " + suggest + "，当前登记 " + cur + " · 不一致，请人工确认后写入（或改运抵：码放前可改/保函，已码放须船司改）。";
+        }
+        toast("已模拟抓取匹配");
+      };
+      document.getElementById("pcConfirm").onclick = function () {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        var code = document.getElementById("pcCode").value.trim();
+        var match = document.getElementById("pcMatch").value;
+        var src = document.getElementById("pcSrc").value;
+        var transit = document.getElementById("pcTransit").value.trim();
+        rows.forEach(function (r) {
+          var oldCode = r.portCode || "";
+          var oldTransit = r.transitPortCode || "";
+          r.portCode = code;
+          r.portCodeMatch = match;
+          r.portCodeSrc = src;
+          r.transitPortCode = transit;
+          if (transit) r.dumpLeg = "中转";
+          addLog(r, "进港代码",
+            "进港代码: [进港代码: " + (oldCode || "空") + "→" + (code || "空") +
+            ", 中转港: " + (oldTransit || "空") + "→" + (transit || "空") +
+            ", 匹配: " + match + ", 来源: " + src + "]");
+        });
+        closePortCode();
+        render();
+        toast("已写入进港代码" + (code ? " " + code : "") + (transit ? " · 中转港 " + transit : "") + " ×" + rows.length);
+      };
+
       document.getElementById("feeClose").onclick = closeFee;
       document.getElementById("feeCancel").onclick = closeFee;
       document.getElementById("feeMode").onchange = syncFeeModeUi;
+      document.getElementById("feeType").onchange = syncFeeTypeUi;
+      document.getElementById("feeSide").onchange = syncFeeTypeUi;
       document.getElementById("feeCntrAll").onclick = function () {
         setHangListChecks("#feeCntrList .fee-cntr-ck", true);
       };
@@ -3391,8 +4388,6 @@
             toast("所选提单暂无匹配费用邮件");
             this.value = "manual";
           }
-        } else if (this.value === "freetime") {
-          setFeeTab("ft");
         } else if (this.value === "sheet") {
           setFeeTab("xls");
         }
@@ -3420,7 +4415,6 @@
       };
       document.getElementById("feeConfirm").onclick = function () {
         if (currentFeeTab === "xls") { importFeeSheet(); return; }
-        if (currentFeeTab === "ft") { toast("请在超期卡片上点「带入登记」"); return; }
         if (currentFeeTab === "led") { setFeeTab("reg"); return; }
         var rows = checkedRows();
         var mode = document.getElementById("feeMode").value;
@@ -3449,8 +4443,27 @@
           if (!hangCntrIds.length && !hangWbs.length) {
             toast("归属须至少勾选一个柜或一张票"); return;
           }
+          if (type === "加载加费") {
+            var loadReason = document.getElementById("feeLoadReason").value;
+            var loadNote = document.getElementById("feeLoadReasonNote").value.trim();
+            if (!loadReason) { toast("加载加费须选择加载原因"); return; }
+            if (loadReason === "其他" && !loadNote) { toast("原因选「其他」须填写说明"); return; }
+            if (!hangCntrIds.length) { toast("加载加费须挂柜（可另挂票）"); return; }
+            remark = (loadReason + (loadNote ? " · " + loadNote : "") + (remark ? "；" + remark : "")).trim();
+          }
           if (src === "mail" && !selectedFeeMail) {
             toast("请选择要带入的费用邮件"); return;
+          }
+          if (isOverseasSide(side)) {
+            if (mailAct !== "reply") {
+              toast("国外费用须发送邮件"); return;
+            }
+            if (!document.getElementById("feeMailTo").value.trim()) {
+              toast("国外费用须发送邮件，请手填收件账号"); return;
+            }
+          }
+          if (mailAct === "reply" && !document.getElementById("feeMailTo").value.trim()) {
+            toast("回复邮件须手填收件账号"); return;
           }
           hangCntrIds.forEach(function (id) {
             var r = rowById[id];
@@ -3467,8 +4480,8 @@
               mailId: selectedFeeMail ? selectedFeeMail.id : ""
             });
             if (src === "freetime") {
-              if (side === "国内港前") r.ftCnStatus = "已登记";
-              if (side === "国外尾端") r.ftOsStatus = "已登记";
+              if (isOverseasSide(side)) r.ftOsStatus = "已登记";
+              else r.ftCnStatus = "已登记";
             }
           });
           hangWbs.forEach(function (o) {
@@ -3486,14 +4499,27 @@
               mailId: selectedFeeMail ? selectedFeeMail.id : ""
             });
           });
-          var syncTxt = sync === "1" ? "财务+业务成本" : (sync === "2" ? "财务台账" : "本柜标记");
+          var syncTxt = sync === "1" ? "财务预估+业务成本" : (sync === "2" ? "财务预估" : "本柜标记");
           var hangTxt = [];
           if (hangCntrIds.length) hangTxt.push("挂柜×" + hangCntrIds.length);
           if (hangWbs.length) hangTxt.push("挂票×" + hangWbs.length);
           parts.push("费用 " + type + " " + ccy + " " + amount +
             "（" + (vendor || "未指定供应商") + " · " + side + "/" + node + " · " + syncTxt + " · " + hangTxt.join("+") + "）");
+          var feeLogged = {};
+          function logFeeRow(r) {
+            if (!r || feeLogged[r.id]) return;
+            feeLogged[r.id] = true;
+            addLog(r, "费用登记",
+              "费用登记: [类型: " + type + ", 金额: " + ccy + " " + amount +
+              ", 费用大类: " + side + ", 节点: " + node +
+              ", 供应商: " + (vendor || "空") +
+              ", 挂柜: " + (r.cntr || r.bl) +
+              ", 挂票: " + (hangWbs.length ? hangWbs.map(function (o) { return o.wb; }).join("/") : "无") + "]");
+          }
+          hangCntrIds.forEach(function (id) { logFeeRow(rowById[id]); });
+          hangWbs.forEach(function (o) { logFeeRow(rowById[o.rowId] || rows[0]); });
           if (mailAct === "link" && selectedFeeMail) parts.push("已关联费用邮件");
-          if (mailAct === "reply" && selectedFeeMail) parts.push("已回复「已登记待付」");
+          if (mailAct === "reply") parts.push("已发送邮件「已登记待付」→ " + document.getElementById("feeMailTo").value.trim());
         }
 
         if (doSlip) {
@@ -3506,7 +4532,7 @@
           var slipMailAct = document.getElementById("slipMailAction").value;
           var mailTo = document.getElementById("slipMailTo").value.trim();
           if (slipMailAct === "send" && !mailTo) {
-            toast("发送回邮须填写收件邮箱（或点选费用邮件线程）");
+            toast("发送回邮须手填收件账号");
             return;
           }
           var slipTargets = hangCntrIds.length
@@ -3525,6 +4551,9 @@
               remark: slipRemark,
               paid: paid === "1"
             });
+            addLog(r, "水单",
+              "水单: [文件: " + slipFileName + ", 金额: " + slipCcy + " " + (slipAmt || 0) +
+              ", 发送策略: " + slipMailAct + "]");
           });
           parts.push(slipMailAct === "send" ? "水单已回邮 " + mailTo :
             (slipMailAct === "draft" ? "水单已存草稿" : "水单已上传"));
@@ -3621,8 +4650,12 @@
           if (!go) return;
         }
         rows.forEach(function (r) {
+          var oldImp = r.imp || "空";
           r.imp = imp;
           r.cargo = cargo;
+          addLog(r, "绑定进口商",
+            "绑定进口商: [进口商: " + oldImp + "→" + imp +
+            ", 货类: " + cargo + ", 强制超限: " + (chk.over ? "是" : "否") + "]");
         });
         closeImp();
         render();
@@ -3866,8 +4899,13 @@
         var loadAt = asMode === "fac" ? fmtAsTime("asFacLoadAt") : fmtAsTime("asLoadAt1");
         var agent = asTrailerPick || "";
         rows.forEach(function (r) {
+          var oldSt = r.st;
+          var oldAgent = r.agent || r.trailer || "空";
+          var oldAddr = r.addr || "空";
           r.agent = agent || r.agent;
+          r.trailer = agent || r.trailer;
           r.addr = addr || r.addr;
+          r.addr1 = addr || r.addr1;
           r.loadAt = loadAt || r.loadAt;
           r.imp = asVal("asCustomer") || r.imp;
           r.whiteCard = asVal("asWhiteCard");
@@ -3875,36 +4913,98 @@
           r.driver = asVal("asDriver");
           r.driverPhone = asVal("asDriverPhone");
           if (r.st === "待分配") r.st = "待装柜";
+          addLog(r, "提单分配",
+            "提单分配: [装柜方式: " + (asMode === "fac" ? "工厂" : "仓库") +
+            ", 拖车供应商: " + oldAgent + "→" + (r.agent || r.trailer || "空") +
+            ", 装柜地址1: " + oldAddr + "→" + (r.addr || "空") +
+            ", 装柜时间: " + (r.loadAt || "空") +
+            ", 状态: " + oldSt + "→" + r.st + "]");
         });
         closeAssign();
         render();
         toast("已确定分配 ×" + rows.length + (agent ? " · " + agent : "") + " · 可用「一键复制到企微群」发群");
       };
 
-      /* —— 舱位播报 · 对齐现用 Excel 模版 —— */
+      /* —— 操作日志抽屉 —— */
+      var logRow = null;
+      function renderOpLogTable() {
+        var list = logsForRow(logRow);
+        var typeF = document.getElementById("logTypeFilter").value;
+        if (typeF) list = list.filter(function (l) { return l.type === typeF; });
+        list = list.slice().sort(function (a, b) { return a.at < b.at ? 1 : (a.at > b.at ? -1 : 0); });
+        var types = {};
+        logsForRow(logRow).forEach(function (l) { types[l.type] = true; });
+        var sel = document.getElementById("logTypeFilter");
+        var keep = sel.value;
+        sel.innerHTML = '<option value="">全部类型</option>' +
+          Object.keys(types).map(function (t) {
+            return '<option value="' + t + '"' + (t === keep ? " selected" : "") + ">" + t + "</option>";
+          }).join("");
+        document.getElementById("logTbody").innerHTML = list.length
+          ? list.map(function (l) {
+            return "<tr>" +
+              "<td>" + l.at + "</td>" +
+              "<td" + (l.sys ? ' class="log-sys"' : "") + ">" + l.user + "</td>" +
+              "<td>" + l.type + "</td>" +
+              '<td class="log-text">' + l.text + "</td>" +
+              "</tr>";
+          }).join("")
+          : '<tr><td colspan="4" style="text-align:center;color:#8c8c8c;padding:28px">暂无操作日志</td></tr>';
+      }
+      function openOpLog() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        if (rows.length > 1) { toast("操作日志请只勾选一条"); return; }
+        logRow = rows[0];
+        document.getElementById("logSum").innerHTML =
+          "<b>提单号: " + (logRow.bl || "—") + "</b><b>柜号: " + (logRow.cntr || "—") + "</b>";
+        document.getElementById("logTypeFilter").value = "";
+        renderOpLogTable();
+        document.getElementById("logMask").classList.add("open");
+      }
+      function closeOpLog() {
+        document.getElementById("logMask").classList.remove("open");
+        logRow = null;
+      }
+      document.getElementById("btnOpLog").onclick = openOpLog;
+      document.getElementById("logClose").onclick = closeOpLog;
+      document.getElementById("logTypeFilter").onchange = renderOpLogTable;
+
+      /* —— 舱位播报 · 仓→港→渠道→船（0820 张亚晨/卢慧恒） —— */
       var PORT_CN = {
-        CNTJN: "天津", CNSHA: "上海", CNNGB: "宁波", CNYTN: "盐田", CNTAO: "青岛",
+        CNTJN: "天津", CNSHA: "上海", CNNGB: "宁波", CNYTN: "盐田", CNTAO: "青岛", CNXMN: "厦门",
         USNYC: "纽约", USLAX: "长滩", USLGB: "洛杉矶", USHOU: "休斯顿", USSAV: "萨凡纳"
       };
-      var LANE_MAP = {
-        "Hapag|USNYC": { lane: "Hapag纽约线", carrierEn: "HPL" },
-        "COSCO|USLAX": { lane: "OA美西", carrierEn: "OA" },
-        "COSCO|USNYC": { lane: "OA美东", carrierEn: "OA" },
-        "MSC|USLGB": { lane: "MSC美西", carrierEn: "MSC" },
-        "ONE|USHOU": { lane: "ONE美湾", carrierEn: "ONE" },
-        "Hapag|USLAX": { lane: "美西CLX", carrierEn: "MATSON" }
+      function portCn(code) {
+        return PORT_CN[code] || code || "";
+      }
+      /* 仓库 → 可选装柜港（不再用航线反推港口） */
+      var WH_PORTS = {
+        "青岛仓": ["CNTAO"],
+        "宁波仓": ["CNNGB", "CNSHA"],
+        "厦门仓": ["CNXMN", "CNNGB"],
+        "义乌仓": ["CNNGB", "CNSHA"]
       };
-      /* 现用 Excel 播报表常发的美线航线 */
-      var COMMON_LANES = ["美西CLX", "美西MAX", "以星纽约快线", "休斯顿", "中美快运"];
-      var BC_LANE_ON = {};
-      COMMON_LANES.forEach(function (n) { BC_LANE_ON[n] = true; });
-      BC_LANE_ON["其他"] = false;
+      /* 渠道（业务自选）· 与飞驼船期的 channel 字段对齐 */
+      var CHANNELS = ["美西", "美东", "美湾", "中美快运"];
+      var LANE_MAP = {
+        "Hapag|USNYC": { lane: "Hapag纽约线", carrierEn: "HPL", channel: "美东" },
+        "COSCO|USLAX": { lane: "OA美西", carrierEn: "OA", channel: "美西" },
+        "COSCO|USNYC": { lane: "OA美东", carrierEn: "OA", channel: "美东" },
+        "MSC|USLGB": { lane: "MSC美西", carrierEn: "MSC", channel: "美西" },
+        "ONE|USHOU": { lane: "ONE美湾", carrierEn: "ONE", channel: "美湾" },
+        "Hapag|USLAX": { lane: "美西CLX", carrierEn: "MATSON", channel: "美西" }
+      };
       var EXTRA_FT_VOYS = [
-        { voy: "MATSON WAIKIKI 027E", lane: "美西CLX", carrier: "MATSON", carrierEn: "MATSON", pol: "CNSHA", pod: "USLAX", polLabel: "上海-长滩", etd: "2026-08-12", eta: "2026-08-23", nextEtd: "2026-08-19", cutOff: "2026-08-09 18:00" },
-        { voy: "MATSON MAHIMAHI 031E", lane: "美西MAX", carrier: "MATSON", carrierEn: "MATSON", pol: "CNNGB", pod: "USLGB", polLabel: "宁波-洛杉矶", etd: "2026-08-13", eta: "2026-08-24", nextEtd: "2026-08-20", cutOff: "2026-08-10 18:00" },
-        { voy: "ZIM NEW YORK 142E", lane: "以星纽约快线", carrier: "ZIM", carrierEn: "ZIM", pol: "CNNGB", pod: "USNYC", polLabel: "宁波-纽约", etd: "2026-08-11", eta: "2026-08-29", nextEtd: "2026-08-18", cutOff: "2026-08-08 18:00" },
-        { voy: "ZIM HOUSTON 088E", lane: "休斯顿", carrier: "ZIM", carrierEn: "ZIM", pol: "CNNGB", pod: "USHOU", polLabel: "宁波-休斯顿", etd: "2026-08-14", eta: "2026-09-02", nextEtd: "2026-08-21", cutOff: "2026-08-11 18:00" },
-        { voy: "OOCL EGYPT 074E", lane: "中美快运", carrier: "OA", carrierEn: "OA", pol: "CNSHA", pod: "USSAV", polLabel: "上海/宁波-萨凡纳", etd: "2026-08-10", eta: "2026-08-28", nextEtd: "2026-08-17", cutOff: "2026-08-06 18:00", waitHint: 5 }
+        { voy: "MATSON WAIKIKI 027E", lane: "美西CLX", channel: "美西", carrier: "MATSON", carrierEn: "MATSON", pol: "CNSHA", pod: "USLAX", polLabel: "上海-长滩", etd: "2026-08-12", eta: "2026-08-23", nextEtd: "2026-08-19", cutOff: "2026-08-09 18:00", waitHint: 0 },
+        { voy: "MATSON MAHIMAHI 031E", lane: "美西MAX", channel: "美西", carrier: "MATSON", carrierEn: "MATSON", pol: "CNNGB", pod: "USLGB", polLabel: "宁波-洛杉矶", etd: "2026-08-13", eta: "2026-08-24", nextEtd: "2026-08-20", cutOff: "2026-08-10 18:00", waitHint: 3 },
+        { voy: "COSCO SHIPPING STAR 055E", lane: "OA美西", channel: "美西", carrier: "COSCO", carrierEn: "OA", pol: "CNNGB", pod: "USLAX", polLabel: "宁波-长滩", etd: "2026-08-11", eta: "2026-08-23", nextEtd: "2026-08-18", cutOff: "2026-08-08 17:00", waitHint: 1 },
+        { voy: "ZIM NEW YORK 142E", lane: "以星纽约快线", channel: "美东", carrier: "ZIM", carrierEn: "ZIM", pol: "CNNGB", pod: "USNYC", polLabel: "宁波-纽约", etd: "2026-08-11", eta: "2026-08-29", nextEtd: "2026-08-18", cutOff: "2026-08-08 18:00", waitHint: 2 },
+        { voy: "ZIM HOUSTON 088E", lane: "休斯顿", channel: "美湾", carrier: "ZIM", carrierEn: "ZIM", pol: "CNNGB", pod: "USHOU", polLabel: "宁波-休斯顿", etd: "2026-08-14", eta: "2026-09-02", nextEtd: "2026-08-21", cutOff: "2026-08-11 18:00", waitHint: 0 },
+        { voy: "OOCL EGYPT 074E", lane: "中美快运", channel: "中美快运", carrier: "OA", carrierEn: "OA", pol: "CNSHA", pod: "USSAV", polLabel: "上海/宁波-萨凡纳", etd: "2026-08-10", eta: "2026-08-28", nextEtd: "2026-08-17", cutOff: "2026-08-06 18:00", waitHint: 5 },
+        { voy: "COSCO XMN STAR 012E", lane: "厦门美西", channel: "美西", carrier: "COSCO", carrierEn: "OA", pol: "CNXMN", pod: "USLAX", polLabel: "厦门-长滩", etd: "2026-08-12", eta: "2026-08-25", nextEtd: "2026-08-19", cutOff: "2026-08-09 12:00", waitHint: 0 },
+        { voy: "COSCO BELGIUM 088E", lane: "OA美西", channel: "美西", carrier: "COSCO", carrierEn: "OA", pol: "CNTAO", pod: "USLAX", polLabel: "青岛-长滩", etd: "2026-08-11", eta: "2026-08-23", nextEtd: "2026-08-18", cutOff: "2026-08-08 16:00", waitHint: 1 },
+        { voy: "MSC ISTANBUL 06E", lane: "MSC美西", channel: "美西", carrier: "MSC", carrierEn: "MSC", pol: "CNTAO", pod: "USLGB", polLabel: "青岛-洛杉矶", etd: "2026-08-13", eta: "2026-08-25", nextEtd: "2026-08-20", cutOff: "2026-08-10 12:00", waitHint: 0 }
       ];
       var BC_VOYS = [];
 
@@ -3942,23 +5042,83 @@
         d.setDate(d.getDate() + n);
         return fmtDate(d);
       }
-      function daysBetween(a, b) {
+      function daysBetweenBc(a, b) {
         return (b.getTime() - a.getTime()) / 86400000;
       }
-      function portCn(code) { return PORT_CN[code] || code || ""; }
       function laneMeta(v) {
         return LANE_MAP[v.carrier + "|" + v.pod] || LANE_MAP[v.carrier + "|USLAX"] ||
-          { lane: v.carrier + "航线", carrierEn: v.carrier };
+          { lane: v.carrier + "航线", carrierEn: v.carrier, channel: "美西" };
       }
       function spaceText(v) {
         if (v.wait >= 5) return "已满，请下水插班";
         if (v.wait >= 3) return "舱位紧张";
         return "仓位充足";
       }
+      function bcWh() { return document.getElementById("bcWh").value; }
+      function bcPol() {
+        return (document.getElementById("bcPol").value || "").trim();
+      }
+      function bcPod() {
+        return (document.getElementById("bcPod").value || "").trim();
+      }
+      function bcSelectedPols() {
+        var one = bcPol();
+        if (one) return [one];
+        return (WH_PORTS[bcWh()] || []).slice();
+      }
+      function bcChannel() {
+        return (document.getElementById("bcChannel").value || "").trim();
+      }
 
-      function collectBcVoyages() {
-        var spanDays = document.getElementById("bcSrc").value === "ft2" ? 14 : 7;
-        var today = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+      function fillBcPolOptions(keep) {
+        var ports = WH_PORTS[bcWh()] || [];
+        var prev = keep ? bcPol() : "";
+        if (prev && ports.indexOf(prev) < 0) prev = "";
+        var sel = document.getElementById("bcPol");
+        sel.innerHTML = '<option value="">全部（该仓可选起运港）</option>' + ports.map(function (p) {
+          return '<option value="' + p + '"' + (p === prev ? " selected" : "") + ">" + portCn(p) + "（" + p + "）</option>";
+        }).join("");
+      }
+
+      function fillBcPodOptions(keep) {
+        var sel = document.getElementById("bcPod");
+        var prev = keep ? bcPod() : "";
+        var pols = bcSelectedPols();
+        var dest = {};
+        collectBcVoyagesRaw().forEach(function (v) {
+          if (pols.indexOf(v.pol) >= 0 && v.pod) dest[v.pod] = true;
+        });
+        var list = Object.keys(dest);
+        if (!list.length) list = ["USLAX", "USLGB", "USNYC", "USHOU", "USSAV"];
+        if (prev && list.indexOf(prev) < 0) prev = "";
+        sel.innerHTML = '<option value="">全部目的港</option>' + list.map(function (p) {
+          return '<option value="' + p + '"' + (p === prev ? " selected" : "") + ">" + portCn(p) + "（" + p + "）</option>";
+        }).join("");
+      }
+
+      function fillBcChannelOptions(keep) {
+        var chSel = document.getElementById("bcChannel");
+        var prev = keep ? bcChannel() : "";
+        var pols = bcSelectedPols();
+        var pod = bcPod();
+        var avail = {};
+        collectBcVoyagesRaw().forEach(function (v) {
+          if (pols.indexOf(v.pol) < 0) return;
+          if (pod && v.pod !== pod) return;
+          if (v.channel) avail[v.channel] = true;
+        });
+        var list = CHANNELS.slice();
+        Object.keys(avail).forEach(function (c) {
+          if (list.indexOf(c) < 0) list.push(c);
+        });
+        if (!prev || list.indexOf(prev) < 0) prev = list[0] || "";
+        chSel.innerHTML = list.map(function (c) {
+          var tip = avail[c] ? "" : "（当前港向暂无飞驼船期）";
+          return '<option value="' + c + '"' + (c === prev ? " selected" : "") + ">" + c + tip + "</option>";
+        }).join("") || '<option value="">暂无渠道</option>';
+      }
+
+      function collectBcVoyagesRaw() {
         var map = {};
         ROWS.forEach(function (r) {
           if (!map[r.voy]) {
@@ -3969,6 +5129,7 @@
               carrier: r.carrier,
               carrierEn: meta.carrierEn,
               lane: meta.lane,
+              channel: meta.channel || "美西",
               pol: r.pol,
               pod: r.pod,
               polLabel: portCn(r.pol) + "-" + portCn(r.pod),
@@ -3989,57 +5150,61 @@
           v.id = v.voy;
           v.rows = [];
           v.fromFt = true;
+          if (!v.channel) v.channel = "美西";
           list.push(v);
         });
+        return list;
+      }
+
+      function collectBcVoyages() {
+        var spanDays = document.getElementById("bcSrc").value === "ft2" ? 14 : 7;
+        var today = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+        var list = collectBcVoyagesRaw();
         list.forEach(function (v) {
           var etd = parseDt(v.etd + " 00:00");
           var cut = parseDt(v.cutOff);
           var etdDay = etd ? new Date(etd.getFullYear(), etd.getMonth(), etd.getDate()) : null;
-          v.inWindow = !!(etdDay && daysBetween(today, etdDay) >= 0 && daysBetween(today, etdDay) <= spanDays);
+          v.inWindow = !!(etdDay && daysBetweenBc(today, etdDay) >= 0 && daysBetweenBc(today, etdDay) <= spanDays);
           v.cutPassed = !!(cut && cut.getTime() <= NOW.getTime());
-          v.needUpdate = v.cutPassed && etdDay && daysBetween(today, etdDay) >= -1;
+          v.needUpdate = v.cutPassed && etdDay && daysBetweenBc(today, etdDay) >= -1;
           v.wait = v.waitHint != null ? v.waitHint : v.rows.filter(function (x) { return x.st === "待分配"; }).length;
           v.space = spaceText(v);
-          v.common = COMMON_LANES.indexOf(v.lane) >= 0;
-          v.defaultOn = v.common && (v.inWindow || v.needUpdate);
+          v.defaultOn = !!(v.inWindow || v.needUpdate);
         });
         list.sort(function (a, b) { return String(a.etd).localeCompare(String(b.etd)); });
         return list.filter(function (v) {
           var etd = parseDt(v.etd + " 00:00") || today;
-          if (spanDays === 14) return v.inWindow || v.needUpdate || daysBetween(today, etd) <= 14;
-          return v.inWindow || v.needUpdate || daysBetween(today, etd) <= 10;
+          if (spanDays === 14) return v.inWindow || v.needUpdate || daysBetweenBc(today, etd) <= 14;
+          return v.inWindow || v.needUpdate || daysBetweenBc(today, etd) <= 10;
         });
       }
 
+      /** 仓→起运港→目的港→渠道过滤 */
       function laneMatch(v) {
-        if (v.common) return !!BC_LANE_ON[v.lane];
-        return !!BC_LANE_ON["其他"];
+        var pols = bcSelectedPols();
+        var pod = bcPod();
+        var ch = bcChannel();
+        if (pols.length && pols.indexOf(v.pol) < 0) return false;
+        if (pod && v.pod !== pod) return false;
+        if (ch && v.channel !== ch) return false;
+        return true;
       }
-      function commonAllOn() {
-        return COMMON_LANES.every(function (n) { return BC_LANE_ON[n]; });
+
+      function bcPortHint() {
+        var pol = bcPol() ? portCn(bcPol()) : ("全部起运（" + bcSelectedPols().map(portCn).join("、") + "）");
+        var pod = bcPod() ? portCn(bcPod()) : "全部目的港";
+        return pol + " → " + pod;
       }
+
       function renderLaneChips() {
         var bar = document.getElementById("bcLaneBar");
-        var html = '<span class="lane-lab">常用航线</span>';
-        html += '<button type="button" class="lane-chip' + (commonAllOn() && !BC_LANE_ON["其他"] ? " on" : "") + '" data-lane="__common">常用套装</button>';
-        COMMON_LANES.forEach(function (n) {
-          html += '<button type="button" class="lane-chip' + (BC_LANE_ON[n] ? " on" : "") + '" data-lane="' + n + '">' + n + "</button>";
-        });
-        html += '<button type="button" class="lane-chip ghost' + (BC_LANE_ON["其他"] ? " on" : "") + '" data-lane="其他">其他船期</button>';
-        bar.innerHTML = html;
-        bar.querySelectorAll("[data-lane]").forEach(function (btn) {
-          btn.onclick = function () {
-            var key = btn.getAttribute("data-lane");
-            if (key === "__common") {
-              COMMON_LANES.forEach(function (n) { BC_LANE_ON[n] = true; });
-              BC_LANE_ON["其他"] = false;
-            } else {
-              BC_LANE_ON[key] = !BC_LANE_ON[key];
-            }
-            renderLaneChips();
-            renderBcVoyList(true);
-          };
-        });
+        var ch = bcChannel() || "—";
+        bar.innerHTML =
+          '<span class="lane-lab">当前筛选</span>' +
+          '<span class="lane-chip on" style="cursor:default">' + bcWh() + "</span>" +
+          '<span class="lane-chip on" style="cursor:default">港向：' + bcPortHint() + "</span>" +
+          '<span class="lane-chip on" style="cursor:default">渠道：' + ch + "</span>" +
+          '<span class="lane-lab" style="margin-left:8px;color:#8c8c8c">改仓/港/渠道后列表自动刷新</span>';
       }
 
       function renderBcVoyList(keepChecked) {
@@ -4049,18 +5214,26 @@
         }
         BC_VOYS = collectBcVoyages();
         BC_VOYS.forEach(function (v) {
-          v.checked = keepChecked && Object.prototype.hasOwnProperty.call(prev, v.id) ? prev[v.id] : v.defaultOn;
+          v.checked = keepChecked && Object.prototype.hasOwnProperty.call(prev, v.id)
+            ? prev[v.id]
+            : (laneMatch(v) && v.defaultOn);
         });
         var shown = BC_VOYS.filter(laneMatch);
         var box = document.getElementById("bcVoyList");
+        if (!bcChannel()) {
+          box.innerHTML = '<div class="voy-row" style="display:block;color:#8c8c8c">请先选择渠道，再从飞驼船期中勾选船。</div>';
+          return;
+        }
         if (!shown.length) {
-          box.innerHTML = '<div class="voy-row" style="display:block;color:#8c8c8c">当前航线筛选下没有船期。点「常用套装」或勾「其他船期」。</div>';
+          box.innerHTML = '<div class="voy-row" style="display:block;color:#8c8c8c">当前「' + bcWh() + " / " +
+            bcPortHint() + " / " + bcChannel() +
+            "」下飞驼暂无船期。可换起运港、目的港、渠道，或点「用飞驼刷新」。" + "</div>";
           return;
         }
         box.innerHTML = shown.map(function (v) {
           var tags = "";
-          if (v.common) tags += '<span class="voy-tag hot">常用</span>';
           if (v.fromFt) tags += '<span class="voy-tag ft">飞驼</span>';
+          tags += '<span class="voy-tag hot">' + (v.channel || "") + "</span>";
           if (v.inWindow) tags += '<span class="voy-tag week">近一周</span>';
           if (v.needUpdate) tags += '<span class="voy-tag cut">已过截单 · 须更新</span>';
           return '<label class="voy-row' + (v.needUpdate ? " cut" : "") + '">' +
@@ -4104,9 +5277,9 @@
         return BC_VOYS.filter(function (v) { return v.checked && laneMatch(v); });
       }
 
-      function bcWh() { return document.getElementById("bcWh").value; }
       function bcTitleText() {
-        return (NOW.getMonth() + 1) + "月" + NOW.getDate() + "日美线" +
+        var ch = bcChannel() || "美线";
+        return (NOW.getMonth() + 1) + "月" + NOW.getDate() + "日" + ch +
           bcWh().replace("仓", "") + "舱位播报（此表为" + bcWh().replace("仓", "") + "当地装柜船期）";
       }
       function bcNoteText() {
@@ -4165,7 +5338,7 @@
         var rows = [];
         document.querySelectorAll("#bcTbody tr").forEach(function (tr) {
           var cells = [];
-          tr.querySelectorAll("td").forEach(function (td) { cells.push(td.textContent.replace(/\s+/g, " ").trim()); });
+          tr.querySelectorAll("td").forEach(function (tdEl) { cells.push(tdEl.textContent.replace(/\s+/g, " ").trim()); });
           rows.push(cells.join("\t"));
         });
         return [title, head].concat(rows).concat(["", note]).join("\n");
@@ -4176,23 +5349,36 @@
         if (!voys.length) {
           document.getElementById("bcTbody").innerHTML = "";
           document.getElementById("bcTitle").textContent = bcTitleText();
-          document.getElementById("bcHint").textContent = "请至少勾选一条船期后再生成。";
+          document.getElementById("bcHint").textContent = "请按 仓→起运港→目的港→渠道 筛选后，至少勾选一条飞驼船期再生成。";
           return false;
         }
         renderBcSheet(voys);
         var upd = voys.filter(function (v) { return v.needUpdate; }).length;
         document.getElementById("bcHint").textContent =
-          "已生成现用播报表 " + voys.length + " 条" +
+          "已生成播报表 " + voys.length + " 条（" + bcWh() + " / " +
+          bcPortHint() + " / " + bcChannel() + "）" +
           (upd ? " · 其中 " + upd + " 条已过截单（须更新）" : "") +
           " · 表内格子均可手改后再复制或推群。";
         return true;
       }
 
-      function openBroadcast() {
+      function syncBcFilters(keepPol, keepPod, keepCh) {
+        fillBcPolOptions(!!keepPol);
+        fillBcPodOptions(!!keepPod);
+        fillBcChannelOptions(!!keepCh);
         renderLaneChips();
         renderBcVoyList(false);
-        refreshBroadcast();
+      }
+
+      function openBroadcast() {
         document.getElementById("bcMask").classList.add("open");
+        try {
+          syncBcFilters(false, false, false);
+          refreshBroadcast();
+        } catch (err) {
+          console.error(err);
+          toast("播报数据加载失败，可手动选仓/港/渠道后生成");
+        }
       }
       function closeBroadcast() {
         document.getElementById("bcMask").classList.remove("open");
@@ -4226,12 +5412,26 @@
         renderBcVoyList(false);
       });
       document.getElementById("bcWh").addEventListener("change", function () {
+        syncBcFilters(false, false, false);
         if (document.querySelector("#bcTbody tr")) refreshBroadcast();
         else renderBcHead();
       });
-      document.getElementById("bcFtRefresh").onclick = function () {
+      document.getElementById("bcPol").addEventListener("change", function () {
+        syncBcFilters(true, false, true);
+      });
+      document.getElementById("bcPod").addEventListener("change", function () {
+        syncBcFilters(true, true, true);
+      });
+      document.getElementById("bcChannel").addEventListener("change", function () {
+        renderLaneChips();
         renderBcVoyList(false);
-        toast("已从飞驼刷新近一周船期（示意）");
+      });
+      document.getElementById("bcFtRefresh").onclick = function () {
+        fillBcPodOptions(true);
+        fillBcChannelOptions(true);
+        renderLaneChips();
+        renderBcVoyList(false);
+        toast("已从飞驼刷新船期（示意）· 按当前仓/起运港/目的港/渠道过滤");
       };
       document.getElementById("bcVoyAll").onclick = function () {
         BC_VOYS.forEach(function (v) {

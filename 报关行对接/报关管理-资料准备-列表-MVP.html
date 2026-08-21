@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报关管理 · 提前报关（下单后）</title>
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --orange: #fa8c16;
+      --red: #ff4d4f;
+      --prep: #08979c;
+      --prep-bg: #e6fffb;
+      --prep-bd: #87e8de;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab .close-x { font-size: 11px; opacity: .5; }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 14px; flex-shrink: 0; font-size: 12px;
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 48px; flex-shrink: 0; background: var(--sidebar);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8px 0; gap: 4px;
+    }
+    .side-ico {
+      width: 36px; height: 36px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,.65); font-size: 11px;
+    }
+    .side-ico.on { background: var(--blue); color: #fff; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    .proto-link { font-size: 12px; color: var(--sub); padding: 6px 12px 0; }
+
+    /* 双模式切换 */
+    .mode-bar {
+      display: flex; align-items: stretch; gap: 0;
+      margin: 8px 12px 0; background: var(--card);
+      border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+    }
+    .mode-tab {
+      flex: 1; display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border: none; background: #fafafa;
+      cursor: pointer; text-align: left; color: var(--sub);
+      border-right: 1px solid var(--line); text-decoration: none;
+    }
+    .mode-tab:last-child { border-right: none; }
+    .mode-tab:hover { background: #f5f5f5; color: var(--text); text-decoration: none; }
+    .mode-tab.active {
+      background: #fff; color: var(--text);
+      box-shadow: inset 0 -2px 0 var(--prep);
+    }
+    .mode-tab .mode-badge {
+      display: inline-flex; align-items: center; height: 22px;
+      padding: 0 8px; border-radius: 2px; font-size: 12px; font-weight: 700;
+      border: 1px solid;
+    }
+    .mode-tab .mode-badge.prep {
+      color: #006d75; background: var(--prep-bg); border-color: var(--prep-bd);
+    }
+    .mode-tab .mode-badge.exec {
+      color: #096dd9; background: #e6f7ff; border-color: #91d5ff;
+    }
+    .mode-tab .mode-title { font-size: 13px; font-weight: 600; color: inherit; }
+    .mode-tab .mode-desc { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .mode-tab.active .mode-title { color: var(--text); }
+
+    .filter-panel {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 10px 12px 6px; margin-top: 8px;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+      gap: 6px 10px; align-items: end;
+    }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .filter-item label {
+      display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px;
+    }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; font-size: 12px;
+    }
+    .more-filter {
+      height: 28px; padding: 0 10px; border: 1px solid #d9d9d9;
+      background: #fff; border-radius: 2px; cursor: pointer; font-size: 12px;
+    }
+
+    .toolbar {
+      padding: 6px 12px; background: var(--card);
+      border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+    }
+    .tool-btn {
+      height: 26px; padding: 0 10px; border-radius: 2px;
+      border: 1px solid var(--blue); background: var(--blue); color: #fff;
+      cursor: pointer; font-size: 12px; white-space: nowrap;
+    }
+    .tool-btn.outline { background: #fff; color: var(--blue); }
+    .tool-btn.prep {
+      background: #08979c; border-color: #08979c; color: #fff;
+    }
+    .tool-btn.warn { background: var(--orange); border-color: var(--orange); color: #fff; }
+    .tool-sep {
+      width: 1px; height: 20px; background: var(--line); margin: 3px 4px;
+    }
+    .tool-hint { font-size: 11px; color: var(--sub); margin-left: 4px; }
+
+    .status-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      padding: 8px 12px;
+      display: flex; align-items: center; gap: 10px; overflow-x: auto;
+    }
+    .status-group {
+      flex: 1; min-width: 0;
+      display: flex; align-items: center; gap: 8px;
+      border-radius: 4px; border: 1px solid var(--prep-bd);
+      padding: 5px 8px;
+      background: linear-gradient(180deg, #f0fffc 0%, var(--prep-bg) 100%);
+      box-shadow: 0 0 0 2px rgba(8, 151, 156, 0.1);
+    }
+    .phase-badge {
+      display: inline-flex; align-items: center; height: 22px;
+      padding: 0 10px; border-radius: 2px; font-size: 12px; font-weight: 700;
+      color: #006d75; background: #b5f5ec; border: 1px solid var(--prep-bd);
+      flex-shrink: 0;
+    }
+    .status-tabs { display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; flex: 1; min-width: 0; }
+    .status-tab {
+      padding: 4px 8px; border: 1px solid transparent; border-radius: 2px;
+      background: rgba(255,255,255,.65); font-size: 12px; color: var(--sub);
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .status-tab:hover { background: #fff; border-color: var(--prep-bd); color: #006d75; }
+    .status-tab.active {
+      color: #006d75; background: #fff; border-color: #13c2c2;
+      font-weight: 600; box-shadow: 0 1px 4px rgba(8, 151, 156, 0.15);
+    }
+    .status-tab .cnt { font-size: 11px; font-weight: 600; margin-left: 2px; }
+
+    .phase-hint {
+      padding: 6px 12px; font-size: 11px; color: var(--sub);
+      background: #fafafa; border-bottom: 1px solid var(--line); line-height: 1.5;
+    }
+    .phase-hint strong { color: #006d75; }
+
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1680px; }
+    th, td {
+      border: 1px solid var(--line); padding: 6px 8px;
+      text-align: left; white-space: nowrap; vertical-align: middle;
+    }
+    th {
+      background: #fafafa; font-weight: 600; color: var(--sub);
+      position: sticky; top: 0; z-index: 1;
+    }
+    tbody tr.data-row:hover td { background: #e6fffb; }
+    tr.data-row.row-unread td { background: #fff7e6; }
+    tr.data-row.row-unread:hover td { background: #ffe7ba; }
+    tr.data-row.row-unread td.sticky-first { box-shadow: inset 3px 0 0 var(--orange); }
+    tr.data-row.row-ready td { background: #f6ffed; }
+    tr.data-row.row-ready:hover td { background: #d9f7be; }
+
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; border: 1px solid;
+    }
+    .tag.wait { color: #595959; background: #fafafa; border-color: #d9d9d9; }
+    .tag.push { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.proc { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.review { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .tag.mount { color: #006d75; background: var(--prep-bg); border-color: var(--prep-bd); }
+    .tag.done { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+
+    .doc-icons { display: flex; gap: 4px; flex-wrap: wrap; }
+    .doc-ico {
+      padding: 0 5px; height: 18px; line-height: 16px;
+      border-radius: 2px; font-size: 10px;
+      border: 1px solid #d9d9d9; background: #fafafa; color: var(--sub);
+    }
+    .doc-ico.ok { border-color: #b7eb8f; background: #f6ffed; color: #389e0d; }
+    .doc-ico.miss { border-color: #ffa39e; background: #fff1f0; color: #cf1322; }
+    .doc-ico.warn { border-color: #ffd591; background: #fff7e6; color: #d46b08; }
+
+    .muted { color: var(--sub); }
+    .bl-empty { color: #bfbfbf; font-style: italic; }
+
+    .pager {
+      padding: 8px 12px; background: var(--card);
+      border-top: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+      font-size: 12px; color: var(--sub);
+    }
+    .pager .tool-btn { height: 24px; padding: 0 8px; }
+    .hidden { display: none !important; }
+
+    /* 挂载弹窗 */
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal {
+      width: 640px; max-width: calc(100vw - 32px); background: #fff;
+      border-radius: 2px; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 15px; font-weight: 600;
+    }
+    .modal-hd .x {
+      border: none; background: none; cursor: pointer;
+      font-size: 16px; color: var(--sub); line-height: 1;
+    }
+    .modal-bd { padding: 14px 16px; font-size: 12px; line-height: 1.6; }
+    .modal-bd .hint {
+      margin: 0 0 12px; padding: 8px 10px;
+      background: #e6fffb; border: 1px solid var(--prep-bd); border-radius: 2px;
+      color: #006d75;
+    }
+    .modal-form {
+      display: grid; grid-template-columns: 100px 1fr; gap: 8px 10px; align-items: center;
+    }
+    .modal-form label { color: var(--sub); text-align: right; }
+    .modal-form input, .modal-form select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .modal-form .readonly {
+      height: 28px; line-height: 28px; padding: 0 8px;
+      background: #fafafa; border: 1px solid var(--line); border-radius: 2px;
+    }
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+  
+    .hdr-tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; border: 1px solid; font-weight: 600;
+    }
+    .hdr-tag.ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .hdr-tag.bad { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .hdr-tag.warn { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .badge-new {
+      display: inline-block; margin-left: 4px; padding: 0 4px; border-radius: 2px;
+      font-size: 10px; font-weight: 700; color: #cf1322; background: #fff1f0; border: 1px solid #ffa39e;
+      vertical-align: middle;
+    }
+</style>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <link rel="stylesheet" href="customs-broker-prototype-nav.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">LOGO</div>
+      <nav class="nav-tabs">
+        <button type="button" class="nav-tab">控制台</button>
+        <button type="button" class="nav-tab">运单管理</button>
+        <button type="button" class="nav-tab active">报关管理 <span class="close-x">×</span></button>
+      </nav>
+      <div class="header-right">IT(BT0022)</div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar" aria-hidden="true">
+        <div class="side-ico">首</div>
+        <div class="side-ico">运</div>
+        <div class="side-ico on">报</div>
+        <div class="side-ico">财</div>
+      </aside>
+
+      <main class="main">
+        <div class="proto-link">
+          关联：<a href="报关管理-列表-MVP.html">报关执行（已排柜）</a> ·
+          <a href="报关管理-资料准备-详情-MVP.html">提前报关详情</a> ·
+          <a href="报关管理-流程图-MVP.html">业务流程图</a> ·
+          <a href="../index.html">返回导航</a>
+        </div>
+
+        <div class="mode-bar" role="tablist" aria-label="报关管理双模式">
+          <a class="mode-tab active" href="报关管理-资料准备-列表-MVP.html" aria-current="page">
+            <span class="mode-badge prep">提前报关</span>
+            <span>
+              <div class="mode-title">下单后 · 客户单号维度</div>
+              <div class="mode-desc">客户有资料即可推送报关行（不等排柜）</div>
+            </span>
+          </a>
+          <a class="mode-tab" href="报关管理-列表-MVP.html">
+            <span class="mode-badge exec">报关执行</span>
+            <span>
+              <div class="mode-title">已排柜 · 提单号维度</div>
+              <div class="mode-desc">关联提单后：正式件 / 放行 / 查验</div>
+            </span>
+          </a>
+        </div>
+
+        <section class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>客户单号</label><input type="text" placeholder="PO-2026-0727-A" /></div>
+            <div class="filter-item"><label>运单号</label><input type="text" placeholder="ICBU…" /></div>
+            <div class="filter-item"><label>客户</label><input type="text" placeholder="客户名称" /></div>
+            <div class="filter-item"><label>报关行</label><input type="text" placeholder="青岛港兴…" /></div>
+            <div class="filter-item">
+              <label>报关方式</label>
+              <select><option>全部</option><option selected>我司代理报关</option><option>自行申报</option></select>
+            </div>
+            <div class="filter-item">
+              <label>起办来源</label>
+              <select><option>全部</option><option>下单有资料</option><option>客户补传触发</option><option>客服手工</option></select>
+            </div>
+            <div class="filter-item">
+              <label>抬头是否一致 <span class="badge-new">NEW</span></label>
+              <select id="qHdrMatch">
+                <option value="">全部</option>
+                <option value="一致">一致</option>
+                <option value="不一致">不一致</option>
+                <option value="缺授权">缺授权</option>
+                <option value="—">未比对</option>
+              </select>
+            </div>
+            <button type="button" class="more-filter">更多筛选</button>
+          </div>
+        </section>
+
+        <div class="toolbar">
+          <button type="button" class="tool-btn">查询数据</button>
+          <button type="button" class="tool-btn outline">催资料</button>
+          <button type="button" class="tool-btn outline">退回补资料</button>
+          <button type="button" class="tool-btn outline">上传报关资料</button>
+          <button type="button" class="tool-btn outline">上传商检资料</button>
+          <span class="tool-sep"></span>
+          <button type="button" class="tool-btn prep" id="btnPush">推送报关行</button>
+          <button type="button" class="tool-btn outline" id="btnMount">关联提单</button>
+          <span class="tool-hint">有资料即可推送（客户单号）；排柜后再「关联提单」进报关执行</span>
+        </div>
+
+        <div class="status-bar">
+          <div class="status-group" role="tablist" aria-label="提前报关阶段">
+            <span class="phase-badge">提前报关</span>
+            <div class="status-tabs" id="statusTabs">
+              <button type="button" class="status-tab active" data-tab="all">全部<span class="cnt">(32)</span></button>
+              <button type="button" class="status-tab" data-tab="wait">资料待收<span class="cnt">(6)</span></button>
+              <button type="button" class="status-tab" data-tab="push">待推送<span class="cnt">(8)</span></button>
+              <button type="button" class="status-tab" data-tab="broker">报关行处理中<span class="cnt">(9)</span></button>
+              <button type="button" class="status-tab" data-tab="review">预录待复审<span class="cnt">(5)</span></button>
+              <button type="button" class="status-tab" data-tab="mount">待关联提单<span class="cnt">(3)</span></button>
+              <button type="button" class="status-tab" data-tab="done">已关联<span class="cnt">(1)</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="phase-hint">
+          <strong>提前报关</strong>：下单勾选「我司代理报关」且<strong>客户已有报关资料</strong>即可起办并<strong>推送报关行</strong>（主键：客户单号 + 运单号，提单号可空）。
+          排柜完成后做「关联提单」，把已推送/预录记录挂到提单号，进入右侧「报关执行」做正式件与放行。
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:32px"><input type="checkbox" aria-label="全选" id="chkAll" /></th>
+                <th>报关状态</th>
+                <th>客户单号</th>
+                <th>运单号</th>
+                <th>客户</th>
+                <th>报关方式</th>
+                <th>资料完整度</th>
+                <th>报关资料</th>
+                <th>报关资料抬头 <span class="badge-new">NEW</span></th>
+                <th>客户授权 <span class="badge-new">NEW</span></th>
+                <th>客户授权抬头 <span class="badge-new">NEW</span></th>
+                <th>是否一致 <span class="badge-new">NEW</span></th>
+                <th>推送时间</th>
+                <th>预录回传</th>
+                <th>报关行</th>
+                <th>报关客服</th>
+                <th>业务员</th>
+                <th>起办来源</th>
+                <th>起办时间</th>
+                <th>关联提单</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr class="data-row row-unread" data-tab="wait">
+                <td class="sticky-first"><input type="checkbox" /></td>
+                <td><span class="tag wait">资料待收</span></td>
+                <td><a href="报关管理-资料准备-详情-MVP.html">PO-2026-0727-A</a></td>
+                <td>ICBU00001119001</td>
+                <td>华东进出口</td>
+                <td>我司代理报关</td>
+                <td>
+                  <div class="doc-icons">
+                    <span class="doc-ico miss">报关缺</span>
+                    <span class="doc-ico miss">商检缺</span>
+                  </div>
+                </td>
+                <td class="muted">未上传</td><td class="muted">—</td><td class="muted" title="按附件类型「品牌授权书」同步">未同步</td><td class="muted">—</td><td data-hdr-match="—" class="muted">—</td>
+                <td class="muted">—</td>
+                <td class="muted">—</td>
+                <td>宁波云报关</td>
+                <td>李敏</td>
+                <td>张立明</td>
+                <td>下单有资料（缺件）</td>
+                <td>07-27 09:12</td>
+                <td class="bl-empty">—</td>
+                <td><a href="报关管理-资料准备-详情-MVP.html">催资料</a> · <a href="#">上传</a></td>
+              </tr>
+
+              <tr class="data-row row-unread" data-tab="push" data-push="1">
+                <td class="sticky-first"><input type="checkbox" checked class="chk-push" /></td>
+                <td><span class="tag push">待推送</span></td>
+                <td><a href="报关管理-资料准备-详情-MVP.html?id=2">FBA19CY86TV6</a></td>
+                <td>ICBU00001119088</td>
+                <td>众达嘉悦</td>
+                <td>我司代理报关</td>
+                <td>
+                  <div class="doc-icons">
+                    <span class="doc-ico ok">报关√</span>
+                    <span class="doc-ico ok">商检√</span>
+                  </div>
+                </td>
+                <td><a href="#">已上传 ×2</a></td><td title="众达嘉悦贸易有限公司">众达嘉悦贸易有限公司</td><td><a href="#" title="按附件类型「品牌授权书」从客户附件同步">授权书_众达_2026.pdf</a></td><td title="众达嘉悦贸易有限公司">众达嘉悦贸易有限公司</td><td data-hdr-match="一致"><span class="hdr-tag ok">一致</span></td>
+                <td class="muted">—</td>
+                <td class="muted">—</td>
+                <td>青岛港兴报关行</td>
+                <td>王丽</td>
+                <td>祝书成</td>
+                <td>下单有资料</td>
+                <td>07-26 16:40</td>
+                <td class="bl-empty">—</td>
+                <td><a href="#" class="js-push-one">推送报关行</a> · <a href="报关管理-资料准备-详情-MVP.html?id=2">详情</a></td>
+              </tr>
+
+              <tr class="data-row" data-tab="broker">
+                <td><input type="checkbox" /></td>
+                <td><span class="tag proc">报关行处理中</span></td>
+                <td><a href="报关管理-资料准备-详情-MVP.html?id=3">LH0726-88</a></td>
+                <td>ICBU00001118955</td>
+                <td>霍辉</td>
+                <td>我司代理报关</td>
+                <td>
+                  <div class="doc-icons">
+                    <span class="doc-ico ok">报关√</span>
+                    <span class="doc-ico ok">商检√</span>
+                  </div>
+                </td>
+                <td><a href="#">已上传 ×1</a></td><td title="深圳市某某贸易有限公司">深圳市某某贸易有限公司</td><td><a href="#" title="按附件类型「品牌授权书」从客户附件同步">授权书_广州商贸_2026.pdf</a></td><td title="广州某某商贸有限公司">广州某某商贸有限公司</td><td data-hdr-match="不一致"><span class="hdr-tag bad">不一致</span></td>
+                <td>07-26 10:22</td>
+                <td class="muted">等待回传</td>
+                <td>青岛港兴报关行</td>
+                <td>王丽</td>
+                <td>宋立业</td>
+                <td>客户补传触发</td>
+                <td>07-25 14:20</td>
+                <td class="bl-empty">—</td>
+                <td><a href="报关管理-资料准备-详情-MVP.html?id=3">查看</a> · <span class="muted">已推送</span></td>
+              </tr>
+
+              <tr class="data-row row-unread" data-tab="review">
+                <td><input type="checkbox" /></td>
+                <td><span class="tag review">预录待复审</span></td>
+                <td><a href="报关管理-资料准备-详情-MVP.html?id=7">PO-2026-0718-C</a></td>
+                <td>ICBU00001118201</td>
+                <td>宁波星悦</td>
+                <td>我司代理报关</td>
+                <td>
+                  <div class="doc-icons">
+                    <span class="doc-ico ok">报关√</span>
+                    <span class="doc-ico ok">商检√</span>
+                  </div>
+                </td>
+                <td><a href="#">已上传 ×2</a></td><td title="XXXX TRADING LLC">XXXX TRADING LLC</td><td class="muted" title="按附件类型「品牌授权书」同步">未同步</td><td class="muted">—</td><td data-hdr-match="缺授权"><span class="hdr-tag warn">缺授权</span></td>
+                <td>07-20 09:10</td>
+                <td>07-21 15:30</td>
+                <td>宁波云报关</td>
+                <td>李敏</td>
+                <td>黄少飞</td>
+                <td>下单有资料</td>
+                <td>07-18 11:00</td>
+                <td class="bl-empty">—（未排柜）</td>
+                <td><a href="报关管理-资料准备-详情-MVP.html?id=7">审预录</a></td>
+              </tr>
+
+              <tr class="data-row row-ready" data-tab="mount" data-mount="1">
+                <td><input type="checkbox" checked class="chk-mount" /></td>
+                <td><span class="tag mount">待关联提单</span></td>
+                <td><a href="报关管理-资料准备-详情-MVP.html?id=4">PO-2026-0720-B</a></td>
+                <td>ICBU00001118502</td>
+                <td>中链供应链</td>
+                <td>我司代理报关</td>
+                <td>
+                  <div class="doc-icons">
+                    <span class="doc-ico ok">报关√</span>
+                    <span class="doc-ico ok">商检√</span>
+                  </div>
+                </td>
+                <td><a href="#">已上传 ×2</a></td><td title="红姑服饰有限公司">红姑服饰有限公司</td><td><a href="#" title="按附件类型「品牌授权书」从客户附件同步">授权书_红姑_2026.pdf</a></td><td title="红姑服饰有限公司">红姑服饰有限公司</td><td data-hdr-match="一致"><span class="hdr-tag ok">一致</span></td>
+                <td>07-21 11:00</td>
+                <td>07-22 14:08</td>
+                <td>宁波云报关</td>
+                <td>李敏</td>
+                <td>马淞浦</td>
+                <td>下单有资料</td>
+                <td>07-20 11:00</td>
+                <td><strong>HLCU1234567890</strong>（排柜已匹配）</td>
+                <td><a href="#" class="js-mount-one">关联提单</a> · <a href="报关管理-资料准备-详情-MVP.html?id=4">查看</a></td>
+              </tr>
+
+              <tr class="data-row" data-tab="done">
+                <td><input type="checkbox" disabled /></td>
+                <td><span class="tag done">已关联</span></td>
+                <td><a href="报关管理-资料准备-详情-MVP.html?id=6">EGLV2026060601</a></td>
+                <td>ICBU00001116855</td>
+                <td>义乌总部客户</td>
+                <td>我司代理报关</td>
+                <td>
+                  <div class="doc-icons">
+                    <span class="doc-ico ok">报关√</span>
+                    <span class="doc-ico ok">商检√</span>
+                  </div>
+                </td>
+                <td><a href="#">已上传 ×1</a></td><td title="华东进出口">华东进出口</td><td class="muted" title="按附件类型「品牌授权书」同步">未同步</td><td class="muted">—</td><td data-hdr-match="缺授权"><span class="hdr-tag warn">缺授权</span></td>
+                <td>07-19 10:00</td>
+                <td>07-20 16:22</td>
+                <td>青岛港兴报关行</td>
+                <td>王丽</td>
+                <td>黄少飞</td>
+                <td>下单有资料</td>
+                <td>07-18 10:00</td>
+                <td><a href="报关管理-列表-MVP.html?tab=review">EGLV2026060601</a> · 预录待复审</td>
+                <td><a href="报关管理-列表-MVP.html?tab=review">去报关执行</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pager">
+          <span id="pagerInfo">共 32 条（全部）</span>
+          <span>50 条/页</span>
+          <button type="button" class="tool-btn outline">‹</button>
+          <button type="button" class="tool-btn">1</button>
+          <button type="button" class="tool-btn outline">›</button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 推送确认弹窗 -->
+  <div class="modal-mask hidden" id="pushModal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-hd">
+        <span>推送报关行</span>
+        <button type="button" class="x" id="btnClosePush" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p class="hint">
+          按下单后已有资料直接推送：主键为<strong>客户单号 + 运单号</strong>（提单号可空）。
+          报关行按客户单号接收并做预录；排柜后通过「关联提单」挂到提单维度，无需再次推送资料。
+        </p>
+        <div class="modal-form">
+          <label>已选客户单</label>
+          <div class="readonly" id="pushRefs">FBA19CY86TV6</div>
+          <label>推送主键</label>
+          <div class="readonly">客户单号（refNo）+ 运单号</div>
+          <label>报关行</label>
+          <select>
+            <option selected>青岛港兴报关行</option>
+            <option>宁波云报关</option>
+          </select>
+          <label>附件</label>
+          <div class="readonly">报关资料 ×2 · 商检 ×1（最新版）</div>
+          <label>备注</label>
+          <input type="text" placeholder="有则一并推送给报关行" />
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="btnCancelPush">取消</button>
+        <button type="button" class="tool-btn prep" id="btnConfirmPush">确认推送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关联提单弹窗 -->
+  <div class="modal-mask hidden" id="mountModal" role="dialog" aria-modal="true" aria-labelledby="mountTitle">
+    <div class="modal">
+      <div class="modal-hd">
+        <span id="mountTitle">关联提单</span>
+        <button type="button" class="x" id="btnCloseMount" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p class="hint">
+          排柜完成后，将<strong>已推送/预录中</strong>的客户单号记录关联到<strong>提单号</strong>。
+          资料与预录状态一并带入「报关执行」，继续收取正式件 / 放行；<strong>不再重复推送资料</strong>。
+        </p>
+        <div class="modal-form">
+          <label>已选客户单</label>
+          <div class="readonly" id="mountRefs">PO-2026-0720-B</div>
+          <label>目标提单号</label>
+          <input type="text" id="mountBl" value="HLCU1234567890" />
+          <label>终配舱单号</label>
+          <input type="text" value="260608-宁波T18-2" />
+          <label>柜号</label>
+          <input type="text" value="TCLU8822100" />
+          <label>关联后状态</label>
+          <div class="readonly">报关执行 · 沿用当前预录进度</div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="btnCancelMount">取消</button>
+        <button type="button" class="tool-btn prep" id="btnConfirmMount">确认关联</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="customs-broker-prototype-nav.js"></script>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="报关管理-资料准备-列表-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD · 报关管理 · 提前报关（下单后 · 客户单号）</span>
+  </div>
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var LABELS = {
+        all: "全部", wait: "资料待收", push: "待推送",
+        broker: "报关行处理中", review: "预录待复审",
+        mount: "待关联提单", done: "已关联"
+      };
+      var active = "all";
+
+      function filterRows(tab) {
+        var n = 0;
+        document.querySelectorAll("#tableBody tr.data-row").forEach(function (tr) {
+          var show = tab === "all" || tr.getAttribute("data-tab") === tab;
+          tr.classList.toggle("hidden", !show);
+          if (show) n += 1;
+        });
+        document.getElementById("pagerInfo").textContent =
+          "共 " + n + " 条（" + (LABELS[tab] || tab) + "）";
+      }
+
+      document.getElementById("statusTabs").addEventListener("click", function (e) {
+        var tab = e.target.closest(".status-tab");
+        if (!tab) return;
+        active = tab.getAttribute("data-tab");
+        document.querySelectorAll(".status-tab").forEach(function (t) {
+          t.classList.toggle("active", t === tab);
+        });
+        filterRows(active);
+      });
+
+      var pushModal = document.getElementById("pushModal");
+      var mountModal = document.getElementById("mountModal");
+
+      function openPush() {
+        var refs = [];
+        document.querySelectorAll(".chk-push:checked").forEach(function (c) {
+          var tr = c.closest("tr");
+          if (tr) refs.push(tr.querySelector("td:nth-child(3) a").textContent.trim());
+        });
+        if (!refs.length) {
+          document.querySelectorAll("#tableBody tr[data-tab=push]:not(.hidden)").forEach(function (tr) {
+            var a = tr.querySelector("td:nth-child(3) a");
+            if (a) refs.push(a.textContent.trim());
+          });
+        }
+        if (!refs.length) {
+          alert("请先勾选「待推送」且资料齐全的记录");
+          return;
+        }
+        document.getElementById("pushRefs").textContent = refs.join("、");
+        pushModal.classList.remove("hidden");
+      }
+      function closePush() { pushModal.classList.add("hidden"); }
+
+      function openMount() {
+        var refs = [];
+        document.querySelectorAll(".chk-mount:checked").forEach(function (c) {
+          var tr = c.closest("tr");
+          if (tr) refs.push(tr.querySelector("td:nth-child(3) a").textContent.trim());
+        });
+        if (!refs.length) {
+          alert("请先勾选「待关联提单」的记录");
+          return;
+        }
+        document.getElementById("mountRefs").textContent = refs.join("、");
+        mountModal.classList.remove("hidden");
+      }
+      function closeMount() { mountModal.classList.add("hidden"); }
+
+      document.getElementById("btnPush").addEventListener("click", openPush);
+      document.getElementById("btnClosePush").addEventListener("click", closePush);
+      document.getElementById("btnCancelPush").addEventListener("click", closePush);
+      document.getElementById("btnConfirmPush").addEventListener("click", function () {
+        alert("已按客户单号推送报关行（原型演示）\n状态 → 报关行处理中");
+        closePush();
+      });
+
+      document.getElementById("btnMount").addEventListener("click", openMount);
+      document.getElementById("btnCloseMount").addEventListener("click", closeMount);
+      document.getElementById("btnCancelMount").addEventListener("click", closeMount);
+      document.getElementById("btnConfirmMount").addEventListener("click", function () {
+        alert("已关联提单，进入报关执行（原型演示）\n预录进度保留，无需重推资料");
+        closeMount();
+        location.href = "报关管理-列表-MVP.html?tab=review&from=prep";
+      });
+
+      document.getElementById("tableBody").addEventListener("click", function (e) {
+        var pushLink = e.target.closest(".js-push-one");
+        if (pushLink) {
+          e.preventDefault();
+          var tr = pushLink.closest("tr");
+          document.querySelectorAll(".chk-push").forEach(function (c) { c.checked = false; });
+          var chk = tr.querySelector(".chk-push");
+          if (chk) chk.checked = true;
+          openPush();
+          return;
+        }
+        var link = e.target.closest(".js-mount-one");
+        if (!link) return;
+        e.preventDefault();
+        var tr2 = link.closest("tr");
+        document.querySelectorAll(".chk-mount").forEach(function (c) { c.checked = false; });
+        var chk2 = tr2.querySelector(".chk-mount");
+        if (chk2) chk2.checked = true;
+        openMount();
+      });
+    })();
+  
+  (function () {
+    var sel = document.getElementById("qHdrMatch");
+    if (!sel) return;
+    sel.addEventListener("change", function () {
+      var v = this.value || "";
+      document.querySelectorAll("#tableBody tr.data-row").forEach(function (tr) {
+        var cell = tr.querySelector("[data-hdr-match]");
+        var m = cell ? cell.getAttribute("data-hdr-match") : "";
+        tr.style.display = (!v || m === v) ? "" : "none";
+      });
+    });
+  })();
+</script>
+</body>
+</html>

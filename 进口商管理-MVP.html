@@ -181,6 +181,11 @@
     }
     .tag-inactive { background: #f3f4f6; color: #6b7280; }
     .tag-active { background: var(--green-bg); color: var(--green-text); }
+    .tag-new {
+      display: inline-block; margin-left: 2px; padding: 0 4px; border-radius: 2px;
+      font-size: 10px; font-weight: 700; line-height: 14px; vertical-align: middle;
+      color: #cf1322; background: #fff1f0; border: 1px solid #ffa39e;
+    }
     .tag-warn { background: var(--yellow-bg); color: var(--yellow-text); }
     .tag-stop { background: var(--gray-bg); color: #4b5563; }
     .tag-soon { background: #fff7ed; color: #c2410c; }
@@ -464,6 +469,21 @@
     .stat-chip.chip-warn em { color: var(--yellow-text); }
     .stat-chip.chip-stop em { color: #4b5563; }
     .stat-chip.chip-bond em { color: var(--red-text); }
+    .stat-chip.chip-quota em { color: #c2410c; }
+    .tag-quota-ok { background: var(--green-bg); color: var(--green-text); }
+    .tag-quota-warn { background: var(--yellow-bg); color: var(--yellow-text); font-weight: 700; }
+    .tag-quota-danger { background: #fff1f0; color: #cf1322; font-weight: 700; }
+    .tag-quota-out { background: #cf1322; color: #fff; font-weight: 700; }
+    .quota-cell { line-height: 1.35; white-space: normal; min-width: 140px; }
+    .quota-cell .q-main { font-size: 12px; }
+    .quota-cell .q-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .quota-tip {
+      margin: 0 0 12px; padding: 8px 10px; font-size: 12px; line-height: 1.55;
+      background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; color: #9a3412;
+    }
+    .quota-tip strong { color: #c2410c; }
+    tr.row-quota-warn td { background: #fffbeb; }
+    tr.row-quota-danger td { background: #fff1f0; }
     #usageSummaryGroup[hidden] { display: none !important; }
     tbody tr.row-hidden { display: none; }
   </style>
@@ -473,6 +493,7 @@
     <div class="page-top">
       <h1 style="margin:0;font-size:18px">进口商管理</h1>
       <button type="button" class="btn btn-primary js-open-importer-form" data-mode="create">新增进口商</button>
+      <a class="btn" href="进口商-清关行港口配置-MVP.html" style="text-decoration:none;color:inherit">清关行·港口配置 <span class="tag-new">NEW</span></a>
       <span class="nav-mini">
         <a href="原型导航-进口商模块.html">模块导航</a> ·
         <a href="柜子编辑-绑定进口商-MVP.html">柜子绑定</a>
@@ -490,6 +511,7 @@
           <button type="button" class="stat-chip chip-warn" data-status-filter="watch">停用待观察 <em id="cntWatch">1</em></button>
           <button type="button" class="stat-chip chip-stop" data-status-filter="disabled">已停用 <em id="cntDisabled">1</em></button>
           <button type="button" class="stat-chip chip-bond" data-status-filter="soon" title="Bond 失效 30 天内">临期 <em id="cntSoon">1</em></button>
+          <button type="button" class="stat-chip chip-quota" data-status-filter="quota" title="Bond 5万可用250次 · 快用完预警">额度预警 <em id="cntQuota">2</em> <span class="tag-new">NEW</span></button>
         </div>
         <div class="summary-group" id="usageSummaryGroup" hidden role="group" aria-label="使用概况">
           <span class="summary-label">使用概况</span>
@@ -497,6 +519,11 @@
           <span class="stat-chip chip-warn" style="cursor:default" tabindex="-1" title="最近一周或本月查验率 ≥10%">查验率异常 <em>1</em></span>
           <span class="stat-chip" style="cursor:default" tabindex="-1">在途 &gt; 5 柜 <em>1</em></span>
         </div>
+      </div>
+
+      <div class="quota-tip" id="quotaTip">
+        <strong>Bond 额度规则（0730）：</strong>连续 Bond 面额 <strong>USD 50,000</strong>，使用次数上限 <strong>250 次</strong>。
+        已用 ≥200 黄预警、≥240 红预警、≥250 已用尽须提额/换证。点击上方「额度预警」可筛出需处理进口商。
       </div>
 
       <div class="tabs-bar" role="tablist">
@@ -524,6 +551,7 @@
               <option value="watch">停用待观察</option>
               <option value="disabled">已停用</option>
               <option value="soon">临期</option>
+              <option value="quota">额度预警</option>
             </select>
           </div>
           <div class="field">
@@ -557,10 +585,14 @@
                 <th style="width:118px">进口商编码</th>
                 <th style="width:168px">进口商名称</th>
                 <th style="width:88px">额度（USD）</th>
+                <th style="width:168px">Bond 额度预警 <span class="tag-new">NEW</span></th>
                 <th>公司注册方</th>
                 <th>进口商注册时间</th>
                 <th>POA 授权</th>
-                <th>发货人抬头</th>
+                <th>收件人抬头 <span class="tag-new">改</span></th>
+                <th>收件人邮箱 <span class="tag-new">NEW</span></th>
+                <th>收件人密码 <span class="tag-new">NEW</span></th>
+                <th>已绑发件人 <span class="tag-new">NEW</span></th>
                 <th>Bond 类型</th>
                 <th>Bond 保险代码</th>
                 <th>Bond 购买时间</th>
@@ -574,14 +606,21 @@
               </tr>
             </thead>
             <tbody id="infoTableBody">
-              <tr data-importer-status="active" data-bond-soon="0">
+              <tr data-importer-status="active" data-bond-soon="0" data-bond-used="48" data-bond-limit="250" data-bond-face="50000" data-quota-level="ok">
                 <td title="IMP-US-2024-018">IMP-US-2024-018</td>
                 <td title="Pacific Trade Logistics LLC">Pacific Trade Logistics LLC</td>
                 <td>500,000</td>
+                <td class="quota-cell" title="Bond 面额 USD 50,000 · 已用 48 / 250 次">
+                  <div class="q-main"><span class="tag tag-quota-ok">正常 48/250</span></div>
+                  <div class="q-sub">面额 $50,000 · 剩余 202 次</div>
+                </td>
                 <td title="腾信物流（深圳）有限公司">腾信物流（深圳）有限公司</td>
                 <td>2024-03-15</td>
                 <td>已授权</td>
-                <td title="Pacific Trade Logistics Inc.">Pacific Trade Logistics Inc.</td>
+                <td title="Pacific Trade Logistics LLC">Pacific Trade Logistics LLC</td>
+                <td title="consignee@pacifictrade.example.com">consignee@pacifictrade.example.com</td>
+                <td><span class="tag tag-active">已维护</span></td>
+                <td title="深圳XX出口 / 广州YY外贸">2 个</td>
                 <td>收货人</td>
                 <td>054</td>
                 <td>2024-03-18</td>
@@ -596,14 +635,21 @@
                   <button type="button" class="btn-link" data-usage="IMP-US-2024-018">使用明细</button>
                 </td>
               </tr>
-              <tr data-importer-status="watch" data-bond-soon="1">
+              <tr class="row-quota-warn" data-importer-status="watch" data-bond-soon="1" data-bond-used="228" data-bond-limit="250" data-bond-face="50000" data-quota-level="warn">
                 <td title="IMP-US-2023-006">IMP-US-2023-006</td>
                 <td title="East Coast Import Co.">East Coast Import Co.</td>
                 <td>200,000</td>
+                <td class="quota-cell" title="Bond 面额 USD 50,000 · 已用 228 / 250 次 · 请提额">
+                  <div class="q-main"><span class="tag tag-quota-warn">预警 228/250</span></div>
+                  <div class="q-sub">面额 $50,000 · 剩余 22 次 · 建议提额</div>
+                </td>
                 <td title="腾信物流（上海）有限公司">腾信物流（上海）有限公司</td>
                 <td>2023-08-02</td>
                 <td>已授权</td>
-                <td title="East Coast Logistics LLC">East Coast Logistics LLC</td>
+                <td title="East Coast Import Co.">East Coast Import Co.</td>
+                <td title="recv@eastcoast.example.com">recv@eastcoast.example.com</td>
+                <td><span class="tag tag-warn">未维护</span></td>
+                <td title="上海AA供应链">1 个</td>
                 <td>发货人</td>
                 <td>856</td>
                 <td>2025-01-10</td>
@@ -618,13 +664,20 @@
                   <button type="button" class="btn-link" data-usage="IMP-US-2023-006">使用明细</button>
                 </td>
               </tr>
-              <tr data-importer-status="disabled" data-bond-soon="0">
+              <tr class="row-quota-danger" data-importer-status="disabled" data-bond-soon="0" data-bond-used="250" data-bond-limit="250" data-bond-face="50000" data-quota-level="out">
                 <td title="IMP-US-2022-001">IMP-US-2022-001</td>
                 <td title="Legacy Harbor Inc.">Legacy Harbor Inc.</td>
                 <td>0</td>
+                <td class="quota-cell" title="Bond 已用尽 250/250 · 须提额或换证">
+                  <div class="q-main"><span class="tag tag-quota-out">已用尽 250/250</span></div>
+                  <div class="q-sub">面额 $50,000 · 禁止新绑柜 · 须提额</div>
+                </td>
                 <td>外部合作方 A</td>
                 <td>2022-01-20</td>
                 <td>未授权</td>
+                <td title="Legacy Harbor Inc.">Legacy Harbor Inc.</td>
+                <td>—</td>
+                <td><span class="tag tag-warn">未维护</span></td>
                 <td>—</td>
                 <td>收货人</td>
                 <td>036</td>
@@ -640,14 +693,21 @@
                   <button type="button" class="btn-link" data-usage="IMP-US-2022-001">使用明细</button>
                 </td>
               </tr>
-              <tr data-importer-status="inactive" data-bond-soon="0">
+              <tr data-importer-status="inactive" data-bond-soon="0" data-bond-used="0" data-bond-limit="250" data-bond-face="50000" data-quota-level="ok">
                 <td title="IMP-US-2025-003">IMP-US-2025-003</td>
                 <td title="Sunrise Global LLC">Sunrise Global LLC</td>
                 <td>350,000</td>
+                <td class="quota-cell" title="Bond 面额 USD 50,000 · 尚未使用">
+                  <div class="q-main"><span class="tag tag-quota-ok">未使用 0/250</span></div>
+                  <div class="q-sub">面额 $50,000 · 剩余 250 次</div>
+                </td>
                 <td title="腾信物流（深圳）有限公司">腾信物流（深圳）有限公司</td>
                 <td>2025-02-01</td>
                 <td>未授权</td>
-                <td title="Sunrise Global Trading Co.">Sunrise Global Trading Co.</td>
+                <td title="Sunrise Global LLC">Sunrise Global LLC</td>
+                <td title="recv@sunriseglobal.example.com">recv@sunriseglobal.example.com</td>
+                <td><span class="tag tag-active">已维护</span></td>
+                <td title="未绑定">0 个</td>
                 <td>发货人</td>
                 <td>054</td>
                 <td>2025-02-05</td>
@@ -670,8 +730,9 @@
       <!-- 使用管理 -->
       <div class="tab-panel" id="panel-usage" role="tabpanel">
         <div class="usage-period-hint">
-          <strong>查验率监控</strong>：按已绑定柜子统计，公式为「查验柜数 ÷ 同期已清关柜数」。
-          展示<strong>最近一周</strong>、<strong>本月</strong>、<strong>累计（所有）</strong>三档，用于发现进口商查验异常；≥10% 标红并显示「异常」。
+          <strong>查验率监控</strong>：按已绑定柜子统计，公式为「清关查验 ÷ 清关总量」，其中<strong>清关总量 = 清关完成 + 清关查验</strong>。
+          例：某进口商本周到港 10 柜，9 柜清关完成、1 柜清关查验 → 查验率 = 1÷10。
+          展示<strong>最近一周</strong>、<strong>本月</strong>、<strong>累计（所有）</strong>三档；≥10% 标红并显示「异常」。
         </div>
         <div class="filter">
           <div class="field">
@@ -711,14 +772,14 @@
               </tr>
             </thead>
             <tbody id="usageTableBody">
-              <tr data-importer-status="active" data-bond-soon="0" data-rate-anomaly="0">
+              <tr data-importer-status="active" data-bond-soon="0" data-rate-anomaly="0" data-quota-level="ok">
                 <td>IMP-US-2024-018</td>
                 <td title="Pacific Trade Logistics LLC">Pacific Trade Logistics LLC</td>
                 <td class="col-status"><span class="tag tag-active">已启用</span></td>
                 <td><strong>5</strong></td>
-                <td title="近7天：1查验 / 5已清关"><span class="rate-low">2.0%</span></td>
-                <td title="本月：2查验 / 18已清关"><span class="rate-low">2.8%</span></td>
-                <td title="累计：4查验 / 128已清关"><span class="rate-low">3.1%</span></td>
+                <td title="近7天：1清关查验 / 50清关总量（完成+查验）"><span class="rate-low">2.0%</span></td>
+                <td title="本月：2清关查验 / 72清关总量（完成+查验）"><span class="rate-low">2.8%</span></td>
+                <td title="累计：4清关查验 / 128清关总量（完成+查验）"><span class="rate-low">3.1%</span></td>
                 <td class="col-remark">
                   <span class="remark-cell"><span class="remark-count">1 条</span><button type="button" class="btn-link" data-remarks="IMP-US-2024-018">查看</button></span>
                 </td>
@@ -727,14 +788,14 @@
                   <button type="button" class="btn-link" data-remarks="IMP-US-2024-018">备注</button>
                 </td>
               </tr>
-              <tr data-importer-status="watch" data-bond-soon="1" data-rate-anomaly="1">
+              <tr data-importer-status="watch" data-bond-soon="1" data-rate-anomaly="1" data-quota-level="warn">
                 <td>IMP-US-2023-006</td>
                 <td title="East Coast Import Co.">East Coast Import Co.</td>
                 <td class="col-status"><span class="tag tag-warn">停用待观察</span></td>
                 <td><strong>12</strong></td>
-                <td title="近7天：2查验 / 11已清关"><span class="rate-abnormal"><span class="rate-high">18.2%</span><span class="badge-anomaly">异常</span></span></td>
-                <td title="本月：5查验 / 34已清关"><span class="rate-abnormal"><span class="rate-high">14.7%</span><span class="badge-anomaly">异常</span></span></td>
-                <td title="累计：11查验 / 86已清关"><span class="rate-high">12.8%</span></td>
+                <td title="近7天：2清关查验 / 11清关总量（完成+查验）"><span class="rate-abnormal"><span class="rate-high">18.2%</span><span class="badge-anomaly">异常</span></span></td>
+                <td title="本月：5清关查验 / 34清关总量（完成+查验）"><span class="rate-abnormal"><span class="rate-high">14.7%</span><span class="badge-anomaly">异常</span></span></td>
+                <td title="累计：11清关查验 / 86清关总量（完成+查验）"><span class="rate-high">12.8%</span></td>
                 <td class="col-remark">
                   <span class="remark-cell"><span class="remark-count">3 条</span><button type="button" class="btn-link" data-remarks="IMP-US-2023-006">查看</button></span>
                 </td>
@@ -743,14 +804,14 @@
                   <button type="button" class="btn-link" data-remarks="IMP-US-2023-006">备注</button>
                 </td>
               </tr>
-              <tr data-importer-status="disabled" data-bond-soon="0" data-rate-anomaly="0">
+              <tr data-importer-status="disabled" data-bond-soon="0" data-rate-anomaly="0" data-quota-level="out">
                 <td>IMP-US-2022-001</td>
                 <td title="Legacy Harbor Inc.">Legacy Harbor Inc.</td>
                 <td class="col-status"><span class="tag tag-stop">已停用</span></td>
                 <td>0</td>
                 <td title="近7天：0 / 0"><span class="rate-low">—</span></td>
                 <td title="本月：0 / 0"><span class="rate-low">—</span></td>
-                <td title="累计：2查验 / 42已清关"><span class="rate-low">4.8%</span></td>
+                <td title="累计：2清关查验 / 42清关总量（完成+查验）"><span class="rate-low">4.8%</span></td>
                 <td class="col-remark">
                   <span class="remark-cell"><span class="remark-count">1 条</span><button type="button" class="btn-link" data-remarks="IMP-US-2022-001">查看</button></span>
                 </td>
@@ -759,14 +820,14 @@
                   <button type="button" class="btn-link" data-remarks="IMP-US-2022-001">备注</button>
                 </td>
               </tr>
-              <tr data-importer-status="inactive" data-bond-soon="0" data-rate-anomaly="0">
+              <tr data-importer-status="inactive" data-bond-soon="0" data-rate-anomaly="0" data-quota-level="ok">
                 <td>IMP-US-2025-003</td>
                 <td title="Sunrise Global LLC">Sunrise Global LLC</td>
                 <td class="col-status"><span class="tag tag-inactive">未启用</span></td>
                 <td><strong>2</strong></td>
-                <td title="近7天：0 / 3"><span class="rate-low">0%</span></td>
-                <td title="本月：0 / 8"><span class="rate-low">0%</span></td>
-                <td title="累计：0 / 15"><span class="rate-low">0%</span></td>
+                <td title="近7天：0清关查验 / 3清关总量"><span class="rate-low">0%</span></td>
+                <td title="本月：0清关查验 / 8清关总量"><span class="rate-low">0%</span></td>
+                <td title="累计：0清关查验 / 15清关总量"><span class="rate-low">0%</span></td>
                 <td class="col-remark">
                   <span class="remark-cell"><span class="remark-count">暂无</span><button type="button" class="btn-link" data-remarks="IMP-US-2025-003">新增</button></span>
                 </td>
@@ -783,55 +844,7 @@
       </div>
     </div>
 
-    <div class="ess-prd-source" hidden aria-hidden="true">
-      <span class="ess-prd-chip">PRD · 进口商管理</span>
-      <h3>进口商管理列表</h3>
-      <p>需求来源：产品 5/27；IT 约定<strong>关联柜子</strong>（非订单）。右侧 PRD 默认收起，点击「PRD」展开（与询价模块一致）；列表单行显示，过长省略（悬停 title 看全文）。</p>
-      <h4>模块定位</h4>
-      <ul>
-        <li>维护进口商主数据与使用态势。</li>
-        <li>在途柜数、查验率按<strong>已绑定柜子</strong>汇总。</li>
-        <li>绑定入口在柜子新增/编辑，不在订单侧维护。</li>
-      </ul>
-      <h4>页签 · 信息管理</h4>
-      <ul>
-        <li>进口商清单、额度、公司注册方、进口商注册时间、POA 授权（手输）、发货人抬头、Bond 类型（收货人/发货人）、Bond 保险代码（054/856/036）、Bond 购买与失效时间、法人护照与护照国籍、邮箱与电话、状态及原因。</li>
-        <li>状态：<strong>未启用、已启用、停用待观察、已停用、临期</strong>（临期可按 Bond 失效 30 天内筛选）。</li>
-        <li>主数据在本模块维护；<strong>已停用</strong>后禁止新柜子绑定，历史绑定保留用于统计。</li>
-      </ul>
-      <h4>页签 · 使用管理</h4>
-      <ul>
-        <li>统计口径：仅统计已绑定进口商的柜子。</li>
-        <li><strong>在途未清关</strong>：柜子已绑定该进口商且清关未完成。</li>
-        <li><strong>查验率</strong> = 查验柜数 ÷ 已清关柜数；分<strong>最近一周</strong>、<strong>本月</strong>、<strong>累计（所有）</strong>三档，用于监控进口商是否异常（原型阈值 ≥10% 标异常）。</li>
-        <li><strong>查验备注</strong>：按进口商手输查验相关备注；支持多次备注，按时间倒序查看历史。</li>
-        <li>「使用明细」下钻至柜子维度（弹窗演示）。</li>
-      </ul>
-      <h4>页签上状态统计</h4>
-      <ul>
-        <li>展示全部 / 未启用 / 已启用 / 停用待观察 / 已停用 / 临期数量。</li>
-        <li>点击卡片筛选列表，与筛选区「状态」下拉联动；两个页签共用状态筛选。</li>
-        <li>「使用概况」（在途柜合计、查验率异常、在途&gt;5 柜）仅在<strong>使用管理</strong>页签展示。</li>
-      </ul>
-      <h4>使用明细弹窗</h4>
-      <ul>
-        <li>汇总在途、已清关、查验、查验率；列表为已绑定柜子明细。</li>
-      </ul>
-      <h4>新增 / 编辑</h4>
-      <ul>
-        <li>在列表页以<strong>居中弹窗</strong>维护主数据（非 iframe、非跳转独立页）；含 Bond 失效联动与状态校验。</li>
-      </ul>
-      <h4>新增 / 编辑</h4>
-      <ul>
-        <li>在列表页以<strong>居中弹窗</strong>维护主数据（非 iframe、非跳转独立页）；含 Bond 失效联动与状态校验。</li>
-      </ul>
-      <h4>相关页面</h4>
-      <ul>
-        <li><a href="柜子编辑-绑定进口商-MVP.html">柜子编辑 · 绑定进口商</a></li>
-        <li><a href="原型导航-进口商模块.html">模块导航</a></li>
-      </ul>
     </div>
-  </div>
 
   <!-- 使用明细弹窗 -->
   <div class="modal-backdrop" id="usageModal" aria-hidden="true">
@@ -848,8 +861,8 @@
         <div class="stat-card"><div class="label">最近一周查验率</div><div class="val" id="statRateWeek">2.0%</div></div>
         <div class="stat-card"><div class="label">本月查验率</div><div class="val" id="statRateMonth">2.8%</div></div>
         <div class="stat-card"><div class="label">累计查验率</div><div class="val" id="statRateAll">3.1%</div></div>
-        <div class="stat-card"><div class="label">累计已清关</div><div class="val" id="statCleared">128</div></div>
-        <div class="stat-card"><div class="label">累计查验</div><div class="val" id="statInspect">4</div></div>
+        <div class="stat-card"><div class="label">累计清关总量</div><div class="val" id="statCleared" title="清关完成 + 清关查验">128</div></div>
+        <div class="stat-card"><div class="label">累计清关查验</div><div class="val" id="statInspect">4</div></div>
       </div>
       <div class="modal-bd">
         <div class="table-wrap">
@@ -974,15 +987,39 @@
           </div>
         </div>
         <div class="dlg-form-card">
+          <h3 class="dlg-sec-title consignee">收件人信息 <span class="tag-new">NEW</span></h3>
+          <div class="dlg-form-grid">
+            <div class="dlg-field">
+              <label>收件人抬头 <span class="req">*</span> <span class="tag-new">改</span></label>
+              <input type="text" id="dlgConsigneeHeader" placeholder="提单收件人/进口商抬头" />
+            </div>
+            <div class="dlg-field">
+              <label>收件人邮箱 <span class="req">*</span> <span class="tag-new">NEW</span></label>
+              <input type="email" id="dlgConsigneeEmail" placeholder="预报/清关通知用邮箱" />
+            </div>
+            <div class="dlg-field">
+              <label>收件人密码 <span class="tag-new">NEW</span></label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="password" id="dlgConsigneePwd" placeholder="门户/邮箱登录密码" style="flex:1" autocomplete="new-password" />
+                <button type="button" class="btn" id="dlgToggleConsigneePwd" title="显示/隐藏" style="flex-shrink:0">显示</button>
+              </div>
+              <div class="dlg-hint" style="margin:4px 0 0">用于收件人侧系统/预报邮箱登录；列表仅显示是否已维护，不明文展示。</div>
+            </div>
+            <div class="dlg-field dlg-field-full">
+              <label class="dlg-check">
+                <input type="checkbox" id="dlgNotifySameAsConsignee" checked />
+                通知人：同收件人
+              </label>
+              <div class="dlg-hint" style="margin:4px 0 0">默认勾选：提单通知人跟随收件人抬头；取消勾选后可另行指定通知人。</div>
+            </div>
+          </div>
+        </div>
+        <div class="dlg-form-card">
           <h3 class="dlg-sec-title bond">Bond 信息</h3>
           <div class="dlg-form-grid">
             <div class="dlg-field">
               <label>POA 授权 <span class="req">*</span></label>
               <input type="text" id="dlgPoaAuth" placeholder="手输 POA 授权" />
-            </div>
-            <div class="dlg-field">
-              <label>发货人抬头 <span class="req">*</span></label>
-              <input type="text" id="dlgShipperHeader" placeholder="手输发货人抬头" />
             </div>
             <div class="dlg-field">
               <label>Bond 类型 <span class="req">*</span></label>
@@ -1015,9 +1052,68 @@
               <label>Bond 编号</label>
               <input type="text" id="dlgBondNo" placeholder="海关备案号" />
             </div>
+            <div class="dlg-field">
+              <label>Bond 面额（USD） <span class="tag-new">NEW</span></label>
+              <input type="number" id="dlgBondFace" value="50000" min="0" step="1000" />
+              <div class="dlg-hint" style="margin:4px 0 0">标准连续 Bond：50,000（5 万）</div>
+            </div>
+            <div class="dlg-field">
+              <label>已用次数 / 上限 <span class="tag-new">NEW</span></label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="number" id="dlgBondUsed" min="0" max="999" value="0" style="flex:1" title="已用次数" />
+                <span style="color:var(--sub)">/</span>
+                <input type="number" id="dlgBondTimesLimit" min="1" value="250" style="width:72px" title="次数上限" />
+              </div>
+              <div class="dlg-hint" style="margin:4px 0 0">规则：不可超过 250 次；快用完须提额</div>
+            </div>
+            <div class="dlg-field dlg-field-full">
+              <div class="dlg-bond-alert ok" id="dlgQuotaAlert" hidden>
+                <span id="dlgQuotaAlertText"></span>
+              </div>
+            </div>
             <div class="dlg-bond-alert ok" id="dlgBondAlert" hidden>
               <span id="dlgBondAlertText"></span>
               <button type="button" class="btn-suggest" id="dlgBtnApplyBondStatus" hidden>采纳建议状态</button>
+            </div>
+          </div>
+        </div>
+        <div class="dlg-form-card">
+          <h3 class="dlg-sec-title shipper">发件人维护与绑定 <span class="tag-new">NEW</span></h3>
+          <p class="dlg-hint">一个进口商（收件人）可绑定多个发件人；做提单收发通时从此关系带出。可从已有发件人库勾选，或新增发件人。</p>
+          <div class="dlg-form-grid">
+            <div class="dlg-field dlg-field-full">
+              <label>已绑定发件人</label>
+              <div class="shipper-bind-box" id="dlgShipperBoundList"></div>
+            </div>
+            <div class="dlg-field">
+              <label>从发件人库添加</label>
+              <div style="display:flex;gap:8px">
+                <select id="dlgShipperPick" style="flex:1">
+                  <option value="">请选择发件人</option>
+                </select>
+                <button type="button" class="btn" id="dlgBtnBindShipper">绑定</button>
+              </div>
+            </div>
+            <div class="dlg-field">
+              <label>快捷新增发件人</label>
+              <button type="button" class="btn" id="dlgBtnNewShipper" style="width:100%">打开发件人维护</button>
+            </div>
+          </div>
+          <div id="dlgShipperEditor" class="shipper-editor" hidden>
+            <div class="dlg-form-grid">
+              <div class="dlg-field"><label>发件人名称 <span class="req">*</span></label><input id="dlgShName" placeholder="公司英文名" /></div>
+              <div class="dlg-field"><label>发件人简称</label><input id="dlgShShort" placeholder="简称" /></div>
+              <div class="dlg-field dlg-field-full"><label>地址</label><input id="dlgShAddr" placeholder="Address" /></div>
+              <div class="dlg-field"><label>联系人</label><input id="dlgShContact" /></div>
+              <div class="dlg-field"><label>电话</label><input id="dlgShPhone" /></div>
+              <div class="dlg-field"><label>邮箱</label><input id="dlgShEmail" type="email" /></div>
+              <div class="dlg-field"><label>国家</label>
+                <select id="dlgShCountry"><option>中国</option><option>美国</option><option>其他</option></select>
+              </div>
+              <div class="dlg-field dlg-field-full" style="display:flex;gap:8px;align-items:end">
+                <button type="button" class="btn btn-primary" id="dlgBtnSaveShipper">保存并发件人绑定到本进口商</button>
+                <button type="button" class="btn" id="dlgBtnCancelShipper">取消</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1104,7 +1200,10 @@
           chip.classList.toggle('active', chip.getAttribute('data-status-filter') === filter);
         });
         if (statusFilterSelect) {
-          var map = { all: '', inactive: 'inactive', active: 'active', watch: 'watch', disabled: 'disabled', soon: 'soon' };
+          var map = {
+            all: '', inactive: 'inactive', active: 'active', watch: 'watch',
+            disabled: 'disabled', soon: 'soon', quota: 'quota'
+          };
           statusFilterSelect.value = map[filter] || '';
         }
         var infoBody = document.getElementById('infoTableBody');
@@ -1113,9 +1212,12 @@
           infoBody.querySelectorAll('tr[data-importer-status]').forEach(function (row) {
             var status = row.getAttribute('data-importer-status');
             var bondSoon = row.getAttribute('data-bond-soon') === '1';
+            var quotaLevel = row.getAttribute('data-quota-level') || 'ok';
+            var quotaWarn = quotaLevel === 'warn' || quotaLevel === 'danger' || quotaLevel === 'out';
             var show =
               filter === 'all' ||
               (filter === 'soon' && (bondSoon || status === 'soon')) ||
+              (filter === 'quota' && quotaWarn) ||
               status === filter;
             row.classList.toggle('row-hidden', !show);
             if (show) infoVisible++;
@@ -1131,9 +1233,12 @@
       function rowPassesStatusFilter(row) {
         var status = row.getAttribute('data-importer-status');
         var bondSoon = row.getAttribute('data-bond-soon') === '1';
+        var quotaLevel = row.getAttribute('data-quota-level') || 'ok';
+        var quotaWarn = quotaLevel === 'warn' || quotaLevel === 'danger' || quotaLevel === 'out';
         return (
           activeStatusFilter === 'all' ||
           (activeStatusFilter === 'soon' && (bondSoon || status === 'soon')) ||
+          (activeStatusFilter === 'quota' && quotaWarn) ||
           status === activeStatusFilter
         );
       }
@@ -1475,6 +1580,9 @@
   <link rel="stylesheet" href="imp-prototype-nav.css" />
   <script src="imp-prototype-nav.js" defer></script>
   <link rel="stylesheet" href="二期/ess-prototype-prd.css" />
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="进口商管理-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD · 进口商管理列表</span>
+  </div>
   <script src="二期/ess-prototype-prd.js" defer></script>
 </body>
 </html>
