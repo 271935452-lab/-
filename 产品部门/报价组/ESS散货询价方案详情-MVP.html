@@ -167,6 +167,15 @@
       background: #fff1f0; border: 1px solid #ffccc7; border-radius: 2px; color: #820014;
     }
     .tl-item .t { color: var(--sub); }
+    .tl-all-log {
+      margin-top: 10px; width: 100%; height: 28px; font-size: 11px; border: 1px solid var(--line); background: #f8fafc; border-radius: 4px; cursor: pointer;
+    }
+    .op-log-list { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+    .op-log-list table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .op-log-list th, .op-log-list td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; text-align: left; }
+    .op-log-list tr { cursor: pointer; }
+    .op-log-list tr.on { background: #eff6ff; }
+    .op-log-detail { margin-top: 10px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; line-height: 1.65; white-space: pre-wrap; }
     .rule { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 10px; font-size: 11px; line-height: 1.7; }
     .rule b { color: #fff; }
     .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #111827; color: #fff; padding: 8px 14px; border-radius: 6px; display: none; z-index: 40; }
@@ -418,7 +427,9 @@
                   <div class="tl-item">发起询价<div class="t" id="tlSubmitT">08-13 09:22</div></div>
                   <div class="tl-item" id="tlQuote">开始报价（3 个销售产品各 1 价）<div class="t" id="tlQuoteT">08-13 09:22 · AI待确认 · 未回业务员</div></div>
                   <div class="tl-item pending" id="tlDone">核对确认 <span class="tag-chg">改</span><div class="t" id="tlDoneT">待核对确认</div></div>
+                  <div class="tl-item pending" id="tlBind" hidden>绑定运单 <span class="tag-new">NEW</span><div class="t" id="tlBindT"></div></div>
                 </div>
+                <button type="button" class="tl-all-log" id="btnAllOpLog">全部操作日志 (0)</button>
               </div>
             </div>
           </aside>
@@ -427,6 +438,23 @@
     </div>
   </div>
   <div class="toast" id="toast"></div>
+
+  <div class="mask" id="opLogMask" role="dialog" aria-modal="true" aria-labelledby="opLogTitle">
+    <div class="modal" style="width:min(720px,96vw)">
+      <div class="modal-hd">
+        <h2 id="opLogTitle">操作日志</h2>
+        <button type="button" class="x" id="opLogClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd" style="display:block;padding:12px 14px">
+        <p class="calc-log-hint" style="margin-top:0">本票业务操作审计，<strong>仅报价员可见</strong>。绑单 / 改绑 / 解绑及港后客服通知结果均记于此（与试算日志分离）。</p>
+        <div class="op-log-list" id="opLogList"></div>
+        <div class="op-log-detail" id="opLogDetail" hidden></div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-primary" id="opLogOk">关闭</button>
+      </div>
+    </div>
+  </div>
 
   <div class="mask" id="calcLogMask" role="dialog" aria-modal="true" aria-labelledby="calcLogTitle">
     <div class="modal" style="width:min(720px,96vw)">
@@ -576,7 +604,7 @@
       var xjId = (new URLSearchParams(location.search).get("xj") || "XJ1779067329337").trim();
       var listTab = (location.hash === "#bind" ? "bindwait" : "check");
       var DEFAULT_QUOTES = [
-        { id: "SP-LA-LCL", src: "ai", channel: "中美快运私人卡派(洛杉矶)", wh: "洛杉矶仓", zone: "外州 · 26尺", dist: 800, unit: 5, lastmile: 286, picked: true, confirmed: false, validFrom: TODAY, validTo: VALID_TO, reason: "", note: "", origUnit: 5, origLm: 286, cheap: true },
+        { id: "SP-LA-LCL", src: "ai", channel: "中美快运私人卡派(洛杉矶)", wh: "洛杉矶仓", zone: "外州 · 26尺", dist: 800, unit: 5, lastmile: 286, picked: true, confirmed: false, validFrom: TODAY, validTo: VALID_TO, reason: "", note: "客户约定：私人地址限工作日派送；尾门高度限制", origUnit: 5, origLm: 286, cheap: true },
         { id: "SP-OAK-LCL", src: "ai", channel: "中美快运私人卡派(奥克兰)", wh: "奥克兰仓", zone: "外州 · 26尺", dist: 812, unit: 7, lastmile: 390, picked: false, confirmed: false, validFrom: TODAY, validTo: VALID_TO, reason: "", note: "", origUnit: 7, origLm: 390 },
         { id: "SP-LA-AIR", src: "ai", channel: "美国空派 LAX", wh: "洛杉矶仓", zone: "外州 · 53尺", dist: 800, unit: 9, lastmile: 580, picked: false, confirmed: false, validFrom: TODAY, validTo: VALID_TO, reason: "", note: "", origUnit: 9, origLm: 580 }
       ];
@@ -592,6 +620,8 @@
       var quotes = DEFAULT_QUOTES.map(function (q) { return Object.assign({}, q); });
       var status = "aiwait";
       var boundWbs = [];
+      var opLogs = [];
+      var opLogPick = null;
       var bindValidate = { pass: false, text: "" };
       var selectedWbs = [];
       var locked = false;
@@ -656,7 +686,12 @@
               if (i === 0) { q.unit = 5; q.lastmile = 286; }
               return q;
             }),
-            boundWbs: ["ICBU26052201"], locked: true, confirmedAt: "08-10 09:15", replyNote: "尾程派送费已挂运单", rejectNote: "", rejectAt: ""
+            boundWbs: ["ICBU26052201"], locked: true, confirmedAt: "08-10 09:15", replyNote: "尾程派送费已挂运单", rejectNote: "", rejectAt: "",
+            opLogs: [{
+              id: "OL-demo-bind-1", at: "2026-08-10 09:15:22", operator: "报价员·赵毅", type: "绑定运单",
+              summary: "绑定运单 ICBU26052201 · 尾程 USD 286 已挂接",
+              detail: "绑定运单: [运单号 ICBU26052201, 尾程 USD 286, 挂费渠道 中美快运私人卡派(洛杉矶), 操作人 赵毅, 时间 2026-08-10 09:15:22]"
+            }]
           };
           changed = true;
         }
@@ -713,6 +748,25 @@
         var ch = quotes.find(function (q) { return q.picked || q.cheap; }) || quotes[0];
         return ch ? ch.lastmile : "—";
       }
+      /** 同步尾程派送费 + 报价备注 → 海外对接组尾程预估（localStorage 原型） */
+      function pushLastmileToOverseas(wbOverride) {
+        try {
+          var q = quotes.find(function (x) { return x.picked || x.cheap; }) || quotes[0];
+          if (!q) return;
+          var key = "ess-quote-lastmile";
+          var all = JSON.parse(localStorage.getItem(key) || "{}");
+          all[xjId] = {
+            lastmile: Math.round(Number(q.lastmile) || 0),
+            unit: Math.round(Number(q.unit) || 0),
+            channel: q.channel || "",
+            note: String(q.note || "").trim(),
+            wb: wbOverride || (boundWbs && boundWbs[0]) || "",
+            reason: q.reason || "",
+            at: Date.now()
+          };
+          localStorage.setItem(key, JSON.stringify(all));
+        } catch (e) {}
+      }
       function buildUnbindNotifyPreview(wbNo) {
         var wb = findWbByNo(wbNo);
         var cs = wb && wb.cs;
@@ -761,6 +815,53 @@
       function formatRebindSentMsg(sent) {
         if (!sent.length) return "；⚠ 未找到港后客服，通知未发送";
         return "；已通知 " + sent.map(function (s) { return s.role + " " + s.name; }).join("、") + "（共 " + sent.length + " 条）";
+      }
+      function pushOpLog(entry) {
+        opLogs.unshift(Object.assign({
+          id: "OL" + Date.now() + Math.floor(Math.random() * 900),
+          at: nowStr(),
+          operator: "报价员·赵毅"
+        }, entry));
+        saveState();
+      }
+      function openOpLogModal() {
+        document.getElementById("opLogTitle").textContent = "操作日志 · " + xjId;
+        opLogPick = null;
+        document.getElementById("opLogDetail").hidden = true;
+        renderOpLogList();
+        document.getElementById("opLogMask").classList.add("show");
+      }
+      function closeOpLogModal() {
+        document.getElementById("opLogMask").classList.remove("show");
+      }
+      function renderOpLogList() {
+        var rows = opLogs.slice();
+        var box = document.getElementById("opLogList");
+        if (!rows.length) {
+          box.innerHTML = '<div style="padding:24px;text-align:center;color:#8c8c8c;font-size:12px">暂无操作日志</div>';
+          document.getElementById("opLogDetail").hidden = true;
+          return;
+        }
+        box.innerHTML = '<table><thead><tr><th>时间</th><th>操作人</th><th>类型</th><th>摘要</th></tr></thead><tbody>' +
+          rows.map(function (r) {
+            return '<tr data-id="' + r.id + '" class="' + (opLogPick === r.id ? "on" : "") + '">' +
+              "<td>" + r.at + "</td><td>" + (r.operator || "—") + "</td><td>" + r.type + "</td>" +
+              '<td title="' + String(r.summary || "").replace(/"/g, "&quot;") + '">' + (r.summary || "—") + "</td></tr>";
+          }).join("") + "</tbody></table>";
+      }
+      function showOpLogDetail(id) {
+        var r = opLogs.find(function (x) { return x.id === id; });
+        if (!r) return;
+        opLogPick = id;
+        renderOpLogList();
+        var el = document.getElementById("opLogDetail");
+        el.hidden = false;
+        el.textContent = r.detail || r.summary || "—";
+      }
+      function syncOpLogUi() {
+        var n = opLogs.length;
+        var btn = document.getElementById("btnAllOpLog");
+        if (btn) btn.textContent = "全部操作日志 (" + n + ")";
       }
       function buildRebindNotifyPreview(oldNo, newNo) {
         var oldCs = (findWbByNo(oldNo) || {}).cs;
@@ -821,6 +922,7 @@
           status: status,
           quotes: cloneQuotes(quotes),
           boundWbs: boundWbs.slice(0, 1),
+          opLogs: opLogs.slice(),
           locked: locked,
           replyNote: replyNote,
           rejectNote: rejectNote,
@@ -837,6 +939,7 @@
         status = s.status || status;
         var bindOne = primaryBindNo(s.boundWbs);
         boundWbs = bindOne ? [bindOne] : [];
+        opLogs = Array.isArray(s.opLogs) ? s.opLogs.slice() : [];
         locked = !!s.locked;
         replyNote = s.replyNote || "";
         rejectNote = s.rejectNote || "";
@@ -1065,15 +1168,43 @@
         if (status === "reject") {
           if (done) { done.classList.add("pending"); }
           if (t) t.textContent = "已打回 · 待业务员重提";
+          var tlBindR = document.getElementById("tlBind");
+          if (tlBindR) tlBindR.hidden = true;
+          syncOpLogUi();
           return;
         }
         if (status !== "quoted") {
           done.classList.add("pending");
           t.textContent = status === "pending" ? "待 AI 出账 / 人工报价" : "待核对确认 · 尚未返回业务员";
+          var tlBind0 = document.getElementById("tlBind");
+          if (tlBind0) tlBind0.hidden = true;
+          syncOpLogUi();
           return;
         }
         done.classList.remove("pending");
         t.textContent = fmtConfirmedAt() + " · 赵毅";
+        var tlBind = document.getElementById("tlBind");
+        var tlBindT = document.getElementById("tlBindT");
+        if (tlBind && tlBindT) {
+          if (boundWbs.length) {
+            tlBind.hidden = false;
+            tlBind.classList.remove("pending");
+            var wb = primaryBindNo(boundWbs);
+            var lastBind = bindRelatedLogs()[0];
+            var sub = wb + " · 尾程 USD " + Math.round((quotes.find(function (q) { return q.cheap; }) || quotes[0] || {}).lastmile || 0);
+            if (lastBind && lastBind.type === "解除绑定") sub += " · 已解绑";
+            else if (lastBind && lastBind.type === "改绑运单") sub += " · 改绑 · " + (lastBind.at || "").slice(0, 16);
+            tlBindT.textContent = sub;
+          } else if (bindRelatedLogs().some(function (l) { return l.type === "解除绑定"; })) {
+            tlBind.hidden = false;
+            tlBind.classList.add("pending");
+            tlBindT.textContent = "已解绑 · 待重新绑定";
+          } else {
+            tlBind.hidden = true;
+            tlBindT.textContent = "";
+          }
+        }
+        syncOpLogUi();
       }
       function mode() {
         var h = (location.hash || "#view").replace("#", "");
@@ -1197,7 +1328,7 @@
           html += '<div class="qmeta">报价有效期：' + valid + ' · 费用仅单价 + 尾程派送费</div>';
           if (q.warn) html += '<div class="warn"><ol>' + q.warn.map(function (w) { return "<li>" + w + "</li>"; }).join("") + "</ol></div>";
           html += '<div class="edit-grid">';
-          html += '<div class="fi"><label>单价 USD/KG（个位） <span class="tag-chg">改</span></label><input data-f="unit" data-i="' + i + '" type="number" min="1" max="9" step="1" value="' + Math.round(q.unit) + '" /></div>';
+          html += '<div class="fi"><label>单价 USD/KG <span class="tag-chg">改</span></label><input data-f="unit" data-i="' + i + '" type="number" min="1" max="9" step="1" value="' + Math.round(q.unit) + '" /></div>';
           html += '<div class="fi"><label>尾程派送费 USD <span class="tag-new">NEW</span></label><input data-f="lastmile" data-i="' + i + '" type="number" min="0" step="1" value="' + Math.round(q.lastmile) + '" /></div>';
           html += '<div class="fi"><label>有效期从 <span class="tag-new">NEW</span></label><input data-f="validFrom" data-i="' + i + '" type="date" value="' + (q.validFrom || TODAY) + '" /></div>';
           html += '<div class="fi"><label>有效期至 <span class="tag-chg">改</span></label><input data-f="validTo" data-i="' + i + '" type="date" value="' + (q.validTo || VALID_TO) + '" /></div>';
@@ -1401,7 +1532,15 @@
         boundWbs = newNo ? [newNo] : [];
         locked = boundWbs.length > 0;
         replyNote = replyNote || "尾程派送费已挂运单。";
+        var ch = bindChannelLabel();
+        var lm = tailUsd();
+        pushOpLog({
+          type: "绑定运单",
+          summary: "绑定运单 " + boundWbs[0] + " · 尾程 USD " + lm + " 已挂接",
+          detail: "绑定运单: [运单号 " + boundWbs[0] + ", 尾程 USD " + lm + ", 挂费渠道 " + ch + ", 操作人 赵毅, 时间 " + nowStr() + "]"
+        });
         saveState();
+        pushLastmileToOverseas(boundWbs[0]);
         closeBindModal();
         toast("已绑定运单 " + boundWbs[0] + "，报价已锁定");
         render();
@@ -1414,11 +1553,23 @@
         var oldNo = primaryBindNo(boundWbs);
         var newNo = selectedWbs[0] && selectedWbs[0].no;
         if (!oldNo || !newNo || oldNo === newNo) return;
-        boundWbs = [newNo];
-        locked = true;
+        boundWbs = newNo ? [newNo] : [];
+        locked = boundWbs.length > 0;
         replyNote = replyNote || "尾程派送费已挂运单。";
-        saveState();
+        var ch = bindChannelLabel();
+        var lm = tailUsd();
         var nr = notifyRebindCs(oldNo, newNo);
+        var notifyTxt = nr.sent.length ? nr.sent.map(function (s) { return s.role + " " + s.name + ": 已发"; }).join(", ") : "港后客服: 未发";
+        if (!nr.sent.length) {
+          pushOpLog({ type: "港后客服通知失败", summary: "改绑 " + oldNo + " → " + newNo + " · 未找到港后客服", detail: "改绑运单: [原→新 " + oldNo + "→" + newNo + ", 通知 " + notifyTxt + "]" });
+        }
+        pushOpLog({
+          type: "改绑运单",
+          summary: "改绑 " + oldNo + " → " + newNo + " · 尾程 USD " + lm,
+          detail: "改绑运单: [原运单号→新运单号 " + oldNo + "→" + newNo + ", 尾程 USD " + lm + ", 挂费渠道 " + ch + ", " + notifyTxt + ", 操作人 赵毅, 时间 " + nowStr() + "]"
+        });
+        saveState();
+        pushLastmileToOverseas(newNo);
         closeRebindModal();
         closeBindModal();
         var msg = "已改绑运单 " + newNo;
@@ -1544,6 +1695,7 @@
         status = "quoted";
         confirmedAt = fmtConfirmedAt();
         saveState();
+        pushLastmileToOverseas();
         toast("已核对确认，改为已报价。价格已返回业务员。有效期至 " + (best.validTo || VALID_TO));
         setListTab("bindwait");
         setMode("view");
@@ -1656,7 +1808,16 @@
       document.getElementById("btnUnbindOk").addEventListener("click", function () {
         var oldNo = primaryBindNo(boundWbs);
         if (!oldNo) { closeUnbindModal(); return; }
+        var lm = tailUsd();
         var nr = notifyUnbindCs(oldNo);
+        if (!nr.sent) {
+          pushOpLog({ type: "港后客服通知失败", summary: "解绑 " + oldNo + " · 未找到港后客服", detail: "解除绑定: [运单 " + oldNo + ", 港后客服通知: 未发]" });
+        }
+        pushOpLog({
+          type: "解除绑定",
+          summary: "解除绑定 " + oldNo + " · 尾程 USD " + lm + " 挂接已解除",
+          detail: "解除绑定: [原运单号 " + oldNo + ", 尾程 USD " + lm + " 挂接解除, 报价单尾程登记保留, 港后客服通知: " + (nr.sent ? nr.cs + " 已发" : "未发") + ", 时间 " + nowStr() + "]"
+        });
         boundWbs = [];
         selectedWbs = [];
         locked = false;
@@ -1668,6 +1829,17 @@
         else msg += "；⚠ 未找到港后客服，通知未发送";
         toast(msg);
         render();
+      });
+      document.getElementById("btnAllOpLog").addEventListener("click", function () { openOpLogModal(); });
+      document.getElementById("opLogClose").addEventListener("click", closeOpLogModal);
+      document.getElementById("opLogOk").addEventListener("click", closeOpLogModal);
+      document.getElementById("opLogMask").addEventListener("click", function (e) {
+        if (e.target === document.getElementById("opLogMask")) closeOpLogModal();
+      });
+      document.getElementById("opLogList").addEventListener("click", function (e) {
+        var tr = e.target.closest("tr[data-id]");
+        if (!tr) return;
+        showOpLogDetail(tr.getAttribute("data-id"));
       });
       document.querySelectorAll("#listTabs button").forEach(function (b) {
         b.addEventListener("click", function () { setListTab(b.getAttribute("data-tab")); });

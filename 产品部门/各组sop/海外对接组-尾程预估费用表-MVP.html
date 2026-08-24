@@ -152,6 +152,15 @@
     tr.hi-warn td { background: #fffbe6; }
     .num, .money { text-align: right; font-family: Consolas, Monaco, monospace; }
     .muted { color: var(--sub); }
+    .quote-note {
+      max-width: 180px; font-size: 12px; line-height: 1.45; color: #434343;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; word-break: break-word;
+    }
+    .quote-note.empty { color: var(--sub); }
+    .fee-row.quote-note-row { background: #f6ffed; border-color: #b7eb8f; }
+    .fee-row.quote-note-row .name { color: #389e0d; }
+    .fee-row.quote-note-row .src { white-space: normal; max-width: none; flex: 1; }
     .mono { font-family: Consolas, Monaco, monospace; font-size: 12px; }
     .linkish { color: var(--blue); cursor: pointer; }
     .linkish:hover { text-decoration: underline; }
@@ -281,6 +290,7 @@
           <span><b>维度</b> 运单（Waybill）</span>
           <span><b>海外仓费用</b> 录入 → 进预估</span>
           <span><b>派送预估</b> 取报价员核对确认的尾端派送费（取整、不做计算）</span>
+          <span><b>报价备注</b> 随挂费渠道只读可见（客户约定 / 地址限制）</span>
           <span><b>实际费用</b> 海外费用 · 运单可改</span>
           <span><b>主单</b> 仅归集；改费不落在主单整单一笔</span>
         </div>
@@ -321,6 +331,7 @@
             卢慧恒 8/7：海外仓费用录入进预估；按运单进预估；主单实际费用（海外）按运单维度修改。
             8/13 报价组：报表对比实际 vs 预估（例 800 / 630）；费用名称须同一套字典，名称不一致单独标红。
             8/14：<b>派送预估取报价员核对确认的尾端派送费</b>（取整、不做计算；人工改价后取新价，不带出单价、不按头程÷计费重反推）。
+            <b>报价备注</b>随挂费渠道只读带出（客户约定、地址限制等），海外对接组可查、不可改。
             Δ实际 = 运单实际海外费用 − 运单预估合计。
             <span id="quote-feed-hint"></span>
           </div>
@@ -335,6 +346,7 @@
                   <th>派送方式</th>
                   <th>目的站</th>
                   <th class="num">派送预估</th>
+                  <th>报价备注</th>
                   <th class="num">附加</th>
                   <th class="num">海外仓费</th>
                   <th class="num">预估合计</th>
@@ -509,7 +521,9 @@
     let rows = [
       { wb:'WB260807-001', bl:'COSU6508602300', cntr:'FFAU2424187', wh:'4DS', mode:'私卡派', dest:'ONT8',
         xj:'XJ1778226168576', deliver:620, addon:25, whFee:80, actual:800, st:'差额待核',
-        feeNameEst:'尾程派送费', feeNameAct:'尾程派送费', note:'报价员核对确认 · 尾端派送费' },
+        feeNameEst:'尾程派送费', feeNameAct:'尾程派送费',
+        quoteNote:'客户约定：私人地址限工作日派送；尾门高度限制',
+        note:'报价员核对确认 · 尾端派送费' },
       { wb:'WB260807-002', bl:'COSU6508602300', cntr:'FFAU2424187', wh:'4DS', mode:'UPS', dest:'ONT8',
         deliver:98, addon:0, whFee:40, actual:135, st:'已对账', note:'' },
       { wb:'WB260807-003', bl:'COSU6509081870', cntr:'FCIU9145746', wh:'4DS', mode:'卡车派送', dest:'LGB8',
@@ -547,13 +561,14 @@
       const map = { 'XJ1778226168576': 'WB260807-001' };
       Object.keys(all).forEach(xj => {
         const rec = all[xj];
-        const wb = map[xj];
+        const wb = map[xj] || rec.wb || '';
         rows.forEach(r => {
           if (r.xj === xj || (wb && r.wb === wb)) {
             r.deliver = Math.round(Number(rec.lastmile) || 0);
             r.feeNameEst = '尾程派送费';
             r.fromQuote = xj;
-            r.note = '报价员核对 · ' + xj + ' · 派送费取整、不做计算';
+            if (rec.channel) r.mode = rec.channel;
+            if (rec.note != null && String(rec.note).trim()) r.quoteNote = String(rec.note).trim();
             if (r.actual != null && Math.abs(r.actual - estTotal(r)) > 1) r.st = '差额待核';
           }
         });
@@ -561,7 +576,10 @@
       const hint = $('quote-feed-hint');
       if (hint) {
         const n = Object.keys(all).length;
-        hint.textContent = n ? (' 已从报价员核对同步 ' + n + ' 条尾端派送费。') : '';
+        const withNote = Object.keys(all).filter(k => (all[k].note || '').trim()).length;
+        hint.textContent = n
+          ? (' 已从报价员核对同步 ' + n + ' 条尾端派送费' + (withNote ? '（含 ' + withNote + ' 条报价备注）' : '') + '。')
+          : '';
       }
     }
 
@@ -617,6 +635,11 @@
           <td>${r.mode}</td>
           <td>${r.dest}</td>
           <td class="num">${moneyInt(r.deliver)}</td>
+          <td title="${(r.quoteNote || '').replace(/"/g, '&quot;')}">${
+            (r.quoteNote || '').trim()
+              ? '<div class="quote-note">' + String(r.quoteNote).replace(/</g, '&lt;') + '</div>'
+              : '<span class="quote-note empty">—</span>'
+          }</td>
           <td class="num">${money(r.addon)}</td>
           <td class="num">${r.whFee ? money(r.whFee) : '<span class="tag warn">未录</span>'}</td>
           <td class="num"><strong>${money(est)}</strong></td>
@@ -632,7 +655,7 @@
             · <span class="linkish" onclick="pickActual('${r.wb}');switchTab('actual')">改实际</span>
           </td>
         </tr>`;
-      }).join('') || `<tr><td colspan="15" class="muted" style="text-align:center;padding:28px">无数据</td></tr>`;
+      }).join('') || `<tr><td colspan="16" class="muted" style="text-align:center;padding:28px">无数据</td></tr>`;
 
       const estAll = rows.reduce((s, r) => s + estTotal(r), 0);
       const whAll = rows.reduce((s, r) => s + Number(r.whFee || 0), 0);
@@ -667,7 +690,14 @@
           <div class="name">${it.name}</div>
           <div class="src">${it.src}</div>
           <div class="amt">${it.name === '派送预估' ? moneyInt(it.amt) : money(it.amt)}</div>
-        </div>`).join('');
+        </div>`).join('') + `
+        <div class="fee-row auto quote-note-row">
+          <div class="name">报价备注</div>
+          <div class="src">${(r.quoteNote || '').trim()
+            ? String(r.quoteNote).replace(/</g, '&lt;') + (r.fromQuote ? ' <span class="muted">（询价 ' + r.fromQuote + ' · 只读）</span>' : ' <span class="muted">（只读）</span>')
+            : '<span class="muted">无 · 来自报价员核对渠道备注</span>'}</div>
+          <div class="amt"></div>
+        </div>`;
       $('d-sum').textContent = money(estTotal(r));
       $('detail-mask').classList.add('show');
     }

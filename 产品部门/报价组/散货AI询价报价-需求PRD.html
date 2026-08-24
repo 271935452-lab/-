@@ -142,6 +142,7 @@
       <a href="#m4">四、报价员详情交互</a>
       <a href="#m4-flow">4.6 状态流转</a>
       <a href="#m4-flow-detail">4.6.1 流转明细</a>
+      <a href="#m4-op-log">4.6.2 操作日志</a>
       <a href="#m6">六、弹窗交互（新增/改动）</a>
       <a href="#m6-calc-log">6.2.1 试算日志</a>
       <a href="#m6-calc-log-btn">6.2.1 试算日志入口</a>
@@ -604,10 +605,10 @@
           <tr><td>发起询价</td><td>业务员提交后</td><td>时间 · 提交人</td></tr>
           <tr><td>开始报价（N 个销售产品各 1 价）</td><td>AI 出账 / 进入待报价后</td><td>时间 · <strong>AI待确认 · 未回业务员</strong>（或待人工报价）</td></tr>
           <tr><td>核对确认 · 已报价</td><td>报价员核对确认保存后</td><td>确认时间 · 报价员姓名 · 各渠道单价摘要 · 有效期 · 核对备注（有则展示）</td></tr>
-          <tr><td>绑定运单</td><td>确认绑定成功后</td><td>绑单时间 · 操作人 · <strong>运单号</strong> · 尾程派送费挂接金额</td></tr>
+          <tr><td>绑定运单</td><td>确认绑定成功后</td><td>绑单时间 · 操作人 · <strong>运单号</strong> · 尾程挂接 USD；改绑 / 解绑见节点副文案，明细见 <a href="#m4-op-log">操作日志</a></td></tr>
         </tbody>
       </table>
-      <p class="note"><strong>打回</strong>、<strong>重算</strong>、<strong>改绑 / 解绑</strong>不在时间轴新增节点，在对应节点副文案或操作日志中体现（见 §4.6.1）。MVP 原型「已完结 / 绑单」节点下长明细块已收起；开发以 PRD 回写字段为准。</p>
+      <p class="note"><strong>打回</strong>、<strong>重算</strong>、<strong>改绑 / 解绑</strong>不在时间轴新增节点，在「绑定运单」节点副文案与<strong>操作日志</strong>中体现（见 <a href="#m4-flow-detail">§4.6.1</a>、<a href="#m4-op-log">§4.6.2</a>）。MVP 原型「已完结 / 绑单」节点下长明细块已收起；开发以 PRD 回写字段为准。</p>
 
       <h4 id="m4-flow-detail">4.6.1 全链路状态流转 · 节点 / 回写 / 备注 / 运单</h4>
       <p>下表为散货 AI 询价报价<strong>标准流转</strong>；报价员列表状态、详情大字状态、业务员侧状态可能并存不同命名（见「三态」列）。</p>
@@ -758,6 +759,145 @@
         </tbody>
       </table>
 
+      <h4 id="m4-op-log">4.6.2 操作日志（详情右侧 · 状态流转） <span class="tag new">NEW</span></h4>
+      <p>报价员详情<strong>右侧「状态流转」</strong>卡片底部，<strong>固定展示</strong>操作日志入口（与是否有绑单记录无关）。记录本票<strong>人工 / 系统业务动作</strong>审计轨迹，与顶部「试算日志」（AI 测算过程）<strong>分离存储、分开展示</strong>。<strong>仅报价员可见</strong>；业务员询价详情<strong>不展示</strong>。</p>
+
+      <h4>展示与入口</h4>
+      <table>
+        <thead><tr><th>项</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>位置</td>
+            <td>报价员详情 → 右侧「状态流转」卡片 → 时间轴节点列表<strong>下方</strong></td>
+          </tr>
+          <tr>
+            <td>入口</td>
+            <td>仅 1 个按钮：<strong>全部操作日志 (N)</strong>。N = 本票已写入日志条数；<strong>进入详情即展示</strong>，N=0 时仍展示为 <code>(0)</code>，不因无记录而隐藏</td>
+          </tr>
+          <tr>
+            <td>不提供</td>
+            <td>时间轴节点内<strong>不提供</strong>「查看操作日志」等单条 / 分类入口；不提供「绑单相关」等筛选 Tab（一律在弹窗内看全部）</td>
+          </tr>
+          <tr>
+            <td>点击后</td>
+            <td>打开<strong>操作日志弹窗</strong>（居中 modal，与试算日志同级）。列表按<strong>时间倒序</strong>（新的在上）；只读，不可删改</td>
+          </tr>
+          <tr>
+            <td>空态</td>
+            <td>尚无记录时弹窗内展示「暂无操作日志」占位文案</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>弹窗结构</h4>
+      <ul>
+        <li>标题：<code>操作日志 · {询价单号}</code></li>
+        <li>列表列：<strong>时间</strong> · <strong>操作人</strong> · <strong>类型</strong> · <strong>摘要</strong>（一行截断，hover 看全文）</li>
+        <li>点击某行 → 下方展开<strong>详情</strong>（只读）：结构化字段或正文模板（见下表）</li>
+      </ul>
+
+      <h4>写入逻辑（何时记一条）</h4>
+      <p class="note">原则：<strong>动作成功落库后</strong>异步 / 同步追加 1 条日志；失败拦截的不写。同一次改绑若港后通知失败，除主类型外<strong>可另记</strong>「港后客服通知失败」。</p>
+      <table>
+        <thead><tr><th>类型</th><th>触发动作</th><th>前置 / 条件</th><th>摘要（列表一行）</th><th>详情要点</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>核对确认</strong></td>
+            <td>报价员点「核对确认」且校验通过</td>
+            <td>状态由 AI待确认 → 已报价</td>
+            <td>核对确认 · {N} 个渠道 · 单价已回写业务员</td>
+            <td>各渠道单价 / 有效期 / 尾程 USD 摘要；操作人；时间</td>
+          </tr>
+          <tr>
+            <td><strong>编辑报价</strong></td>
+            <td>编辑模式下保存单价 / 尾程 / 有效期 / 备注（含改价）</td>
+            <td>AI待确认 且未核对；改单价须填改价原因</td>
+            <td>编辑报价 · {渠道名} · 单价 {旧→新} USD/KG</td>
+            <td>变更字段对照；改价原因；操作人；时间</td>
+          </tr>
+          <tr>
+            <td><strong>打回</strong></td>
+            <td>打回弹窗确认</td>
+            <td>待报价 / AI待确认</td>
+            <td>打回 · {打回备注前 30 字…}</td>
+            <td>完整打回备注；操作人；时间</td>
+          </tr>
+          <tr>
+            <td><strong>撤回核对</strong></td>
+            <td>撤回核对二次确认</td>
+            <td>已报价 / 已完结且未绑</td>
+            <td>撤回核对 · 业务员侧单价已撤回</td>
+            <td>撤回前各渠道单价摘要；操作人；时间</td>
+          </tr>
+          <tr>
+            <td><strong>绑定运单</strong></td>
+            <td>绑单弹窗「确认绑定」成功</td>
+            <td>首次绑定；校验通过</td>
+            <td>绑定运单 {运单号} · 尾程 USD {金额} 已挂接</td>
+            <td>运单号、尾程 USD、挂费渠道、运单计费重、入仓时间、操作人、时间</td>
+          </tr>
+          <tr>
+            <td><strong>改绑运单</strong></td>
+            <td>「解除并绑定运单」二次确认成功</td>
+            <td>原运单 ≠ 新运单</td>
+            <td>改绑 {原运单号} → {新运单号} · 尾程 USD {金额}</td>
+            <td>原 / 新运单对照、尾程 USD、挂费渠道、港后通知结果（旧 / 新各 1 条，见 <a href="#m6-bind-notify">§6.3.4</a>）、操作人、时间</td>
+          </tr>
+          <tr>
+            <td><strong>解除绑定</strong></td>
+            <td>「解除绑定」确认成功</td>
+            <td>已绑且未财务锁账 / 未成本已审核</td>
+            <td>解除绑定 {运单号} · 尾程挂接已解除</td>
+            <td>原运单号、尾程 USD 挂接解除、报价单尾程登记保留、港后通知结果、操作人、时间</td>
+          </tr>
+          <tr>
+            <td><strong>港后客服通知失败</strong></td>
+            <td>解绑 / 改绑成功但运单主数据无港后客服</td>
+            <td>操作仍成功；toast 警告</td>
+            <td>{改绑|解绑} · 运单 {运单号} · 未找到港后客服</td>
+            <td>关联主类型、运单号、通知未发原因</td>
+          </tr>
+          <tr>
+            <td><strong>业务员确认报价</strong></td>
+            <td>业务员在询价详情点「确认报价」</td>
+            <td>系统回写 / 轮询感知</td>
+            <td>业务员确认 · {渠道名} · USD {单价}/KG</td>
+            <td>确认渠道 ID、单价、确认时间（业务员姓名）</td>
+          </tr>
+          <tr>
+            <td><strong>AI 重算</strong></td>
+            <td>报价员触发重算且成功</td>
+            <td>未绑且允许重算</td>
+            <td>AI 重算 · {N} 个渠道试算价已更新</td>
+            <td>重算前后单价 / 尾程摘要；操作人；时间（试算明细仍见试算日志）</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>数据模型（落库建议）</h4>
+      <table>
+        <thead><tr><th>字段</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>日志唯一 ID</td></tr>
+          <tr><td><code>xjId</code></td><td>询价单号（冗余，便于检索）</td></tr>
+          <tr><td><code>type</code></td><td>类型枚举（上表）</td></tr>
+          <tr><td><code>at</code></td><td>操作时间</td></tr>
+          <tr><td><code>operator</code></td><td>操作人姓名 + 角色（报价员 / 业务员 / 系统）</td></tr>
+          <tr><td><code>summary</code></td><td>列表摘要，≤ 80 字</td></tr>
+          <tr><td><code>detail</code></td><td>详情 JSON 或结构化正文（运单号、金额、渠道、通知结果等）</td></tr>
+          <tr><td><code>refId</code></td><td>可选：关联运单号 / 渠道 ID，供检索</td></tr>
+        </tbody>
+      </table>
+
+      <h4>与试算日志、时间轴的分工</h4>
+      <ul>
+        <li><strong>试算日志</strong>（§6.2.1）：AI / 规则引擎测算过程、万物智联品牌明细、距离档等；有试算记录才展示入口。</li>
+        <li><strong>操作日志</strong>（本节）：绑单、改价、打回、确认等业务动作；入口<strong>常驻</strong>。</li>
+        <li><strong>时间轴节点</strong>（§4.6）：流程里程碑摘要；<strong>打回、重算、改绑 / 解绑不新增节点</strong>，改绑 / 解绑在「绑定运单」节点副文案体现一句，完整明细只在操作日志。</li>
+      </ul>
+
+      <p class="ok">原型：<a href="ESS散货询价方案详情-MVP.html">报价员详情</a> 右侧状态流转卡片底部 · <strong>全部操作日志 (N)</strong>（默认展示）。MVP 原型至少演示绑单 / 改绑 / 解绑三类写入。</p>
+
       <h4>回写字段明细（核对确认 → 业务员）</h4>
       <p class="note">以下字段除特别说明外，均为<strong>各销售产品 / 渠道各 1 条</strong>（多渠道询价 = 业务员见 N 条方案，每条含完整字段）。</p>
       <table>
@@ -768,7 +908,7 @@
           <tr><td>单价 USD/KG</td><td><strong>每销售产品 1 条</strong></td><td>核对确认时写入；取个位。默认按 <strong>头程单价 + 尾端派送费 ÷ 询价计费重</strong> 测算带出，可人工改。</td></tr>
           <tr><td>有效期从 / 至</td><td><strong>每销售产品 1 条</strong></td><td>默认 7 天含当日、遇 15/30 截断；确认台<strong>各渠道卡</strong>可分别改。</td></tr>
           <tr><td>尾程派送费</td><td><strong>每销售产品 1 条</strong></td><td>取整登记；各渠道分别写入；绑单挂运单时：业务员<strong>已确认报价</strong>→取确认渠道金额；<strong>未确认</strong>→取报价员点选 / 默认最优渠道金额（见 <a href="#m3-bind-ch">§3.2</a>、<a href="#m6-bind">§6.3</a>）。</td></tr>
-          <tr><td>核对备注</td><td><strong>每销售产品 1 条</strong></td><td>报价员按渠道填写，随该渠道回写一并展示（业务员详情 / 复制报价可见，以现网为准）。</td></tr>
+          <tr><td>核对备注</td><td><strong>每销售产品 1 条</strong></td><td>报价员按渠道填写，随该渠道回写一并展示（业务员详情 / 复制报价可见，以现网为准）。<strong>绑单挂运单后</strong>，挂费渠道的核对备注同步至<strong>海外对接组 · 尾程预估（运单维）</strong>只读展示（清单「报价备注」列 / 明细抽屉）；与港后卡派「修改备注」分字段、不互写。见 <a href="../各组sop/海外对接组-尾程预估-运单维-PRD.html">尾程预估运单维 PRD</a>。</td></tr>
           <tr><td>改价原因</td><td><strong>每销售产品 1 条</strong></td><td>仅当该渠道人工改单价时必填，写入该渠道变更记录。</td></tr>
           <tr><td>报价状态</td><td><strong>每销售产品 1 条</strong></td><td>业务员侧各渠道行展示「<strong>人工已报价</strong>」；列表整票状态名同（非报价员内部状态名）。</td></tr>
         </tbody>
@@ -842,7 +982,7 @@
       <ul>
         <li>业务员无感知 AI 过程；我的询价列表交互见 <a href="#m2b">二C</a>；查看与确认走独立页 <a href="ESS散货询价详情-MVP.html">ESS散货询价详情-MVP.html</a>（<strong>确认报价</strong>，非绑单）。</li>
         <li>AI待确认期间：流程仍为「报价中」，询价详情<strong>无单价</strong>。</li>
-        <li>报价员核对确认后：列表「报价状态」= <strong>人工已报价</strong>；询价详情展示各渠道价，业务员<strong>单选 1 条</strong>后点底部「<strong>确认报价</strong>」。</li>
+        <li>报价员核对确认后：列表「报价状态」= <strong>人工已报价</strong>；询价详情展示各渠道<strong>单价</strong>（N 渠道 N 条），业务员<strong>单选 1 条</strong>后点底部「<strong>确认报价</strong>」。<strong>不展示尾程派送费</strong>（由报价员绑运单时挂接，业务员不可见）。</li>
         <li><strong>绑定运单不在本页</strong>：由报价员在报价员详情 / 列表完成。绑单弹窗渠道区规则见 <a href="#m3-bind-ch">§3.2</a> / <a href="#m6-bind">§6.3</a>——业务员<strong>已确认报价</strong>则只带出该 <strong>1</strong> 个渠道；<strong>未确认</strong>则展示多渠道，由报价员自行点选挂费渠道并绑定。</li>
         <li>绑单后报价与运单不回写联动；<strong>财务已锁账 / 成本已审核</strong>后报价员不可改绑 / 解绑。</li>
       </ul>
@@ -902,7 +1042,7 @@
           <tr><td>配送距离（迈）</td><td>改</td><td>与渠道小字<strong>同一行</strong>展示，格式如「洛杉矶仓 · 外州 · 26尺 · 询价渠道 · 距离 800 迈」。按该渠道绑定海外仓邮编 + 收货邮编后台测算，只读；各渠道可不同。顶部摘要区不汇总展示距离。</td></tr>
           <tr><td>尾程派送费</td><td>NEW</td><td><strong>每销售产品 1 条</strong>，取整登记，不做计算。各渠道卡分别带出 / 可改；核对确认按渠道回写；绑运单时挂对应渠道金额到运单。</td></tr>
           <tr><td>有效期从 / 至</td><td>NEW / 改</td><td><strong>每销售产品 1 条</strong>。默认 7 天含当日、遇 15/30 截断，打开详情各渠道卡即带出，可分别改；规则页有效期规则仍锁定。<strong>AI待确认</strong> 阶段过期须重算后才能绑单；<strong>已核对后不可重算</strong>，过期禁绑。</td></tr>
-          <tr><td>改价原因 / 备注</td><td>NEW</td><td><strong>每销售产品 1 条</strong>。改该渠道单价时原因必填；核对备注按渠道填写，确认后随该渠道回写。</td></tr>
+          <tr><td>改价原因 / 备注</td><td>NEW</td><td><strong>每销售产品 1 条</strong>。改该渠道单价时原因必填；核对备注按渠道填写，确认后随该渠道回写；挂费渠道备注同步海外对接组尾程预估只读可见。</td></tr>
           <tr><td>试算结果日志</td><td>NEW</td><td><strong>弹窗查看</strong>（详情页不平铺）。<strong>有试算即出现</strong>（成功 / 失败均算），<strong>未试算不出现</strong>。入口见 <a href="#m6-calc-log-btn">§6.2.1</a>。</td></tr>
           <tr><td>渠道 i 说明</td><td>NEW</td><td>点 i 展开：多产品各绑仓、每渠道 1 个 AI 价、万物智联最优仅报价员可见、确认后<strong>按渠道</strong>回业务员（N 渠道 N 条）。</td></tr>
           <tr><td>状态流转</td><td>改</td><td>右侧时间轴节点、回写价格、备注、运单信息见 <a href="#m4-flow-detail">§4.6.1</a>；原型可只展示一行摘要。</td></tr>
@@ -1281,7 +1421,7 @@
         <li><strong>解除绑定</strong>：点击 → 二次确认弹窗展示① 尾程费保留说明 ② <strong>将通知港后客服</strong>：{姓名} ③ 通知摘要预览（只读）。确认后解绑 + 发通知。</li>
         <li><strong>改绑 · 解除并绑定</strong>：已绑态选<strong>不同于原运单</strong>的新运单 → 主按钮「解除并绑定运单」可点 → 二次确认弹窗展示原 / 新运单对照 + <strong>将通知港后客服 2 条</strong>（旧单「原单解除」+ 新单「新单挂接」，同人亦各 1 条）及正文摘要 → 确认后改绑 + 发通知。</li>
         <li>通知详情页（港后客服视角）：展示询价单号、运单号、尾程金额、原 / 新运单对照（改绑）、操作人与时间；可跳转运单详情（若现网有入口）。</li>
-        <li>找不到港后客服（运单主数据为空）：仍允许解绑 / 改绑；toast 警告「未找到港后客服，通知未发送」并写操作日志备查。</li>
+        <li>找不到港后客服（运单主数据为空）：仍允许解绑 / 改绑；toast 警告「未找到港后客服，通知未发送」并写<strong>操作日志</strong>（类型「港后客服通知失败」，见 <a href="#m4-op-log">§4.6.2</a>）。</li>
       </ul>
 
       <h3>6.4 谁看见什么（不变）</h3>
