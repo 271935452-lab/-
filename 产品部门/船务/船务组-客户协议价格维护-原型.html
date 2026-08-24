@@ -236,6 +236,24 @@
       margin-top: 8px; padding: 8px 10px; background: #fffbe6; border: 1px solid #ffe58f;
       border-radius: 2px; color: #614700; font-size: 12px; line-height: 1.6;
     }
+    .w-bar {
+      margin: 0 0 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 2px; background: #fafafa;
+    }
+    .w-bar .hd {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px;
+    }
+    .w-bar .hd b { font-size: 12px; }
+    .w-bar .hd .hint { color: var(--sub); font-size: 11px; }
+    .w-rows { display: flex; flex-direction: column; gap: 6px; }
+    .w-row {
+      display: grid; grid-template-columns: 52px 70px 16px 70px 1fr auto; gap: 6px; align-items: center;
+    }
+    .w-row input {
+      height: 26px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; width: 100%;
+    }
+    .w-row .lab { color: var(--sub); font-size: 11px; }
+    .w-row .to { color: var(--sub); text-align: center; }
+    .w-row.err input { border-color: #ff4d4f; background: #fff1f0; }
     .inherit-box .q-card {
       margin-top: 6px; padding: 6px 8px; background: #fff; border: 1px dashed #b7eb8f; border-radius: 2px;
     }
@@ -307,10 +325,11 @@
   <div class="main">
     <div class="page-hd">
       <h1>客户协议价格维护 <span class="badge chg">改</span><span class="badge new">NEW</span></h1>
-      <p>在现有<strong>销售报价</strong>之上，为指定大客户维护优惠或差异价；分区 / 重量段结构继承基准报价，无需整表重录。抛货/重货不同价时，打开「按比重分档」。</p>
+      <p>在现有<strong>销售报价</strong>之上，为指定大客户维护优惠或差异价。快递派重量段协议内同步；<strong>其他产品改价走全量重填价格</strong>。</p>
       <div class="scene">
-        <strong>主场景：</strong>选 1 条或多条基准销售报价 → 挂协议客户 → 选计价方式 → 可选「按比重分档」→ 预览生效价 → 提交草稿并启用。<br />
-        多条报价分区/重量段可以不一样：<strong>不拼成一张表</strong>。统一折扣/减额一次套全部（各跟自己的结构）；指定格覆盖按报价页签分别填。落成本仍走「大客户调成本」。
+        <strong>主场景：</strong>选 1 条或多条基准销售报价 → 挂协议客户 → 选计价方式 → 预览生效价 → 提交草稿并启用。<br />
+        多条报价分区/重量段可以不一样：<strong>不拼成一张表</strong>。统一折扣/减额一次套全部（各跟自己的结构）。落成本仍走「大客户调成本」。<br />
+        <strong>两条路（8/22）：</strong>快递派大约 5–6 个销售产品，重量段在第②步「同步到本协议其它快递派」。<strong>其他的就要用批量</strong>：批量只做<strong>全量重填价格</strong>（按该协议分区 × 重量段整表改单价）。折扣/减额不是批量；改失效日期走「修改失效日期」。
       </div>
     </div>
 
@@ -332,7 +351,6 @@
             <option value="">全部</option>
             <option value="discount">统一折扣</option>
             <option value="minus">统一减额</option>
-            <option value="override">指定格覆盖</option>
             <option value="full">全量重填</option>
           </select>
         </div>
@@ -355,8 +373,15 @@
       <div class="filters-more" id="filtersMore" aria-hidden="true">
         <div class="fi"><label>协议价格名称</label><input id="qName" placeholder="协议价格名称" /></div>
         <div class="fi"><label>销售产品</label><input id="qProduct" placeholder="销售产品" /></div>
-        <div class="fi"><label>特价仓</label>
-          <select id="qSpecial"><option value="">全部</option><option value="1">是</option><option value="0">否</option></select>
+        <div class="fi"><label>分公司</label>
+          <select id="qBranch">
+            <option value="">全部</option>
+            <option>义乌总部</option>
+            <option>北苑分公司</option>
+            <option>青岛分公司</option>
+            <option>深圳分公司</option>
+            <option>苏州分公司</option>
+          </select>
         </div>
         <div class="fi"><label>大客户调成本</label>
           <select id="qBig"><option value="">全部</option><option value="1">有关联申请</option><option value="0">无</option></select>
@@ -372,7 +397,7 @@
         <button type="button" class="btn" id="btnEnable" disabled>启用</button>
         <button type="button" class="btn danger" id="btnVoid" disabled>作废</button>
         <span class="sep"></span>
-        <button type="button" class="btn new" id="btnBatch" disabled>批量改时间/金额 <span class="badge new">NEW</span></button>
+        <button type="button" class="btn new" id="btnBatch" disabled title="勾选 1 条，按该协议分区×重量段整表重填单价">全量重填价格 <span class="badge new">NEW</span></button>
         <button type="button" class="btn new" id="btnWbDiff" disabled>运单对照 <span class="badge new">NEW</span></button>
         <button type="button" class="btn chg" id="btnCostAdj" disabled>大客户调成本 <span class="badge chg">改</span></button>
         <span style="margin-left:auto;color:var(--sub)" id="selInfo">未选中</span>
@@ -392,7 +417,7 @@
               <th>销售产品</th>
               <th>优惠方式 <span class="badge chg">改</span></th>
               <th>优惠规则</th>
-              <th>特价仓</th>
+              <th>分公司</th>
               <th>生效时间</th>
               <th>失效时间</th>
             </tr>
@@ -410,11 +435,11 @@
       <h4>与销售报价的关系</h4>
       <ul>
         <li>销售报价：维护通用价（分区 × 重量段矩阵）。协议可挂 <strong>1 条或多条</strong>基准报价。</li>
-        <li>多条报价分区/重量段可以不一样：<strong>不拼成一张总表</strong>。统一折扣/减额一次套全部，各报价仍用自己的结构出生效价；指定格覆盖 / 全量重填按报价页签分别填。</li>
-        <li>大客户协议价：挂在所选销售报价上，只维护该客户的优惠或局部差异。多数客户只走重量段；谈过抛货/重货不同价时打开<strong>按比重分档</strong>。</li>
-        <li>基准报价改价后：协议「统一折扣/减额」自动重算；「指定格覆盖」单元格保持覆盖值，其余跟新基准。</li>
-        <li><strong>运单对照</strong>（下单后）：勾选 1 条协议价，按该客户实际运单对照<strong>原价（基准报价）</strong>与<strong>运单计费价</strong>。开了比重分档时明细带「比重」列。</li>
-        <li><strong>大客户调成本</strong>：按本协议矩阵（计费重段，开了则再 × 比重档）对照申请价 vs 生效价，一键落业务员成本。不在调成本里维护第二张价表。</li>
+        <li>多条报价分区/重量段可以不一样：<strong>不拼成一张总表</strong>。统一折扣/减额一次套全部，各报价仍用自己的结构出生效价。</li>
+        <li>两条路：快递派约 5–6 个，重量段在第②步「同步到本协议其它快递派」。<strong>其他产品改价走全量重填价格</strong>（列表勾选 1 条，或第①步选「全量重填价格」）。折扣/减额只改规则，不是批量。</li>
+        <li>基准报价改价后：协议「统一折扣/减额」自动按规则重算。</li>
+        <li><strong>运单对照</strong>（下单后）：勾选 1 条协议价，按该客户实际运单对照<strong>原价（基准报价）</strong>与<strong>运单计费价</strong>。</li>
+        <li><strong>大客户调成本</strong>：按本协议矩阵（计费重段 × 分区）对照申请价 vs 生效价，一键落业务员成本。不在调成本里维护第二张价表。</li>
       </ul>
     </div>
   </div>
@@ -441,7 +466,7 @@
               <div style="margin-top:6px">
                 <button type="button" class="btn" data-pick="quote" data-target="fQuoteChips">选择销售报价</button>
               </div>
-              <div class="hint">一条协议可挂多条销售报价。分区/重量段不一致时<strong>不合并矩阵</strong>：折扣/减额共用一条规则；指定格覆盖在第②步按报价页签分别维护。</div>
+              <div class="hint">一条协议可挂多条销售报价。分区/重量段不一致时<strong>不合并矩阵</strong>：折扣/减额共用一条规则，各跟自己的结构。</div>
             </div>
             <div class="inherit-box hidden" id="inheritBox"></div>
 
@@ -456,16 +481,10 @@
             </div>
             <div class="fg"><label><span class="req">*</span>生效时间</label><input type="datetime-local" id="fEff" value="2026-08-05T00:00" /></div>
             <div class="fg"><label><span class="req">*</span>失效时间</label><input type="datetime-local" id="fExp" value="2027-08-05T23:59" /></div>
-            <div class="fg">
-              <label>特价仓</label>
-              <select id="fSpecial"><option value="0">否</option><option value="1">是（需留痕）</option></select>
-            </div>
-            <div class="fg">
-              <label>与基准报价冲突时</label>
-              <select id="fPriority">
-                <option value="agreement">优先协议价</option>
-                <option value="base">回退基准价（仅未覆盖格）</option>
-              </select>
+            <div class="fg with-ico">
+              <label><span class="req">*</span>分公司</label>
+              <input id="fBranch" placeholder="选择分公司" readonly />
+              <button type="button" class="ico" data-pick="branch" data-target="fBranch" title="选择分公司">🏠</button>
             </div>
             <div class="fg full"><label>备注</label><textarea id="fRemark" placeholder="如：大客户包月量、申请价说明"></textarea></div>
 
@@ -480,26 +499,14 @@
                   <strong>统一减额</strong>
                   <span>整表每公斤减固定金额，如 −0.7。适合中美普船统一降价。</span>
                 </button>
-                <button type="button" class="mode-card" data-mode="override">
-                  <strong>指定格覆盖</strong>
-                  <span>只改部分单元格；空白格继续跟基准价。开了比重分档时按「重量段 × 比重档 × 分区」覆盖。</span>
+                <button type="button" class="mode-card" data-mode="full">
+                  <strong>全量重填价格</strong>
+                  <span>批量只走这一条：按本协议分区 × 重量段整表重填单价。空派等其它产品改价用这个。</span>
                 </button>
               </div>
               <input type="hidden" id="fMode" value="discount" />
-              <div class="hint" style="margin-top:8px">
-                需要整表重录时可选「全量重填」：
-                <label style="margin-left:6px"><input type="radio" name="modeExtra" value="inherit" checked /> 继承结构（推荐）</label>
-                <label style="margin-left:8px"><input type="radio" name="modeExtra" value="full" /> 全量重填单价</label>
-              </div>
             </div>
 
-            <div class="fg full">
-              <label>按比重分档 <span class="badge new">NEW</span></label>
-              <label class="chk-row">
-                <input type="checkbox" id="fByRatio" />
-                <span class="chk-txt"><b>按不同计费重、不同比重调价。</b>默认关闭，矩阵仍是分区 × 重量段。打开后第②步在每个重量段下叠比重档（1:167 重货 / 1:210 / 1:250 / 1:300 抛货），档位与销售成本价「比重优惠配置」一致。财务出货后的合并计费不在这里改。</span>
-              </label>
-            </div>
           </div>
         </div>
 
@@ -520,10 +527,21 @@
               <div class="hint" id="ruleHint" style="margin:0;padding-top:6px">生效价 = 基准价 × 折扣 ÷ 10</div>
             </div>
             <button type="button" class="btn" id="btnRecalc">刷新预览</button>
-            <button type="button" class="btn" id="btnFillDemo">示例覆盖价</button>
+          </div>
+          <div class="w-bar" id="weightBar">
+            <div class="hd">
+              <b>本报价重量段</b>
+              <span class="hint">默认同基准报价，可改。快递派约 5–6 个可同步到本协议其它快递派。<strong>其他产品改价走全量重填价格</strong>。</span>
+              <span style="margin-left:auto;display:flex;gap:6px">
+                <button type="button" class="btn new" id="btnWeightSync" title="只同步本协议已挂的其它快递派">同步到本协议其它快递派</button>
+                <button type="button" class="btn" id="btnWeightAdd">新增段</button>
+                <button type="button" class="btn" id="btnWeightReset">恢复基准</button>
+              </span>
+            </div>
+            <div class="w-rows" id="weightRows"></div>
           </div>
           <div id="matrixCap" style="margin-bottom:6px;color:var(--sub)">
-            横向：分区（继承销售报价）· 纵向：重量段 · 单元格展示「基准 → 生效」；覆盖模式下可编辑协议价。
+            横向：分区（继承销售报价）· 纵向：重量段 · 单元格展示「基准 → 生效」。
           </div>
           <div class="matrix-wrap">
             <table class="matrix" id="priceMatrix">
@@ -553,6 +571,7 @@
       </div>
       <div class="modal-bd">
         <input id="pickerSearch" placeholder="搜索…" style="width:100%;height:28px;margin-bottom:8px;border:1px solid #d9d9d9;border-radius:2px;padding:0 8px" />
+        <p class="hint" id="pickerHint" hidden style="margin:0 0 8px;color:#8c8c8c;line-height:1.5">快递派大约 5–6 个可一起挂，重量段在第②步同步。空派等其它产品改价走「全量重填价格」。</p>
         <div class="picker-list" id="pickerList"></div>
       </div>
       <div class="modal-ft">
@@ -570,10 +589,6 @@
       </div>
       <div class="modal-bd">
         <div class="fg"><label>新失效时间</label><input type="datetime-local" id="expireVal" value="2027-12-31T23:59" /></div>
-        <div class="fg" id="batchAmtWrap" hidden style="margin-top:10px">
-          <label>金额调整（可选；作用于统一减额，或叠加到覆盖格）</label>
-          <input type="number" id="batchAmt" step="0.1" placeholder="如 -0.7" />
-        </div>
       </div>
       <div class="modal-ft">
         <button type="button" class="btn primary" id="btnExpireOk">确定</button>
@@ -637,6 +652,7 @@
     { code: "C10088", name: "东莞ZZ供应链" },
     { code: "C10089", name: "上海AA进口" }
   ];
+  var BRANCHES = ["义乌总部", "北苑分公司", "青岛分公司", "深圳分公司", "苏州分公司"];
 
   /* 对齐销售报价：分区 × 重量段矩阵 */
   var QUOTES = [
@@ -644,6 +660,7 @@
       id: "SQ-PK1395",
       name: "PK1395分仓",
       product: "美国空派AX超大件悦选货",
+      line: "快递派",
       currency: "人民币",
       zones: ["美西", "美中", "美东"],
       weights: [
@@ -663,6 +680,7 @@
       id: "SQ-US-AIR",
       name: "美西空派公布衔接价-2026",
       product: "美国空派 LAX",
+      line: "空派",
       currency: "人民币",
       zones: ["美西", "美中", "美东"],
       weights: [
@@ -680,6 +698,7 @@
       id: "SQ-WEST-ONLY",
       name: "美西专线特价仓-2026",
       product: "美国空派 美西专线",
+      line: "空派",
       currency: "人民币",
       zones: ["美西"],
       weights: [
@@ -694,31 +713,92 @@
         "100": [52],
         "500": [58]
       }
+    },
+    {
+      id: "SQ-EXP-W",
+      name: "美西快递派-标准",
+      product: "美国快递派 美西",
+      line: "快递派",
+      currency: "人民币",
+      zones: ["美西"],
+      weights: [
+        { title: "21", from: 0, to: 21 },
+        { title: "45", from: 21, to: 45 },
+        { title: "100", from: 45, to: 100 }
+      ],
+      prices: { "21": [38], "45": [44], "100": [50] }
+    },
+    {
+      id: "SQ-EXP-C",
+      name: "美中快递派-标准",
+      product: "美国快递派 美中",
+      line: "快递派",
+      currency: "人民币",
+      zones: ["美中"],
+      weights: [
+        { title: "21", from: 0, to: 21 },
+        { title: "45", from: 21, to: 45 },
+        { title: "100", from: 45, to: 100 }
+      ],
+      prices: { "21": [40], "45": [46], "100": [52] }
+    },
+    {
+      id: "SQ-EXP-E",
+      name: "美东快递派-标准",
+      product: "美国快递派 美东",
+      line: "快递派",
+      currency: "人民币",
+      zones: ["美东"],
+      weights: [
+        { title: "21", from: 0, to: 21 },
+        { title: "45", from: 21, to: 45 },
+        { title: "100", from: 45, to: 100 }
+      ],
+      prices: { "21": [42], "45": [48], "100": [54] }
+    },
+    {
+      id: "SQ-EXP-XL",
+      name: "快递派-超大件",
+      product: "美国快递派 超大件",
+      line: "快递派",
+      currency: "人民币",
+      zones: ["美西", "美中", "美东"],
+      weights: [
+        { title: "40", from: 0, to: 40 },
+        { title: "100", from: 40, to: 100 },
+        { title: "300", from: 100, to: 300 }
+      ],
+      prices: { "40": [56, 57, 58], "100": [68, 70, 72], "300": [76, 78, 80] }
+    },
+    {
+      id: "SQ-EXP-ONT",
+      name: "快递派-ONT仓",
+      product: "美国快递派 ONT",
+      line: "快递派",
+      currency: "人民币",
+      zones: ["美西"],
+      weights: [
+        { title: "21", from: 0, to: 21 },
+        { title: "45", from: 21, to: 45 },
+        { title: "100", from: 45, to: 100 }
+      ],
+      prices: { "21": [39], "45": [45], "100": [51] }
     }
   ];
 
   var MODE_LABEL = {
     discount: "统一折扣",
     minus: "统一减额",
-    override: "指定格覆盖",
     full: "全量重填"
   };
 
-  /* 与销售成本价「比重优惠配置」同一套档位（原型枚举） */
-  var RATIOS = [
-    { id: "167", label: "1:167", hint: "重货" },
-    { id: "210", label: "1:210", hint: "" },
-    { id: "250", label: "1:250", hint: "" },
-    { id: "300", label: "1:300", hint: "抛货" }
-  ];
-
   var rows = [
-    { id: "AP202608001", name: "XX贸易-PK1395协议", status: "启用", custCode: "C10086", custName: "深圳XX贸易", quoteId: "SQ-PK1395", quoteIds: ["SQ-PK1395"], quoteName: "PK1395分仓", product: "美国空派AX超大件悦选货", mode: "discount", rule: "9.5折", special: false, big: true, byRatio: false, eff: "2026-08-01 00:00", exp: "2027-08-01 23:59", discount: 9.5, minus: 0, overrides: {} },
-    { id: "AP202608002", name: "YY电商-统一降7毛", status: "启用", custCode: "C10087", custName: "广州YY电商", quoteId: "SQ-US-AIR", quoteIds: ["SQ-US-AIR"], quoteName: "美西空派公布衔接价-2026", product: "美国空派 LAX", mode: "minus", rule: "−0.7元/kg", special: false, big: false, byRatio: false, eff: "2026-07-01 00:00", exp: "2026-12-31 23:59", discount: 10, minus: -0.7, overrides: {} },
-    { id: "AP202608004", name: "XX贸易-多报价（结构不同）", status: "启用", custCode: "C10086", custName: "深圳XX贸易", quoteId: "SQ-PK1395", quoteIds: ["SQ-PK1395", "SQ-WEST-ONLY"], quoteName: "PK1395分仓 + 美西专线特价仓-2026", product: "美国空派AX超大件悦选货", mode: "discount", rule: "9.5折 · 2条报价", special: false, big: true, byRatio: false, eff: "2026-08-05 00:00", exp: "2027-08-05 23:59", discount: 9.5, minus: 0, overrides: {} },
-    { id: "AP202608003", name: "XX贸易-计费重×比重分档", status: "启用", custCode: "C10086", custName: "深圳XX贸易", quoteId: "SQ-PK1395", quoteIds: ["SQ-PK1395"], quoteName: "PK1395分仓", product: "美国空派AX超大件悦选货", mode: "override", rule: "局部覆盖 · 按比重分档", special: false, big: true, byRatio: true, eff: "2026-08-05 00:00", exp: "2027-08-05 23:59", discount: 10, minus: 0, overrides: { "SQ-PK1395::65|美西|210": 61, "SQ-PK1395::100|美西|300": 68, "SQ-PK1395::40|美东|167": 57 } },
-    { id: "AP202607015", name: "ZZ-美西65段特价", status: "草稿", custCode: "C10088", custName: "东莞ZZ供应链", quoteId: "SQ-PK1395", quoteIds: ["SQ-PK1395"], quoteName: "PK1395分仓", product: "美国空派AX超大件悦选货", mode: "override", rule: "局部覆盖", special: true, big: false, byRatio: false, eff: "2026-08-10 00:00", exp: "2026-09-10 23:59", discount: 10, minus: 0, overrides: { "SQ-PK1395::65|美西": 61 } },
-    { id: "AP202605020", name: "XX贸易-旧协议", status: "已过期", custCode: "C10086", custName: "深圳XX贸易", quoteId: "SQ-US-AIR", quoteIds: ["SQ-US-AIR"], quoteName: "美西空派公布衔接价-2026", product: "美国空派 LAX", mode: "discount", rule: "9折", special: false, big: true, byRatio: false, eff: "2025-08-01 00:00", exp: "2026-07-31 23:59", discount: 9, minus: 0, overrides: {} }
+    { id: "AP202608001", name: "XX贸易-PK1395协议", status: "启用", custCode: "C10086", custName: "深圳XX贸易", quoteId: "SQ-PK1395", quoteIds: ["SQ-PK1395"], quoteName: "PK1395分仓", product: "美国空派AX超大件悦选货", mode: "discount", rule: "9.5折", branch: "深圳分公司", big: true, eff: "2026-08-01 00:00", exp: "2027-08-01 23:59", discount: 9.5, minus: 0, overrides: {} },
+    { id: "AP202608002", name: "YY电商-统一降7毛", status: "启用", custCode: "C10087", custName: "广州YY电商", quoteId: "SQ-US-AIR", quoteIds: ["SQ-US-AIR"], quoteName: "美西空派公布衔接价-2026", product: "美国空派 LAX", mode: "minus", rule: "−0.7元/kg", branch: "义乌总部", big: false, eff: "2026-07-01 00:00", exp: "2026-12-31 23:59", discount: 10, minus: -0.7, overrides: {} },
+    { id: "AP202608006", name: "XX贸易-快递派重量段", status: "启用", custCode: "C10086", custName: "深圳XX贸易", quoteId: "SQ-EXP-W", quoteIds: ["SQ-EXP-W", "SQ-EXP-C", "SQ-EXP-E", "SQ-EXP-XL", "SQ-EXP-ONT", "SQ-PK1395"], quoteName: "美西快递派-标准 +5", product: "美国快递派 美西", mode: "minus", rule: "−0.5元/kg · 6条快递派", branch: "深圳分公司", big: false, eff: "2026-08-20 00:00", exp: "2027-08-20 23:59", discount: 10, minus: -0.5, overrides: {} },
+    { id: "AP202608004", name: "XX贸易-多报价（结构不同）", status: "启用", custCode: "C10086", custName: "深圳XX贸易", quoteId: "SQ-PK1395", quoteIds: ["SQ-PK1395", "SQ-WEST-ONLY"], quoteName: "PK1395分仓 + 美西专线特价仓-2026", product: "美国空派AX超大件悦选货", mode: "discount", rule: "9.5折 · 2条报价", branch: "深圳分公司", big: true, eff: "2026-08-05 00:00", exp: "2027-08-05 23:59", discount: 9.5, minus: 0, overrides: {} },
+    { id: "AP202607015", name: "ZZ-美西协议", status: "草稿", custCode: "C10088", custName: "东莞ZZ供应链", quoteId: "SQ-PK1395", quoteIds: ["SQ-PK1395"], quoteName: "PK1395分仓", product: "美国空派AX超大件悦选货", mode: "minus", rule: "−3元/kg", branch: "苏州分公司", big: false, eff: "2026-08-10 00:00", exp: "2026-09-10 23:59", discount: 10, minus: -3, overrides: {} },
+    { id: "AP202605020", name: "XX贸易-旧协议", status: "已过期", custCode: "C10086", custName: "深圳XX贸易", quoteId: "SQ-US-AIR", quoteIds: ["SQ-US-AIR"], quoteName: "美西空派公布衔接价-2026", product: "美国空派 LAX", mode: "discount", rule: "9折", branch: "义乌总部", big: true, eff: "2025-08-01 00:00", exp: "2026-07-31 23:59", discount: 9, minus: 0, overrides: {} }
   ];
 
   var selected = new Set();
@@ -727,12 +807,12 @@
   var editingId = null;
   var pickerType = null;
   var pickerTarget = null;
-  var expireMode = "expire";
   var currentQuote = null;
   var overrideDraft = {};
   var selectedQuotes = [];
   var pickerQuoteDraft = [];
   var activeQuoteId = null;
+  var weightDraft = {};
 
   function $(id) { return document.getElementById(id); }
   function toast(msg) {
@@ -753,12 +833,10 @@
     return null;
   }
   function getMode() {
-    var extra = document.querySelector('input[name="modeExtra"]:checked');
-    if (extra && extra.value === "full") return "full";
-    return $("fMode").value || "discount";
+    var m = $("fMode").value || "discount";
+    return m === "override" ? "discount" : m;
   }
   function round2(n) { return Math.round(n * 100) / 100; }
-  function ratioOn() { return !!( $("fByRatio") && $("fByRatio").checked ); }
   function quoteIdsOf(r) {
     if (r && r.quoteIds && r.quoteIds.length) return r.quoteIds.slice();
     return r && r.quoteId ? [r.quoteId] : [];
@@ -770,9 +848,9 @@
     list = list || quoteObjs();
     if (list.length < 2) return false;
     var z0 = list[0].zones.join("|");
-    var w0 = list[0].weights.map(function (w) { return w.title; }).join("|");
+    var w0 = workingWeights(list[0]).map(function (w) { return w.title; }).join("|");
     return list.some(function (q) {
-      return q.zones.join("|") !== z0 || q.weights.map(function (w) { return w.title; }).join("|") !== w0;
+      return q.zones.join("|") !== z0 || workingWeights(q).map(function (w) { return w.title; }).join("|") !== w0;
     });
   }
   function quoteLabel(ids) {
@@ -784,24 +862,77 @@
     if (names.length === 1) return names[0];
     return names[0] + " +" + (names.length - 1);
   }
-  function cellKey(wTitle, zone, ratioId) {
+  function cellKey(wTitle, zone) {
     var q = currentQuote ? currentQuote.id : "_";
-    var mid = ratioOn() ? (wTitle + "|" + zone + "|" + ratioId) : (wTitle + "|" + zone);
-    return q + "::" + mid;
+    return q + "::" + wTitle + "|" + zone;
   }
-  function agCellKey(ag, wTitle, zone, ratioId, quoteId) {
+  function agCellKey(ag, wTitle, zone, quoteId) {
     var q = quoteId || quoteIdsOf(ag)[0] || ag.quoteId || "_";
-    var mid = ag.byRatio ? (wTitle + "|" + zone + "|" + ratioId) : (wTitle + "|" + zone);
-    return q + "::" + mid;
+    return q + "::" + wTitle + "|" + zone;
   }
-  function ratioLabel(id) {
-    for (var i = 0; i < RATIOS.length; i++) if (RATIOS[i].id === id) return RATIOS[i].label;
-    return id || "—";
+  function cloneWeights(ws) {
+    return (ws || []).map(function (w) { return { title: String(w.title), from: Number(w.from), to: Number(w.to) }; });
+  }
+  function weightsEqual(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (Number(a[i].from) !== Number(b[i].from) || Number(a[i].to) !== Number(b[i].to)) return false;
+    }
+    return true;
+  }
+  function ensureWeightDraft(qid) {
+    if (!qid || (weightDraft[qid] && weightDraft[qid].length)) return;
+    var q = findQuote(qid);
+    weightDraft[qid] = cloneWeights(q ? q.weights : []);
+  }
+  function workingWeights(q) {
+    if (!q) return [];
+    ensureWeightDraft(q.id);
+    return weightDraft[q.id] && weightDraft[q.id].length ? weightDraft[q.id] : q.weights;
+  }
+  function workingBase(q, w, zi) {
+    if (!q || !w) return 0;
+    var orig = bandOf(q, w.to > 0 ? w.to : (Number(w.from) + 1));
+    var arr = orig ? (q.prices[orig.title] || []) : [];
+    return arr[zi] != null ? arr[zi] : 0;
+  }
+  function packWeightMap() {
+    var out = {};
+    quoteObjs().forEach(function (q) {
+      var ws = workingWeights(q);
+      if (!weightsEqual(ws, q.weights)) out[q.id] = cloneWeights(ws);
+    });
+    return out;
+  }
+  function migrateOverrideTitle(qid, oldTitle, newTitle) {
+    if (!qid || !oldTitle || oldTitle === newTitle) return;
+    var prefix = qid + "::";
+    Object.keys(overrideDraft).forEach(function (k) {
+      if (k.indexOf(prefix + oldTitle + "|") !== 0) return;
+      var nk = prefix + newTitle + k.slice((prefix + oldTitle).length);
+      overrideDraft[nk] = overrideDraft[k];
+      delete overrideDraft[k];
+    });
+  }
+  function dropOverrideTitle(qid, title) {
+    var prefix = qid + "::" + title + "|";
+    Object.keys(overrideDraft).forEach(function (k) {
+      if (k.indexOf(prefix) === 0) delete overrideDraft[k];
+    });
+  }
+  function weightError(ws) {
+    if (!ws || !ws.length) return "至少保留 1 个重量段";
+    var sorted = ws.slice().sort(function (a, b) { return a.from - b.from; });
+    for (var i = 0; i < sorted.length; i++) {
+      if (!(sorted[i].to > sorted[i].from)) return "每段须「从 < 到」";
+      if (i && sorted[i].from < sorted[i - 1].to) return "重量段区间不能重叠";
+    }
+    return "";
   }
 
   function calcFinal(base, mode, discount, minus, overrideVal) {
-    if (mode === "override" || mode === "full") {
-      if (overrideVal === "" || overrideVal == null) return mode === "full" ? null : base;
+    if (mode === "full") {
+      if (overrideVal === "" || overrideVal == null) return null;
       var n = parseFloat(overrideVal);
       return isNaN(n) ? base : n;
     }
@@ -816,7 +947,6 @@
       var v = parseFloat(minus) || 0;
       return (v >= 0 ? "+" : "") + v + "元/kg";
     }
-    if (mode === "override") return "局部覆盖";
     return "全量重填";
   }
 
@@ -849,15 +979,14 @@
       { no: "TX-20260808-102", at: "2026-08-08", zone: "美西", kg: 18 },
       { no: "TX-20260811-119", at: "2026-08-11", zone: "美东", kg: 41 }
     ],
+    AP202608006: [
+      { no: "TX-20260820-601", at: "2026-08-20", zone: "美西", kg: 38, quoteId: "SQ-EXP-W" },
+      { no: "TX-20260820-608", at: "2026-08-20", zone: "美中", kg: 52, quoteId: "SQ-EXP-C" },
+      { no: "TX-20260821-614", at: "2026-08-21", zone: "美东", kg: 88, quoteId: "SQ-EXP-E" }
+    ],
     AP202608004: [
       { no: "TX-20260812-401", at: "2026-08-12", zone: "美西", kg: 52, quoteId: "SQ-PK1395" },
       { no: "TX-20260814-418", at: "2026-08-14", zone: "美西", kg: 28, quoteId: "SQ-WEST-ONLY" }
-    ],
-    AP202608003: [
-      { no: "TX-20260811-301", at: "2026-08-11", zone: "美西", kg: 52, ratio: "210" },
-      { no: "TX-20260813-308", at: "2026-08-13", zone: "美西", kg: 88, ratio: "300" },
-      { no: "TX-20260816-322", at: "2026-08-16", zone: "美东", kg: 35, ratio: "167" },
-      { no: "TX-20260819-340", at: "2026-08-19", zone: "美中", kg: 120, ratio: "250" }
     ],
     AP202605020: [
       { no: "TX-20260702-077", at: "2026-07-02", zone: "美西", kg: 22 },
@@ -869,22 +998,24 @@
     return (WB_SEED[ag.id] || []).map(function (w) {
       var qid = w.quoteId || ag.quoteId;
       var quote = findQuote(qid);
-      var base = quote ? basePrice(quote, w.zone, w.kg) : 0;
-      var band = quote ? bandOf(quote, w.kg) : null;
-      var ratioId = ag.byRatio ? (w.ratio || "") : "";
-      var ovKey = band ? agCellKey(ag, band.title, w.zone, ratioId, qid) : "";
+      var ws = (ag.weightMap && ag.weightMap[qid]) || (quote && quote.weights) || [];
+      var band = null;
+      for (var i = 0; i < ws.length; i++) {
+        if (w.kg <= ws[i].to) { band = ws[i]; break; }
+      }
+      if (!band && ws.length) band = ws[ws.length - 1];
+      var base = quote && band ? workingBase(quote, band, zoneIndex(quote, w.zone)) : 0;
+      var ovKey = band ? agCellKey(ag, band.title, w.zone, qid) : "";
       var ov = ag.overrides && ovKey ? ag.overrides[ovKey] : null;
       var agree = calcFinal(base, ag.mode, ag.discount, ag.minus, ov);
       var billed = agree == null ? base : agree;
-      var hit = (ag.mode === "override" || ag.mode === "full") && (ov == null || ov === "")
-        ? "回退原价" : "协议价";
+      var hit = ag.mode === "full" && (ov == null || ov === "") ? "回退原价" : "协议价";
       var baseAmt = round2(base * w.kg);
       var billAmt = round2(billed * w.kg);
       return {
         no: w.no, at: w.at, zone: w.zone, kg: w.kg,
         quoteName: quote ? quote.name : "—",
         band: band ? band.title : "—",
-        ratio: ratioId ? ratioLabel(ratioId) : "",
         base: base, billed: billed, hit: hit,
         baseAmt: baseAmt, billAmt: billAmt, diffAmt: round2(baseAmt - billAmt)
       };
@@ -897,9 +1028,7 @@
     var list = waybillsFor(r);
     $("wbDiffTitle").textContent = "运单对照 · " + r.custName;
     $("wbDiffHint").innerHTML =
-      "协议 <b>" + r.name + "</b> · 原价=命中的那条基准销售报价 · 运单价=协议生效价。多报价时按运单产品落到对应报价矩阵，<strong>不混分区/重量段</strong>。" +
-      (r.byRatio ? "本协议已开<strong>按比重分档</strong>。" : "") +
-      "不替代「大客户调成本」。";
+      "协议 <b>" + r.name + "</b> · 原价=命中的那条基准销售报价 · 运单价=协议生效价。多报价时按运单产品落到对应报价矩阵，<strong>不混分区/重量段</strong>。不替代「大客户调成本」。";
     var tickets = list.length;
     var kgs = 0, baseSum = 0, billSum = 0, diffSum = 0;
     list.forEach(function (w) {
@@ -917,14 +1046,12 @@
         "<th>运单号</th><th>下单日</th>" +
         (quoteIdsOf(r).length > 1 ? "<th>销售报价</th>" : "") +
         "<th>分区</th><th>重量段</th>" +
-        (r.byRatio ? "<th>比重</th>" : "") +
         '<th class="num">计费重</th><th class="num">原价 元/kg</th><th class="num">运单价 元/kg</th>' +
         "<th>取价</th><th class='num'>原价金额</th><th class='num'>运单金额</th><th class='num'>差额</th>" +
         "</tr></thead><tbody>" + list.map(function (w) {
           return "<tr><td>" + w.no + "</td><td>" + w.at + "</td>" +
             (quoteIdsOf(r).length > 1 ? "<td>" + (w.quoteName || "—") + "</td>" : "") +
             "<td>" + w.zone + "</td><td>" + w.band +
-            (r.byRatio ? "</td><td>" + (w.ratio || "—") : "") +
             '</td><td class="num">' + w.kg + '</td><td class="num">' + w.base.toFixed(2) +
             '</td><td class="num">' + w.billed.toFixed(2) + "</td><td>" + w.hit +
             '</td><td class="num">' + w.baseAmt.toFixed(2) + '</td><td class="num">' + w.billAmt.toFixed(2) +
@@ -936,11 +1063,9 @@
 
   function openCostAdj(r) {
     var quote = findQuote(r.quoteId);
-    var useRatio = !!r.byRatio;
     $("costAdjTitle").textContent = "大客户调成本 · " + r.custName;
     $("costAdjHint").innerHTML =
-      "不在此维护价表。按本协议矩阵" + (useRatio ? "（<b>计费重段 × 比重档</b>）" : "（计费重段 × 分区）") +
-      "对照<strong>申请价 vs 协议生效价</strong>。" +
+      "不在此维护价表。按本协议矩阵（计费重段 × 分区）对照<strong>申请价 vs 协议生效价</strong>。" +
       (quoteIdsOf(r).length > 1 ? "多报价时按运单命中的那条销售报价取格，<strong>不把不同结构拼成一张表</strong>。下表示意第一条报价。" : "") +
       "价表在「新增/修改协议价」第②步维护。";
     if (!quote) {
@@ -949,41 +1074,32 @@
       openMask("costAdjMask");
       return;
     }
-    var ratioList = useRatio ? RATIOS : [{ id: "", label: "—" }];
     var zones = quote.zones.slice(0, 2);
     var weights = quote.weights.slice(0, 2);
     var lines = [];
     var diffSum = 0;
     weights.forEach(function (w) {
       var bases = quote.prices[w.title] || [];
-      ratioList.forEach(function (ratio) {
-        zones.forEach(function (z, zi) {
-          var base = bases[zi] || 0;
-          var ov = r.overrides && r.overrides[agCellKey(r, w.title, z, ratio.id)];
-          var agree = calcFinal(base, r.mode, r.discount, r.minus, ov);
-          if (agree == null) agree = base;
-          var apply = round2(agree - 0.3);
-          var d = round2(apply - agree);
-          diffSum += d;
-          lines.push({
-            band: w.title, ratio: ratio.label, zone: z,
-            agree: agree, apply: apply, diff: d
-          });
-        });
+      zones.forEach(function (z, zi) {
+        var base = bases[zi] || 0;
+        var ov = r.overrides && r.overrides[agCellKey(r, w.title, z)];
+        var agree = calcFinal(base, r.mode, r.discount, r.minus, ov);
+        if (agree == null) agree = base;
+        var apply = round2(agree - 0.3);
+        var d = round2(apply - agree);
+        diffSum += d;
+        lines.push({ band: w.title, zone: z, agree: agree, apply: apply, diff: d });
       });
     });
     $("costAdjSum").innerHTML =
       '<div class="box"><div class="lab">对照格数</div><div class="val">' + lines.length + "</div></div>" +
-      '<div class="box"><div class="lab">结构</div><div class="val" style="font-size:13px">' + (useRatio ? "计费重×比重" : "仅重量段") + "</div></div>" +
+      '<div class="box"><div class="lab">结构</div><div class="val" style="font-size:13px">分区 × 重量段</div></div>' +
       '<div class="box"><div class="lab">申请价 vs 生效价</div><div class="val red">' + diffSum.toFixed(2) + "</div></div>" +
       '<div class="box"><div class="lab">落账</div><div class="val" style="font-size:13px">业务员成本</div></div>';
     $("costAdjTbl").innerHTML = "<thead><tr>" +
-      "<th>重量段</th>" + (useRatio ? "<th>比重档</th>" : "") +
-      "<th>分区</th><th class='num'>协议生效价</th><th class='num'>申请价</th><th class='num'>差额</th></tr></thead><tbody>" +
+      "<th>重量段</th><th>分区</th><th class='num'>协议生效价</th><th class='num'>申请价</th><th class='num'>差额</th></tr></thead><tbody>" +
       lines.map(function (x) {
-        return "<tr><td>" + x.band + "kg</td>" +
-          (useRatio ? "<td>" + x.ratio + "</td>" : "") +
-          "<td>" + x.zone + "</td>" +
+        return "<tr><td>" + x.band + "kg</td><td>" + x.zone + "</td>" +
           '<td class="num">' + Number(x.agree).toFixed(2) + "</td>" +
           '<td class="num">' + x.apply.toFixed(2) + "</td>" +
           '<td class="num diff">' + x.diff.toFixed(2) + "</td></tr>";
@@ -998,7 +1114,7 @@
     var name = ($("qName").value || "").trim().toLowerCase();
     var product = ($("qProduct").value || "").trim().toLowerCase();
     var mode = $("qMode").value;
-    var special = $("qSpecial").value;
+    var branch = $("qBranch").value;
     var big = $("qBig").value;
     return rows.filter(function (r) {
       if (c && !(r.custCode.toLowerCase().indexOf(c) >= 0 || r.custName.toLowerCase().indexOf(c) >= 0)) return false;
@@ -1007,8 +1123,7 @@
       if (name && r.name.toLowerCase().indexOf(name) < 0) return false;
       if (product && (r.product || "").toLowerCase().indexOf(product) < 0) return false;
       if (mode && r.mode !== mode) return false;
-      if (special === "1" && !r.special) return false;
-      if (special === "0" && r.special) return false;
+      if (branch && (r.branch || "") !== branch) return false;
       if (big === "1" && !r.big) return false;
       if (big === "0" && r.big) return false;
       return true;
@@ -1030,6 +1145,7 @@
     $("btnSaveAs").disabled = n !== 1;
     $("btnCostAdj").disabled = n !== 1;
     $("btnWbDiff").disabled = n !== 1;
+    $("btnBatch").disabled = n !== 1;
   }
 
   function render() {
@@ -1045,8 +1161,9 @@
         "<td>" + quoteLabel(quoteIdsOf(r)) + "</td>" +
         "<td>" + (r.product || "—") + "</td>" +
         "<td><span class=\"tag mode\">" + (MODE_LABEL[r.mode] || r.mode) + "</span></td>" +
-        "<td>" + (r.rule || "—") + (r.byRatio ? ' <span class="tag mode">按比重分档</span>' : "") + "</td>" +
-        "<td>" + (r.special ? '<span class="tag warn">是</span>' : "否") + "</td>" +
+        "<td>" + (r.rule || "—") +
+        (r.weightMap && Object.keys(r.weightMap).length ? ' <span class="tag mode">重量段已改</span>' : "") + "</td>" +
+        "<td>" + (r.branch || "—") + "</td>" +
         "<td>" + r.eff + "</td>" +
         "<td>" + r.exp + "</td>" +
       "</tr>";
@@ -1103,9 +1220,10 @@
     var multi = type === "quote" && target === "fQuoteChips";
     $("pickerTitle").textContent = type === "customer" ? "选择客户" : type === "quote"
       ? (multi ? "选择基准销售报价（可多选）" : "选择基准销售报价")
-      : "选择";
+      : type === "branch" ? "选择分公司" : "选择";
     $("pickerSearch").value = "";
     $("btnPickerOk").hidden = !multi;
+    $("pickerHint").hidden = !multi;
     if (multi) pickerQuoteDraft = selectedQuotes.slice();
     fillPicker();
     openMask("pickerMask");
@@ -1120,14 +1238,22 @@
       }).forEach(function (c) {
         html += '<div class="item" data-v="' + c.name + '" data-code="' + c.code + '"><div class="body">' + c.name + '<span class="code">' + c.code + "</span></div></div>";
       });
+    } else if (pickerType === "branch") {
+      BRANCHES.filter(function (b) {
+        return !q || b.toLowerCase().indexOf(q) >= 0;
+      }).forEach(function (b) {
+        html += '<div class="item" data-v="' + b + '"><div class="body">' + b + "</div></div>";
+      });
     } else if (pickerType === "quote") {
       QUOTES.filter(function (x) {
-        return !q || x.name.toLowerCase().indexOf(q) >= 0 || x.product.toLowerCase().indexOf(q) >= 0;
+        var line = (x.line || "").toLowerCase();
+        return !q || x.name.toLowerCase().indexOf(q) >= 0 || x.product.toLowerCase().indexOf(q) >= 0 || line.indexOf(q) >= 0;
       }).forEach(function (x) {
         var on = multi && pickerQuoteDraft.indexOf(x.id) >= 0;
+        var lineTag = x.line ? '<span class="tag ' + (x.line === "快递派" ? "mode" : "muted") + '">' + x.line + "</span> " : "";
         html += '<div class="item' + (on ? " on" : "") + '" data-id="' + x.id + '" data-v="' + x.name + '">' +
           (multi ? '<input type="checkbox"' + (on ? " checked" : "") + " />" : "") +
-          '<div class="body">' + x.name +
+          '<div class="body">' + lineTag + x.name +
           '<span class="sub">分区 ' + x.zones.join("/") + " · 重量段 " + x.weights.map(function (w) { return w.title; }).join("/") + "kg · " + x.product + "</span></div></div>";
       });
     }
@@ -1181,7 +1307,7 @@
       return;
     }
     box.innerHTML = list.map(function (q) {
-      return '<span class="qchip" data-id="' + q.id + '">' + q.name +
+      return '<span class="qchip" data-id="' + q.id + '">' + (q.line ? q.line + " · " : "") + q.name +
         (wizardMode === "view" ? "" : '<button type="button" class="x" data-rm="' + q.id + '" aria-label="移除">×</button>') +
         "</span>";
     }).join("");
@@ -1209,14 +1335,21 @@
     if (activeQuoteId && selectedQuotes.indexOf(activeQuoteId) < 0) activeQuoteId = selectedQuotes[0];
     if (!activeQuoteId) activeQuoteId = selectedQuotes[0];
     currentQuote = findQuote(activeQuoteId);
+    list.forEach(function (q) { ensureWeightDraft(q.id); });
     box.classList.remove("hidden");
     var cards = list.map(function (q) {
       return '<div class="q-card"><b>' + q.name + "</b> · " + q.product +
-        "<br/>分区 <b>" + q.zones.join(" / ") + "</b> · 重量段 <b>" + q.weights.map(function (w) { return w.title; }).join(" / ") + "kg</b></div>";
+        (q.line ? ' <span class="tag ' + (q.line === "快递派" ? "mode" : "muted") + '">' + q.line + "</span>" : "") +
+        "<br/>分区 <b>" + q.zones.join(" / ") + "</b> · 重量段 <b>" + workingWeights(q).map(function (w) { return w.title; }).join(" / ") + "kg</b>" +
+        (weightsEqual(workingWeights(q), q.weights) ? "" : " <span class=\"tag mode\">已改</span>") + "</div>";
     }).join("");
+    var expN = list.filter(function (q) { return q.line === "快递派"; }).length;
     var warn = quotesStructDiff(list)
-      ? '<div class="struct-warn"><b>结构不一致，不拼成一张表。</b>统一折扣/减额一次套到全部报价（各跟自己的分区×重量段出生效价）。指定格覆盖 / 全量重填请在第②步用报价页签分别维护。</div>'
-      : (list.length > 1 ? '<div class="struct-warn" style="background:#f6ffed;border-color:#b7eb8f;color:#135200">多条报价结构一致，折扣/减额仍一次套全部；指定格覆盖仍按报价页签分填，避免串格。</div>' : "");
+      ? '<div class="struct-warn"><b>结构不一致，不拼成一张表。</b>统一折扣/减额一次套到全部报价（各跟自己的分区×重量段出生效价）。</div>'
+      : (list.length > 1 ? '<div class="struct-warn" style="background:#f6ffed;border-color:#b7eb8f;color:#135200">多条报价结构一致，折扣/减额仍一次套全部。</div>' : "");
+    if (expN > 1) {
+      warn += '<div class="struct-warn" style="background:#e6f7ff;border-color:#91d5ff;color:#0050b3">已挂 <b>' + expN + "</b> 条快递派：第②步可同步重量段。空派等其它产品改价走全量重填价格。</div>";
+    }
     box.innerHTML = "已挂 <b>" + list.length + "</b> 条基准报价：" + cards + warn;
     if (!$("fName").value.trim() && $("fCustomer").value) {
       $("fName").value = $("fCustomer").value + "-" + (list.length > 1 ? "多报价协议" : list[0].name + "协议");
@@ -1246,12 +1379,15 @@
     if (!activeQuoteId || selectedQuotes.indexOf(activeQuoteId) < 0) activeQuoteId = selectedQuotes[0];
     currentQuote = findQuote(activeQuoteId);
     var diff = quotesStructDiff(list);
-    hint.innerHTML = diff
-      ? "当前报价结构：分区 <b>" + currentQuote.zones.join("/") + "</b> · 重量段 <b>" + currentQuote.weights.map(function (w) { return w.title; }).join("/") + "kg</b>。与其它报价不同，只改本页签，不要对照着另一张表填。"
-      : "多报价共用上方折扣/减额；本页签只预览/覆盖 <b>" + currentQuote.name + "</b> 自己的矩阵。";
+    hint.innerHTML = (diff
+      ? "当前报价结构：分区 <b>" + currentQuote.zones.join("/") + "</b> · 重量段 <b>" + workingWeights(currentQuote).map(function (w) { return w.title; }).join("/") + "kg</b>。与其它报价不同，矩阵只改本页签。"
+      : "多报价共用上方折扣/减额；本页签只预览 <b>" + currentQuote.name + "</b> 自己的矩阵。") +
+      (currentQuote.line === "快递派" && expressSiblings().length
+        ? " 当前是快递派，可把重量段<strong>同步到本协议其它快递派</strong>。其他产品改价走全量重填价格。"
+        : " 重量段可单条改。空派等其它产品改价走<strong>全量重填价格</strong>。");
     bar.innerHTML = list.map(function (q) {
       return '<button type="button" data-qid="' + q.id + '" class="' + (q.id === activeQuoteId ? "on" : "") + '">' +
-        q.name + '<span class="sub">' + q.zones.length + " 分区 · " + q.weights.length + " 重量段</span></button>";
+        q.name + '<span class="sub">' + (q.line || "") + (q.line ? " · " : "") + q.zones.length + " 分区 · " + workingWeights(q).length + " 重量段</span></button>";
     }).join("");
   }
   $("quoteTabBar").addEventListener("click", function (e) {
@@ -1260,7 +1396,119 @@
     activeQuoteId = btn.getAttribute("data-qid");
     currentQuote = findQuote(activeQuoteId);
     renderQuoteTabs();
+    renderWeightBar();
     renderMatrix();
+  });
+
+  function renderWeightBar() {
+    var box = $("weightRows");
+    if (!currentQuote) {
+      box.innerHTML = "";
+      return;
+    }
+    ensureWeightDraft(currentQuote.id);
+    var ws = workingWeights(currentQuote);
+    var err = weightError(ws);
+    var changed = !weightsEqual(ws, currentQuote.weights);
+    box.innerHTML = ws.map(function (w, i) {
+      return '<div class="w-row' + (err ? " err" : "") + '">' +
+        '<span class="lab">第' + (i + 1) + "段</span>" +
+        '<input type="number" min="0" step="1" data-wi="' + i + '" data-wf="from" value="' + w.from + '" ' + (wizardMode === "view" ? "disabled" : "") + " />" +
+        '<span class="to">~</span>' +
+        '<input type="number" min="0" step="1" data-wi="' + i + '" data-wf="to" value="' + w.to + '" ' + (wizardMode === "view" ? "disabled" : "") + " />" +
+        '<span class="lab">kg（列名 ' + w.title + "）" + (changed && i === 0 ? " · 已相对基准改过" : "") + "</span>" +
+        '<button type="button" class="btn" data-wdel="' + i + '" ' + (wizardMode === "view" || ws.length <= 1 ? "disabled" : "") + ">删除</button>" +
+        "</div>";
+    }).join("") + (err ? '<div class="hint" style="color:#cf1322;margin-top:4px">' + err + "</div>" : "");
+    $("btnWeightAdd").disabled = wizardMode === "view";
+    $("btnWeightReset").disabled = wizardMode === "view" || !changed;
+    var sibs = expressSiblings();
+    var canSync = wizardMode !== "view" && currentQuote.line === "快递派" && sibs.length > 0 && !err;
+    $("btnWeightSync").disabled = !canSync;
+    $("btnWeightSync").title = wizardMode === "view"
+      ? "查看模式不可改"
+      : (currentQuote.line !== "快递派"
+        ? "仅快递派可同步，空派等其它产品不同步"
+        : (sibs.length ? ("同步到本协议另外 " + sibs.length + " 条快递派") : "本协议没有其它快递派"));
+  }
+  $("weightRows").addEventListener("change", function (e) {
+    var inp = e.target.closest("input[data-wi]");
+    if (!inp || !currentQuote) return;
+    var i = parseInt(inp.getAttribute("data-wi"), 10);
+    var field = inp.getAttribute("data-wf");
+    var ws = workingWeights(currentQuote);
+    if (!ws[i]) return;
+    var oldTitle = ws[i].title;
+    ws[i][field] = parseFloat(inp.value);
+    if (isNaN(ws[i][field])) ws[i][field] = 0;
+    ws[i].title = String(ws[i].to);
+    migrateOverrideTitle(currentQuote.id, oldTitle, ws[i].title);
+    renderWeightBar();
+    renderQuoteTabs();
+    renderMatrix();
+  });
+  $("weightRows").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-wdel]");
+    if (!btn || !currentQuote || wizardMode === "view") return;
+    var i = parseInt(btn.getAttribute("data-wdel"), 10);
+    var ws = workingWeights(currentQuote);
+    if (ws.length <= 1) return;
+    dropOverrideTitle(currentQuote.id, ws[i].title);
+    ws.splice(i, 1);
+    renderWeightBar();
+    renderQuoteTabs();
+    renderMatrix();
+  });
+  $("btnWeightAdd").addEventListener("click", function () {
+    if (!currentQuote || wizardMode === "view") return;
+    var ws = workingWeights(currentQuote);
+    var last = ws[ws.length - 1];
+    var from = last ? Number(last.to) : 0;
+    var to = from + 50;
+    ws.push({ title: String(to), from: from, to: to });
+    renderWeightBar();
+    renderQuoteTabs();
+    renderMatrix();
+  });
+  $("btnWeightReset").addEventListener("click", function () {
+    if (!currentQuote || wizardMode === "view") return;
+    var ws = workingWeights(currentQuote);
+    ws.forEach(function (w) { dropOverrideTitle(currentQuote.id, w.title); });
+    weightDraft[currentQuote.id] = cloneWeights(currentQuote.weights);
+    renderWeightBar();
+    renderQuoteTabs();
+    renderMatrix();
+    toast("已恢复本报价基准重量段");
+  });
+  function expressSiblings() {
+    if (!currentQuote || currentQuote.line !== "快递派") return [];
+    return quoteObjs().filter(function (q) {
+      return q.line === "快递派" && q.id !== currentQuote.id;
+    });
+  }
+  $("btnWeightSync").addEventListener("click", function () {
+    if (!currentQuote || wizardMode === "view") return;
+    if (currentQuote.line !== "快递派") { toast("仅快递派可同步重量段"); return; }
+    var src = workingWeights(currentQuote);
+    var err = weightError(src);
+    if (err) { toast("重量段：" + err); return; }
+    var sibs = expressSiblings();
+    if (!sibs.length) { toast("本协议没有其它快递派"); return; }
+    if (!window.confirm("把当前重量段同步到本协议另外 " + sibs.length + " 条快递派？分区和单价仍各跟各的报价。空派不同步。")) return;
+    var cloned = cloneWeights(src);
+    var keep = {};
+    cloned.forEach(function (w) { keep[w.title] = true; });
+    sibs.forEach(function (q) {
+      workingWeights(q).forEach(function (w) {
+        if (!keep[w.title]) dropOverrideTitle(q.id, w.title);
+      });
+      weightDraft[q.id] = cloneWeights(cloned);
+    });
+    applyQuotes();
+    renderQuoteTabs();
+    renderWeightBar();
+    renderMatrix();
+    toast("已同步到 " + sibs.length + " 条快递派");
   });
 
   document.getElementById("modeCards").addEventListener("click", function (e) {
@@ -1268,26 +1516,15 @@
     if (!card || wizardMode === "view") return;
     document.querySelectorAll(".mode-card").forEach(function (el) { el.classList.toggle("on", el === card); });
     $("fMode").value = card.getAttribute("data-mode");
-    document.querySelector('input[name="modeExtra"][value="inherit"]').checked = true;
-  });
-  document.querySelectorAll('input[name="modeExtra"]').forEach(function (r) {
-    r.addEventListener("change", function () {
-      if (r.value === "full" && r.checked) {
-        document.querySelectorAll(".mode-card").forEach(function (el) { el.classList.remove("on"); });
-        $("fMode").value = "full";
-      }
-    });
   });
 
   function syncRuleBar() {
     var mode = getMode();
     $("ruleDiscountWrap").hidden = mode !== "discount";
     $("ruleMinusWrap").hidden = mode !== "minus";
-    $("btnFillDemo").hidden = !(mode === "override" || mode === "full");
     if (mode === "discount") $("ruleHint").textContent = "生效价 = 基准价 × 折扣 ÷ 10（结构全继承）";
     else if (mode === "minus") $("ruleHint").textContent = "生效价 = 基准价 + 减额（负数降价）";
-    else if (mode === "override") $("ruleHint").textContent = "仅填写的单元格覆盖；空白 = 跟基准价";
-    else $("ruleHint").textContent = "须填完整矩阵（兼容旧全量协议价）";
+    else $("ruleHint").textContent = "按本协议分区 × 重量段整表重填单价";
   }
 
   function renderMatrix() {
@@ -1300,49 +1537,33 @@
     var mode = getMode();
     var discount = $("fDiscount").value;
     var minus = $("fMinus").value;
-    var editable = (mode === "override" || mode === "full") && wizardMode !== "view";
-    var useRatio = ratioOn();
-    var ratioList = useRatio ? RATIOS : [{ id: "", label: "" }];
+    var editable = mode === "full" && wizardMode !== "view";
     $("matrixCap").textContent = (quoteObjs().length > 1 ? ("当前报价「" + currentQuote.name + "」· ") : "") +
-      (useRatio
-        ? "横向：分区 · 纵向：重量段 × 比重档；单元格「基准 → 生效」。"
-        : "横向：分区 · 纵向：重量段 · 单元格「基准 → 生效」；覆盖模式下可编辑。");
+      "横向：分区 · 纵向：重量段 · 单元格「基准 → 生效」。";
 
     $("matrixHead").innerHTML = "<tr>" +
-      (useRatio ? "<th>重量段</th><th>比重档</th>" : "<th>重量段 \\ 分区</th>") +
+      "<th>重量段 \\ 分区</th>" +
       currentQuote.zones.map(function (z) { return "<th>" + z + "</th>"; }).join("") + "</tr>";
 
     var html = "";
-    currentQuote.weights.forEach(function (w) {
-      var bases = currentQuote.prices[w.title] || [];
-      ratioList.forEach(function (ratio, ri) {
-        var cells = currentQuote.zones.map(function (z, zi) {
-          var base = bases[zi];
-          var key = cellKey(w.title, z, ratio.id);
-          var ov = overrideDraft[key];
-          var final = calcFinal(base, mode, discount, minus, ov);
-          if (editable) {
-            var val = ov != null ? ov : (mode === "full" ? base : "");
-            return "<td><div class=\"base\">基准 " + base + "</div>" +
-              "<input class=\"cell\" data-key=\"" + key + "\" value=\"" + (val === "" || val == null ? "" : val) + "\" placeholder=\"跟基准\" />" +
-              "</td>";
-          }
-          var diff = final != null ? round2(final - base) : 0;
-          var diffHtml = diff === 0 ? "" : ("<div class=\"diff\">" + (diff > 0 ? "+" : "") + diff + "</div>");
-          return "<td><div class=\"base\">基准 " + base + "</div><div class=\"final\">" + (final == null ? "—" : final) + "</div>" + diffHtml + "</td>";
-        }).join("");
-        var wtCell = "";
-        if (useRatio) {
-          if (ri === 0) {
-            wtCell = "<td class=\"row-h wt\" rowspan=\"" + ratioList.length + "\">" + w.title + "kg<br/><span style=\"font-weight:400;color:#8c8c8c\">&gt;" + w.from + " ≤" + w.to + "</span></td>";
-          }
-          wtCell += "<td class=\"row-h ratio\">" + ratio.label +
-            (ratio.hint ? "<br/><span style=\"font-weight:400;color:#8c8c8c\">" + ratio.hint + "</span>" : "") + "</td>";
-        } else {
-          wtCell = "<td class=\"row-h\">" + w.title + "kg<br/><span style=\"font-weight:400;color:#8c8c8c\">&gt;" + w.from + " ≤" + w.to + "</span></td>";
+    var wlist = workingWeights(currentQuote);
+    wlist.forEach(function (w) {
+      var cells = currentQuote.zones.map(function (z, zi) {
+        var base = workingBase(currentQuote, w, zi);
+        var key = cellKey(w.title, z);
+        var ov = overrideDraft[key];
+        var final = calcFinal(base, mode, discount, minus, ov);
+        if (editable) {
+          var val = ov != null ? ov : base;
+          return "<td><div class=\"base\">基准 " + base + "</div>" +
+            "<input class=\"cell\" data-key=\"" + key + "\" value=\"" + (val === "" || val == null ? "" : val) + "\" />" +
+            "</td>";
         }
-        html += "<tr>" + wtCell + cells + "</tr>";
-      });
+        var diff = final != null ? round2(final - base) : 0;
+        var diffHtml = diff === 0 ? "" : ("<div class=\"diff\">" + (diff > 0 ? "+" : "") + diff + "</div>");
+        return "<td><div class=\"base\">基准 " + base + "</div><div class=\"final\">" + (final == null ? "—" : final) + "</div>" + diffHtml + "</td>";
+      }).join("");
+      html += "<tr><td class=\"row-h\">" + w.title + "kg<br/><span style=\"font-weight:400;color:#8c8c8c\">&gt;" + w.from + " ≤" + w.to + "</span></td>" + cells + "</tr>";
     });
     $("matrixBody").innerHTML = html;
   }
@@ -1358,23 +1579,6 @@
   $("btnRecalc").addEventListener("click", renderMatrix);
   $("fDiscount").addEventListener("change", renderMatrix);
   $("fMinus").addEventListener("change", renderMatrix);
-  $("btnFillDemo").addEventListener("click", function () {
-    if (!currentQuote) return;
-    var prefix = currentQuote.id + "::";
-    Object.keys(overrideDraft).forEach(function (k) {
-      if (k.indexOf(prefix) === 0) delete overrideDraft[k];
-    });
-    var z0 = currentQuote.zones[0];
-    var w = currentQuote.weights[1] || currentQuote.weights[0];
-    var base = (currentQuote.prices[w.title] || [])[0];
-    var key = cellKey(w.title, z0, ratioOn() ? "210" : "");
-    overrideDraft[key] = round2(base - 3);
-    renderMatrix();
-    toast("已示例：仅覆盖本报价「" + w.title + " × " + z0 + (ratioOn() ? " × 1:210" : "") + "」");
-  });
-  $("fByRatio").addEventListener("change", function () {
-    if (wizardStep === 2) renderMatrix();
-  });
 
   function setStep(n) {
     wizardStep = n;
@@ -1394,7 +1598,7 @@
       el.disabled = readonly;
     });
     document.querySelectorAll("#step2 input").forEach(function (el) { el.disabled = readonly; });
-    if (n === 2) { renderQuoteTabs(); renderMatrix(); }
+    if (n === 2) { renderQuoteTabs(); renderWeightBar(); renderMatrix(); }
     if (n === 3) buildConfirm();
   }
 
@@ -1406,23 +1610,25 @@
     $("fName").value = r.name || "";
     $("fQuote").value = r.quoteName || "";
     $("fQuote").dataset.id = r.quoteId || "";
-    $("fSpecial").value = r.special ? "1" : "0";
+    $("fBranch").value = r.branch || "";
     $("fRemark").value = r.remark || "";
     $("fDiscount").value = r.discount != null ? r.discount : 9.5;
     $("fMinus").value = r.minus != null ? r.minus : -0.7;
-    $("fMode").value = r.mode === "full" ? "override" : (r.mode || "discount");
+    var mode = r.mode === "override" ? "discount" : (r.mode || "discount");
+    $("fMode").value = mode;
     document.querySelectorAll(".mode-card").forEach(function (el) {
-      el.classList.toggle("on", el.getAttribute("data-mode") === $("fMode").value);
+      el.classList.toggle("on", el.getAttribute("data-mode") === mode);
     });
-    document.querySelector('input[name="modeExtra"][value="' + (r.mode === "full" ? "full" : "inherit") + '"]').checked = true;
-    if (r.mode === "full") $("fMode").value = "full";
     selectedQuotes = quoteIdsOf(r);
     activeQuoteId = selectedQuotes[0] || null;
+    weightDraft = {};
+    Object.keys(r.weightMap || {}).forEach(function (id) {
+      weightDraft[id] = cloneWeights(r.weightMap[id]);
+    });
     overrideDraft = {};
     Object.keys(r.overrides || {}).forEach(function (k) {
       overrideDraft[k.indexOf("::") >= 0 ? k : ((selectedQuotes[0] || r.quoteId || "_") + "::" + k)] = r.overrides[k];
     });
-    $("fByRatio").checked = !!r.byRatio;
     applyQuotes();
   }
 
@@ -1430,10 +1636,11 @@
     fillForm({
       eff: "2026-08-05 00:00", exp: "2027-08-05 23:59",
       custName: "", custCode: "", name: "", quoteName: "", quoteId: "", quoteIds: [],
-      special: false, mode: "discount", discount: 9.5, minus: -0.7, overrides: {}, byRatio: false
+      branch: "义乌总部", mode: "discount", discount: 9.5, minus: -0.7, overrides: {}
     });
     selectedQuotes = [];
     activeQuoteId = null;
+    weightDraft = {};
     currentQuote = null;
     $("inheritBox").classList.add("hidden");
     overrideDraft = {};
@@ -1460,7 +1667,7 @@
 
   function validateStep1() {
     var ok = true;
-    [["fCustomer", "协议客户"], ["fName", "协议名称"], ["fEff", "生效时间"], ["fExp", "失效时间"]].forEach(function (pair) {
+    [["fCustomer", "协议客户"], ["fName", "协议名称"], ["fEff", "生效时间"], ["fExp", "失效时间"], ["fBranch", "分公司"]].forEach(function (pair) {
       var el = $(pair[0]);
       var empty = !(el.value || "").trim();
       el.closest(".fg").classList.toggle("err", empty);
@@ -1475,6 +1682,12 @@
 
   function validateStep2() {
     if (!currentQuote) { toast("缺少基准报价"); return false; }
+    var wErr = "";
+    quoteObjs().forEach(function (q) {
+      var e = weightError(workingWeights(q));
+      if (e && !wErr) wErr = e;
+    });
+    if (wErr) { toast("重量段：" + wErr); return false; }
     var mode = getMode();
     if (mode === "discount") {
       var d = parseFloat($("fDiscount").value);
@@ -1483,49 +1696,42 @@
     if (mode === "full") {
       var miss = 0;
       var hold = currentQuote;
-      var rList = ratioOn() ? RATIOS : [{ id: "" }];
       quoteObjs().forEach(function (q) {
         currentQuote = q;
-        q.weights.forEach(function (w) {
+        workingWeights(q).forEach(function (w) {
           q.zones.forEach(function (z) {
-            rList.forEach(function (ratio) {
-              var k = cellKey(w.title, z, ratio.id);
-              if (overrideDraft[k] == null || overrideDraft[k] === "") miss++;
-            });
+            var k = cellKey(w.title, z);
+            if (overrideDraft[k] == null || overrideDraft[k] === "") miss++;
           });
         });
       });
       currentQuote = hold;
       if (miss) { toast("全量重填须填完每条报价的所有单元格（还缺 " + miss + " 格）"); return false; }
     }
-    if (mode === "override" && Object.keys(overrideDraft).length === 0) {
-      toast("指定格覆盖请至少维护一个单元格，或改用统一折扣/减额");
-      return false;
-    }
     return true;
   }
 
   function buildConfirm() {
     var mode = getMode();
-    var special = $("fSpecial").value === "1";
     $("confirmBox").innerHTML =
       '<div class="row"><span class="k">协议名称</span><span>' + $("fName").value + "</span></div>" +
       '<div class="row"><span class="k">协议客户</span><span>' + $("fCustomer").value + "（" + ($("fCustomer").dataset.code || "—") + "）</span></div>" +
+      '<div class="row"><span class="k">分公司</span><span>' + ($("fBranch").value || "—") + "</span></div>" +
       '<div class="row"><span class="k">基准销售报价</span><span>' + quoteObjs().map(function (q) {
-        return q.name + "（" + q.zones.join("/") + " · " + q.weights.map(function (w) { return w.title; }).join("/") + "kg）";
+        return q.name + "（" + q.zones.join("/") + " · " + workingWeights(q).map(function (w) { return w.title; }).join("/") + "kg" +
+          (weightsEqual(workingWeights(q), q.weights) ? "" : " · 已改") + "）";
       }).join("<br/>") + "</span></div>" +
       '<div class="row"><span class="k">销售产品</span><span>' + quoteObjs().map(function (q) { return q.product; }).join("、") + "</span></div>" +
       '<div class="row"><span class="k">计价方式</span><span><span class="tag mode">' + MODE_LABEL[mode] + "</span> " + modeRuleText(mode, $("fDiscount").value, $("fMinus").value) + "</span></div>" +
-      '<div class="row"><span class="k">按比重分档</span><span>' + (ratioOn() ? '<span class="tag mode">已开 · 计费重段 × 比重档</span>' : "否（仅分区 × 重量段）") + "</span></div>" +
       '<div class="row"><span class="k">有效期</span><span>' + $("fEff").value.replace("T", " ") + " ~ " + $("fExp").value.replace("T", " ") + "</span></div>" +
-      '<div class="row"><span class="k">特价仓</span><span>' + (special ? '<span class="tag warn">是 · 写入调价日志</span>' : "否") + "</span></div>" +
-      '<div class="row"><span class="k">取价规则</span><span>命中协议客户时用生效价；未覆盖格回退基准销售报价</span></div>' +
+      '<div class="row"><span class="k">取价规则</span><span>命中协议客户时用生效价</span></div>' +
       (wizardMode === "view" ? "" : '<p style="margin:10px 0 0;color:#614700;background:#fffbe6;border:1px solid #ffe58f;padding:8px;border-radius:2px">提交后为「草稿」，列表点「启用」后对下单取价生效。</p>');
   }
 
   function submitWizard() {
     var mode = getMode();
     var code = $("fCustomer").dataset.code || ("C" + (10090 + rows.length));
+    var wmap = packWeightMap();
     var payload = {
       id: editingId || ("AP" + (202608100 + rows.length)),
       name: $("fName").value.trim(),
@@ -1537,13 +1743,13 @@
       quoteName: quoteLabel(selectedQuotes),
       product: (quoteObjs()[0] ? quoteObjs()[0].product : ""),
       mode: mode,
-      rule: modeRuleText(mode, $("fDiscount").value, $("fMinus").value) + (ratioOn() ? " · 按比重分档" : ""),
+      rule: modeRuleText(mode, $("fDiscount").value, $("fMinus").value) + (Object.keys(wmap).length ? " · 重量段已改" : ""),
       discount: parseFloat($("fDiscount").value) || 10,
       minus: parseFloat($("fMinus").value) || 0,
       overrides: Object.assign({}, overrideDraft),
-      special: $("fSpecial").value === "1",
+      weightMap: wmap,
+      branch: $("fBranch").value.trim(),
       big: false,
-      byRatio: ratioOn(),
       remark: $("fRemark").value,
       eff: $("fEff").value.replace("T", " "),
       exp: $("fExp").value.replace("T", " ")
@@ -1601,32 +1807,22 @@
   });
 
   $("btnExpire").addEventListener("click", function () {
-    expireMode = "expire";
     $("expireTitle").textContent = "修改失效日期";
-    $("batchAmtWrap").hidden = true;
     openMask("expireMask");
   });
   $("btnBatch").addEventListener("click", function () {
-    expireMode = "batch";
-    $("expireTitle").textContent = "批量改时间/金额";
-    $("batchAmtWrap").hidden = false;
-    openMask("expireMask");
+    if (selected.size !== 1) { toast("全量重填请勾选 1 条协议，按它自己的分区×重量段改单价"); return; }
+    openWizard("edit");
+    $("fMode").value = "full";
+    document.querySelectorAll(".mode-card").forEach(function (el) {
+      el.classList.toggle("on", el.getAttribute("data-mode") === "full");
+    });
+    setStep(2);
   });
   $("btnExpireOk").addEventListener("click", function () {
     var exp = $("expireVal").value.replace("T", " ");
-    var amt = parseFloat($("batchAmt").value);
-    selectedRows().forEach(function (r) {
-      r.exp = exp;
-      if (expireMode === "batch" && !isNaN(amt)) {
-        if (r.mode === "minus") {
-          r.minus = round2((r.minus || 0) + amt);
-          r.rule = modeRuleText("minus", r.discount, r.minus);
-        } else if (r.mode === "discount") {
-          toast("统一折扣协议请改折扣率，金额调整已跳过部分行");
-        }
-      }
-    });
-    toast(expireMode === "batch" ? "已批量更新" : "已更新失效时间");
+    selectedRows().forEach(function (r) { r.exp = exp; });
+    toast("已更新失效时间");
     closeMask("expireMask");
     render();
   });

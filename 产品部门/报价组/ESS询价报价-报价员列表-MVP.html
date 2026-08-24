@@ -135,6 +135,15 @@
       z-index: 1000; align-items: center; justify-content: center; padding: 20px;
     }
     .mask.show { display: flex; }
+    .notify-preview {
+      margin-top: 10px; padding: 10px 12px; background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: 6px; font-size: 12px; line-height: 1.65; color: #1e3a5f;
+    }
+    .notify-preview .nl { margin: 6px 0 0; padding-left: 16px; }
+    .rebind-notify-box {
+      margin: 0 16px 8px; padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 6px; font-size: 12px; line-height: 1.6; color: #14532d;
+    }
     .modal {
       width: min(820px, 96vw); max-height: 90vh; background: #fff;
       border-radius: 2px; box-shadow: 0 8px 28px rgba(0,0,0,.22);
@@ -1034,10 +1043,46 @@
                 </div>
               </div>
             </div>
+            <div class="rebind-notify-box" id="rebindNotifyBox" hidden>
+              <strong>改绑后将通知港后客服（必发 2 条，旧 / 新各 1 条）：</strong>
+              <ul class="nl" id="rebindNotifyLines" style="margin:6px 0 0;padding-left:18px"></ul>
+            </div>
             <div class="modal-ft">
               <button type="button" class="btn" id="btnUnbind" hidden>解除绑定</button>
               <button type="button" class="btn" id="btnBindCancel">取消</button>
               <button type="button" class="btn btn-primary" id="btnBindOk">确认绑定</button>
+            </div>
+          </div>
+        </div>
+        <div class="mask" id="rebindMask" role="dialog" aria-modal="true" aria-labelledby="rebindTitle">
+          <div class="modal" style="width:min(560px,96vw)">
+            <div class="modal-hd">
+              <h2 id="rebindTitle">解除并绑定运单</h2>
+              <button type="button" class="x" id="rebindClose" aria-label="关闭">×</button>
+            </div>
+            <div class="modal-bd" style="display:block;padding:14px 16px">
+              <p style="margin:0 0 8px;font-size:12px;line-height:1.65;color:#595959">确认将本票运单绑定由<strong>原运单</strong>切换至<strong>新运单</strong>？原运单尾程挂接解除，新运单重新挂接尾程派送费，报价单价不变。</p>
+              <div class="notify-preview" id="rebindNotifyPreview"></div>
+            </div>
+            <div class="modal-ft">
+              <button type="button" class="btn" id="btnRebindCancel">取消</button>
+              <button type="button" class="btn btn-primary" id="btnRebindOk">确认解除并绑定</button>
+            </div>
+          </div>
+        </div>
+        <div class="mask" id="unbindMask" role="dialog" aria-modal="true" aria-labelledby="unbindTitle">
+          <div class="modal" style="width:min(520px,96vw)">
+            <div class="modal-hd">
+              <h2 id="unbindTitle">解除运单绑定</h2>
+              <button type="button" class="x" id="unbindClose" aria-label="关闭">×</button>
+            </div>
+            <div class="modal-bd" style="display:block;padding:14px 16px">
+              <p style="margin:0 0 8px;font-size:12px;line-height:1.65;color:#595959">确认解除本票运单绑定？<strong>尾端派送费仍保留</strong>在报价单，运单侧尾程挂接将解除，报价锁定解除后可改绑。</p>
+              <div class="notify-preview" id="unbindNotifyPreview"></div>
+            </div>
+            <div class="modal-ft">
+              <button type="button" class="btn" id="btnUnbindCancel">取消</button>
+              <button type="button" class="btn btn-primary" id="btnUnbindOk">确认解除并通知</button>
             </div>
           </div>
         </div>
@@ -1076,19 +1121,20 @@
 
       var WAYBILLS = {
         lcl: [
-          { no: "ICBU26052201", cust: "深圳XX贸易", zip: "92374", wh: "福永仓", country: "US", ok: true },
-          { no: "ICBU26080188", cust: "广州YY电商", zip: "92374", wh: "福永仓", country: "US", ok: true },
-          { no: "ICBU26080201", cust: "深圳XX贸易", zip: "92374", wh: "福永仓", country: "US", ok: true },
-          { no: "ICBU26079901", cust: "东莞ZZ供应链", zip: "61604", wh: "义乌总仓", country: "US", ok: false, reason: "邮编不一致" },
-          { no: "ICBU26070012", cust: "上海AA进口", zip: "92374", wh: "福永仓", country: "CA", ok: false, reason: "目的国不一致" }
+          { no: "ICBU26052201", cust: "深圳XX贸易", zip: "92374", wh: "福永仓", country: "US", ok: true, cs: "王丽" },
+          { no: "ICBU26080188", cust: "广州YY电商", zip: "92374", wh: "福永仓", country: "US", ok: true, cs: "李强" },
+          { no: "ICBU26080201", cust: "深圳XX贸易", zip: "92374", wh: "福永仓", country: "US", ok: true, cs: "王丽" },
+          { no: "ICBU26079901", cust: "东莞ZZ供应链", zip: "61604", wh: "义乌总仓", country: "US", ok: false, reason: "邮编不一致", cs: "赵敏" },
+          { no: "ICBU26070012", cust: "上海AA进口", zip: "92374", wh: "福永仓", country: "CA", ok: false, reason: "目的国不一致", cs: "陈涛" }
         ],
         fcl: [
-          { no: "RC266501", cust: "上海AA进口", pol: "上海", pod: "纽约", box: "20GP", ok: true },
-          { no: "RC266888", cust: "深圳XX贸易", pol: "盐田", pod: "洛杉矶", box: "40HQ", ok: true },
-          { no: "RC266901", cust: "广州YY电商", pol: "盐田", pod: "长滩", box: "40HQ", ok: false, reason: "目的港不一致" },
-          { no: "RC267010", cust: "东莞ZZ供应链", pol: "宁波", pod: "洛杉矶", box: "40GP", ok: false, reason: "柜型不一致" }
+          { no: "RC266501", cust: "上海AA进口", pol: "上海", pod: "纽约", box: "20GP", ok: true, cs: "周洋" },
+          { no: "RC266888", cust: "深圳XX贸易", pol: "盐田", pod: "洛杉矶", box: "40HQ", ok: true, cs: "王丽" },
+          { no: "RC266901", cust: "广州YY电商", pol: "盐田", pod: "长滩", box: "40HQ", ok: false, reason: "目的港不一致", cs: "李强" },
+          { no: "RC267010", cust: "东莞ZZ供应链", pol: "宁波", pod: "洛杉矶", box: "40GP", ok: false, reason: "柜型不一致", cs: "赵敏" }
         ]
       };
+      var NOTIFY_KEY = "bj_notify_list_v1";
 
       function $(id) { return document.getElementById(id); }
       function toast(msg) {
@@ -1097,6 +1143,161 @@
         el.classList.add("show");
         clearTimeout(toast._t);
         toast._t = setTimeout(function () { el.classList.remove("show"); }, 2400);
+      }
+
+      function pad2(n) { return (n < 10 ? "0" : "") + n; }
+      function nowStr() {
+        var d = new Date();
+        return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " +
+          pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
+      }
+      function findWb(no, dim) {
+        if (!no) return null;
+        return (WAYBILLS[dim] || []).find(function (w) { return w.no === no; }) || { no: no, cs: "" };
+      }
+      function loadNotifyList() {
+        try {
+          var raw = localStorage.getItem(NOTIFY_KEY);
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (e) {}
+        return [];
+      }
+      function pushCsNotify(item) {
+        var list = loadNotifyList();
+        list.unshift(item);
+        try { localStorage.setItem(NOTIFY_KEY, JSON.stringify(list)); } catch (e) {}
+      }
+      function nextNotifyId() {
+        return "NT" + Date.now() + String(Math.floor(Math.random() * 900) + 100);
+      }
+      function bindChannelName(row) {
+        var ch = bindChannels.find(function (c) { return c.picked || c.confirmed; });
+        return ch ? ch.name : "—";
+      }
+      function buildUnbindNotifyPreview(row, wbNo) {
+        var wb = findWb(wbNo, row.getAttribute("data-dim"));
+        var cs = wb && wb.cs;
+        var xj = row.getAttribute("data-xj");
+        var lm = row.getAttribute("data-lastmile") || ($("bLastmile") && $("bLastmile").value) || "—";
+        if (!cs) {
+          return '<strong style="color:#b45309">⚠ 未找到港后客服</strong><p style="margin:6px 0 0">运单 ' + wbNo + ' 主数据无港后客服，解绑后<strong>通知无法发送</strong>（仍允许解绑）。</p>';
+        }
+        return '<strong>将通知港后客服：' + cs + '</strong>' +
+          '<p style="margin:6px 0 0">类型：<strong>解除绑定运单</strong></p>' +
+          '<p style="margin:4px 0 0">询价 ' + xj + ' · 运单 ' + wbNo + ' · 尾程 USD ' + lm + ' 已解除挂接</p>';
+      }
+      function notifyUnbind(row, wbNo) {
+        var wb = findWb(wbNo, row.getAttribute("data-dim"));
+        var cs = wb && wb.cs;
+        if (!cs) return { sent: false, cs: null };
+        var xj = row.getAttribute("data-xj");
+        var lm = row.getAttribute("data-lastmile") || ($("bLastmile") && $("bLastmile").value) || "—";
+        pushCsNotify({
+          id: nextNotifyId(), status: "未读", cc: false, type: "解除绑定运单",
+          content: "询价单 " + xj + " 已解除运单绑定 · 运单 " + wbNo + " · 尾程 USD " + lm + " 已自该运单解除挂接",
+          at: nowStr(), inquiry: xj, channels: "系统消息", operator: "报价员·解绑", wxTo: "—", sysTo: "港后客服·" + cs
+        });
+        return { sent: true, cs: cs };
+      }
+      function notifyRebind(row, oldNo, newNo) {
+        var dim = row.getAttribute("data-dim");
+        var oldWb = findWb(oldNo, dim);
+        var newWb = findWb(newNo, dim);
+        var oldCs = oldWb && oldWb.cs;
+        var newCs = newWb && newWb.cs;
+        var xj = row.getAttribute("data-xj");
+        var lm = row.getAttribute("data-lastmile") || ($("bLastmile") && $("bLastmile").value) || "—";
+        var chName = bindChannelName(row);
+        var at = nowStr();
+        var sent = [];
+        if (oldCs) {
+          pushCsNotify({
+            id: nextNotifyId(), status: "未读", cc: false, type: "改绑运单 · 原单解除",
+            content: "询价 " + xj + " 改绑 · 运单 " + oldNo + " 已解除绑定 · 新运单 " + newNo + (newCs ? "（" + newCs + " 跟进）" : ""),
+            at: at, inquiry: xj, channels: "系统消息", operator: "报价员·改绑", wxTo: "—", sysTo: "港后客服·" + oldCs
+          });
+          sent.push({ role: "原单", name: oldCs });
+        }
+        if (newCs) {
+          pushCsNotify({
+            id: nextNotifyId(), status: "未读", cc: false, type: "改绑运单 · 新单挂接",
+            content: "询价 " + xj + " 改绑至运单 " + newNo + " · 尾程 USD " + lm + " 已挂接 · 挂费渠道 " + chName + " · 原运单 " + oldNo,
+            at: at, inquiry: xj, channels: "系统消息", operator: "报价员·改绑", wxTo: "—", sysTo: "港后客服·" + newCs
+          });
+          sent.push({ role: "新单", name: newCs });
+        }
+        return { sent: sent, oldCs: oldCs, newCs: newCs };
+      }
+      function formatRebindSentMsg(sent) {
+        if (!sent.length) return "；⚠ 未找到港后客服，通知未发送";
+        return "；已通知 " + sent.map(function (s) { return s.role + " " + s.name; }).join("、") + "（共 " + sent.length + " 条）";
+      }
+      function buildRebindNotifyPreview(row, oldNo, newNo) {
+        var dim = row.getAttribute("data-dim");
+        var oldCs = (findWb(oldNo, dim) || {}).cs;
+        var newCs = (findWb(newNo, dim) || {}).cs;
+        var xj = row.getAttribute("data-xj");
+        var lm = row.getAttribute("data-lastmile") || ($("bLastmile") && $("bLastmile").value) || "—";
+        var chName = bindChannelName(row);
+        var html = '<p style="margin:0 0 8px">原运单 <code>' + oldNo + '</code> → 新运单 <code>' + newNo + '</code> · 尾程 USD ' + lm + ' 挂接至新单</p>';
+        html += '<strong>将通知港后客服（必发 2 条，旧 / 新各 1 条）：</strong><ul style="margin:6px 0 0;padding-left:18px;line-height:1.65">';
+        if (oldCs) {
+          html += '<li><strong>' + oldCs + '</strong> · <em>改绑运单 · 原单解除</em><br/>' +
+            '询价 ' + xj + ' · 运单 ' + oldNo + ' 已解除绑定 · 新运单 ' + newNo + (newCs ? '（' + newCs + ' 跟进）' : '') + '</li>';
+        } else {
+          html += '<li style="color:#b45309">原运单 ' + oldNo + ' · 未找到港后客服，本条通知无法发送</li>';
+        }
+        if (newCs) {
+          html += '<li><strong>' + newCs + '</strong> · <em>改绑运单 · 新单挂接</em><br/>' +
+            '询价 ' + xj + ' 改绑至运单 ' + newNo + ' · 尾程 USD ' + lm + ' · 挂费渠道 ' + chName + ' · 原运单 ' + oldNo + '</li>';
+        } else {
+          html += '<li style="color:#b45309">新运单 ' + newNo + ' · 未找到港后客服，本条通知无法发送</li>';
+        }
+        if (oldCs && newCs && oldCs === newCs) {
+          html += '<li style="color:#64748b;font-size:11px">旧 / 新为同一人，仍各发 1 条（原单解除 + 新单挂接）</li>';
+        }
+        html += '</ul>';
+        return html;
+      }
+      function syncBindOkButton() {
+        if (!activeRow || !$("btnBindOk")) return;
+        var oldNo = rowBindNo(activeRow);
+        var newNo = workingBindList()[0] && workingBindList()[0].no;
+        var btn = $("btnBindOk");
+        if (oldNo) {
+          btn.textContent = "解除并绑定运单";
+          btn.disabled = !bindValidate.pass || !newNo || oldNo === newNo;
+        } else {
+          btn.textContent = "确认绑定";
+          btn.disabled = !bindValidate.pass;
+        }
+      }
+      function refreshRebindNotifyPreview() {
+        var box = $("rebindNotifyBox");
+        var lines = $("rebindNotifyLines");
+        if (!box || !lines || !activeRow) { if (box) box.hidden = true; syncBindOkButton(); return; }
+        var oldNo = rowBindNo(activeRow);
+        var newNo = workingBindList()[0] && workingBindList()[0].no;
+        if (!oldNo || !newNo || oldNo === newNo) { box.hidden = true; syncBindOkButton(); return; }
+        var dim = activeRow.getAttribute("data-dim");
+        var oldCs = (findWb(oldNo, dim) || {}).cs || "—";
+        var newCs = (findWb(newNo, dim) || {}).cs || "—";
+        var xj = activeRow.getAttribute("data-xj");
+        var lm = activeRow.getAttribute("data-lastmile") || ($("bLastmile") && $("bLastmile").value) || "—";
+        var html = [];
+        if (oldCs !== "—") html.push("<li><strong>" + oldCs + "</strong> · 原单解除：" + xj + " / " + oldNo + " 解除挂接</li>");
+        else html.push("<li style=\"color:#b45309\">原运单 " + oldNo + " · 未找到港后客服</li>");
+        if (newCs !== "—") html.push("<li><strong>" + newCs + "</strong> · 新单挂接：" + xj + " / " + newNo + " · USD " + lm + "</li>");
+        else html.push("<li style=\"color:#b45309\">新运单 " + newNo + " · 未找到港后客服</li>");
+        if (oldCs !== "—" && newCs !== "—" && oldCs === newCs) {
+          html.push("<li style=\"color:#64748b;font-size:11px\">旧 / 新为同一人，仍各发 1 条</li>");
+        }
+        lines.innerHTML = html.join("");
+        box.hidden = !html.length;
+        syncBindOkButton();
       }
 
       function parseCnt(text) {
@@ -1360,7 +1561,7 @@
           rules: ["测距 812 迈 · 外州", "奥克兰内州含 3 托", "万物智联最优 Estes"],
           result: "尾程 USD 390 → 单价 USD 7/KG" },
         { channel: "美国空派 LAX", wh: "洛杉矶仓", whAddr: "1495 E Locust St, Ontario, CA 91761", whZip: "91761", dist: 800, zone: "外州",
-          rules: ["同洛杉矶仓测距 · 外州", "货量允许 53 尺 · 大车单迈价", "整车价 ÷ 计费重"],
+          rules: ["同洛杉矶仓测距 · 外州", "货量允许 53 尺 · 大车单迈价", "头程单价 + 尾程 ÷ 询价计费重"],
           result: "尾程 USD 580 → 单价 USD 9/KG" }
       ];
       function parseRowChannels(row) {
@@ -1620,6 +1821,7 @@
       }
       function setSingleWb(wb) {
         selectedWbs = wb ? [wb] : [];
+        refreshRebindNotifyPreview();
       }
       function syncBindSummary() {
         if (!activeRow) return;
@@ -1845,7 +2047,7 @@
         if (!activeRow) return;
         var v = validateAll(activeRow, workingBindList());
         bindValidate = v;
-        $("btnBindOk").disabled = !v.pass;
+        syncBindOkButton();
         var pop = $("bindRulePop");
         if (pop && !pop.hidden) pop.textContent = buildBindRulePop(activeRow, v);
       }
@@ -1941,7 +2143,6 @@
         $("bWb").value = "";
         bindOnlyMatch = !!autoFillMatch;
         $("btnUnbind").hidden = !bound;
-        $("btnBindOk").textContent = "确认绑定";
         closeBindRulePop();
         initBindChannels(row);
         if (autoFillMatch && dim === "fcl") {
@@ -1954,6 +2155,7 @@
         renderBindChips(row);
         renderMatchTip(row);
         renderWbList(row, "");
+        refreshRebindNotifyPreview();
         bindMask.classList.add("show");
         if (autoFillMatch && workingBindList().length) {
           toast("已带出运单 " + workingBindList()[0].no);
@@ -1963,6 +2165,7 @@
       function closeBind() {
         bindMask.classList.remove("show");
         closeBindRulePop();
+        if ($("rebindNotifyBox")) $("rebindNotifyBox").hidden = true;
         activeRow = null;
         bindOnlyMatch = false;
         selectedWbs = [];
@@ -2216,6 +2419,27 @@
         $("cValidFrom").addEventListener("input", updateValidHint);
       }
 
+      function closeRebind() {
+        $("rebindMask").classList.remove("show");
+      }
+      function executeRebind() {
+        if (!activeRow) return;
+        var list = workingBindList();
+        if (!list.length) return;
+        var nos = list.slice(0, 1).map(function (w) { return w.no; });
+        var oldNo = rowBindNo(activeRow);
+        if (!oldNo || oldNo === nos[0]) return;
+        applyBindToRow(activeRow, nos);
+        var lm = $("bLastmile").value + " " + $("bLastmileCur").value;
+        activeRow.setAttribute("data-locked", "1");
+        var nr = notifyRebind(activeRow, oldNo, nos[0]);
+        closeRebind();
+        closeBind();
+        var msg = "已改绑运单 " + nos[0] + " 并挂接尾端派送费 " + lm;
+        msg += formatRebindSentMsg(nr.sent);
+        toast(msg);
+      }
+
       $("btnBindOk").addEventListener("click", function () {
         if (!activeRow) return;
         var list = workingBindList();
@@ -2230,6 +2454,13 @@
         var v = validateAll(activeRow, list);
         if (!v.pass) { toast("校验未通过"); return; }
         var nos = list.slice(0, 1).map(function (w) { return w.no; });
+        var oldNo = rowBindNo(activeRow);
+        var isRebind = !!oldNo && oldNo !== nos[0];
+        if (isRebind) {
+          $("rebindNotifyPreview").innerHTML = buildRebindNotifyPreview(activeRow, oldNo, nos[0]);
+          $("rebindMask").classList.add("show");
+          return;
+        }
         applyBindToRow(activeRow, nos);
         var lm = $("bLastmile").value + " " + $("bLastmileCur").value;
         activeRow.setAttribute("data-locked", "1");
@@ -2241,14 +2472,38 @@
         closeBind();
       });
 
+      $("btnRebindCancel").addEventListener("click", closeRebind);
+      $("rebindClose").addEventListener("click", closeRebind);
+      $("rebindMask").addEventListener("click", function (e) { if (e.target === $("rebindMask")) closeRebind(); });
+      $("btnRebindOk").addEventListener("click", executeRebind);
+
       $("btnUnbind").addEventListener("click", function () {
         if (!activeRow) return;
-        if (!confirm("确认解除运单绑定？（尾端派送费仍保留在报价单）")) return;
+        var oldNo = rowBindNo(activeRow);
+        if (!oldNo) return;
+        $("unbindNotifyPreview").innerHTML = buildUnbindNotifyPreview(activeRow, oldNo);
+        $("unbindMask").classList.add("show");
+      });
+      function closeUnbind() {
+        $("unbindMask").classList.remove("show");
+      }
+      $("btnUnbindCancel").addEventListener("click", closeUnbind);
+      $("unbindClose").addEventListener("click", closeUnbind);
+      $("unbindMask").addEventListener("click", function (e) { if (e.target === $("unbindMask")) closeUnbind(); });
+      $("btnUnbindOk").addEventListener("click", function () {
+        if (!activeRow) return;
+        var oldNo = rowBindNo(activeRow);
+        if (!oldNo) { closeUnbind(); return; }
+        var nr = notifyUnbind(activeRow, oldNo);
         setSingleWb(null);
         applyBindToRow(activeRow, []);
         activeRow.setAttribute("data-locked", "");
-        toast("已解除绑定（报价锁定解除，改运单仍不自动改价，须报价员重核）");
+        closeUnbind();
         closeBind();
+        var msg = "已解除绑定（报价锁定解除）";
+        if (nr.sent) msg += "；已通知港后客服 " + nr.cs;
+        else msg += "；⚠ 未找到港后客服，通知未发送";
+        toast(msg);
       });
 
       $("btnRecalcAi").addEventListener("click", function () {
@@ -2333,7 +2588,9 @@
       confirmMask.addEventListener("click", function (e) { if (e.target === confirmMask) closeConfirm(); });
       document.addEventListener("keydown", function (e) {
         if (e.key !== "Escape") return;
-        if (bindMask.classList.contains("show")) closeBind();
+        if ($("unbindMask").classList.contains("show")) closeUnbind();
+        else if ($("rebindMask").classList.contains("show")) closeRebind();
+        else if (bindMask.classList.contains("show")) closeBind();
         else if (calcLogMask.classList.contains("show")) closeCalcLog();
         else if (confirmMask.classList.contains("show")) closeConfirm();
       });

@@ -123,6 +123,7 @@
     }
     .importer-card[hidden] { display: none !important; }
     .importer-card strong { color: var(--text); }
+    .form-hint { margin-top: 6px; font-size: 12px; color: var(--sub); line-height: 1.5; max-width: 520px; }
     .tag-status {
       display: inline-block;
       padding: 0 6px;
@@ -197,6 +198,7 @@
   <header class="top-header">
     <span class="title">编辑柜子</span>
     <span class="crumb">头程 / 柜子管理 / CONT-2025-08821</span>
+    <a href="船务组-导航.html" style="margin-left:auto;color:#91d5ff;font-size:12px;text-decoration:none">船务导航</a>
   </header>
 
   <main class="page">
@@ -246,9 +248,11 @@
             </div>
             <div class="importer-card" id="importerPreview" hidden>
               <div><strong id="previewName">—</strong><span class="tag-status tag-ok" id="previewTag">已启用</span></div>
-              <div>额度：<span id="previewLimit">—</span> · Bond：<span id="previewBond">—</span></div>
-              <div>POA：<span id="previewPoa">—</span> · 收件人：<span id="previewHeader">—</span></div>
+              <div>额度：<span id="previewLimit">—</span> · Bond 分配：<span id="previewBondAssign">—</span></div>
+              <div>Bond：<span id="previewBond">—</span> · POA：<span id="previewPoa">—</span></div>
+              <div>收件人：<span id="previewHeader">—</span></div>
               <div>法人：<span id="previewLegal">—</span> · 在途未清关：<span id="previewTransit">—</span> 柜</div>
+              <div>已授权清关行：<span id="previewBrokers">—</span></div>
             </div>
             <div class="risk-stack" id="riskStack" hidden>
               <div class="alert-risk watch" id="watchAlert" hidden>
@@ -258,6 +262,15 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-label"><span class="req">*</span>清关行</div>
+          <div class="form-control">
+            <select id="brokerSelect" aria-label="选择清关行">
+              <option value="">请先选择进口商</option>
+            </select>
+            <div class="form-hint" id="brokerHint">可选项来自该进口商已授权清关行；绑定后在清关管理、做资料展示。</div>
           </div>
         </div>
         <div class="form-row">
@@ -298,37 +311,48 @@
           name: 'Pacific Trade Logistics LLC',
           status: 'active',
           limit: 'USD 500,000',
+          bondAssign: '散货专用',
           poa: '已授权',
           header: 'Pacific Trade Logistics Inc.',
           bond: '收货人 · 054',
           legal: 'Michael Chen / 美国',
           transit: 5,
-          inspectRate: null
+          inspectRate: null,
+          brokerAuth: ['精准', '02B'],
+          brokerRefuse: []
         },
         'IMP-US-2024-021': {
           name: 'Westbay Trading Inc.',
           status: 'active',
           limit: 'USD 350,000',
+          bondAssign: '美森专用',
           poa: '已授权',
           header: 'Westbay Trading Inc.',
           bond: '收货人 · 054',
           legal: 'David Park / 韩国',
           transit: 3,
-          inspectRate: null
+          inspectRate: null,
+          brokerAuth: ['精准', '赛因'],
+          brokerRefuse: []
         },
         'IMP-US-2023-006': {
           name: 'East Coast Import Co.',
           status: 'watch',
           limit: 'USD 200,000',
+          bondAssign: '苏州整柜专用',
           poa: '已授权',
           header: 'East Coast Logistics LLC',
           bond: '发货人 · 856',
           legal: 'Lisa Wang / 中国',
           transit: 12,
-          inspectRate: '12.8%'
+          inspectRate: '12.8%',
+          brokerAuth: ['精准', '关关通'],
+          brokerRefuse: ['02B']
         }
       };
       var sel = document.getElementById('importerSelect');
+      var brokerSel = document.getElementById('brokerSelect');
+      var brokerHint = document.getElementById('brokerHint');
       var preview = document.getElementById('importerPreview');
       var riskStack = document.getElementById('riskStack');
       var watchAlert = document.getElementById('watchAlert');
@@ -351,12 +375,37 @@
         return { showWatch: showWatch };
       }
 
+      function fillBrokers(m) {
+        var auth = (m && m.brokerAuth) || [];
+        var refuse = (m && m.brokerRefuse) || [];
+        brokerSel.innerHTML = '';
+        if (!m) {
+          brokerSel.appendChild(new Option('请先选择进口商', ''));
+          brokerHint.textContent = '可选项来自该进口商已授权清关行；绑定后在清关管理、做资料展示。';
+          return;
+        }
+        if (!auth.length) {
+          brokerSel.appendChild(new Option('该进口商尚未分配清关行', ''));
+          brokerHint.textContent = '请先在清关行·港口配置给该进口商授权。';
+          return;
+        }
+        brokerSel.appendChild(new Option('请选择清关行', ''));
+        auth.forEach(function (name) {
+          brokerSel.appendChild(new Option(name, name));
+        });
+        if (auth.length === 1) brokerSel.value = auth[0];
+        brokerHint.textContent = refuse.length
+          ? ('禁接不出现：' + refuse.join('、') + '。绑定后在清关管理、做资料展示。')
+          : '可选项来自该进口商已授权清关行；绑定后在清关管理、做资料展示。';
+      }
+
       sel.addEventListener('change', function () {
         var code = sel.value;
         if (!code || !meta[code]) {
           preview.hidden = true;
           riskStack.hidden = true;
           watchAlert.hidden = true;
+          fillBrokers(null);
           return;
         }
         var m = meta[code];
@@ -367,11 +416,15 @@
         tagEl.textContent = t.text;
         tagEl.className = 'tag-status ' + t.cls;
         document.getElementById('previewLimit').textContent = m.limit;
+        document.getElementById('previewBondAssign').textContent = m.bondAssign || '—';
         document.getElementById('previewPoa').textContent = m.poa || '—';
         document.getElementById('previewHeader').textContent = m.header || '—';
         document.getElementById('previewBond').textContent = m.bond;
         document.getElementById('previewLegal').textContent = m.legal;
         document.getElementById('previewTransit').textContent = m.transit;
+        document.getElementById('previewBrokers').textContent =
+          (m.brokerAuth && m.brokerAuth.length) ? m.brokerAuth.join(' · ') : '未分配';
+        fillBrokers(m);
         renderRisk(m);
       });
 
@@ -384,11 +437,19 @@
           return;
         }
         var m = meta[sel.value];
+        if (!(m.brokerAuth && m.brokerAuth.length)) {
+          alert('该进口商尚未分配清关行，请先在清关行·港口配置授权。');
+          return;
+        }
+        if (!brokerSel.value) {
+          alert('请选择清关行（与进口商一并分配）');
+          return;
+        }
         var risk = renderRisk(m);
         if (risk.showWatch) {
           if (!confirm('当前进口商存在风险：停用待观察。\n确认仍要绑定并保存柜子？')) return;
         }
-        alert('原型演示：柜子已保存，进口商绑定为 ' + sel.value);
+        alert('原型演示：柜子已保存，进口商 ' + sel.value + ' · 清关行 ' + brokerSel.value);
       });
     })();
   </script>

@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>待配仓（MVP）</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --orange: #fa8c16;
+      --red: #ff4d4f;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px; flex-shrink: 0;
+    }
+    .logo {
+      width: 48px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; align-items: stretch; overflow-x: auto; flex: 1; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 14px; flex-shrink: 0; font-size: 12px;
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 180px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.75);
+      padding: 12px 0;
+    }
+    .side-title { padding: 8px 16px; font-size: 12px; color: rgba(255,255,255,.45); }
+    .side-item { padding: 8px 16px; font-size: 13px; }
+    .side-item.on { background: rgba(24,144,255,.25); color: #fff; border-right: 3px solid var(--blue); }
+    .side-item.go { cursor: pointer; }
+    .side-item.go:hover { color: #fff; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    .filter-panel {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 10px 12px 8px; flex-shrink: 0;
+    }
+    .filter-hd { font-weight: 600; margin: 0 0 8px; font-size: 13px; }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 6px 10px; align-items: end;
+    }
+    .fi label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 2px; }
+    .fi input, .fi select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; background: #fff;
+    }
+    .fi.range { display: flex; gap: 4px; align-items: center; }
+    .fi.range input { flex: 1; min-width: 0; }
+    .filter-actions { display: flex; gap: 8px; align-items: end; justify-content: flex-end; }
+    .more-row { display: none; margin-top: 8px; }
+    .more-row.show { display: grid; }
+
+    .tip-bar {
+      margin: 0; padding: 6px 10px; font-size: 12px; line-height: 1.5;
+      background: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3;
+    }
+
+    .toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 8px 12px; background: var(--card); border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    .tool-btn {
+      height: 28px; padding: 0 12px; border-radius: 2px; border: 1px solid transparent;
+      background: var(--blue); color: #fff; cursor: pointer; font-size: 12px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .tool-btn.outline { background: #fff; color: var(--blue); border-color: #91d5ff; }
+    .tool-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .sel-n {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 8px 2px 10px; border: 1px solid #ffa39e; border-radius: 2px;
+      background: #fff1f0; height: 28px;
+    }
+    .sel-n label { font-size: 12px; color: #a8071a; font-weight: 600; white-space: nowrap; }
+    .sel-n input {
+      width: 56px; height: 22px; border: 1px solid #ffa39e; border-radius: 2px;
+      padding: 0 6px; text-align: center;
+    }
+    .sel-n .tool-btn { height: 22px; padding: 0 8px; background: #cf1322; }
+    .badge-new {
+      display: inline-block; padding: 0 4px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+
+    .table-wrap { flex: 1; overflow: auto; background: #fff; }
+    table.grid {
+      border-collapse: separate; border-spacing: 0;
+      font-size: 12px; min-width: 4200px;
+    }
+    table.grid th, table.grid td {
+      border-right: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0;
+      padding: 4px 8px; white-space: nowrap; background: #fff;
+    }
+    table.grid thead th {
+      position: sticky; top: 0; z-index: 3;
+      background: #fafafa; font-weight: 600; text-align: center;
+    }
+    table.grid thead tr.filter th {
+      top: 28px; background: #fff; padding: 2px 4px; z-index: 3;
+    }
+    table.grid thead tr.filter input {
+      width: 100%; min-width: 64px; height: 22px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 4px; font-size: 11px;
+    }
+    table.grid .sticky-0, table.grid .sticky-1, table.grid .sticky-2 {
+      position: sticky; z-index: 2;
+    }
+    table.grid thead .sticky-0, table.grid thead .sticky-1, table.grid thead .sticky-2 { z-index: 4; }
+    table.grid .sticky-0 { left: 0; min-width: 36px; width: 36px; text-align: center; }
+    table.grid .sticky-1 { left: 36px; min-width: 52px; width: 52px; text-align: center; }
+    table.grid .sticky-2 { left: 88px; min-width: 168px; box-shadow: 2px 0 4px rgba(0,0,0,.04); }
+    table.grid tbody tr.group td { background: #f6ffed; font-weight: 600; }
+    table.grid tbody tr.leaf:hover td { background: #e6f7ff; }
+    table.grid tbody tr.leaf.checked td { background: #fff7e6; }
+    table.grid tbody tr.leaf.checked .sticky-0,
+    table.grid tbody tr.leaf.checked .sticky-1,
+    table.grid tbody tr.leaf.checked .sticky-2 { background: #fff7e6; }
+    table.grid tbody tr.group .sticky-0,
+    table.grid tbody tr.group .sticky-1,
+    table.grid tbody tr.group .sticky-2 { background: #f6ffed; }
+    .tree { cursor: pointer; user-select: none; }
+    .tree .arr { display: inline-block; width: 14px; color: #8c8c8c; }
+    .red-n { color: #cf1322; }
+
+    .footbar {
+      flex-shrink: 0; background: #fff; border-top: 1px solid var(--line);
+      padding: 6px 12px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .footbar .sum { color: var(--sub); }
+    .footbar .sum b { color: var(--text); font-weight: 600; }
+    .footbar .picked { color: #d46b08; }
+    .footbar .picked b { color: #ad4e00; }
+    .pager { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .pager select, .pager input { height: 24px; border: 1px solid #d9d9d9; border-radius: 2px; }
+    .pager input { width: 48px; text-align: center; }
+
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 20; align-items: center; justify-content: center;
+    }
+    .mask.show { display: flex; }
+    .modal {
+      width: 420px; background: #fff; border-radius: 4px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    }
+    .modal-hd { padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
+    .modal-bd { padding: 16px; }
+    .modal-bd label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .modal-bd input { width: 100%; height: 32px; border: 1px solid #d9d9d9; padding: 0 8px; }
+    .modal-ft { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+
+    .toast {
+      position: fixed; top: 72px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      display: none; z-index: 40;
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">ESS</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab" onclick="location.href='船务组-运价管理-我司与代理订舱-MVP.html'">运价管理</button>
+        <button type="button" class="nav-tab" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</button>
+        <button type="button" class="nav-tab" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">提单创建(批量)</button>
+        <button type="button" class="nav-tab active">待配仓</button>
+      </div>
+      <div class="header-right">
+        <span>腾信物流 · 船务</span>
+        <a href="船务组-导航.html" style="color:#91d5ff">船务导航</a>
+      </div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-title">船务作业</div>
+        <div class="side-item go" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</div>
+        <div class="side-item go" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html?mode=single'">提单创建</div>
+        <div class="side-item on">待配仓</div>
+        <div class="side-item">舱位播报</div>
+        <div class="side-item go" onclick="location.href='船务组-运价管理-我司与代理订舱-MVP.html'">运价管理</div>
+      </aside>
+
+      <main class="main">
+        <section class="filter-panel">
+          <div class="filter-hd">基本信息</div>
+          <div class="filter-grid">
+            <div class="fi"><label>仓库归属</label>
+              <select id="fWhOwn"><option value="">全部</option><option>泉州分公司</option><option>厦门分公司</option><option>青岛分公司</option></select>
+            </div>
+            <div class="fi"><label>待配舱单号</label><input id="fWaitNo" /></div>
+            <div class="fi"><label>运单号</label><input id="fWaybill" placeholder="运单号 / 客户单号" /></div>
+            <div class="fi"><label>预配舱单号</label><input id="fPreNo" /></div>
+            <div class="fi"><label>提单号</label><input id="fBl" /></div>
+            <div class="fi"><label>销售产品</label><input id="fProduct" /></div>
+            <div class="fi"><label>报关单号</label><input id="fDeclare" /></div>
+            <div class="fi"><label>到港时间</label>
+              <div class="fi range"><input id="fArrFrom" type="date" /><span>~</span><input id="fArrTo" type="date" /></div>
+            </div>
+            <div class="fi"><label>客户</label>
+              <select id="fCust"><option value="">全部</option><option>美设全球（上海）物流科技</option><option>宁波明亮国际</option></select>
+            </div>
+            <div class="fi"><label>服务渠道</label>
+              <select id="fChan"><option value="">全部</option><option>卡派</option><option>快递</option></select>
+            </div>
+            <div class="fi"><label>创建时间</label>
+              <div class="fi range"><input id="fCrtFrom" type="date" /><span>~</span><input id="fCrtTo" type="date" /></div>
+            </div>
+            <div class="filter-actions" style="grid-column: span 1;">
+              <button type="button" class="tool-btn" id="btnMultiQ">多选数据查询</button>
+            </div>
+          </div>
+          <div class="filter-grid more-row" id="moreFilters">
+            <div class="fi"><label>终配舱单号</label><input id="fFinalNo" /></div>
+            <div class="fi"><label>产品组</label><input id="fProdGroup" /></div>
+          </div>
+          <div class="filter-actions" style="margin-top:8px">
+            <button type="button" class="tool-btn outline" id="btnMore">更多筛选</button>
+            <button type="button" class="tool-btn outline" id="btnReset">数据重置</button>
+          </div>
+        </section>
+
+        <p class="tip-bar">输入行数后点「勾选」。Shift+点击可连选运单行。</p>
+
+        <div class="toolbar">
+          <button type="button" class="tool-btn" id="btnQuery">查询数据</button>
+          <button type="button" class="tool-btn" id="btnExpand">全部展开</button>
+          <button type="button" class="tool-btn" id="btnCollapse">全部关闭</button>
+          <button type="button" class="tool-btn" id="btnBatchPre">批量修改预配舱单号</button>
+          <button type="button" class="tool-btn" id="btnScan">扫描信息</button>
+          <button type="button" class="tool-btn" id="btnPrint">打印箱信息</button>
+          <button type="button" class="tool-btn" id="btnBox">归箱信息</button>
+          <span class="sel-n">
+            <label>勾选前 <span class="badge-new">新</span></label>
+            <input id="selCount" type="number" min="1" value="10" />
+            <span style="font-size:12px;color:#a8071a">行</span>
+            <button type="button" class="tool-btn" id="btnSelN">勾选</button>
+            <button type="button" class="tool-btn outline" id="btnSelClear" style="color:#a8071a;border-color:#ffa39e">取消勾选</button>
+          </span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="grid" id="grid">
+            <thead id="thead"></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="footbar">
+          <div class="sum" id="allSum"></div>
+          <div class="picked" id="pickSum"></div>
+          <div class="pager">
+            <span>共 <b id="pageTotal">0</b> 条</span>
+            <select id="pageSize"><option>50</option><option selected>500</option></select>
+            <span>条/页</span>
+            <button type="button" class="tool-btn outline" id="btnCheckMark">待查验标记</button>
+            <button type="button" class="tool-btn outline" id="btnClose">关闭</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="mask" id="preMask">
+    <div class="modal">
+      <div class="modal-hd">批量修改预配舱单号</div>
+      <div class="modal-bd">
+        <label>预配舱单号</label>
+        <input id="preValue" placeholder="写入勾选运单" />
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="preCancel">取消</button>
+        <button type="button" class="tool-btn" id="preOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-需求PRD.html" data-prd-anchor="m4-wait">
+    <span class="ess-prd-chip">PRD · 待配仓</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var COLS = [
+        { k: "preNo", t: "预配舱单号", sticky: 2, w: 168 },
+        { k: "waybill", t: "运单号", w: 140 },
+        { k: "pcs", t: "总件数", w: 72 },
+        { k: "allocPcs", t: "可配件数", w: 80 },
+        { k: "unAct", t: "未出货实重", w: 92 },
+        { k: "unCbm", t: "未出货方数", w: 92 },
+        { k: "shipAct", t: "总出货实重", w: 92 },
+        { k: "shipDim", t: "总出货材积重", w: 100 },
+        { k: "shipCbm", t: "总出货方数", w: 92 },
+        { k: "stowSt", t: "配舱状态", w: 80 },
+        { k: "wbSt", t: "运单状态", w: 80 },
+        { k: "declare", t: "报关单号", w: 170 },
+        { k: "holdSt", t: "扣件状态", w: 80 },
+        { k: "density", t: "收货比重", w: 80 },
+        { k: "arrNode", t: "到货网点", w: 100 },
+        { k: "arrAt", t: "到货时间", w: 150 },
+        { k: "outChg", t: "出库计费重", w: 92 },
+        { k: "chg", t: "计费重", w: 72 },
+        { k: "pcsTxt", t: "件数", w: 64 },
+        { k: "opRemark", t: "操作备注", w: 80 },
+        { k: "forecastAt", t: "预报时间", w: 150 },
+        { k: "shipAt", t: "出货时间", w: 110 },
+        { k: "goods", t: "主品名", w: 160 },
+        { k: "whCode", t: "仓库代码", w: 80 },
+        { k: "channel", t: "服务渠道", w: 80 },
+        { k: "declMode", t: "报关方式", w: 80 },
+        { k: "extra", t: "额外服务", w: 160 },
+        { k: "custRemark", t: "客户备注", w: 90 },
+        { k: "xferNo", t: "渠道转单号", w: 110 },
+        { k: "custType", t: "客户类型", w: 80 },
+        { k: "destCountry", t: "目的国", w: 72 },
+        { k: "zip", t: "目的邮编", w: 110 },
+        { k: "custNo", t: "客户单号", w: 140 },
+        { k: "product", t: "销售产品", w: 160 },
+        { k: "sales", t: "业务员", w: 120 },
+        { k: "customer", t: "客户", w: 180 },
+        { k: "node", t: "所在网点", w: 100 },
+        { k: "inspDoc", t: "是否上传商检报告资料", w: 150 },
+        { k: "declDoc", t: "是否上传报关资料", w: 130 },
+        { k: "material", t: "商品材质", w: 180 },
+        { k: "inspCnt", t: "仓库查验次数", w: 100 },
+        { k: "checkNote", t: "核对备注", w: 90 },
+        { k: "inspNote", t: "查货备注", w: 90 }
+      ];
+
+      var GROUPS = [
+        {
+          id: "g1", name: "泉州中美二区适配",
+          rows: [
+            leaf(3, "ICBU00001215403", "圣诞姜饼人抱枕,红色圣诞木提", "AVP1", "18202-9361", "MSFJ-260801765", 6, 32, 179.16),
+            leaf(253, "ICBU00001218772", "塑料制品", "TEB9", "08873", "MSEC-000061990", 12, 50, 208.34),
+            leaf(254, "ICBU00001218801", "运动内衣，运动裤", "ABE8", "08518-2200", "MSFJ-260801802", 10, 108, 252.08),
+            leaf(255, "ICBU00001218819", "圣诞装饰抱枕", "AVP1", "07001", "MSFJ-260801819", 5, 73, 67.7)
+          ]
+        },
+        {
+          id: "g2", name: "泉州中美卡派特价",
+          rows: [
+            leaf(266, "ICBU00001219002", "合成木装饰", "TEB9", "10001", "MSEC-000062010", 8, 121, 88.2),
+            leaf(267, "ICBU00001219018", "涤纶抱枕套", "ABE8", "90001", "MSFJ-260802018", 14, 64, 91.4),
+            leaf(268, "ICBU00001219033", "尼龙运动裤", "AVP1", "77001", "MSEC-000062033", 9, 86, 110.5),
+            leaf(269, "ICBU00001219041", "塑料装饰品", "TEB9", "33101", "MSFJ-260802041", 7, 44, 76.3),
+            leaf(270, "ICBU00001219058", "75% Polyamide 运动衣", "ABE8", "19101", "MSEC-000062058", 11, 97, 134.8)
+          ]
+        },
+        {
+          id: "g3", name: "厦门中天优运FBA",
+          rows: [
+            leaf(286, "ICBU00001220110", "校服制服", "AVP1", "02101", "MSFJ-260803110", 16, 140, 155.2),
+            leaf(287, "ICBU00001220128", "家居服睡衣", "TEB9", "60601", "MSEC-000063128", 4, 28, 49.6),
+            leaf(288, "ICBU00001220144", "针织服装", "ABE8", "94101", "MSFJ-260803144", 13, 77, 102.1),
+            leaf(289, "ICBU00001220159", "箱包配件", "AVP1", "80201", "MSEC-000063159", 6, 55, 83.0)
+          ]
+        },
+        {
+          id: "g4", name: "青岛T25卡派",
+          rows: [
+            leaf(301, "ICBU00001221001", "成衣上衣", "TEB9", "98101", "MSFJ-260804001", 20, 160, 201.4),
+            leaf(302, "ICBU00001221016", "羽绒服外套", "ABE8", "85001", "MSEC-000064016", 3, 41, 58.9),
+            leaf(303, "ICBU00001221027", "袜子内衣", "AVP1", "37201", "MSFJ-260804027", 18, 36, 44.2),
+            leaf(304, "ICBU00001221038", "80% nylon 20% span", "TEB9", "55401", "MSEC-000064038", 9, 69, 99.7),
+            leaf(305, "ICBU00001221049", "合成木/wooden, 涤纶/polyester", "ABE8", "48201", "MSFJ-260804049", 7, 81, 118.3)
+          ]
+        },
+        {
+          id: "g5", name: "泉州中美快运FBA",
+          rows: [
+            leaf(320, "ICBU00001222011", "红色圣诞木提", "AVP1", "12201", "MSFJ-260805011", 5, 39, 61.5),
+            leaf(321, "ICBU00001222024", "塑料制品", "TEB9", "43201", "MSEC-000065024", 8, 52, 70.8),
+            leaf(322, "ICBU00001222037", "运动服套装", "ABE8", "27601", "MSFJ-260805037", 12, 93, 126.0),
+            leaf(323, "ICBU00001222048", "抱枕靠垫", "AVP1", "63101", "MSEC-000065048", 6, 47, 80.4),
+            leaf(324, "ICBU00001222059", "尼龙泳装", "TEB9", "70112", "MSFJ-260805059", 10, 58, 87.6),
+            leaf(325, "ICBU00001222070", "休闲服装", "ABE8", "20001", "MSEC-000065070", 15, 112, 148.9)
+          ]
+        }
+      ];
+
+      function leaf(sn, waybill, goods, wh, zip, custNo, pcs, chg, density) {
+        var declCnt = pcs > 10 ? 11 : pcs;
+        return {
+          id: "r" + sn, sn: sn, waybill: waybill,
+          pcs: pcs, allocPcs: pcs, unAct: (chg * 0.92).toFixed(3), unCbm: (chg / 280).toFixed(3),
+          shipAct: (chg * 0.9).toFixed(3), shipDim: (chg * 1.05).toFixed(1), shipCbm: (chg / 250).toFixed(3),
+          stowSt: "未配舱", wbSt: "已签入",
+          declare: waybill + "-1", declareN: declCnt, holdSt: "",
+          density: density, arrNode: "泉州分公司", arrAt: "2026-08-22 16:17:30",
+          outChg: chg, chg: chg, pcsTxt: pcs + "件",
+          opRemark: "", forecastAt: "2026-08-20 17:24:52", shipAt: "",
+          goods: goods, whCode: wh, channel: "卡派", declMode: "9810",
+          extra: sn % 2 ? "亚马逊地址,同UPS官网地址" : "合并报关,商业地址",
+          custRemark: "", xferNo: "", custType: "同行", destCountry: "美国",
+          zip: zip, custNo: custNo,
+          product: sn % 3 === 0 ? "中天优运FBA-卡派特价" : "中美快运FBA-卡派特价",
+          sales: "李俊 (泉州) 2",
+          customer: "美设全球（上海）物流科技有限公司",
+          node: "泉州分公司",
+          inspDoc: "", declDoc: "", material: goods.indexOf("尼龙") >= 0 || goods.indexOf("nylon") >= 0
+            ? "80% nylon (尼龙) 20% span" : (goods.indexOf("木") >= 0 ? "合成木/wooden, 涤纶/polyester" : "塑料装饰品"),
+          inspCnt: sn % 4 === 0 ? "1" : "", checkNote: "", inspNote: "",
+          preNo: "", bl: "", waitNo: "", finalNo: "", prodGroup: "FBA卡派",
+          custShort: "美设全球（上海）物流科技"
+        };
+      }
+
+      var openMap = { g1: true, g2: true, g3: true, g4: true, g5: true };
+      var checked = {};
+      var lastLeafIdx = -1;
+      var colFilter = {};
+
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.className = "toast show";
+        setTimeout(function () { el.className = "toast"; }, 1800);
+      }
+
+      function allLeaves() {
+        var out = [];
+        GROUPS.forEach(function (g) {
+          g.rows.forEach(function (r) { r._gid = g.id; r._gname = g.name; out.push(r); });
+        });
+        return out;
+      }
+
+      function matchRow(r) {
+        function has(id) { return (document.getElementById(id).value || "").trim(); }
+        var w = has("fWaybill");
+        if (w && r.waybill.indexOf(w) < 0 && r.custNo.indexOf(w) < 0) return false;
+        var pre = has("fPreNo");
+        if (pre && (r.preNo || r._gname).indexOf(pre) < 0) return false;
+        var prod = has("fProduct");
+        if (prod && r.product.indexOf(prod) < 0) return false;
+        var decl = has("fDeclare");
+        if (decl && r.declare.indexOf(decl) < 0) return false;
+        var cust = has("fCust");
+        if (cust && r.customer.indexOf(cust) < 0) return false;
+        var chan = has("fChan");
+        if (chan && r.channel !== chan) return false;
+        var own = has("fWhOwn");
+        if (own && r.node !== own) return false;
+        for (var k in colFilter) {
+          if (!colFilter[k]) continue;
+          var val = k === "preNo" ? (r.preNo || r._gname) : (k === "declare" ? r.declare : String(r[k] == null ? "" : r[k]));
+          if (val.toLowerCase().indexOf(colFilter[k].toLowerCase()) < 0) return false;
+        }
+        return true;
+      }
+
+      function visibleLeaves() {
+        return allLeaves().filter(matchRow);
+      }
+
+      function visibleGroups() {
+        return GROUPS.map(function (g) {
+          return { id: g.id, name: g.name, rows: g.rows.filter(matchRow) };
+        }).filter(function (g) { return g.rows.length; });
+      }
+
+      function num(v) { return +v || 0; }
+
+      function sumRows(rows) {
+        var s = { tickets: rows.length, allocPcs: 0, act: 0, cbm: 0, chg: 0, outChg: 0 };
+        rows.forEach(function (r) {
+          s.allocPcs += num(r.allocPcs);
+          s.act += num(r.unAct);
+          s.cbm += num(r.unCbm);
+          s.chg += num(r.chg);
+          s.outChg += num(r.outChg);
+        });
+        return s;
+      }
+
+      function fmt(n) { return (Math.round(n * 1000) / 1000).toString(); }
+
+      function writeSum(el, label, s) {
+        el.innerHTML = label +
+          "：总票数 <b>" + s.tickets + "</b>　可配件数 <b>" + s.allocPcs +
+          "</b>　总实重 <b>" + fmt(s.act) + "</b>　总方数 <b>" + fmt(s.cbm) +
+          "</b>　计费重 <b>" + fmt(s.chg) + "</b>　出库计费重 <b>" + fmt(s.outChg) + "</b>";
+      }
+
+      function renderHead() {
+        var h1 = "<tr><th class='sticky-0'><input type='checkbox' id='chkAll' /></th><th class='sticky-1'>序号</th>";
+        var h2 = "<tr class='filter'><th class='sticky-0'></th><th class='sticky-1'></th>";
+        COLS.forEach(function (c, i) {
+          var st = i === 0 ? " sticky-2" : "";
+          h1 += "<th class='" + st + "' style='min-width:" + c.w + "px'>" + c.t + "</th>";
+          h2 += "<th class='" + st + "'><input data-fk='" + c.k + "' value='" + (colFilter[c.k] || "") + "' /></th>";
+        });
+        document.getElementById("thead").innerHTML = h1 + "</tr>" + h2 + "</tr>";
+      }
+
+      function cell(r, k) {
+        if (k === "preNo") return r.preNo || "";
+        if (k === "declare") return r.declare + " <span class='red-n'>(" + r.declareN + ")</span>";
+        var v = r[k];
+        return v == null || v === "" ? "" : v;
+      }
+
+      function render() {
+        var groups = visibleGroups();
+        var leaves = visibleLeaves();
+        var html = "";
+        groups.forEach(function (g) {
+          var open = openMap[g.id] !== false;
+          var childIds = g.rows.map(function (r) { return r.id; });
+          var ckN = childIds.filter(function (id) { return checked[id]; }).length;
+          var gsum = sumRows(g.rows);
+          html += "<tr class='group' data-gid='" + g.id + "'>";
+          html += "<td class='sticky-0'><input type='checkbox' class='gchk' data-gid='" + g.id + "'" +
+            (ckN === childIds.length && childIds.length ? " checked" : "") + " /></td>";
+          html += "<td class='sticky-1'></td>";
+          html += "<td class='sticky-2'><span class='tree' data-gid='" + g.id + "'><span class='arr'>" +
+            (open ? "▼" : "▶") + "</span> " + g.name + " (" + g.rows.length + ")</span></td>";
+          html += "<td></td><td>" + gsum.allocPcs + "</td><td>" + gsum.allocPcs + "</td>";
+          html += "<td>" + fmt(gsum.act) + "</td><td>" + fmt(gsum.cbm) + "</td>";
+          html += "<td></td><td></td><td></td>";
+          COLS.slice(9).forEach(function () { html += "<td></td>"; });
+          html += "</tr>";
+          if (open) {
+            g.rows.forEach(function (r) {
+              var on = !!checked[r.id];
+              html += "<tr class='leaf" + (on ? " checked" : "") + "' data-id='" + r.id + "'>";
+              html += "<td class='sticky-0'><input type='checkbox' class='rchk' data-id='" + r.id + "'" + (on ? " checked" : "") + " /></td>";
+              html += "<td class='sticky-1'>" + r.sn + "</td>";
+              COLS.forEach(function (c, i) {
+                var st = i === 0 ? " sticky-2" : "";
+                html += "<td class='" + st + "'>" + cell(r, c.k) + "</td>";
+              });
+              html += "</tr>";
+            });
+          }
+        });
+        document.getElementById("tbody").innerHTML = html;
+        document.getElementById("pageTotal").textContent = leaves.length;
+        writeSum(document.getElementById("allSum"), "总数据", sumRows(leaves));
+        var picked = leaves.filter(function (r) { return checked[r.id]; });
+        writeSum(document.getElementById("pickSum"), "勾选数据", sumRows(picked));
+        var allEl = document.getElementById("chkAll");
+        if (allEl) allEl.checked = leaves.length > 0 && picked.length === leaves.length;
+      }
+
+      function setCheck(id, on) {
+        if (on) checked[id] = true;
+        else delete checked[id];
+      }
+
+      function selectFirstN(n) {
+        var leaves = visibleLeaves();
+        Object.keys(checked).forEach(function (k) { delete checked[k]; });
+        var take = Math.min(n, leaves.length);
+        for (var i = 0; i < take; i++) checked[leaves[i].id] = true;
+        lastLeafIdx = take ? take - 1 : -1;
+        render();
+        toast("已勾选前 " + take + " 行");
+      }
+
+      renderHead();
+      render();
+
+      document.getElementById("thead").addEventListener("input", function (e) {
+        var fk = e.target.getAttribute("data-fk");
+        if (!fk) return;
+        colFilter[fk] = e.target.value;
+        render();
+      });
+      document.getElementById("thead").addEventListener("change", function (e) {
+        if (e.target.id !== "chkAll") return;
+        var on = e.target.checked;
+        visibleLeaves().forEach(function (r) { setCheck(r.id, on); });
+        render();
+      });
+
+      document.getElementById("tbody").addEventListener("click", function (e) {
+        var tree = e.target.closest(".tree");
+        if (tree) {
+          var gid = tree.getAttribute("data-gid");
+          openMap[gid] = openMap[gid] === false;
+          render();
+          return;
+        }
+        var gchk = e.target.closest(".gchk");
+        if (gchk) {
+          var g = visibleGroups().filter(function (x) { return x.id === gchk.getAttribute("data-gid"); })[0];
+          var on = gchk.checked;
+          if (g) g.rows.forEach(function (r) { setCheck(r.id, on); });
+          render();
+          return;
+        }
+        var rchk = e.target.closest(".rchk");
+        if (!rchk) return;
+        var id = rchk.getAttribute("data-id");
+        var leaves = visibleLeaves();
+        var idx = -1;
+        leaves.forEach(function (r, i) { if (r.id === id) idx = i; });
+        if (e.shiftKey && lastLeafIdx >= 0 && idx >= 0) {
+          var a = Math.min(lastLeafIdx, idx), b = Math.max(lastLeafIdx, idx);
+          for (var i = a; i <= b; i++) checked[leaves[i].id] = true;
+        } else {
+          setCheck(id, rchk.checked);
+          lastLeafIdx = idx;
+        }
+        render();
+      });
+
+      document.getElementById("btnSelN").onclick = function () {
+        var n = Math.floor(+document.getElementById("selCount").value || 0);
+        if (n < 1) { toast("请输入要勾选的行数"); return; }
+        selectFirstN(n);
+      };
+      document.getElementById("btnSelClear").onclick = function () {
+        Object.keys(checked).forEach(function (k) { delete checked[k]; });
+        lastLeafIdx = -1;
+        render();
+        toast("已取消勾选");
+      };
+      document.getElementById("btnExpand").onclick = function () {
+        GROUPS.forEach(function (g) { openMap[g.id] = true; });
+        render();
+      };
+      document.getElementById("btnCollapse").onclick = function () {
+        GROUPS.forEach(function (g) { openMap[g.id] = false; });
+        render();
+      };
+      document.getElementById("btnQuery").onclick = function () { render(); toast("已按条件查询"); };
+      document.getElementById("btnMore").onclick = function () {
+        document.getElementById("moreFilters").classList.toggle("show");
+      };
+      document.getElementById("btnReset").onclick = function () {
+        document.querySelectorAll(".filter-panel input, .filter-panel select").forEach(function (el) {
+          if (el.tagName === "SELECT") el.selectedIndex = 0;
+          else el.value = "";
+        });
+        colFilter = {};
+        renderHead();
+        render();
+        toast("已重置");
+      };
+      document.getElementById("btnMultiQ").onclick = function () { toast("多选数据查询（示意）"); };
+      document.getElementById("btnScan").onclick = function () { toast("扫描信息"); };
+      document.getElementById("btnPrint").onclick = function () { toast("打印箱信息"); };
+      document.getElementById("btnBox").onclick = function () { toast("归箱信息"); };
+      document.getElementById("btnCheckMark").onclick = function () {
+        var n = visibleLeaves().filter(function (r) { return checked[r.id]; }).length;
+        if (!n) { toast("请先勾选运单"); return; }
+        toast("已对待查验标记 " + n + " 行");
+      };
+      document.getElementById("btnClose").onclick = function () {
+        location.href = "船务组-导航.html";
+      };
+      document.getElementById("btnBatchPre").onclick = function () {
+        var n = visibleLeaves().filter(function (r) { return checked[r.id]; }).length;
+        if (!n) { toast("请先勾选运单"); return; }
+        document.getElementById("preValue").value = "";
+        document.getElementById("preMask").className = "mask show";
+      };
+      document.getElementById("preCancel").onclick = function () {
+        document.getElementById("preMask").className = "mask";
+      };
+      document.getElementById("preMask").addEventListener("click", function (e) {
+        if (e.target === this) return;
+      });
+      document.getElementById("preOk").onclick = function () {
+        var v = (document.getElementById("preValue").value || "").trim();
+        if (!v) { toast("请填写预配舱单号"); return; }
+        var n = 0;
+        allLeaves().forEach(function (r) {
+          if (checked[r.id]) { r.preNo = v; n += 1; }
+        });
+        document.getElementById("preMask").className = "mask";
+        render();
+        toast("已改预配舱单号 " + n + " 行");
+      };
+    })();
+  </script>
+</body>
+</html>

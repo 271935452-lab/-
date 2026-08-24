@@ -144,9 +144,12 @@
       <a href="#m4-flow-detail">4.6.1 流转明细</a>
       <a href="#m6">六、弹窗交互（新增/改动）</a>
       <a href="#m6-calc-log">6.2.1 试算日志</a>
+      <a href="#m6-calc-log-btn">6.2.1 试算日志入口</a>
       <a href="#m6-calc-log-rounds">6.2.2 多次试算</a>
       <a href="#m6-bind-edge">6.3 绑单边界</a>
       <a href="#m6-bind-validate">6.3.2 散货 A/B 校验</a>
+      <a href="#m6-bind-waybill">6.3.3 运单带出与搜索</a>
+      <a href="#m6-bind-notify">6.3.4 港后客服通知</a>
       <a href="#m5">五、AI报价规则</a>
       <a href="#m5-layout">5.1 页面布局</a>
       <a href="#m5-topbar">5.2 顶栏草稿/发布</a>
@@ -312,7 +315,7 @@
           <tr>
             <td>报价员 · 列表列 / 操作</td>
             <td>无更新时间；无试算日志</td>
-            <td>新增<strong>更新时间</strong>列；AI待确认 / 已报价 / 已完结行展示「试算日志」；按状态动态渲染「核对确认 / 绑定运单 / 改绑」</td>
+            <td>新增<strong>更新时间</strong>列；<strong>有试算记录</strong>（含失败）的行展示「试算日志」，<strong>未试算不出现</strong>；按状态动态渲染「核对确认 / 绑定运单 / 改绑」（见 <a href="#m6-calc-log-btn">§6.2.1</a>）</td>
             <td><span class="tag new">NEW</span></td>
           </tr>
           <tr>
@@ -336,7 +339,7 @@
           <tr>
             <td>绑运单</td>
             <td>手工选单或弱匹配</td>
-            <td>弹窗内散货初筛 + A/B 校验；整票<strong>单绑 1 张</strong>（ICBU）；弹窗左侧只读渠道价、右侧验证结果表；尾程派送费挂接；绑后锁定</td>
+            <td>弹窗内散货初筛 + A/B 校验（<strong>软提示</strong>，不符可仍绑）；运单号<strong>全局搜索</strong>；整票<strong>单绑 1 张</strong>（ICBU）；弹窗左侧只读渠道价、右侧验证结果表；尾程派送费挂接；绑后锁定</td>
             <td><span class="tag chg">改</span></td>
           </tr>
           <tr>
@@ -437,8 +440,8 @@
       </ul>
       <h3>2.6 散货单价怎么算</h3>
       <ul>
-        <li>船务运价管理下发<strong>头程运价</strong>（H1），报价前就绪。</li>
-        <li>算价时：<strong>总价 = AI 规则配置（内州 713 / 外州万物智联等）+ 头程运价</strong>；<strong>单价 = 总价 ÷ 计费重</strong>，给业务员取个位 USD/KG。外州万物智联渠道价取对接<strong>含附加费</strong>返回总价。</li>
+        <li>船务运价管理下发<strong>头程运价</strong>（H1），换算为<strong>头程单价</strong>（USD/KG）；AI 规则试算产出各渠道<strong>尾端派送费</strong>（USD，取整登记）。</li>
+        <li>给业务员的<strong>单价 = 头程单价 + 尾端派送费 ÷ 询价计费重</strong>，取个位 USD/KG。外州万物智联试算价<strong>已含附加费</strong>，计入尾端派送费口径。</li>
         <li>业务员只看确认后的<strong>各渠道单价</strong>（多渠道多条），不展示头程、计费重、万物智联品牌表。</li>
       </ul>
     </section>
@@ -483,15 +486,44 @@
             <li><strong>跟进人</strong>：运单<strong>业务员</strong>或运单<strong>客服</strong> 与<strong>询价员</strong>（提交询价的业务员）一致（二者满足其一即可）。</li>
           </ul>
         </li>
-        <li><strong>A/B 校验</strong>：运单计费重须与询价计费重一致（差异 0%）；入仓时间须落在报价有效期内。均通过方可绑定；否则标「淘汰」。</li>
+        <li><strong>A/B 校验</strong>：运单计费重须与询价计费重一致（差异 0%）；入仓时间须落在报价有效期内。未通过标「淘汰」并<strong>提示</strong>，<strong>不强制拦截</strong>绑单（见 <a href="#m6-bind-waybill">§6.3.3</a>）。</li>
+        <li id="m3-bind-waybill"><strong>已报价 · 运单带出与搜索</strong>（列表 / 详情「绑定运单」弹窗）：
+          <ul>
+            <li><strong>默认带出</strong>：打开弹窗时，按<a href="#m6-bind-validate">初筛</a>条件自动检索并填入右侧验证表，展示符合条件的运单号。</li>
+            <li><strong>运单号搜索</strong>：输入运单号检索时<strong>全局搜索</strong>（不限于初筛命中列表）；命中后仍进入验证表，逐项展示初筛 / A/B 结果。</li>
+            <li><strong>不符只提示、不硬挡</strong>：初筛或 A/B 任一不符 → 验证表标「淘汰」或警告，toast / 行内说明不符项；报价员<strong>仍可选中</strong>该运单并「确认绑定」，系统<strong>不强制禁止</strong>落库。</li>
+          </ul>
+        </li>
         <li>散货<strong>整票仅绑 1 张</strong>运单；运单号前缀 <strong>ICBU</strong>。</li>
         <li id="m3-bind-ch"><strong>绑单 · 渠道展示（随业务员是否确认报价）</strong>：
           <ul>
             <li><strong>业务员已「确认报价」</strong>（询价详情单选确认）：绑单弹窗左侧渠道区<strong>只显示该确认渠道 1 条</strong>（只读）；尾程派送费按该渠道已登记金额挂运单。</li>
-            <li><strong>业务员尚未确认报价</strong>：绑单弹窗左侧展示本票<strong>全部渠道</strong>（多条只读摘要）；由<strong>报价员自行完成绑定</strong>（整票仍选 1 张运单）。挂接尾程时须由报价员在渠道区<strong>点选 1 条</strong>作为挂费渠道（未点选前确认绑定置灰，或默认勾选「本票最优」——实现二选一写死，建议默认最优可改选）。</li>
+            <li><strong>业务员尚未确认报价</strong>：绑单弹窗左侧展示本票<strong>全部渠道</strong>（多条只读摘要）；由<strong>报价员自行完成绑定</strong>（整票仍选 1 张运单）。挂接尾程时须由报价员在渠道区<strong>点选 1 条</strong>作为挂费渠道；<strong>默认勾选「本票最优」</strong>，可改选其他渠道。</li>
           </ul>
         </li>
-        <li>右侧列出初筛命中运单及验证结果，<strong>整票选 1 张「通过」运单</strong>绑定。弹窗字段见 <a href="#m6-bind">6.3</a>。</li>
+      </ul>
+      <table>
+        <thead>
+          <tr><th>业务员是否确认报价</th><th>绑单弹窗 · 左侧渠道区</th><th>挂费渠道</th><th>操作主体</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>已确认</strong>（询价详情单选后点「确认报价」）</td>
+            <td>只读展示<strong>确认渠道 1 条</strong>（不可改选）</td>
+            <td>固定 = 业务员确认渠道；尾程取该渠道已登记金额</td>
+            <td>报价员选运单并绑定</td>
+          </tr>
+          <tr>
+            <td><strong>未确认</strong></td>
+            <td>展示本票<strong>全部渠道</strong>（多条只读摘要）</td>
+            <td>报价员<strong>单选 1 条</strong>挂费（默认「本票最优」，可改选）</td>
+            <td>报价员自选挂费渠道 + 选运单并绑定</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">整票仍只绑 <strong>1 张</strong>运单；不按渠道分别绑单。业务员「确认报价」为可选步骤——未确认不阻塞报价员绑单。</p>
+      <ul>
+        <li>右侧展示初筛命中或搜索命中的运单及验证结果；<strong>整票选 1 张运单</strong>绑定（推荐选「最终=通过」；未通过亦可绑，须见不符提示）。弹窗字段见 <a href="#m6-bind">6.3</a>。</li>
       </ul>
       <h3>3.3 列表状态 · 已报价 vs 已完结</h3>
       <ul>
@@ -509,12 +541,13 @@
         <tbody>
           <tr><td>待报价</td><td><strong>报价</strong>、<strong>打回</strong></td><td>不展示绑定运单</td></tr>
           <tr><td>AI待确认</td><td><strong>核对确认</strong>、<strong>打回</strong>、<strong>试算日志</strong></td><td>进详情：状态 <strong>AI待确认</strong>；可见 <strong>打回 + 编辑 + 核对确认 + 试算日志</strong></td></tr>
-          <tr><td>已报价</td><td><strong>绑定运单</strong>、<strong>试算日志</strong></td><td>各渠道单价已回业务员，待绑运单；详情页<strong>编辑 / 核对确认均已隐藏</strong>，展示绑定运单</td></tr>
+          <tr><td>已报价</td><td><strong>绑定运单</strong>、<strong>试算日志</strong></td><td>各渠道单价已回业务员，待绑运单；绑单弹窗<strong>默认按初筛带出</strong>符合运单，运单号<strong>全局搜索</strong>，不符<strong>提示不硬挡</strong>（见 <a href="#m6-bind-waybill">§6.3.3</a>）</td></tr>
           <tr><td>已完结</td><td><strong>改绑运单</strong>、<strong>试算日志</strong></td><td>仅已绑定运单的单据。<strong>财务已锁账 / 成本已审核</strong>时不可改绑 / 解绑</td></tr>
         </tbody>
       </table>
       <ul>
         <li>整柜「报价」跳转整柜报价编辑；散货「报价」跳转报价员详情。</li>
+        <li><strong>试算日志</strong>入口：<strong>有试算即出现</strong>（成功 / 失败均算，含待报价态下试算失败）；<strong>从未试算不出现</strong>。与列表状态无强绑定，以本单是否已有试算轮次为准（见 <a href="#m6-calc-log-btn">§6.2.1</a>）。</li>
         <li>工具栏「核对确认」：勾选 <strong>AI待确认</strong> 散货单可用，跳转详情页核对。「绑定运单 / 改绑运单」：勾选 已报价 / 已完结 且未过有效期可用；<strong>财务已锁账 / 业务员成本已审核</strong>时改绑 / 解绑置灰，点击即 toast 拦截。</li>
       </ul>
       <h3>3.5 AI 返回 vs 未返回 · 状态页签</h3>
@@ -524,7 +557,7 @@
         </thead>
         <tbody>
           <tr><td>AI 已出账、待报价员核对</td><td>核对确认、打回、试算日志</td><td>AI待确认</td><td>报价中，无单价</td></tr>
-          <tr><td>AI 未出账 / 待人工</td><td>报价、打回</td><td>待报价</td><td>报价中，无单价</td></tr>
+          <tr><td>AI 未出账 / 待人工</td><td>报价、打回（+<strong>试算日志</strong>若曾试算含失败）</td><td>待报价</td><td>报价中，无单价</td></tr>
           <tr><td>核对确认完成、未绑运单</td><td>绑定运单、试算日志</td><td>已报价；进待绑运单页签</td><td><strong>人工已报价</strong> + 各渠道单价</td></tr>
           <tr><td>已绑定运单</td><td>改绑运单、试算日志</td><td>已完结</td><td>人工已报价 + 各渠道单价（已绑）</td></tr>
         </tbody>
@@ -556,8 +589,8 @@
       <h3>4.3 右侧状态卡片</h3>
       <ul>
         <li>仅展示当前大字状态，不在此卡片放操作按钮。</li>
-        <li><strong>AI待确认</strong>（未核对）：大字状态 = <strong>AI待确认</strong>；价格未返回业务员。顶部可见 <strong>打回</strong> + <strong>编辑报价</strong> + <strong>核对确认</strong> +「试算日志」。</li>
-        <li><strong>已核对 · 待绑运单</strong>：大字状态 = <strong>已报价</strong>（绿色）；各渠道单价已回写业务员。<strong>编辑报价</strong>、<strong>核对确认</strong> 均<strong>隐藏</strong>；顶部展示 <strong>撤回核对</strong>、<strong>绑定运单</strong>（+「试算日志」）。改价须先撤回。</li>
+        <li><strong>AI待确认</strong>（未核对）：大字状态 = <strong>AI待确认</strong>；价格未返回业务员。顶部可见 <strong>打回</strong> + <strong>编辑报价</strong> + <strong>核对确认</strong> +「试算日志」（有试算即有）。</li>
+        <li><strong>已核对 · 待绑运单</strong>：大字状态 = <strong>已报价</strong>（绿色）；各渠道单价已回写业务员。<strong>编辑报价</strong>、<strong>核对确认</strong> 均<strong>隐藏</strong>；顶部展示 <strong>撤回核对</strong>、<strong>绑定运单</strong>（+「试算日志」，有试算即有）。改价须先撤回。</li>
         <li><strong>已绑定运单</strong>：展示已绑运单号；「绑定运单」改为「改绑运单」。绑单后业务员改运单信息<strong>不回写</strong>报价单价 / 尾程登记。<strong>财务已锁账 / 成本已审核</strong>时展示锁定提示并禁止改绑 / 解绑 / 撤回。<strong>已核对后不可重算</strong>。</li>
       </ul>
       <h3 id="m4-flow">4.6 状态流转（时间轴）</h3>
@@ -643,34 +676,44 @@
             <td>节点「核对确认 · 已报价」点亮：确认时间 · 报价员 · 各渠道单价摘要 · 有效期 · 备注摘要</td>
           </tr>
           <tr>
+            <td>④′</td>
+            <td>业务员确认报价</td>
+            <td>询价详情（业务员）单选 1 渠道 →「确认报价」</td>
+            <td>已报价 / 已报价 / 人工已报价（<strong>不变</strong>）</td>
+            <td><strong>不回写</strong>单价 / 尾程 / 有效期；仅记录<strong>业务员确认渠道</strong></td>
+            <td>—</td>
+            <td>写入<strong>业务员确认渠道 ID</strong>（销售产品）、确认时间、确认人；供绑单弹窗只读带出 1 渠道（见 <a href="#m3-bind-ch">§3.2</a>）</td>
+            <td>可选节点「业务员确认报价」：确认时间 · 确认渠道名 · 单价摘要</td>
+          </tr>
+          <tr>
             <td>⑤</td>
             <td>绑定运单</td>
-            <td>绑单弹窗「确认绑定」</td>
+            <td>绑单弹窗「确认绑定」（渠道区见 <a href="#m3-bind-ch">§3.2</a>：已确认=1 渠道只读；未确认=多渠道 + 报价员选挂费渠道）</td>
             <td><strong>已完结</strong> / 已完结 / 人工已报价（<strong>已绑</strong>）</td>
             <td>单价<strong>不变</strong>（锁定）；尾程派送费<strong>挂接到所选运单</strong></td>
             <td>—</td>
-            <td><strong>运单号</strong>（ICBU，整票 1 张）、<strong>运单计费重</strong>、<strong>入仓时间</strong>（A/B 校验通过项）；挂接<strong>尾程派送费</strong>（各渠道已登记金额，绑单时取对应渠道值挂运单）；详情 / 列表展示已绑运单号 + 锁定提示</td>
-            <td>节点「绑定运单」点亮：绑单时间 · 操作人 · 运单号 · 尾程挂接 USD {金额}</td>
+            <td><strong>运单号</strong>（ICBU，整票 1 张）、<strong>运单计费重</strong>、<strong>入仓时间</strong>（A/B 校验通过项）；写入<strong>绑单挂费渠道 ID</strong>；挂接<strong>尾程派送费</strong>（已确认→确认渠道金额；未确认→报价员所选 / 默认最优渠道金额）；详情 / 列表展示已绑运单号 + 锁定提示</td>
+            <td>节点「绑定运单」点亮：绑单时间 · 操作人 · 运单号 · 挂费渠道 · 尾程挂接 USD {金额}</td>
           </tr>
           <tr>
             <td>⑤′</td>
             <td>改绑运单</td>
-            <td>已完结行「改绑运单」→ 确认绑定</td>
+            <td>已完结行「改绑运单」→ <strong>解除并绑定运单</strong></td>
             <td>已完结 / 已完结 / 人工已报价</td>
             <td>单价<strong>不变</strong>（锁定）；尾程费<strong>重新挂接</strong>至新运单</td>
             <td>—</td>
-            <td>弹窗只读<strong>原运单号</strong>；写入<strong>新运单号</strong>及新运单计费重、入仓时间；须过初筛 + A/B 校验（见 <a href="#m6-bind-validate">6.3.2</a>）</td>
-            <td>「绑定运单」节点副文案更新为新运单号 · 改绑时间</td>
+            <td>弹窗只读<strong>原运单号</strong>；写入<strong>新运单号</strong>及新运单计费重、入仓时间；新运单检索规则同 <a href="#m6-bind-waybill">§6.3.3</a>（全局搜索 + 软提示）</td>
+            <td>「绑定运单」节点副文案更新为新运单号 · 改绑时间 · <strong>已通知港后客服</strong></td>
           </tr>
           <tr>
             <td>⑥</td>
             <td>解除绑定</td>
-            <td>绑单弹窗「解除绑定」</td>
+            <td>绑单弹窗「解除绑定」→ 二次确认（含港后客服通知预览）</td>
             <td><strong>已报价</strong> / <strong>已报价</strong> / 人工已报价（<strong>未绑</strong>）</td>
             <td>已回写各渠道单价、尾程登记<strong>保留</strong>；解锁后可编辑 / 改绑</td>
             <td>—</td>
-            <td><strong>清空</strong>运单号；运单侧尾程挂接解除；报价单上尾程登记金额<strong>保留</strong></td>
-            <td>「绑定运单」节点置灰或副文案「已解绑 · {时间}」</td>
+            <td><strong>必通知</strong>原运单港后客服（见 <a href="#m6-bind-notify">§6.3.4</a>）；<strong>清空</strong>运单号；运单侧尾程挂接解除</td>
+            <td>「绑定运单」节点副文案「已解绑 · {时间}」；港后客服收到解除绑定通知</td>
           </tr>
           <tr>
             <td>⑦</td>
@@ -722,7 +765,7 @@
           <tr><th>字段</th><th>粒度</th><th>说明</th></tr>
         </thead>
         <tbody>
-          <tr><td>单价 USD/KG</td><td><strong>每销售产品 1 条</strong></td><td>核对确认时写入；取个位。</td></tr>
+          <tr><td>单价 USD/KG</td><td><strong>每销售产品 1 条</strong></td><td>核对确认时写入；取个位。默认按 <strong>头程单价 + 尾端派送费 ÷ 询价计费重</strong> 测算带出，可人工改。</td></tr>
           <tr><td>有效期从 / 至</td><td><strong>每销售产品 1 条</strong></td><td>默认 7 天含当日、遇 15/30 截断；确认台<strong>各渠道卡</strong>可分别改。</td></tr>
           <tr><td>尾程派送费</td><td><strong>每销售产品 1 条</strong></td><td>取整登记；各渠道分别写入；绑单挂运单时：业务员<strong>已确认报价</strong>→取确认渠道金额；<strong>未确认</strong>→取报价员点选 / 默认最优渠道金额（见 <a href="#m3-bind-ch">§3.2</a>、<a href="#m6-bind">§6.3</a>）。</td></tr>
           <tr><td>核对备注</td><td><strong>每销售产品 1 条</strong></td><td>报价员按渠道填写，随该渠道回写一并展示（业务员详情 / 复制报价可见，以现网为准）。</td></tr>
@@ -738,12 +781,14 @@
         </thead>
         <tbody>
           <tr><td>运单号</td><td>绑单弹窗所选</td><td>ICBU 前缀；整票<strong>仅 1 张</strong>。</td></tr>
-          <tr><td>运单计费重（KG）</td><td>运单主数据</td><td>用于 A 校验：须 = 询价计费重（差异 0%）。</td></tr>
-          <tr><td>入仓时间</td><td>运单主数据</td><td>用于 B 校验：须落在报价有效期内。</td></tr>
-          <tr><td>目的国 / 邮编 / 交货仓</td><td>运单 vs 询价</td><td>初筛匹配字段；不符不可绑。</td></tr>
-          <tr><td>客户</td><td>运单 vs 询价</td><td>运单客户须与询价客户一致。</td></tr>
-          <tr><td>跟进人（业务员 / 客服）</td><td>运单 vs 询价员</td><td>运单<strong>业务员</strong>或运单<strong>客服</strong>须与<strong>询价员</strong>（提交询价的业务员）一致。</td></tr>
-          <tr><td>尾程派送费挂接</td><td>报价单已登记金额</td><td>确认绑定时写入运单；改绑覆盖挂接。</td></tr>
+          <tr><td>运单计费重（KG）</td><td>运单主数据</td><td>用于 A 校验（推荐 = 询价计费重，差异 0%）；不符提示，不强制禁止绑单</td></tr>
+          <tr><td>入仓时间</td><td>运单主数据</td><td>用于 B 校验（推荐落在报价有效期内）；不符提示，不强制禁止绑单</td></tr>
+          <tr><td>目的国 / 邮编 / 交货仓</td><td>运单 vs 询价</td><td>初筛匹配字段；不符标警告，<strong>不强制禁止</strong>绑单</td></tr>
+          <tr><td>客户</td><td>运单 vs 询价</td><td>初筛匹配字段；不符标警告，不强制禁止绑单</td></tr>
+          <tr><td>跟进人（业务员 / 客服）</td><td>运单 vs 询价员</td><td>运单<strong>业务员</strong>或运单<strong>客服</strong>须与<strong>询价员</strong>一致；不符标警告，不强制禁止绑单</td></tr>
+          <tr><td>业务员确认渠道 ID</td><td>询价详情「确认报价」</td><td>业务员单选确认的销售产品；未确认则为空。绑单弹窗据此决定只展示 1 渠道或全部渠道。</td></tr>
+          <tr><td>绑单挂费渠道 ID</td><td>绑单弹窗</td><td>已确认报价 → 与业务员确认渠道一致；未确认 → 报价员点选（默认本票最优）。确认绑定时落库，供尾程挂接与审计。</td></tr>
+          <tr><td>尾程派送费挂接</td><td>报价单已登记金额</td><td>取<strong>绑单挂费渠道</strong>已登记尾程金额（取整）写入运单；改绑覆盖挂接。</td></tr>
           <tr><td>原运单号</td><td>改绑场景</td><td>弹窗只读展示；确认后由新运单号覆盖。</td></tr>
         </tbody>
       </table>
@@ -783,8 +828,8 @@
       </ul>
       <h3>4.4 报价区按钮（打回 / 核对 / 编辑 / 绑单）</h3>
       <ul>
-        <li><strong>待报价</strong>：详情大字状态 = <strong>待报价</strong>（AI 尚未出账）。顶部展示 <strong>打回</strong>；<strong>不展示</strong>核对确认、编辑报价、试算日志（无 AI 价可核）。列表仍可点「报价」人工报价。</li>
-        <li><strong>AI待确认</strong>：详情大字状态 = <strong>AI待确认</strong>；顶部同排 <strong>打回</strong> + <strong>试算日志</strong> + <strong>编辑报价</strong> + <strong>核对确认</strong>。进入详情默认<strong>只读展示</strong> AI 已带出的单价、尾程派送费、有效期，可直接核对或先编辑。</li>
+        <li><strong>待报价</strong>：详情大字状态 = <strong>待报价</strong>（AI 尚未成功出账）。顶部展示 <strong>打回</strong>；<strong>不展示</strong>核对确认、编辑报价。<strong>试算日志</strong>：仅当本单<strong>已有试算记录</strong>时展示（含试算失败）；<strong>从未试算则不展示</strong>（见 <a href="#m6-calc-log-btn">§6.2.1</a>）。列表仍可点「报价」人工报价。</li>
+        <li><strong>AI待确认</strong>：详情大字状态 = <strong>AI待确认</strong>；顶部同排 <strong>打回</strong> + <strong>试算日志</strong>（有试算即有）+ <strong>编辑报价</strong> + <strong>核对确认</strong>。进入详情默认<strong>只读展示</strong> AI 已带出的单价、尾程派送费、有效期，可直接核对或先编辑。</li>
         <li><strong>打回</strong>（待报价 / AI待确认）：点顶栏「打回」→ 弹窗填写<strong>打回备注</strong>（必填）→ 确认后列表 → <strong>已打回</strong>、业务员 → <strong>已打回</strong>；推送待办 / 通知。若曾回写单价则<strong>撤回</strong>。详情顶部操作按钮均隐藏（只读展示打回备注）。时间轴不新增独立节点，在「发起询价」下追加副文案「已打回 · {时间} · {摘要}」（见 §4.6.1 ③′）。</li>
         <li><strong>核对确认后 · 待绑运单</strong>：详情大字状态 → <strong>已报价</strong>（与列表一致）。<strong>打回</strong>、<strong>编辑报价</strong>、<strong>核对确认</strong> 均<strong>隐藏</strong>；顶部展示 <strong>撤回核对</strong>、<strong>绑定运单</strong> +「试算日志」。</li>
         <li><strong>已绑且财务锁账 / 成本已审核（锁定）</strong>：指运单<strong>财务已锁账</strong>或<strong>业务员成本已审核</strong>。列表 / 详情「改绑运单」「解除绑定」「撤回核对」均不可用（置灰 + toast 拦截）；报价只读，不可撤回改价。</li>
@@ -845,7 +890,7 @@
         </thead>
         <tbody>
           <tr><td>状态 AI待确认</td><td>改</td><td>AI 出账后进本页。详情大字状态 = <strong>AI待确认</strong>；价格不返回业务员。顶部 <strong>打回</strong>、<strong>试算日志</strong>、<strong>编辑报价</strong>、<strong>核对确认</strong> 均可见。</td></tr>
-          <tr><td>状态 待报价</td><td>改</td><td>AI 未出账。详情大字 = <strong>待报价</strong>；仅 <strong>打回</strong> 可见（无报价卡、无核对 / 编辑 / 试算日志）。</td></tr>
+          <tr><td>状态 待报价</td><td>改</td><td>AI 未成功出账。详情大字 = <strong>待报价</strong>；仅 <strong>打回</strong> 可见（无报价卡、无核对 / 编辑）。<strong>试算日志</strong>：有试算记录（含失败）才展示，未试算不展示。</td></tr>
           <tr><td>状态 已打回</td><td>NEW</td><td>打回成功后详情大字 = <strong>已打回</strong>；展示打回备注；顶部操作均隐藏。</td></tr>
           <tr><td>打回</td><td>NEW</td><td><strong>待报价 / AI待确认</strong> 顶栏展示。弹窗必填<strong>打回备注</strong>；确认后 → 已打回，推送业务员待办。</td></tr>
           <tr><td>核对确认</td><td>NEW</td><td>仅 <strong>AI待确认</strong> 时展示且可点。保存后列表 / 详情 → <strong>已报价</strong>，<strong>本按钮隐藏</strong>，不可重复核对。</td></tr>
@@ -853,12 +898,12 @@
           <tr><td>撤回核对</td><td>NEW</td><td><strong>已报价 / 已完结且未绑</strong>（含解绑后待绑）：顶栏展示。二次确认后 → AI待确认，撤回业务员侧单价。<strong>已绑且财务锁账 / 成本已审核</strong>时不可用。</td></tr>
           <tr><td>重算</td><td>改</td><td>仅 <strong>AI待确认</strong>：「重算各产品 / 重算本产品」。核对确认后<strong>隐藏并拦截</strong>（解绑后亦不可）。调价须撤回后再编辑。</td></tr>
           <tr><td>绑定运单</td><td>NEW</td><td>核对确认后（<strong>已报价</strong>、未绑）：顶部展示 <strong>绑定运单</strong>（编辑 / 核对均已隐藏）；或左侧「待绑运单」Tab + <code>#bind</code> / 报价区绿色条。未登记尾程派送费不可绑。</td></tr>
-          <tr><td>单价 USD/KG</td><td>NEW / 改</td><td>给业务员的渠道单价。每销售产品 / 渠道 1 条；默认带出 AI 价（详情打开即可见）。可改。算价：<strong>（AI规则配置 + 头程运价）÷ 计费重</strong>，取个位。不展示头程、计费重、万物智联品牌表。</td></tr>
+          <tr><td>单价 USD/KG</td><td>NEW / 改</td><td>给业务员的渠道单价。每销售产品 / 渠道 1 条；默认带出 AI 价（详情打开即可见）。可改。算价：<strong>头程单价 + 尾端派送费 ÷ 询价计费重</strong>，取个位。不展示头程、计费重、万物智联品牌表。</td></tr>
           <tr><td>配送距离（迈）</td><td>改</td><td>与渠道小字<strong>同一行</strong>展示，格式如「洛杉矶仓 · 外州 · 26尺 · 询价渠道 · 距离 800 迈」。按该渠道绑定海外仓邮编 + 收货邮编后台测算，只读；各渠道可不同。顶部摘要区不汇总展示距离。</td></tr>
           <tr><td>尾程派送费</td><td>NEW</td><td><strong>每销售产品 1 条</strong>，取整登记，不做计算。各渠道卡分别带出 / 可改；核对确认按渠道回写；绑运单时挂对应渠道金额到运单。</td></tr>
           <tr><td>有效期从 / 至</td><td>NEW / 改</td><td><strong>每销售产品 1 条</strong>。默认 7 天含当日、遇 15/30 截断，打开详情各渠道卡即带出，可分别改；规则页有效期规则仍锁定。<strong>AI待确认</strong> 阶段过期须重算后才能绑单；<strong>已核对后不可重算</strong>，过期禁绑。</td></tr>
           <tr><td>改价原因 / 备注</td><td>NEW</td><td><strong>每销售产品 1 条</strong>。改该渠道单价时原因必填；核对备注按渠道填写，确认后随该渠道回写。</td></tr>
-          <tr><td>试算结果日志</td><td>NEW</td><td><strong>弹窗查看</strong>（详情页不平铺）。入口见 <a href="#m6-calc-log">6.2.1</a>。</td></tr>
+          <tr><td>试算结果日志</td><td>NEW</td><td><strong>弹窗查看</strong>（详情页不平铺）。<strong>有试算即出现</strong>（成功 / 失败均算），<strong>未试算不出现</strong>。入口见 <a href="#m6-calc-log-btn">§6.2.1</a>。</td></tr>
           <tr><td>渠道 i 说明</td><td>NEW</td><td>点 i 展开：多产品各绑仓、每渠道 1 个 AI 价、万物智联最优仅报价员可见、确认后<strong>按渠道</strong>回业务员（N 渠道 N 条）。</td></tr>
           <tr><td>状态流转</td><td>改</td><td>右侧时间轴节点、回写价格、备注、运单信息见 <a href="#m4-flow-detail">§4.6.1</a>；原型可只展示一行摘要。</td></tr>
         </tbody>
@@ -871,7 +916,7 @@
 
       <h3 id="m6-calc-log">6.2.1 试算结果日志（弹窗）</h3>
       <p>
-        业务员提交询价后，后台按<strong>每个勾选的销售产品</strong>分别：读取绑定海外仓 → 仓邮编 + 收货邮编测距 → 判定内州 / 外州 → 匹配 AI 规则价表 →（外州小车）万物智联多品牌试算取最优 → 合并头程运价得出单价与尾程派送费。
+        业务员提交询价后，后台按<strong>每个勾选的销售产品</strong>分别：读取绑定海外仓 → 仓邮编 + 收货邮编测距 → 判定内州 / 外州 → 匹配 AI 规则价表 →（外州小车）万物智联多品牌试算取最优 → 得出各渠道<strong>尾端派送费</strong>；合并船务<strong>头程单价</strong>按公式 <strong>头程单价 + 尾端派送费 ÷ 询价计费重</strong> 得出给业务员的单价。
         上述<strong>过程明细不对业务员展示</strong>，统一写入本日志，供报价员核对 AI 价来源。
       </p>
       <table>
@@ -881,7 +926,8 @@
         <tbody>
           <tr><td>角色 / 可见性</td><td><strong>仅报价员</strong>（及规则管理员）。业务员询价页、我的询价、APP <strong>无入口</strong>。</td></tr>
           <tr><td>展示形式</td><td><strong>Modal 弹窗</strong>；不在报价详情页平铺区块。列表 / 详情共用同类卡片布局。</td></tr>
-          <tr><td>写入时机</td><td>每次 AI 测算任务<strong>完成</strong>落库一轮（见 <a href="#m6-calc-log-rounds">6.2.2</a>）。每轮内按销售产品 N 张渠道快照。核对确认、人工改价、绑单<strong>不产生</strong>新轮次、不回写日志。</td></tr>
+          <tr><td>写入时机</td><td>每次 AI 测算任务<strong>结束</strong>（<strong>成功或失败</strong>）均落库一轮（见 <a href="#m6-calc-log-rounds">6.2.2</a>）。成功：每轮内按销售产品 N 张渠道快照。失败：记录失败原因 / 中断步骤（渠道卡可为空或标红）。核对确认、人工改价、绑单<strong>不产生</strong>新轮次、不回写日志。</td></tr>
+          <tr id="m6-calc-log-btn"><td>入口展示规则</td><td><strong>有试算即出现</strong>：本单已有 ≥1 次试算记录（含<strong>试算失败</strong>）→ 列表行操作 / 详情顶栏展示「试算日志」按钮。<strong>未试算不出现</strong>：从未触发过后台 AI 测算（如纯待报价、仅人工报价未走 AI）→ <strong>不展示</strong>入口。与列表状态无强绑定：试算失败仍待报价时也展示；已 AI待确认 / 已报价 / 已完结通常必有试算记录。</td></tr>
           <tr><td>与询价页分工</td><td>询价页<strong>不展示</strong>距离、海外仓地址、仓邮编、万物智联品牌明细；上述字段<strong>仅在本日志</strong>展示。</td></tr>
         </tbody>
       </table>
@@ -895,12 +941,12 @@
           <tr>
             <td><a href="ESS询价报价-报价员列表-MVP.html">报价员列表</a></td>
             <td>散货 LCL 行操作链接「<strong>试算日志</strong>」</td>
-            <td>列表状态 = <strong>AI待确认</strong> 或 <strong>已报价 / 已完结</strong>（已有 AI 测算结果）。待报价、整柜无此链接。</td>
+            <td>本单<strong>已有试算记录</strong>时展示（成功 / 失败均算；<strong>未试算不展示</strong>）。通常见于 AI待确认 / 已报价 / 已完结；待报价若曾试算失败也展示。</td>
           </tr>
           <tr>
             <td><a href="ESS散货询价方案详情-MVP.html">报价员详情</a></td>
             <td>报价信息区顶栏按钮「<strong>试算日志</strong>」；URL 深链 <code>#log</code> 打开弹窗</td>
-            <td>AI 出账后均可查看（含 AI待确认、已完结、已绑）。与「核对确认 / 编辑报价 / 绑定运单」并列，<strong>不受绑单锁定影响</strong>。</td>
+            <td>同左：<strong>有试算即展示</strong>（含失败），<strong>未试算隐藏</strong>。与「核对确认 / 编辑报价 / 绑定运单」并列，<strong>不受绑单锁定影响</strong>。</td>
           </tr>
         </tbody>
       </table>
@@ -927,13 +973,14 @@
           <tr><td>目的地</td><td>目的国 / 邮编 / 城市（来自询价收货信息）</td></tr>
           <tr><td>配送距离</td><td>后台测算里程（迈）；注明「后台测算」</td></tr>
           <tr><td>匹配规则</td><td>有序步骤列表，示例：仓邮编→收货邮编测距；内外州切轨（≤150 / &gt;150 迈）；地址类型 / 车型约束；内州托数；万物智联 8 品牌各试算及取最低；头程运价合并等</td></tr>
-          <tr><td>算价结果</td><td>尾程 USD（取整）+ 单价 USD/KG（个位）。AI待确认：试算快照文案；核对后：可展示当前确认的渠道单价 / 尾程</td></tr>
+          <tr><td>算价结果</td><td>尾程 USD（取整）+ 单价 USD/KG（个位，= 头程单价 + 尾程 ÷ 询价计费重）。AI待确认：试算快照文案；核对后：可展示当前确认的渠道单价 / 尾程</td></tr>
         </tbody>
       </table>
 
       <h4>业务规则</h4>
       <ul>
         <li>日志只读：不支持在弹窗内改价或重算。改价须先撤回核对，再回详情「编辑报价」；AI 重算须回详情点「重算」（<strong>仅 AI待确认</strong>）。</li>
+        <li><strong>入口显隐</strong>：列表 / 详情「试算日志」按钮由本单<strong>是否有试算轮次</strong>决定——<strong>有试算即出现</strong>（成功 / 失败均保留可查看），<strong>未试算不出现</strong>（见 <a href="#m6-calc-log-btn">入口展示规则</a>）。</li>
         <li><strong>多次试算</strong>：每完成一次 AI 测算任务追加<strong>一轮</strong>快照，<strong>不覆盖</strong>历史轮次；弹窗默认展示<strong>最新一轮</strong>（与详情页当前 AI 价一致）。历史轮次可切换查看，均只读。细则见 <a href="#m6-calc-log-rounds">6.2.2</a>。</li>
         <li>万物智联 8 品牌试算过程、附加费明细<strong>仅出现在本日志</strong>，不回传业务员。</li>
         <li>纽约仓等特殊价段（NY 一口价 / NJ 距离档）须在「匹配规则」步骤中体现，便于报价员核对。</li>
@@ -949,6 +996,7 @@
         </thead>
         <tbody>
           <tr><td>业务员<strong>提交询价</strong>，后台 AI 测算完成</td><td>是（通常第 1 轮）</td><td>询价提交 · 自动试算</td></tr>
+          <tr><td>后台 AI 测算<strong>失败</strong>（规则缺失、测距失败、万物智联超时等）</td><td>是</td><td>试算失败 · {原因摘要}</td></tr>
           <tr><td>报价员详情「<strong>重算各产品</strong>」/ 列表核对弹窗「重算」</td><td>是</td><td>重算 · 全部渠道</td></tr>
           <tr><td>报价员「<strong>重算本产品</strong>」（单渠道）</td><td>是</td><td>重算 · {销售产品名}</td></tr>
           <tr><td>报价员「核对确认」保存</td><td><strong>否</strong></td><td>—（不改日志；详情价可人工微调）</td></tr>
@@ -966,7 +1014,8 @@
         <tbody>
           <tr><td>轮次序号</td><td>从 1 递增；最新一轮标「<strong>当前有效</strong>」（驱动详情页 AI 默认价）</td></tr>
           <tr><td>试算完成时间</td><td><code>YYYY-MM-DD HH:mm</code></td></tr>
-          <tr><td>触发来源</td><td>询价提交 / 重算·全部 / 重算·{渠道} / 业务员重提</td></tr>
+          <tr><td>试算结果</td><td><strong>成功</strong> / <strong>失败</strong>。失败轮次仍保留入口可查看；弹窗顶栏或卡片区展示失败原因，可无算价卡片或标红</td></tr>
+          <tr><td>触发来源</td><td>询价提交 / 重算·全部 / 重算·{渠道} / 业务员重提 / 试算失败</td></tr>
           <tr><td>操作人</td><td>自动试算为空或「系统」；重算为报价员姓名</td></tr>
           <tr><td>AI 规则版本</td><td>可选展示当时生效的规则配置版本号（便于与价表变更对照）</td></tr>
         </tbody>
@@ -995,23 +1044,24 @@
           <tr><th>点</th><th>标记</th><th>交互</th></tr>
         </thead>
         <tbody>
-          <tr><td>询价渠道列表</td><td>改</td><td>
-            左侧展示本票渠道单价。<strong>业务员已确认报价</strong>：仅展示确认渠道 <strong>1 条</strong>（只读，不可改选）。<strong>业务员未确认</strong>：展示<strong>全部渠道</strong>（多条）；报价员可点选 1 条作为尾程挂费渠道（或默认最优可改选，与 <a href="#m3-bind-ch">§3.2</a> 一致），再选运单绑定。<strong>整票仍只绑 1 张运单</strong>，不按渠道分别绑单。
+          <tr><td>询价渠道列表</td><td>NEW</td><td>
+            左侧展示本票渠道单价。<strong>业务员已确认报价</strong>：仅展示确认渠道 <strong>1 条</strong>（只读，不可改选）。<strong>业务员未确认</strong>：展示<strong>全部渠道</strong>（多条）；报价员单选 1 条作为尾程挂费渠道（<strong>默认「本票最优」</strong>，可改选，与 <a href="#m3-bind-ch">§3.2</a> 一致），再选运单绑定。<strong>整票仍只绑 1 张运单</strong>，不按渠道分别绑单。
           </td></tr>
           <tr><td>本票摘要</td><td>NEW</td><td>置于渠道列表<strong>下方</strong>，固定只读：目的国/邮编、交货仓、有效期至、当前挂费渠道给业务员单价（已确认=确认渠道；未确认=报价员点选 / 默认最优渠道）。</td></tr>
-          <tr><td>带出候选运单</td><td>NEW</td><td>按初筛<strong>全部条件</strong>（见 <a href="#m6-bind-validate">6.3.2</a>）筛候选；命中运单填入右侧验证表。点「带出」选中<strong>首条「最终=通过」</strong>运单。</td></tr>
-          <tr><td>验证结果表</td><td>NEW</td><td>右侧展示「<strong>本次数据验证结果</strong>」：顶栏询价计费重、报价有效期；表格含运单计费重、重量差异、A/B 通过、最终结论（见 <a href="#m6-bind-validate">6.3.2</a>）。</td></tr>
+          <tr><td>带出候选运单</td><td>改</td><td>打开弹窗（<strong>已报价</strong>）时，按初筛<strong>全部条件</strong>（见 <a href="#m6-bind-validate">6.3.2</a>）自动检索，命中运单填入右侧验证表。点「带出」选中<strong>首条「最终=通过」</strong>运单（若无通过行则选首条并提示）。详见 <a href="#m6-bind-waybill">6.3.3</a>。</td></tr>
+          <tr><td>运单号搜索</td><td>NEW</td><td>验证表上方输入框：按运单号检索时<strong>全局搜索</strong>（不限初筛列表）；命中后写入验证表并展示初筛 / A/B 结果。未命中 toast「未找到运单」。</td></tr>
+          <tr><td>验证结果表</td><td>NEW</td><td>右侧展示「<strong>本次数据验证结果</strong>」：顶栏询价计费重、报价有效期；表格含运单计费重、重量差异、A/B 通过、最终结论（见 <a href="#m6-bind-validate">6.3.2</a>）。不符项标红 / 「淘汰」，<strong>不禁止选绑</strong>。</td></tr>
           <tr><td>匹配规则说明</td><td>NEW</td><td>「已选运单」旁 <strong>i</strong> 图标，点击展开初筛 + A/B 规则与当前票校验明细。</td></tr>
-          <tr><td>确认按钮</td><td>NEW</td><td>绑定 / 改绑弹窗底部统一为「<strong>确认绑定</strong>」（不再区分「确认改绑」）。</td></tr>
-          <tr><td>运单单选</td><td>NEW</td><td>验证表中<strong>仅「最终=通过」</strong>的行可单选；整票<strong>一次只能绑定 1 张</strong>运单。</td></tr>
+          <tr><td>确认按钮</td><td>改</td><td><strong>首次绑定</strong>：「确认绑定」。<strong>改绑</strong>（已有运单号）：「<strong>解除并绑定运单</strong>」；须选不同于原运单的新运单后才可点（原单仍选中时置灰）。</td></tr>
+          <tr><td>运单单选</td><td>改</td><td>验证表<strong>各行均可单选</strong>（含「淘汰」行）；「最终=通过」为<strong>推荐</strong>。选中未通过行后点「确认绑定」→ 弹窗 / toast <strong>提示不符项</strong>，确认后仍可落库。整票<strong>一次只能绑定 1 张</strong>运单。</td></tr>
           <tr><td>改绑原运单</td><td>NEW</td><td>标题为「改绑运单」时，左侧展示<strong>原绑定运单号 1 个</strong>（只读）。</td></tr>
           <tr><td>尾端派送费挂接</td><td>NEW</td><td>取<strong>当前挂费渠道</strong>已登记尾程金额（取整）挂到所选运单：已确认报价 → 确认渠道；未确认 → 报价员点选 / 默认最优渠道。未登记则先去报价详情核对。</td></tr>
-          <tr><td>绑成功 · 报价不回写</td><td>NEW</td><td>确认绑定后：业务员后续改运单信息<strong>不回写</strong>本条报价单价 / 尾程登记。未财务锁账 / 未成本已审核时仍可改绑 / 解绑；<strong>不可 AI 重算</strong>。</td></tr>
+          <tr><td>绑成功 · 报价不回写</td><td>NEW</td><td>确认绑定后：业务员后续改运单信息<strong>不回写</strong>本条报价单价 / 尾程登记。未财务锁账 / 未成本已审核时仍可改绑 / 解绑；<strong>不可 AI 重算</strong>。首次绑单可选通知业务员；<strong>解绑 / 改绑必通知港后客服</strong>（见 <a href="#m6-bind-notify">§6.3.4</a>）。</td></tr>
         </tbody>
       </table>
 
       <h4 id="m6-bind-edge">6.3.1 边界与逻辑 · 确认绑定 / 改绑 / 解绑</h4>
-      <p>弹窗底部固定两个动作：<strong>确认绑定</strong>（主按钮）、<strong>解除绑定</strong>（仅已绑时出现）。绑定与改绑<strong>共用同一弹窗</strong>，改绑不另设「确认改绑」按钮。</p>
+      <p>弹窗底部固定两个动作：<strong>确认绑定</strong> / <strong>解除并绑定运单</strong>（主按钮，按是否已绑切换文案）、<strong>解除绑定</strong>（仅已绑时出现）。绑定与改绑<strong>共用同一弹窗</strong>。</p>
 
       <h4>一、打开弹窗（绑定 / 改绑）</h4>
       <table>
@@ -1046,26 +1096,27 @@
       </table>
 
       <h4>二、确认绑定（首次绑定 &amp; 改绑共用）</h4>
-      <p>点击「确认绑定」时<strong>即时校验</strong>，全部通过才落库；任一失败 toast 拦截，弹窗不关闭。</p>
+      <p>点击「确认绑定」时校验<strong>硬性条件</strong>（须满足才落库）；初筛 / A/B 为<strong>软提示</strong>（不符则警告，不强制拦截）。</p>
       <table>
         <thead>
-          <tr><th>步骤</th><th>校验 / 动作</th><th>失败提示</th></tr>
+          <tr><th>步骤</th><th>类型</th><th>校验 / 动作</th><th>失败提示</th></tr>
         </thead>
         <tbody>
-          <tr><td>1</td><td>已选运单 = <strong>1 张</strong>（整票单绑）</td><td>一次只能绑定 1 张运单</td></tr>
-          <tr><td>2</td><td>有效期未过期</td><td>校验未通过</td></tr>
-          <tr><td>3</td><td>尾程派送费已登记（取整，绑定时挂接到运单，不做自动计算）</td><td>校验未通过</td></tr>
-          <tr><td>4</td><td><strong>初筛</strong>：目的国 + 邮编 + 交货仓 + 客户 + 跟进人（运单业务员或客服 = 询价员）全部一致</td><td>校验未通过</td></tr>
-          <tr><td>5</td><td><strong>A 重量</strong>：运单计费重 = 询价计费重（重量差异 0%）</td><td>校验未通过</td></tr>
-          <tr><td>6</td><td><strong>B 入仓时间</strong>：运单入仓时间落在报价有效期 [从, 至] 内；超出则拦截并标注偏差（如「差4小时」）</td><td>校验未通过</td></tr>
-          <tr><td>7</td><td><strong>写入</strong>：运单号写入本票；尾程派送费挂运单；<code>data-locked=1</code>（不按渠道分别映射）</td><td>—</td></tr>
-          <tr><td>8</td><td><strong>状态</strong>：列表 → <strong>已完结</strong>；移出「待绑运单」Tab；时间轴「绑定运单」节点更新</td><td>—</td></tr>
-          <tr><td>9</td><td><strong>报价不回写</strong>：绑定成功后业务员改运单信息<strong>不回写</strong>本条报价单价 / 尾程登记（与财务锁账无关）</td><td>—</td></tr>
-          <tr><td>10</td><td><strong>财务锁账 / 成本已审核</strong>：上述任一为真 → 改绑 / 解绑 / 撤回核对均不可用</td><td>—</td></tr>
-          <tr><td>11</td><td>可选勾选「通知业务员」；业务员侧见<strong>各渠道</strong>已确认单价</td><td>—</td></tr>
+          <tr><td>1</td><td><strong>硬</strong></td><td><strong>挂费渠道</strong>已确定：业务员已确认 → 取确认渠道；未确认 → 报价员已选 1 条（默认本票最优）</td><td>请选择挂费渠道</td></tr>
+          <tr><td>2</td><td><strong>硬</strong></td><td>已选运单 = <strong>1 张</strong>（整票单绑）</td><td>一次只能绑定 1 张运单</td></tr>
+          <tr><td>3</td><td><strong>硬</strong></td><td>有效期未过期</td><td>校验未通过</td></tr>
+          <tr><td>4</td><td><strong>硬</strong></td><td>挂费渠道对应<strong>尾程派送费</strong>已登记（取整，绑定时挂接到运单，不做自动计算）</td><td>校验未通过</td></tr>
+          <tr><td>5</td><td><strong>软</strong></td><td><strong>初筛</strong>：目的国 + 邮编 + 交货仓 + 客户 + 跟进人（运单业务员或客服 = 询价员）——逐项比对，不符<strong>提示</strong>（如「客户不一致」），<strong>不拦截</strong></td><td>提示不符项；可继续绑定</td></tr>
+          <tr><td>6</td><td><strong>软</strong></td><td><strong>A 重量</strong>：运单计费重 vs 询价计费重（差异 0% 为推荐）——不符<strong>提示</strong>，<strong>不拦截</strong></td><td>提示重量差异；可继续绑定</td></tr>
+          <tr><td>7</td><td><strong>软</strong></td><td><strong>B 入仓时间</strong>：运单入仓时间 vs 报价有效期 —— 超出则<strong>提示</strong>偏差（如「差4小时」），<strong>不拦截</strong></td><td>提示时间偏差；可继续绑定</td></tr>
+          <tr><td>8</td><td>—</td><td><strong>写入</strong>：运单号、绑单挂费渠道 ID 写入本票；尾程派送费挂运单；<code>data-locked=1</code>（不按渠道分别映射）</td><td>—</td></tr>
+          <tr><td>9</td><td>—</td><td><strong>状态</strong>：列表 → <strong>已完结</strong>；移出「待绑运单」Tab；时间轴「绑定运单」节点更新</td><td>—</td></tr>
+          <tr><td>10</td><td>—</td><td><strong>报价不回写</strong>：绑定成功后业务员改运单信息<strong>不回写</strong>本条报价单价 / 尾程登记（与财务锁账无关）</td><td>—</td></tr>
+          <tr><td>11</td><td><strong>硬</strong></td><td><strong>财务锁账 / 成本已审核</strong>：上述任一为真 → 改绑 / 解绑 / 撤回核对均不可用</td><td>—</td></tr>
+          <tr><td>12</td><td>—</td><td>首次绑定：可选勾选「通知业务员」。<strong>改绑</strong>：系统自动通知<strong>旧 / 新运单港后客服</strong>（见 <a href="#m6-bind-notify">§6.3.4</a>）</td><td>—</td></tr>
         </tbody>
       </table>
-      <p class="note"><strong>改绑 vs 首次绑定：</strong>改绑时可直接选新运单后点「确认绑定」，<strong>无需先点解除绑定</strong>——确认成功后<strong>覆盖</strong>原运单号并重新挂接尾程费；原运单号仅作只读对照。改绑同样须过初筛 + A/B 全部校验。</p>
+      <p class="note"><strong>改绑 vs 首次绑定：</strong>改绑时选新运单后点「<strong>解除并绑定运单</strong>」→ 二次确认弹窗（含旧 / 新港后客服通知预览，见 <a href="#m6-bind-notify">§6.3.4</a>）→ 确认后<strong>覆盖</strong>原运单号并重新挂接尾程费；<strong>无需先点解除绑定</strong>。改绑同样适用「硬校验拦截 + 软提示不挡」规则。</p>
 
       <h4 id="m6-bind-validate">6.3.2 散货运单匹配 · 本次数据验证结果</h4>
       <p>绑单弹窗右侧展示验证表，顶栏只读：<strong>询价计费重</strong>（如 593 KG）、<strong>报价有效期</strong>（如 2026-05-18 ~ 2026-05-25）。初筛命中运单逐行展示：</p>
@@ -1080,19 +1131,48 @@
           <tr><td>A 通过?</td><td><strong>重量校验</strong>：运单计费重 = 询价计费重（差异 0%）→ ✓；否则 ×</td></tr>
           <tr><td>入仓时间</td><td>运单到达入仓时间（如 2026-05-17 19:41）</td></tr>
           <tr><td>B 通过?</td><td><strong>时间校验</strong>：入仓时间落在报价有效期 [从, 至] 内 → ✓；否则 ×，并标注偏差（如「差4小时」）</td></tr>
-          <tr><td>最终</td><td>A、B 均 ✓ → <strong>通过</strong>（可选绑）；任一 × → <strong>淘汰</strong>（不可选、置灰）</td></tr>
+          <tr><td>最终</td><td>A、B 均 ✓ → <strong>通过</strong>（<strong>推荐</strong>绑）；任一 × → <strong>淘汰</strong>（警告，<strong>仍可选绑</strong>）</td></tr>
         </tbody>
       </table>
       <ul>
-        <li><strong>初筛</strong>（进入表格前提，须<strong>全部</strong>满足；任一不符不进入表格）：
+        <li><strong>初筛</strong>（默认带出与验证表展示依据；任一不符标 ×，<strong>不阻止</strong>进入表格或绑单）：
           <ol>
             <li>目的国 + 邮编 + 交货仓 = 询价一致；</li>
             <li><strong>客户</strong>：运单客户 = 询价客户；</li>
             <li><strong>跟进人</strong>：运单<strong>业务员</strong>或运单<strong>客服</strong> = <strong>询价员</strong>（提交询价的业务员；运单侧二者满足其一即可）。</li>
           </ol>
         </li>
-        <li><strong>示例</strong>：询价计费重 593 KG、有效期 2026-05-18 ~ 2026-05-25；运单 ICBU00001079043 计费重 593（A ✓），入仓 2026-05-17 19:41 早于有效期起算（B × 差4小时）→ 最终<strong>淘汰</strong>。</li>
-        <li>「带出首条可选运单」= 验证表中<strong>首条「最终=通过」</strong>行；若无通过行则 toast「没有可绑定运单」。</li>
+        <li><strong>示例</strong>：询价计费重 593 KG、有效期 2026-05-18 ~ 2026-05-25；运单 ICBU00001079043 计费重 593（A ✓），入仓 2026-05-17 19:41 早于有效期起算（B × 差4小时）→ 最终<strong>淘汰</strong>，提示后可绑。</li>
+        <li>「带出首条可选运单」= 验证表中<strong>首条「最终=通过」</strong>行；若无通过行则带出首条并 toast 提示不符项。</li>
+      </ul>
+
+      <h4 id="m6-bind-waybill">6.3.3 已报价 · 运单带出与全局搜索</h4>
+      <p>适用：<strong>已报价（未绑）</strong>态打开绑单弹窗；<strong>已完结改绑</strong>时新运单检索规则同本节。</p>
+      <table>
+        <thead>
+          <tr><th>方式</th><th>行为</th><th>不符时</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>默认带出</strong></td>
+            <td>弹窗打开后，后台按本票询价信息 + <a href="#m6-bind-validate">初筛</a>五字段自动检索，将<strong>符合条件</strong>的 ICBU 运单填入右侧验证表（可多条）</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><strong>运单号搜索</strong></td>
+            <td>验证表上方输入运单号 →「搜索」：<strong>全局检索</strong>运单主数据（<strong>不限</strong>于初筛命中集）；命中 1 条则追加 / 聚焦至验证表并跑完初筛 + A/B 展示</td>
+            <td>未找到 → toast「未找到该运单」；不关闭弹窗</td>
+          </tr>
+          <tr>
+            <td><strong>确认绑定</strong></td>
+            <td>报价员在验证表<strong>单选 1 张</strong>运单（含「淘汰」行）→「确认绑定」</td>
+            <td>存在初筛 / A/B 不符 → <strong>弹窗或 toast 列出不符项</strong>（如客户不一致、重量差 12%、入仓超期）；报价员确认后<strong>仍可落库</strong>，<strong>不强制禁止</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <ul>
+        <li><strong>硬拦截</strong>（与运单匹配无关）：未选运单、有效期过期、尾程未登记、挂费渠道未选、财务锁账 / 成本已审核等——仍 toast 拦截，弹窗不关闭（见 §6.3.1 二、步骤 1–4）。</li>
+        <li><strong>推荐优先</strong>：列表 / 验证表可将「最终=通过」行置顶或高亮；「带出」快捷选中首条通过行。</li>
       </ul>
 
       <h4>三、解除绑定</h4>
@@ -1102,7 +1182,8 @@
         </thead>
         <tbody>
           <tr><td>可见条件</td><td>仅当本票<strong>已有绑定运单</strong>时，弹窗底部展示「解除绑定」</td></tr>
-          <tr><td>触发</td><td>点击 → 二次确认：「确认解除全部运单绑定？（尾端派送费仍保留在报价单）」</td></tr>
+          <tr><td>触发</td><td>点击 → 二次确认弹窗：说明解除后果 + <strong>将通知的港后客服</strong>（取自原绑定运单主数据）及通知摘要（见 <a href="#m6-bind-notify">§6.3.4</a>）</td></tr>
+          <tr><td>港后客服通知</td><td><strong>必发</strong>：向<strong>原绑定运单</strong>对应港后客服发送站内消息「解除绑定运单」</td></tr>
           <tr><td>写入</td><td>清空运单号；<code>data-locked</code> 解除</td></tr>
           <tr><td>保留</td><td><strong>尾程派送费登记金额仍留在报价单</strong>，不随解绑删除</td></tr>
           <tr><td>状态</td><td>列表回退为<strong>已报价</strong>（未绑）；重新进入「待绑运单」Tab（仍须有效期内）</td></tr>
@@ -1126,6 +1207,81 @@
 
       <ul>
         <li>匹配规则、渠道只读展示、运单单选、尾程挂接等字段交互见上表（6.3 字段对照）。</li>
+      </ul>
+
+      <h4 id="m6-bind-notify">6.3.4 解绑 / 改绑 · 港后客服通知</h4>
+      <p>散货绑单变更须同步<strong>港后客服</strong>（取自运单主数据「港后客服 / 海外客服」字段）。通知写入<a href="报价组-通知列表-MVP.html">站内消息 / 我的通知</a>，与列表右下角待办弹窗同源；港后客服在通知中心查看，<strong>不可关闭</strong>（必发，非报价员可勾选项）。</p>
+      <table>
+        <thead>
+          <tr><th>动作</th><th>通知对象</th><th>是否必发</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>解除绑定</strong></td>
+            <td>原绑定运单的<strong>港后客服</strong>（1 人）</td>
+            <td>是</td>
+            <td>解绑成功后立即发送；原运单尾程挂接解除</td>
+          </tr>
+          <tr>
+            <td><strong>改绑运单</strong><br/>（确认绑定覆盖原运单）</td>
+            <td><strong>旧运单</strong>港后客服 + <strong>新运单</strong>港后客服</td>
+            <td>是</td>
+            <td>各发 1 条，共 <strong>2 条</strong>：旧运单客服收「原单解除」、新运单客服收「新单挂接」；<strong>即使旧 / 新为同一人也各发 1 条</strong>，不合并</td>
+          </tr>
+          <tr>
+            <td>首次绑定</td>
+            <td>业务员（可选）、新运单港后客服（<strong>本期不发</strong>，仅改绑 / 解绑必发港后客服）</td>
+            <td>业务员可选</td>
+            <td>弹窗「通知业务员」勾选仅作用于业务员，与港后客服无关</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>通知内容模板</h4>
+      <table>
+        <thead>
+          <tr><th>通知类型</th><th>接收人</th><th>标题 / 类型名</th><th>正文要点（示例）</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>解除绑定</td>
+            <td>原运单港后客服</td>
+            <td><strong>解除绑定运单</strong></td>
+            <td>
+              询价单 <code>{询价单号}</code> 已<strong>解除运单绑定</strong>。<br/>
+              运单号 <code>{原运单号}</code> · 尾程派送费 USD {金额} 已自该运单<strong>解除挂接</strong>。<br/>
+              询价客户 {客户} · 交货仓 {交货仓} · 操作人 {报价员} · {时间}
+            </td>
+          </tr>
+          <tr>
+            <td>改绑 · 旧单客服</td>
+            <td>原运单港后客服</td>
+            <td><strong>改绑运单 · 原单解除</strong></td>
+            <td>
+              询价单 <code>{询价单号}</code> 已<strong>改绑运单</strong>，您的运单 <code>{原运单号}</code> 已<strong>解除绑定</strong>。<br/>
+              尾程派送费 USD {金额} 挂接已解除；新运单号为 <code>{新运单号}</code>（由 {新单港后客服} 跟进）。<br/>
+              操作人 {报价员} · {时间}
+            </td>
+          </tr>
+          <tr>
+            <td>改绑 · 新单客服</td>
+            <td>新运单港后客服</td>
+            <td><strong>改绑运单 · 新单挂接</strong></td>
+            <td>
+              询价单 <code>{询价单号}</code> 已<strong>改绑至您的运单</strong> <code>{新运单号}</code>。<br/>
+              尾程派送费 USD {金额} 已挂接；原运单 <code>{原运单号}</code> 已解除绑定。<br/>
+              询价客户 {客户} · 挂费渠道 {渠道名} · 操作人 {报价员} · {时间}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>交互（绑单弹窗）</h4>
+      <ul>
+        <li><strong>解除绑定</strong>：点击 → 二次确认弹窗展示① 尾程费保留说明 ② <strong>将通知港后客服</strong>：{姓名} ③ 通知摘要预览（只读）。确认后解绑 + 发通知。</li>
+        <li><strong>改绑 · 解除并绑定</strong>：已绑态选<strong>不同于原运单</strong>的新运单 → 主按钮「解除并绑定运单」可点 → 二次确认弹窗展示原 / 新运单对照 + <strong>将通知港后客服 2 条</strong>（旧单「原单解除」+ 新单「新单挂接」，同人亦各 1 条）及正文摘要 → 确认后改绑 + 发通知。</li>
+        <li>通知详情页（港后客服视角）：展示询价单号、运单号、尾程金额、原 / 新运单对照（改绑）、操作人与时间；可跳转运单详情（若现网有入口）。</li>
+        <li>找不到港后客服（运单主数据为空）：仍允许解绑 / 改绑；toast 警告「未找到港后客服，通知未发送」并写操作日志备查。</li>
       </ul>
 
       <h3>6.4 谁看见什么（不变）</h3>
@@ -1458,8 +1614,8 @@
         <tbody>
           <tr><td>① 地址锁车型</td><td>住宅或商业无卸货台 → 仅 26 尺；商业有卸货台 → 26 / 53</td></tr>
           <tr><td>② 车型适配</td><td>按方 / 重 / 板数与大小车上限拆车；有卸货台时任一项<strong>大于</strong>小车上限才上大车</td></tr>
-          <tr><td>③ 锁价</td><td>内州：距离档 → 起步 + 续托 / 53 整车。外州小车：万物智联多品牌取最优。外州大车：距离 × 档位的 $/mile（取整）</td></tr>
-          <tr><td>④ 核算</td><td>多车费用累加 = AI 规则总价。给业务员：<strong>（AI 规则总价 + 头程运价）÷ 计费重</strong> → 个位 USD/KG。尾程派送费<strong>不参与</strong>上式</td></tr>
+          <tr><td>③ 锁价</td><td>内州：距离档 → 起步 + 续托 / 53 整车 → <strong>尾端派送费</strong>（USD，取整）。外州小车：万物智联多品牌取最优 → 尾端派送费。外州大车：距离 × 档位的 $/mile（取整）→ 尾端派送费</td></tr>
+          <tr><td>④ 核算</td><td>船务头程运价 → <strong>头程单价</strong>（USD/KG）。给业务员：<strong>单价 = 头程单价 + 尾端派送费 ÷ 询价计费重</strong> → 个位 USD/KG</td></tr>
         </tbody>
       </table>
       <h4>内州计费要点</h4>

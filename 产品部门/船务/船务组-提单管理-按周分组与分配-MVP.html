@@ -742,10 +742,11 @@
       <div class="nav-tabs">
         <button type="button" class="nav-tab">运单管理 <span>×</span></button>
         <button type="button" class="nav-tab active">提单管理 <span>×</span></button>
-        <button type="button" class="nav-tab">待配仓 <span>×</span></button>
+        <button type="button" class="nav-tab" onclick="location.href='船务组-待配仓-MVP.html'">待配仓 <span>×</span></button>
       </div>
       <div class="header-right">
         <span>腾信物流 · 船务</span>
+        <a href="船务组-导航.html" style="color:#91d5ff">船务导航</a>
       </div>
     </header>
 
@@ -755,7 +756,7 @@
         <div class="side-item on">提单管理</div>
         <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html?mode=single'">提单创建</div>
         <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">批量创建提单</div>
-        <div class="side-item">待配仓</div>
+        <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-待配仓-MVP.html'">待配仓</div>
         <div class="side-item">舱位播报</div>
       </aside>
 
@@ -765,6 +766,7 @@
             <div class="filter-item"><label>提单号</label><input id="qBl" placeholder="支持模糊" /></div>
             <div class="filter-item"><label>运单号</label><input id="qWb" placeholder="支持模糊" /></div>
             <div class="filter-item"><label>柜号</label><input id="qCntr" /></div>
+            <div class="filter-item"><label>进口商 <span class="badge-new">新</span></label><input id="qImp" placeholder="名称或编码" /></div>
             <div class="filter-item">
               <label>运输方式</label>
               <select id="qTrans"><option value="">全部</option><option>海运</option></select>
@@ -811,18 +813,6 @@
                 <option value="有IT">有IT（列表不标）</option>
                 <option value="已取消IT">取消IT</option>
                 <option value="无IT">无IT（列表不标）</option>
-              </select>
-            </div>
-            <div class="filter-item">
-              <label>发送标记 <span class="badge-new">新</span></label>
-              <select id="qSend" title="关务在报关管理打 AMS/ISF 后回写">
-                <option value="">全部</option>
-                <option value="ams_no">AMS 未发</option>
-                <option value="ams_ok">AMS 已发</option>
-                <option value="isf_no">ISF 未发</option>
-                <option value="isf_ok">ISF 已发</option>
-                <option value="both_ok">AMS+ISF 均已发</option>
-                <option value="any_no">缺 AMS 或 ISF</option>
               </select>
             </div>
             <div class="filter-item">
@@ -954,6 +944,7 @@
                 <th>收货计费重</th>
                 <th>订柜供应商</th>
                 <th>报关供应商</th>
+                <th>进口商 <span class="badge-new">新</span></th>
                 <th>拖车供应商</th>
                 <th>装柜地址1</th>
                 <th>装柜地址2</th>
@@ -1577,18 +1568,18 @@
             <label>进口商</label>
             <select id="impSelect">
               <option value="">请选择</option>
-              <option>STAR IMPORTER LLC</option>
-              <option>PACIFIC GATEWAY INC</option>
-              <option>EAST COAST TRADE CO</option>
-              <option>NINGBO BRIGHT LOGISTICS</option>
             </select>
           </div>
           <div class="form-item">
-            <label>货类（规则适用）</label>
-            <select id="impCargo">
-              <option value="散货">散货（一水≤5）</option>
-              <option value="整柜">整柜（本规则不限）</option>
+            <label>Bond 分配</label>
+            <input id="impBondAssign" readonly placeholder="选择进口商后带出" />
+          </div>
+          <div class="form-item">
+            <label>清关行 <span class="badge-new">新</span></label>
+            <select id="impBroker">
+              <option value="">请先选择进口商</option>
             </select>
+            <div class="field-err" id="impBrokerHint" style="display:block;color:#8c8c8c;margin-top:4px">可选项来自该进口商已授权清关行；绑定后在清关管理、做资料展示</div>
           </div>
           <div class="form-item full">
             <label>一水绑柜预检</label>
@@ -2091,21 +2082,75 @@
         { id: 14, bl: "MEDU20260807001", cntr: "MSCU7700112", st: "待装柜", it: "无IT", ck: "查验中", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "", release: "未放行", cutOff: "2026-08-07 12:00", color: "", type: "40HQ", etd: "2026-08-09 00:00:00", carrier: "MSC", voy: "MSC LISA 03E", pol: "CNNGB", pod: "USLGB", agent: "甬港拖车", addr: "宁波北仑", loadAt: "2026-08-07 15:00", week: "2026-W32", ckWb: "", itReason: "", itTransit: "", itAt: "" }
       ];
 
-      /* 示意：进口商 + 一水绑柜（散货同船≤5） */
+      /* 示意：进口商 + 清关行 + 一水绑柜（散货同船≤5） */
+      var IMP_CATALOG = [
+        { value: "Pacific Trade Logistics LLC", code: "IMP-US-2024-018", auth: ["精准", "02B"], bondAssign: "散货专用" },
+        { value: "Westbay Trading Inc.", code: "IMP-US-2024-021", auth: ["精准", "赛因"], bondAssign: "美森专用" },
+        { value: "East Coast Import Co.", code: "IMP-US-2023-006", auth: ["精准", "关关通"], bondAssign: "苏州整柜专用" },
+        { value: "STAR IMPORTER LLC", code: "IMP-US-2024-STAR", auth: ["精准", "02B"], bondAssign: "反倾销专用" },
+        { value: "NINGBO BRIGHT LOGISTICS", code: "IMP-US-2024-NGB", auth: ["赛因"], bondAssign: "国内其它整柜专用" }
+      ];
+      function findImp(name) {
+        var n = name || "";
+        for (var i = 0; i < IMP_CATALOG.length; i++) {
+          if (IMP_CATALOG[i].value === n) return IMP_CATALOG[i];
+        }
+        return null;
+      }
+      function fillImpSelect() {
+        var sel = document.getElementById("impSelect");
+        if (!sel) return;
+        sel.innerHTML = '<option value="">请选择</option>';
+        IMP_CATALOG.forEach(function (it) {
+          sel.appendChild(new Option(it.code + " · " + it.value, it.value));
+        });
+      }
+      function fillImpBondAssign(name) {
+        var el = document.getElementById("impBondAssign");
+        if (!el) return;
+        var rec = findImp(name);
+        el.value = rec && rec.bondAssign ? rec.bondAssign : "";
+      }
+      function fillImpBroker(name, current) {
+        fillImpBondAssign(name);
+        var sel = document.getElementById("impBroker");
+        var hint = document.getElementById("impBrokerHint");
+        var rec = findImp(name);
+        sel.innerHTML = "";
+        if (!rec) {
+          sel.appendChild(new Option("请先选择进口商", ""));
+          hint.textContent = "可选项来自该进口商已授权清关行；绑定后在清关管理、做资料展示";
+          return;
+        }
+        if (!rec.auth.length) {
+          sel.appendChild(new Option("该进口商尚未分配清关行", ""));
+          hint.textContent = "请先在清关行·港口配置给该进口商授权";
+          return;
+        }
+        sel.appendChild(new Option("请选择清关行", ""));
+        rec.auth.forEach(function (b) { sel.appendChild(new Option(b, b)); });
+        if (current && rec.auth.indexOf(current) >= 0) sel.value = current;
+        else if (rec.auth.length === 1) sel.value = rec.auth[0];
+        hint.textContent = "已授权：" + rec.auth.join("、") + "（配置带出）";
+      }
       (function seedImp() {
+        fillImpSelect();
         var map = {
-          3: "PACIFIC GATEWAY INC",
-          4: "PACIFIC GATEWAY INC",
-          6: "EAST COAST TRADE CO",
-          8: "EAST COAST TRADE CO",
-          10: "STAR IMPORTER LLC",
-          11: "STAR IMPORTER LLC",
-          12: "PACIFIC GATEWAY INC",
-          13: "NINGBO BRIGHT LOGISTICS",
-          14: "NINGBO BRIGHT LOGISTICS"
+          3: ["Pacific Trade Logistics LLC", "精准"],
+          4: ["Pacific Trade Logistics LLC", "02B"],
+          6: ["East Coast Import Co.", "关关通"],
+          8: ["East Coast Import Co.", "精准"],
+          10: ["STAR IMPORTER LLC", "精准"],
+          11: ["STAR IMPORTER LLC", "02B"],
+          12: ["Pacific Trade Logistics LLC", "精准"],
+          13: ["NINGBO BRIGHT LOGISTICS", "赛因"],
+          14: ["NINGBO BRIGHT LOGISTICS", "赛因"]
         };
         ROWS.forEach(function (r) {
-          r.imp = map[r.id] || "";
+          var pair = map[r.id];
+          r.imp = pair ? pair[0] : "";
+          r.broker = pair ? pair[1] : "";
+          r.impCode = (findImp(r.imp) || {}).code || "";
           r.cargo = "散货";
         });
         /* STAR 在 MSC MIRJA 再绑 4 柜 → 同船共 6 柜超限示意 */
@@ -2126,7 +2171,7 @@
             pol: base.pol, pod: base.pod, agent: "青港物流",
             addr: "青岛黄岛××路", loadAt: "", week: base.week,
             ckWb: "", itReason: "", itTransit: "", itAt: "",
-            imp: "STAR IMPORTER LLC", cargo: "散货", fees: []
+            imp: "STAR IMPORTER LLC", impCode: "IMP-US-2024-STAR", broker: "精准", cargo: "散货", fees: []
           });
         });
       })();
@@ -2235,22 +2280,6 @@
           r.portCodeMatch = d ? d.portCodeMatch : (r.portCodeMatch || "待抓取");
           r.transitPortCode = d ? d.transitPortCode : (r.transitPortCode || "");
           r.dumpLeg = r.transitPortCode ? "中转" : "头程";
-        });
-      })();
-
-      /* 发送标记：AMS / ISF（默认未发；部分示意已发） */
-      (function seedSend() {
-        ROWS.forEach(function (r) {
-          if (r.ams == null) r.ams = "未发";
-          if (r.isf == null) r.isf = "未发";
-        });
-        var byId = {};
-        ROWS.forEach(function (r) { byId[r.id] = r; });
-        [3, 6, 8, 12].forEach(function (id) {
-          if (byId[id]) { byId[id].ams = "已发"; byId[id].amsAt = "2026-08-05 14:00"; }
-        });
-        [3, 8, 11, 12].forEach(function (id) {
-          if (byId[id]) { byId[id].isf = "已发"; byId[id].isfAt = "2026-08-05 15:30"; }
         });
       })();
 
@@ -2475,12 +2504,11 @@
         L(3, "创建提单", "创建提单: [提单号: COSU1234567890, 柜号: CSNU6688123, 船司: COSCO, 船名航次: COSCO SHIPPING 088E, 柜型: 40HQ, 港向: CNSHA→USLAX, 海运费: 2300, 国内免用箱: 7, 国外免用箱: 4, 来源: 单票]", "2026-06-25 09:17:00");
         L(3, "修改提单", "修改提单: [截单时间: 2026-08-04 12:00→2026-08-04 17:00, 国外免用箱: 4→10]", "2026-06-26 14:20:00");
         L(3, "提单分配", "提单分配: [装柜方式: 仓库, 拖车供应商: 空→上海新洋, 装柜地址1: 上海市浦东新区××路66号, 状态: 待分配→待装柜]", "2026-08-04 11:02:00");
-        L(3, "绑定进口商", "绑定进口商: [进口商: 空→PACIFIC GATEWAY INC, 同船已绑: 0→1, 强制超限: 否]", "2026-08-04 11:08:00");
+        L(3, "绑定进口商", "绑定进口商: [进口商: 空→Pacific Trade Logistics LLC, 清关行: 空→精准, 同船已绑: 0→1, 强制超限: 否]", "2026-08-04 11:08:00");
         L(3, "查验标记", "查验标记: [区域: 国内, 结果: 查验中, 轨迹编号: CK3]", "2026-08-05 09:40:00");
         L(3, "费用登记", "费用登记: [类型: 件毛体改单相关, 金额: USD 0, 费用大类: 国内, 挂柜: CSNU6688123]", "2026-08-05 10:22:00");
         L(3, "改单标记", "改单标记: [状态: 无→改单中, 类型: 件毛体, 原因: 件数 40→38]", "2026-08-05 10:20:00");
         L(3, "装柜完成", "装柜完成: [色标: 未装完→装完]", "2026-08-05 16:40:00", true);
-        L(3, "AMS/ISF 回写", "AMS/ISF 回写: [AMS: 未发→已发, 来源: 报关管理]", "2026-08-05 18:10:00", true);
         L(6, "取消IT", "取消IT: [IT: 有IT→已取消IT, 原因: 以星取消 IT / 重审 AN, 中转港: BUSAN, 通知关务: 是]", "2026-08-09 11:20:00");
         L(6, "查验标记", "查验标记: [区域: 国内, 结果: 查验放行, 轨迹编号: RL6]", "2026-08-09 15:00:00");
         L(8, "换柜换船", "换柜换船: [提单号: HLCUTS12699AA001→HLCUTS12699BB001, 柜号: HLCU9900001→HLCU9900112, 船名航次: AL RAWDAH 008E→AL RAWDAH 009E, 铅封号: 已更新, 站内消息: 已发]", "2026-08-10 09:12:00");
@@ -2803,6 +2831,13 @@
         }).length;
       }
 
+      function impCell(r) {
+        if (!r.imp) return "—";
+        var code = r.impCode || (findImp(r.imp) || {}).code || "";
+        if (!code) return r.imp;
+        return '<span title="' + r.imp + " " + code + '">' + r.imp + " · " + code + "</span>";
+      }
+
       function impMeta(r) {
         var imp = r.imp || "";
         var n = imp ? impBindCount(imp, r.voy) : 0;
@@ -2846,36 +2881,11 @@
         return "";
       }
 
-      function sendTag(r) {
-        var ams = r.ams || "未发";
-        var isf = r.isf || "未发";
-        var amsHtml = ams === "已发"
-          ? '<span class="tag ams-ok" title="' + (r.amsAt || "") + '">AMS 已发</span>'
-          : '<span class="tag ams-no">AMS 未发</span>';
-        var isfHtml = isf === "已发"
-          ? '<span class="tag isf-ok" title="' + (r.isfAt || "") + '">ISF 已发</span>'
-          : '<span class="tag isf-no">ISF 未发</span>';
-        return '<div class="send-cell">' + amsHtml + isfHtml + "</div>";
-      }
-
-      /** 业务标记：IT + AMS/ISF + 海放/码放 + 查验 + 改单 */
+      /** 业务标记：IT + 海放/码放 + 查验 + 改单（AMS/ISF 只在报关管理） */
       function marksCell(r) {
         return '<div class="marks-cell">' +
-          itTag(r) + sendTag(r) + relWarnCell(r) + ckTag(r) + amdTag(r) +
+          itTag(r) + relWarnCell(r) + ckTag(r) + amdTag(r) +
           "</div>";
-      }
-
-      function matchSendFilter(r, send) {
-        if (!send) return true;
-        var ams = r.ams || "未发";
-        var isf = r.isf || "未发";
-        if (send === "ams_no") return ams !== "已发";
-        if (send === "ams_ok") return ams === "已发";
-        if (send === "isf_no") return isf !== "已发";
-        if (send === "isf_ok") return isf === "已发";
-        if (send === "both_ok") return ams === "已发" && isf === "已发";
-        if (send === "any_no") return ams !== "已发" || isf !== "已发";
-        return true;
       }
 
       function matchRelFilter(r, rel) {
@@ -3014,6 +3024,7 @@
         var bl = (document.getElementById("qBl").value || "").trim().toUpperCase();
         var wb = (document.getElementById("qWb").value || "").trim().toUpperCase();
         var cntr = (document.getElementById("qCntr").value || "").trim().toUpperCase();
+        var impQ = (document.getElementById("qImp").value || "").trim().toUpperCase();
         var trans = document.getElementById("qTrans").value;
         var type = document.getElementById("qType").value;
         var pol = document.getElementById("qPol").value;
@@ -3024,7 +3035,6 @@
         var trailer = document.getElementById("qTrailer").value;
         var customs = document.getElementById("qCustoms").value;
         var it = document.getElementById("qIt").value;
-        var send = document.getElementById("qSend").value;
         var ck = document.getElementById("qCk").value;
         var amd = document.getElementById("qAmd").value;
         var rel = document.getElementById("qRel").value;
@@ -3041,6 +3051,10 @@
             if (hay.indexOf(wb) < 0) return false;
           }
           if (cntr && r.cntr.indexOf(cntr) < 0) return false;
+          if (impQ) {
+            var impHay = ((r.imp || "") + " " + (r.impCode || "")).toUpperCase();
+            if (impHay.indexOf(impQ) < 0) return false;
+          }
           if (trans && (r.trans || "海运") !== trans) return false;
           if (type && r.type !== type) return false;
           if (pol && r.pol !== pol) return false;
@@ -3051,7 +3065,6 @@
           if (trailer && (r.trailer || r.agent || "") !== trailer) return false;
           if (customs && (r.customs || "") !== customs) return false;
           if (it && r.it !== it) return false;
-          if (send && !matchSendFilter(r, send)) return false;
           if (ck === "查验挂票") { if (!r.ckWb) return false; }
           else if (ck && (r.ck || "无") !== ck) return false;
           if (amd && (r.amd || "无") !== amd) return false;
@@ -3249,6 +3262,7 @@
             "<td>" + num3(r.chgW) + "</td>" +
             "<td>" + dash(r.booker) + "</td>" +
             "<td>" + dash(r.customs) + "</td>" +
+            "<td>" + impCell(r) + "</td>" +
             "<td>" + dash(r.trailer) + "</td>" +
             "<td>" + dash(r.addr1 || r.addr) + "</td>" +
             "<td>" + dash(r.addr2) + "</td>" +
@@ -3270,7 +3284,7 @@
         pg.rows.forEach(function (r) { html += rowHtml(r); });
 
         document.getElementById("tbody").innerHTML = html ||
-          '<tr><td colspan="43" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+          '<tr><td colspan="42" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
       }
 
       document.getElementById("tbody").addEventListener("change", function (e) {
@@ -3350,9 +3364,9 @@
         this.textContent = el.classList.contains("hidden") ? "更多筛选" : "收起筛选";
       };
       document.getElementById("btnReset").onclick = function () {
-        ["qBl", "qWb", "qCntr", "qVoy"].forEach(function (id) { document.getElementById(id).value = ""; });
+        ["qBl", "qWb", "qCntr", "qImp", "qVoy"].forEach(function (id) { document.getElementById(id).value = ""; });
         ["qTrans", "qType", "qPol", "qPod", "qCarrier", "qBooker", "qTrailer", "qCustoms",
-          "qIt", "qSend", "qCk", "qAmd", "qRel", "qWarn", "qFt", "qColor"
+          "qIt", "qCk", "qAmd", "qRel", "qWarn", "qFt", "qColor"
         ].forEach(function (id) { document.getElementById(id).value = ""; });
         amdFilter = "";
         weekFilter = "2026-W32";
@@ -4569,7 +4583,6 @@
       function refreshImpCheck() {
         var rows = checkedRows();
         var imp = document.getElementById("impSelect").value;
-        var cargo = document.getElementById("impCargo").value;
         var box = document.getElementById("impCheckBox");
         if (!imp) {
           box.style.borderColor = "#d9d9d9";
@@ -4595,15 +4608,12 @@
             return r.imp === imp && r.voy === voy && !selected[r.id];
           }).length;
           var after = already + arr.length;
-          var over = cargo === "散货" && after > IMP_LIMIT;
+          var over = after > IMP_LIMIT;
           if (over) anyOver = true;
           lines.push("【" + arr[0].carrier + "】" + voy +
             "：原已绑 " + already + " + 本次 " + arr.length + " = <b>" + after + "</b> / " + IMP_LIMIT +
             (over ? ' <span class="tag wait">将超过一水上限</span>' : " ✓"));
         });
-        if (cargo !== "散货") {
-          lines.push("货类=整柜：本规则不限柜数，仅作展示。");
-        }
         box.innerHTML = lines.join("<br/>");
         box.style.borderColor = anyOver ? "#ffa39e" : "#b7eb8f";
         box.style.background = anyOver ? "#fff1f0" : "#f6ffed";
@@ -4619,10 +4629,10 @@
         }).join("；");
         if (rows[0].imp) {
           document.getElementById("impSelect").value = rows[0].imp;
+        } else {
+          document.getElementById("impSelect").value = "";
         }
-        if (rows[0].cargo) {
-          document.getElementById("impCargo").value = rows[0].cargo;
-        }
+        fillImpBroker(document.getElementById("impSelect").value, rows[0].broker || "");
         refreshImpCheck();
         document.getElementById("impMask").classList.add("open");
       }
@@ -4635,13 +4645,17 @@
       document.getElementById("impMask").addEventListener("click", function (e) {
         if (e.target === this) closeImp();
       });
-      document.getElementById("impSelect").onchange = refreshImpCheck;
-      document.getElementById("impCargo").onchange = refreshImpCheck;
+      document.getElementById("impSelect").onchange = function () {
+        fillImpBroker(document.getElementById("impSelect").value, "");
+        refreshImpCheck();
+      };
       document.getElementById("impConfirm").onclick = function () {
         var rows = checkedRows();
         var imp = document.getElementById("impSelect").value;
-        var cargo = document.getElementById("impCargo").value;
+        var broker = document.getElementById("impBroker").value;
         if (!imp) { toast("请选择进口商"); return; }
+        var rec = findImp(imp);
+        if (rec && rec.auth.length && !broker) { toast("请选择清关行（与进口商一并分配）"); return; }
         var chk = refreshImpCheck();
         if (chk.over) {
           var go = window.confirm(
@@ -4651,17 +4665,20 @@
         }
         rows.forEach(function (r) {
           var oldImp = r.imp || "空";
+          var oldBroker = r.broker || "空";
           r.imp = imp;
-          r.cargo = cargo;
+          r.impCode = (rec && rec.code) || "";
+          r.broker = broker;
           addLog(r, "绑定进口商",
             "绑定进口商: [进口商: " + oldImp + "→" + imp +
-            ", 货类: " + cargo + ", 强制超限: " + (chk.over ? "是" : "否") + "]");
+            ", 清关行: " + oldBroker + "→" + (broker || "空") +
+            ", 强制超限: " + (chk.over ? "是" : "否") + "]");
         });
         closeImp();
         render();
         toast(chk.over
           ? "已强制绑定进口商 ×" + rows.length + " · 一水绑柜已超限，请关注改配"
-          : "已绑定进口商 ×" + rows.length + " · " + imp);
+          : "已绑定进口商 ×" + rows.length + " · " + imp + (broker ? " · " + broker : ""));
       };
 
       /* —— 提单分配 · 基本信息抽屉 —— */

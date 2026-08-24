@@ -14,7 +14,7 @@ GROUPS = [
     "scope": "S1 询价报价 · 绑运单（船务下发头程运价）",
     "handoffs": "H1←船务头程运价接到散货算价 · 报完价→船务安排订舱 · 尾端费快照→海外",
     "parallel": "算价起分轨：整柜人工报价 ∥ 散货 AI/规则算价",
-    "desc": "全流程拆组：从<strong>客户询价</strong>开始 → <b>整柜手报价后直接生效（无人工复核）</b> / 散货算价接入船务<strong>头程运价</strong>（H1）：单价 =（AI规则配置 + 头程运价）÷ 计费重，需人工复核 → 有效期（7 天，遇 15/30 截断）→ 绑运单。多渠道各 1 价，只选 1 条给业务员。内州 = 距离 ≤150 迈。绑运单后挂尾端费交海外；<b>报完价后交船务安排订舱</b>。节点第二行「页」= 原型页面，第三行「功」= 页面功能。",
+    "desc": "全流程拆组：从<strong>客户询价</strong>开始 → <b>整柜手报价后直接生效（无人工复核）</b> / 散货算价接入船务<strong>头程运价</strong>（H1）：单价 = <strong>头程单价 + 尾端派送费 ÷ 询价计费重</strong>，需人工复核 → 有效期（7 天，遇 15/30 截断）→ 绑运单。多渠道各 1 价，只选 1 条给业务员。内州 = 距离 ≤150 迈。绑运单后挂尾端费交海外；<b>报完价后交船务安排订舱</b>。节点第二行「页」= 原型页面，第三行「功」= 页面功能。",
     "refs": [
       ("../../报价组/私卡报价-0731-AI报价有效期运单绑定-大致方案.html", "0731 方案"),
       ("../../报价组/10-L2-S1-私卡询价报价.mmd", "L2-S1 mmd"),
@@ -31,7 +31,7 @@ GROUPS = [
           <tr><td class="id">A 报价员列表</td><td class="page"><a href="../../报价组/ESS询价报价-报价员列表-MVP.html">报价员列表</a></td><td>待报价 · AI待确认（不回业务员） · 人工已报价 · 待绑运单</td></tr>
           <tr><td class="id">TYPE 整柜/散货</td><td class="page"><a href="../../报价组/ESS询价报价-报价员列表-MVP.html">报价员列表</a></td><td>散货 LCL / 整柜 FCL 分轨</td></tr>
           <tr><td class="id">BF 整柜手报价</td><td class="page"><a href="../../报价组/ESS整柜报价编辑-MVP.html">整柜报价编辑</a><a href="../../报价组/ESS整柜询价详情-MVP.html">整柜询价详情</a></td><td>手报价直接生效，无 AI 复核</td></tr>
-          <tr><td class="id">BL 散货 AI 算价</td><td class="page"><a href="../../报价组/私卡报价-AI报价规则配置-MVP.html">AI 规则配置</a></td><td>总价 = AI规则配置 + 头程运价；单价 = 总价 ÷ 计费重（个位 USD/KG）</td></tr>
+          <tr><td class="id">BL 散货 AI 算价</td><td class="page"><a href="../../报价组/私卡报价-AI报价规则配置-MVP.html">AI 规则配置</a></td><td>AI 规则 → 尾端派送费；头程 → 头程单价；业务员单价 = 头程单价 + 尾端派送费 ÷ 询价计费重（个位 USD/KG）</td></tr>
           <tr><td class="id">H1 头程运价</td><td class="page"><a href="../../船务/船务组-运价管理-我司与代理订舱-MVP.html">运价管理</a></td><td>接到散货算价节点（虚线）；与 AI 规则合计后再 ÷ 计费重得单价。非整柜询价入口</td></tr>
           <tr><td class="id">RULE 规则维护</td><td class="page"><a href="../../报价组/私卡报价-AI报价规则配置-MVP.html">AI 规则配置</a></td><td>草稿；填生效时间；到点前走旧版，到点后新询价走新版</td></tr>
           <tr><td class="id">CL AI待确认</td><td class="page"><a href="../../报价组/ESS散货询价方案详情-MVP.html">报价员详情</a></td><td>AI 出账不回业务员；仅报价员核对</td></tr>
@@ -56,7 +56,7 @@ GROUPS = [
   subgraph LCLFEED["散货算价输入"]
     direction LR
     H1{{"H1 ← 船务<br/>页：运价管理<br/>功：下发头程运价"}}
-    BL["AI / 规则算价 · 散货<br/>页：AI规则配置<br/>功：单价=（AI规则+头程运价）÷计费重"]
+    BL["AI / 规则算价 · 散货<br/>页：AI规则配置<br/>功：单价=头程单价+尾端派送费÷询价计费重"]
     RULE["规则维护（旁路）<br/>页：AI报价规则配置<br/>功：草稿 · 填生效时间 · 到点切新版"]
   end
   H1 -.-> BL
