@@ -33,7 +33,7 @@
    * @param {string} port
    * @param {number} index 0-based 票序
    * @param {number} total 总票数
-   * @returns {{ code: string, mode: 'auto'|'manual'|'na', rule: string, warn?: string }}
+   * @returns {{ code: string, mode: 'auto'|'manual', rule: string, warn?: string, useCustNo?: boolean }}
    */
   function generateOne(bl, carrier, port, index, total) {
     var c = normCarrier(carrier);
@@ -42,7 +42,7 @@
     bl = (bl || "").trim();
 
     if (c === "华南" || p === "华南") {
-      return { code: "", mode: "na", rule: "华南以客户单号为准，不按提单规则生成", warn: "请使用客户单号作为分单号" };
+      return { code: "", mode: "auto", rule: "T7 客户单号为准", useCustNo: true };
     }
 
     // 美森
@@ -138,7 +138,7 @@
     return goods.map(function (g, i) {
       var r = generateOne(bl, carrier, port, i, total);
       return Object.assign({}, g, {
-        houseNo: r.code || (r.mode === "na" ? g.custNo || "" : g.houseNo || ""),
+        houseNo: r.code || (r.useCustNo ? g.custNo || "" : g.houseNo || ""),
         genMode: r.mode,
         genRule: r.rule,
         genWarn: r.warn || "",

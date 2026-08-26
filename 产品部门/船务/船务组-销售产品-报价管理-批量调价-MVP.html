@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>船务组 · 销售产品报价 · 批量调价 · MVP</title>
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --red: #ff4d4f; --sider: #001529;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      font-size: 12px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    .layout { display: flex; min-height: 100vh; }
+    .sider {
+      width: 200px; background: var(--sider); color: rgba(255,255,255,.75); flex-shrink: 0;
+    }
+    .sider .logo {
+      height: 48px; display: flex; align-items: center; padding: 0 16px;
+      color: #fff; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .sider .grp { padding: 10px 16px 4px; font-size: 11px; color: rgba(255,255,255,.35); }
+    .sider a {
+      display: block; padding: 8px 16px 8px 24px; color: rgba(255,255,255,.65); font-size: 12px;
+    }
+    .sider a.on, .sider a:hover { color: #fff; background: var(--blue); }
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .top {
+      height: 48px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    }
+    .top .crumb { color: var(--sub); }
+    .top .crumb b { color: var(--text); }
+    .content { flex: 1; padding: 12px 16px; }
+    .scene {
+      margin-bottom: 10px; padding: 8px 10px; background: #e6f7ff; border: 1px solid #91d5ff;
+      border-radius: 2px; color: #0050b3; line-height: 1.65;
+    }
+    .badge {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; line-height: 16px; margin-left: 4px; vertical-align: middle;
+    }
+    .badge.new { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .badge.chg { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .panel {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px;
+    }
+    .filters {
+      display: grid; grid-template-columns: repeat(5, minmax(0,1fr)) auto;
+      gap: 8px; padding: 10px 12px; align-items: end; border-bottom: 1px solid var(--line);
+    }
+    .fi label { display: block; color: var(--sub); margin-bottom: 2px; font-size: 11px; }
+    .fi input, .fi select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .toolbar {
+      display: flex; gap: 8px; padding: 8px 12px; flex-wrap: wrap; align-items: center;
+      border-bottom: 1px solid var(--line); background: #fafafa;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; background: #fff;
+      border-radius: 2px; cursor: pointer; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { color: #fff; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; color: inherit; border-color: #d9d9d9; }
+    .btn.primary:disabled { color: #fff; }
+    .sel-info { margin-left: auto; color: var(--sub); font-size: 12px; }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 280px); }
+    table.grid { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    table.grid th, table.grid td {
+      border: 1px solid #f0f0f0; padding: 6px 8px; text-align: left; vertical-align: middle;
+    }
+    table.grid th { background: #fafafa; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+    table.grid tr:hover td { background: #f5faff; }
+    table.grid tr.picked td { background: #e6f7ff; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px;
+      border: 1px solid; line-height: 18px;
+    }
+    .tag.void { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.draft { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .foot {
+      padding: 8px 12px; color: var(--sub); border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between;
+    }
+
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 1000; align-items: center; justify-content: center; padding: 16px;
+    }
+    .mask.show { display: flex; }
+    .modal {
+      width: min(480px, 100%); background: #fff; border-radius: 2px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.2); display: flex; flex-direction: column;
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-hd h2 { margin: 0; font-size: 15px; }
+    .modal-bd { padding: 14px 16px; }
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px; background: #fafafa;
+    }
+    .fg { margin-bottom: 12px; }
+    .fg:last-child { margin-bottom: 0; }
+    .fg label { display: block; color: var(--sub); margin-bottom: 4px; font-size: 12px; }
+    .fg label .req { color: var(--red); }
+    .fg input, .fg select, .fg textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .fg input, .fg select { height: 30px; }
+    .fg textarea { min-height: 56px; padding: 6px 8px; resize: vertical; }
+    .fg .ro, .fg input[readonly], .fg select:disabled {
+      background: #f5f5f5; color: rgba(0,0,0,.65); cursor: not-allowed;
+    }
+    .fg .hint { margin-top: 4px; font-size: 11px; color: var(--sub); line-height: 1.45; }
+    .fg .hint.warn { color: #cf1322; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .radio-row { display: flex; gap: 16px; align-items: center; height: 30px; }
+    .radio-row label { display: inline-flex; align-items: center; gap: 4px; color: var(--text); margin: 0; cursor: pointer; }
+    .chips {
+      display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; min-height: 30px;
+      border: 1px solid #d9d9d9; border-radius: 2px; background: #f5f5f5;
+    }
+    .chip {
+      display: inline-block; padding: 0 6px; background: #e6f4ff; border: 1px solid #91d5ff;
+      color: #0958d9; border-radius: 2px; font-size: 11px; line-height: 20px;
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 14px; border-radius: 4px;
+      display: none; z-index: 2000;
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sider">
+      <div class="logo">ESS · 船务</div>
+      <div class="grp">价格</div>
+      <a class="on" href="船务组-销售产品-报价管理-批量调价-MVP.html">销售产品 · 批量调价</a>
+      <a href="船务组-客户协议价格维护-原型.html">客户协议价格</a>
+      <a href="船务组-运价管理-我司与代理订舱-MVP.html">运价管理</a>
+      <div class="grp">主数据</div>
+      <a href="../../销售产品-新增数据-MVP.html">销售产品 · 新增数据</a>
+      <div class="grp">导航</div>
+      <a href="船务组-导航.html">船务组导航</a>
+      <a href="../产品部门-导航.html">产品部门</a>
+      <a href="../../index.html">总导航</a>
+    </aside>
+
+    <div class="main">
+      <header class="top">
+        <span class="crumb">船务 / 销售产品 / <b>报价管理 · 批量调价</b></span>
+        <span style="margin-left:auto;color:var(--sub)">列表勾选 → 弹窗内产品/分公司置灰只读</span>
+      </header>
+
+      <div class="content">
+        <div class="scene">
+          <strong>船务本期 <span class="badge new">NEW</span>：</strong>
+          对齐现网「批量修改报价」。先在列表<strong>勾选销售产品报价</strong>，再点「批量修改报价」。
+          弹窗内<strong>销售产品、所属分公司置灰只读</strong>（由勾选行带出，不可改选）；
+          仅可改：有效期、调整类型（加/减）、调整金额、关联客户。
+          关联：<a href="船务组-客户协议价格维护-原型.html">客户协议价</a> ·
+          <a href="船务组-销售产品-报价管理-批量调价-MVP-PRD.html">PRD</a>。
+        </div>
+
+        <section class="panel">
+          <div class="filters">
+            <div class="fi"><label>报价编号</label><input id="qNo" placeholder="模糊" /></div>
+            <div class="fi"><label>销售产品</label><input id="qProd" placeholder="模糊" /></div>
+            <div class="fi"><label>所属分公司</label>
+              <select id="qBranch">
+                <option value="">全部</option>
+                <option>深圳分公司</option>
+                <option>宁波分公司</option>
+                <option>上海分公司</option>
+                <option>青岛分公司</option>
+              </select>
+            </div>
+            <div class="fi"><label>状态</label>
+              <select id="qSt">
+                <option value="">全部</option>
+                <option value="正式">正式</option>
+                <option value="作废">作废</option>
+                <option value="草稿">草稿</option>
+              </select>
+            </div>
+            <div class="fi"><label>关联客户</label>
+              <select id="qCust">
+                <option value="">全部</option>
+                <option>通用</option>
+                <option>指定客户</option>
+              </select>
+            </div>
+            <button type="button" class="btn primary" id="btnQuery">查询</button>
+          </div>
+
+          <div class="toolbar">
+            <button type="button" class="btn primary" id="btnBatch" disabled>批量修改报价 <span class="badge new">NEW</span></button>
+            <button type="button" class="btn" disabled>新增报价</button>
+            <button type="button" class="btn" disabled>启用</button>
+            <button type="button" class="btn" disabled>作废</button>
+            <span class="sel-info" id="selInfo">未勾选 · 请先勾选要调价的销售产品报价</span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="grid">
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox" id="chkAll" /></th>
+                  <th>序号</th>
+                  <th>状态信息</th>
+                  <th>报价编号</th>
+                  <th>销售产品</th>
+                  <th>所属分公司</th>
+                  <th>关联客户</th>
+                  <th>报价开始</th>
+                  <th>报价结束</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+          <div class="foot">
+            <span id="totalInfo">共 0 条</span>
+            <span>批量调价仅作用于勾选行；销售产品 / 分公司由列表决定，弹窗不重选。</span>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量修改报价 -->
+  <div class="mask" id="batchMask" aria-hidden="true">
+    <div class="modal" role="dialog">
+      <div class="modal-hd">
+        <h2>批量修改报价 <span class="badge chg">改</span></h2>
+        <button type="button" class="btn" id="batchClose" style="border:none;background:none;font-size:18px;color:#999;padding:0 4px">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="fg">
+          <label>销售产品 <span class="badge chg">只读</span></label>
+          <div class="chips ro" id="batchProducts" title="由列表勾选带出，不可编辑"></div>
+          <p class="hint">来自列表勾选，不可在弹窗内改选。若要换产品，请关闭后重新勾选。</p>
+        </div>
+        <div class="row2">
+          <div class="fg">
+            <label>报价开始时间</label>
+            <input type="datetime-local" id="batchStart" value="2026-08-20T00:00" />
+          </div>
+          <div class="fg">
+            <label>报价结束时间</label>
+            <input type="datetime-local" id="batchEnd" value="2026-12-31T23:59" />
+          </div>
+        </div>
+        <div class="fg">
+          <label>所属分公司 <span class="badge chg">只读</span></label>
+          <input id="batchBranch" class="ro" readonly value="" />
+          <p class="hint" id="batchBranchHint">由勾选行带出；多分公司勾选时展示「多分公司（只读汇总）」。</p>
+        </div>
+        <div class="fg">
+          <label><span class="req">*</span>调整类型</label>
+          <div class="radio-row">
+            <label><input type="radio" name="adjType" value="加" checked /> 加</label>
+            <label><input type="radio" name="adjType" value="减" /> 减</label>
+          </div>
+        </div>
+        <div class="fg">
+          <label><span class="req">*</span>调整金额</label>
+          <input id="batchAmt" type="number" min="0" step="0.01" placeholder="例 0.7" />
+          <p class="hint">对勾选报价单价统一加/减该金额（如中美普船统一降 0.7）。</p>
+        </div>
+        <div class="fg">
+          <label>关联客户</label>
+          <select id="batchCust">
+            <option value="通用">通用</option>
+            <option value="指定客户">指定客户（保持各行原客户）</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn primary" id="batchSave">保存</button>
+        <button type="button" class="btn" id="batchCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (function () {
+      var ROWS = [
+        { id: 1, st: "作废", no: "BJ20250801001", product: "美西空派-普船", branch: "深圳分公司", cust: "通用", start: "2025-08-01 00:00", end: "2025-12-31 23:59", remark: "" },
+        { id: 2, st: "作废", no: "BJ20250801002", product: "美西空派-快船", branch: "深圳分公司", cust: "通用", start: "2025-08-01 00:00", end: "2025-12-31 23:59", remark: "" },
+        { id: 3, st: "作废", no: "BJ20250901001", product: "美东卡派", branch: "宁波分公司", cust: "通用", start: "2025-09-01 00:00", end: "2025-12-31 23:59", remark: "" },
+        { id: 4, st: "作废", no: "BJ20250915001", product: "中美普船", branch: "宁波分公司", cust: "通用", start: "2025-09-15 00:00", end: "2025-12-31 23:59", remark: "历史价" },
+        { id: 5, st: "正式", no: "BJ20260801001", product: "美西空派-普船", branch: "深圳分公司", cust: "通用", start: "2026-08-01 00:00", end: "2026-12-31 23:59", remark: "" },
+        { id: 6, st: "正式", no: "BJ20260801002", product: "美西空派-快船", branch: "深圳分公司", cust: "通用", start: "2026-08-01 00:00", end: "2026-12-31 23:59", remark: "" },
+        { id: 7, st: "正式", no: "BJ20260805001", product: "中美普船", branch: "宁波分公司", cust: "通用", start: "2026-08-05 00:00", end: "2026-12-31 23:59", remark: "可批量降0.7" },
+        { id: 8, st: "正式", no: "BJ20260805002", product: "中美普船", branch: "上海分公司", cust: "通用", start: "2026-08-05 00:00", end: "2026-12-31 23:59", remark: "" },
+        { id: 9, st: "正式", no: "BJ20260810001", product: "美东卡派", branch: "青岛分公司", cust: "指定客户", start: "2026-08-10 00:00", end: "2026-12-31 23:59", remark: "大客户" },
+        { id: 10, st: "草稿", no: "BJ20260820001", product: "美西卡派", branch: "深圳分公司", cust: "通用", start: "2026-08-20 00:00", end: "2026-12-31 23:59", remark: "" }
+      ];
+      var selected = {};
+
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        setTimeout(function () { el.classList.remove("show"); }, 2200);
+      }
+
+      function stTag(st) {
+        var cls = st === "正式" ? "ok" : (st === "作废" ? "void" : "draft");
+        return '<span class="tag ' + cls + '">' + st + "</span>";
+      }
+
+      function filtered() {
+        var no = document.getElementById("qNo").value.trim();
+        var prod = document.getElementById("qProd").value.trim();
+        var branch = document.getElementById("qBranch").value;
+        var st = document.getElementById("qSt").value;
+        var cust = document.getElementById("qCust").value;
+        return ROWS.filter(function (r) {
+          if (no && r.no.indexOf(no) < 0) return false;
+          if (prod && r.product.indexOf(prod) < 0) return false;
+          if (branch && r.branch !== branch) return false;
+          if (st && r.st !== st) return false;
+          if (cust && r.cust !== cust) return false;
+          return true;
+        });
+      }
+
+      function selectedRows() {
+        return ROWS.filter(function (r) { return selected[r.id]; });
+      }
+
+      function syncSelUi() {
+        var rows = selectedRows();
+        var btn = document.getElementById("btnBatch");
+        btn.disabled = rows.length === 0;
+        document.getElementById("selInfo").textContent = rows.length
+          ? "已勾选 " + rows.length + " 条 · 可批量修改报价"
+          : "未勾选 · 请先勾选要调价的销售产品报价";
+      }
+
+      function render() {
+        var list = filtered();
+        document.getElementById("totalInfo").textContent = "共 " + list.length + " 条";
+        var html = "";
+        list.forEach(function (r, i) {
+          var on = !!selected[r.id];
+          html += '<tr class="' + (on ? "picked" : "") + '" data-id="' + r.id + '">' +
+            '<td><input type="checkbox" class="row-ck"' + (on ? " checked" : "") + " /></td>" +
+            "<td>" + (i + 1) + "</td>" +
+            "<td>" + stTag(r.st) + "</td>" +
+            "<td>" + r.no + "</td>" +
+            "<td>" + r.product + "</td>" +
+            "<td>" + r.branch + "</td>" +
+            "<td>" + r.cust + "</td>" +
+            "<td>" + r.start + "</td>" +
+            "<td>" + r.end + "</td>" +
+            "<td>" + (r.remark || "—") + "</td>" +
+            "</tr>";
+        });
+        document.getElementById("tbody").innerHTML = html ||
+          '<tr><td colspan="10" style="text-align:center;color:#8c8c8c;padding:24px">无数据</td></tr>';
+        syncSelUi();
+      }
+
+      function openBatch() {
+        var rows = selectedRows();
+        if (!rows.length) { toast("请先勾选销售产品报价"); return; }
+        /* 销售产品：去重只读展示 */
+        var prods = [];
+        rows.forEach(function (r) {
+          if (prods.indexOf(r.product) < 0) prods.push(r.product);
+        });
+        document.getElementById("batchProducts").innerHTML = prods.map(function (p) {
+          return '<span class="chip">' + p + "</span>";
+        }).join("") +
+          '<span style="color:#8c8c8c;font-size:11px;margin-left:4px">共 ' + rows.length + " 条报价</span>";
+
+        /* 所属分公司：单一则回显；多个只读汇总，不可改选 */
+        var branches = [];
+        rows.forEach(function (r) {
+          if (branches.indexOf(r.branch) < 0) branches.push(r.branch);
+        });
+        var branchEl = document.getElementById("batchBranch");
+        var hint = document.getElementById("batchBranchHint");
+        if (branches.length === 1) {
+          branchEl.value = branches[0];
+          hint.textContent = "由勾选行带出，不可编辑。";
+          hint.classList.remove("warn");
+        } else {
+          branchEl.value = "多分公司：" + branches.join("、");
+          hint.textContent = "勾选行分属多个分公司，仅只读汇总展示，不可在弹窗改分公司。";
+          hint.classList.add("warn");
+        }
+
+        document.getElementById("batchAmt").value = "";
+        document.querySelector('input[name="adjType"][value="加"]').checked = true;
+        document.getElementById("batchCust").value = "通用";
+        document.getElementById("batchMask").classList.add("show");
+      }
+
+      function closeBatch() {
+        document.getElementById("batchMask").classList.remove("show");
+      }
+
+      document.getElementById("btnQuery").onclick = render;
+      document.getElementById("btnBatch").onclick = openBatch;
+      document.getElementById("batchClose").onclick = closeBatch;
+      document.getElementById("batchCancel").onclick = closeBatch;
+      document.getElementById("batchMask").addEventListener("click", function (e) {
+        if (e.target === this) closeBatch();
+      });
+
+      document.getElementById("chkAll").onchange = function () {
+        var on = this.checked;
+        filtered().forEach(function (r) {
+          if (on) selected[r.id] = true; else delete selected[r.id];
+        });
+        render();
+      };
+
+      document.getElementById("tbody").addEventListener("change", function (e) {
+        var ck = e.target.closest(".row-ck");
+        if (!ck) return;
+        var id = Number(ck.closest("tr").getAttribute("data-id"));
+        if (ck.checked) selected[id] = true; else delete selected[id];
+        syncSelUi();
+        ck.closest("tr").classList.toggle("picked", ck.checked);
+      });
+
+      document.getElementById("batchSave").onclick = function () {
+        var rows = selectedRows();
+        var amt = parseFloat(document.getElementById("batchAmt").value, 10);
+        if (!(amt >= 0) || isNaN(amt)) { toast("请填写调整金额"); return; }
+        var type = document.querySelector('input[name="adjType"]:checked').value;
+        var start = document.getElementById("batchStart").value.replace("T", " ");
+        var end = document.getElementById("batchEnd").value.replace("T", " ");
+        var cust = document.getElementById("batchCust").value;
+        rows.forEach(function (r) {
+          r.start = start;
+          r.end = end;
+          if (cust === "通用") r.cust = "通用";
+          r.remark = (type === "加" ? "+" : "−") + amt +
+            (r.remark ? " · " + r.remark.replace(/^[+−][\d.]+( · )?/, "") : "");
+          if (r.st === "草稿") r.st = "正式";
+        });
+        closeBatch();
+        render();
+        toast("已批量调价 ×" + rows.length + "（" + type + " " + amt + "）· 产品/分公司未改");
+      };
+
+      render();
+    })();
+  </script>
+</body>
+</html>

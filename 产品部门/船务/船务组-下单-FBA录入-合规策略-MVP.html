@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FBA录入 · 合规策略提示 · MVP</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #eef1f6; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --red: #ff4d4f; --orange: #fa8c16;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      font-size: 12px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    button, input, select, textarea { font: inherit; }
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 14px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; }
+    .topbar a { color: rgba(255,255,255,.75); }
+    .topbar a.on { color: #fff; font-weight: 600; }
+    .topbar .right { margin-left: auto; color: rgba(255,255,255,.55); }
+    .badge {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; line-height: 16px; margin-left: 4px; vertical-align: middle;
+    }
+    .badge.chg { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .page-note {
+      margin: 0 0 10px; padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 2px; color: #873800; line-height: 1.55; font-size: 12px;
+    }
+    .main { padding: 10px 12px 24px; max-width: 1680px; margin: 0 auto; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    @media (max-width: 1100px) { .row2 { grid-template-columns: 1fr; } }
+    .panel { background: #fff; border: 1px solid var(--line); }
+    .panel-hd {
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      font-weight: 600; background: #fafafa;
+    }
+    .form-grid {
+      display: grid; grid-template-columns: 100px 1fr 100px 1fr;
+      gap: 8px 10px; padding: 10px 12px; align-items: center;
+    }
+    .form-grid label { color: var(--sub); text-align: right; }
+    .form-grid label .req { color: var(--red); margin-right: 2px; }
+    .form-grid input, .form-grid select, .form-grid textarea {
+      border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; width: 100%;
+    }
+    .form-grid input, .form-grid select { height: 28px; }
+    .form-grid textarea { min-height: 56px; padding: 6px 8px; resize: vertical; }
+    .form-grid .full { grid-column: 2 / -1; }
+    .form-grid label.full-lab { grid-column: 1; }
+    .hint-red { color: #cf1322; padding: 8px 12px 0; }
+    .goods-bar {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 8px 12px 6px; min-height: 36px;
+    }
+    .goods-bar .total { color: var(--sub); white-space: nowrap; padding-top: 4px; }
+    .policy-bar { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .policy-bar:empty::before {
+      content: "输入中文品名后，这里带出产品库合规策略";
+      color: #bfbfbf; font-size: 11px; padding-top: 4px;
+    }
+    .pol {
+      padding: 6px 10px; border-radius: 2px; line-height: 1.55; border: 1px solid;
+    }
+    .pol b { margin-right: 6px; }
+    .pol.ok { background: #f6ffed; border-color: #b7eb8f; color: #389e0d; }
+    .pol.warn { background: #fff7e6; border-color: #ffd591; color: #d46b08; }
+    .pol.bad { background: #fff1f0; border-color: #ffa39e; color: #cf1322; }
+    .table-wrap { overflow: auto; }
+    table.grid { width: 100%; border-collapse: collapse; min-width: 2200px; font-size: 11px; }
+    table.grid th, table.grid td {
+      border: 1px solid #f0f0f0; padding: 4px; vertical-align: middle;
+    }
+    table.grid th { background: #fafafa; white-space: nowrap; font-weight: 600; }
+    table.grid th.req { color: #cf1322; }
+    table.grid .idx { width: 28px; text-align: center; color: var(--sub); }
+    table.grid input, table.grid select {
+      width: 100%; height: 26px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 4px;
+    }
+    table.grid .dims { display: flex; gap: 2px; min-width: 120px; }
+    table.grid .dims input { width: 40px; }
+    .ft {
+      padding: 10px 12px; display: flex; justify-content: flex-end; gap: 8px;
+      border-top: 1px solid var(--line); background: #fafafa;
+    }
+    .btn {
+      height: 28px; padding: 0 14px; border: 1px solid #d9d9d9; background: #fff;
+      border-radius: 2px; cursor: pointer;
+    }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 14px; border-radius: 4px;
+      display: none; z-index: 2000;
+    }
+    .toast.show { display: block; }
+    .pol .ship-lines { margin-top: 4px; font-size: 11px; }
+    .pol .ship-lines div + div { margin-top: 2px; }
+    .mk {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      border: 1px solid; margin: 0 3px 0 0; line-height: 16px; vertical-align: middle;
+    }
+    .mk.off { color: #1d39c4; background: #f0f5ff; border-color: #adc6ff; }
+    .mk.inn { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .pol .mk-line { margin-top: 4px; font-size: 11px; }
+    .linkish { color: var(--blue); cursor: pointer; white-space: nowrap; }
+    .linkish:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">FBA录入</div>
+    <a class="on" href="#">录入FBA订单</a>
+    <a href="船务组-产品库-出货要求与收费标准-MVP.html">产品库</a>
+    <a href="船务组-导航.html">组导航</a>
+    <a href="../关务组/关务组-导航.html">关务导航</a>
+    <div class="right">现网录入页 · 增量改 <span class="badge chg">改</span></div>
+  </header>
+
+  <main class="main">
+    <div class="page-note"><span class="badge chg">改</span> 相对现网「录入FBA订单」：字段对齐现网；增量=货物明细上方合规策略、资质类附件列、附加服务带出。出货不按交货仓对某一列：五仓结果一致才按该条拦/提示；不一致只文字提示、不拦截。</div>
+
+    <div class="row2">
+      <section class="panel">
+        <div class="panel-hd">基本信息</div>
+        <div class="form-grid">
+          <label><span class="req">*</span>客户代码</label>
+          <select><option>KH2026</option><option>C10086</option></select>
+          <label><span class="req">*</span>客户单号</label>
+          <input placeholder="请输入客户单号" value="PO20260824-001" />
+          <label><span class="req">*</span>所属产品</label>
+          <select><option>美西卡航FBA标快-NJ</option><option>美东卡航FBA</option></select>
+          <label>报关方式</label>
+          <select><option>一般贸易报关</option><option>买单报关</option></select>
+          <label>服务类型</label>
+          <select><option>自税</option><option>包税</option></select>
+          <label><span class="req">*</span>货物类型</label>
+          <select><option>普货</option><option>带电</option><option>液体</option></select>
+          <label class="full-lab">客户备注</label>
+          <textarea class="full" placeholder="选填"></textarea>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">收货地址</div>
+        <div class="form-grid">
+          <label>仓库代码</label>
+          <input placeholder="如 ONT8" value="ONT8" />
+          <label>收件人</label>
+          <input placeholder="选填" />
+          <label>公司名</label>
+          <input placeholder="选填" />
+          <label><span class="req">*</span>国家/地区</label>
+          <select><option>US</option><option>CA</option></select>
+          <label><span class="req">*</span>邮编</label>
+          <input value="08831" />
+          <label><span class="req">*</span>地址</label>
+          <input value="1 AMAZON WAY" />
+          <label><span class="req">*</span>城市</label>
+          <input value="MONROE TOWNSHIP" />
+          <label>省/州</label>
+          <input value="NJ" />
+          <label>VAT/税号</label>
+          <input placeholder="选填" />
+          <label><span class="req">*</span>电话</label>
+          <input value="2015550100" />
+          <label>邮箱</label>
+          <input placeholder="选填" />
+          <label>预计到仓时间</label>
+          <input type="date" value="2026-08-28" />
+          <label>预计到货仓库</label>
+          <select id="wh"></select>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-hd">货物明细 <span class="badge chg">改</span></div>
+      <div class="hint-red">操作方式：类似Excel表格，可粘贴可复制。红色字体为必填内容。</div>
+      <div class="goods-bar">
+        <div class="total">总箱数: <b id="boxTotal">0</b></div>
+        <div class="policy-bar" id="policyBar" title="合规策略提示 · 改"></div>
+      </div>
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="idx">#</th>
+              <th>FBA单号</th>
+              <th>Reference ID</th>
+              <th class="req">长×宽×高(CM)</th>
+              <th>单位</th>
+              <th class="req">箱数</th>
+              <th class="req">单件毛重(KG)</th>
+              <th class="req">海关编码</th>
+              <th class="req">中文品名</th>
+              <th class="req">英文品名</th>
+              <th class="req">单箱数量(PCS)</th>
+              <th class="req">单价(USD)</th>
+              <th>品牌</th>
+              <th>规格型号</th>
+              <th class="req">材质</th>
+              <th>最早送仓时间</th>
+              <th>用途</th>
+              <th>产品图</th>
+              <th>资质类附件 <span class="badge chg">改</span></th>
+              <th>附加服务 <span class="badge chg">改</span></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="ft">
+        <button type="button" class="btn" id="btnAdd" style="margin-right:auto">加一行</button>
+        <button type="button" class="btn primary" id="btnDraft">客户下单</button>
+        <button type="button" class="btn primary" id="btnSubmit">提交预报</button>
+        <button type="button" class="btn" id="btnReset">重置</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-下单-FBA录入-合规策略-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js?v=aidock1" defer></script>
+  <script>
+(function () {
+  var WH = ["宁波", "上海", "盐田", "南沙", "青岛"];
+  var WAREHOUSES = ["潍坊仓", "台州仓", "在客户装柜", "苏州仓", "青岛仓库", "厦门仓库", "中山仓库", "广州仓库", "泉州仓库", "义乌北苑仓", "深圳龙华仓", "深圳福永仓", "义乌总仓", "宁波仓库"];
+  function whAll(code, note) {
+    var o = {};
+    WH.forEach(function (w) { o[w] = { code: code, note: note || "" }; });
+    return o;
+  }
+  function whMix(spec) {
+    var o = {};
+    WH.forEach(function (w) {
+      var cell = spec[w] || { code: "ok", note: "" };
+      o[w] = { code: cell.code, note: cell.note || "" };
+    });
+    return o;
+  }
+  var POLICY = {
+    ok_nolic: "可以走，无资质扣货不赔",
+    ban_incomplete: "带电资质不齐全不接，无CPSC扣货不赔",
+    ban: "不接",
+    ul_ban: "UL无授权不接，无CPSC扣货不赔",
+    other: "其他（见备注）"
+  };
+  var SHIP = { ok: "正常出", doc: "需资料出", cond: "有条件出", ban: "不接" };
+  var LIB = [
+    { name: "纸尿裤", en: "diaper", hsDecl: "9619.00", policy: "ok_nolic", feeMode: "none", svc: "", status: "启用", official: [], inner: [], wh: whAll("ok") },
+    { name: "泡泡水", en: "bubble water", hsDecl: "9503.00", policy: "ok_nolic", feeMode: "select", svc: "产品附加费加3/kg", status: "启用", official: ["CPC"], inner: [], wh: whAll("doc", "海运鉴定报告 MSDS") },
+    { name: "玩具车（带电）", en: "electric toy car", hsDecl: "9503.00", policy: "ban_incomplete", feeMode: "select", svc: "产品附加费加0.5/kg", status: "启用", official: ["CPC"], inner: ["带电/磁性"], wh: whAll("doc", "海运鉴定报告 MSDS") },
+    { name: "弹弓（带钢珠）", en: "slingshot", hsDecl: "", policy: "ban", feeMode: "none", svc: "", status: "启用", official: [], inner: ["违禁品"], wh: whAll("ban") },
+    { name: "塑料望远镜", en: "plastic telescope", hsDecl: "9005.10", policy: "ok_nolic", feeMode: "none", svc: "", status: "启用", official: [], inner: ["军用迷彩"], wh: whAll("cond", "军绿迷彩的不接") },
+    { name: "卡丁车（用油）", en: "go kart", hsDecl: "", policy: "ban", feeMode: "none", svc: "", status: "启用", official: [], inner: ["违禁品"], wh: whAll("ban") },
+    { name: "插电的游乐设施", en: "electric ride", hsDecl: "9508.90", policy: "ul_ban", feeMode: "none", svc: "", status: "启用", official: [], inner: ["UL标识"], wh: whAll("cond", "有UL无资质不能出") },
+    { name: "木制家具", en: "wooden furniture", hsDecl: "9403.60", policy: "other", feeMode: "none", svc: "", status: "启用", official: [], inner: [],
+      wh: whMix({
+        "宁波": { code: "ok" },
+        "上海": { code: "ok" },
+        "盐田": { code: "doc", note: "植检证" },
+        "南沙": { code: "doc", note: "植检证" },
+        "青岛": { code: "ban" }
+      }) }
+  ];
+
+  function emptyRow() {
+    return {
+      fba: "", ref: "", len: "", wid: "", hei: "", unit: "CM",
+      boxes: "", gw: "", hs: "", name: "", en: "", pcs: "", price: "",
+      brand: "", spec: "", material: "", earliest: "", use: "",
+      attach: "none", svc: ""
+    };
+  }
+  var rows = [emptyRow(), emptyRow(), emptyRow()];
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/"/g, "&quot;");
+  }
+  function toast(msg) {
+    var el = $("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2400);
+  }
+  function findProd(name) {
+    name = (name || "").trim();
+    if (!name) return null;
+    return LIB.find(function (p) { return p.name === name; }) || null;
+  }
+  function shipGroups(p) {
+    var byCode = {};
+    var order = [];
+    WH.forEach(function (w) {
+      var cell = (p.wh && p.wh[w]) || { code: "ok", note: "" };
+      if (!byCode[cell.code]) {
+        byCode[cell.code] = { code: cell.code, ports: [], notes: [] };
+        order.push(byCode[cell.code]);
+      }
+      var g = byCode[cell.code];
+      g.ports.push(w);
+      if (cell.note && g.notes.indexOf(cell.note) < 0) g.notes.push(cell.note);
+    });
+    return order;
+  }
+  function shipOf(p) {
+    var groups = shipGroups(p);
+    if (groups.length === 1) {
+      return { consistent: true, code: groups[0].code, note: groups[0].notes.join("；"), groups: groups };
+    }
+    return { consistent: false, code: "", note: "", groups: groups };
+  }
+
+  function collectHits() {
+    var seen = {};
+    var list = [];
+    rows.forEach(function (r, i) {
+      var p = findProd(r.name);
+      if (!p || seen[p.name]) return;
+      seen[p.name] = true;
+      list.push({ row: r, prod: p, ship: shipOf(p), idx: i });
+    });
+    return list;
+  }
+
+  function renderPolicy() {
+    var hits = collectHits();
+    $("policyBar").innerHTML = hits.map(function (h) {
+      var p = h.prod;
+      var s = h.ship;
+      var cls = "warn";
+      if (s.consistent && (s.code === "ban" || p.policy === "ban")) cls = "bad";
+      else if (s.consistent && s.code === "ok" && p.feeMode === "none") cls = "ok";
+      var bits = [POLICY[p.policy] || p.policy];
+      var extra = "";
+      if (s.consistent) {
+        bits.push("五仓一致");
+        bits.push(SHIP[s.code]);
+        if (s.note) bits.push(s.note);
+        if (s.code === "doc" && h.row.attach !== "yes") bits.push("品名需要资料，请上传");
+        if (s.code === "cond") bits.push("扣货不赔");
+      } else {
+        bits.push("各仓出货不一致，仅文字提示，不拦截");
+        extra = '<div class="ship-lines">' + s.groups.map(function (g) {
+          var line = g.ports.join("、") + "：" + (SHIP[g.code] || g.code);
+          if (g.notes.length) line += " · " + g.notes.join("；");
+          return "<div>" + line + "</div>";
+        }).join("") + "</div>";
+      }
+      if (p.svc) bits.push(p.svc);
+      var off = p.official || [];
+      var inn = p.inner || [];
+      var markLine = "";
+      if (off.length || inn.length) {
+        markLine = '<div class="mk-line">';
+        if (off.length) {
+          markLine += "官方（外部） " + off.map(function (t) {
+            return '<span class="mk off">' + t + "</span>";
+          }).join("");
+        }
+        if (inn.length) {
+          markLine += (off.length ? "　" : "") + "内部 " + inn.map(function (t) {
+            return '<span class="mk inn">' + t + "</span>";
+          }).join("");
+        }
+        markLine += " · 查货页带出，人工判断</div>";
+      }
+      return '<div class="pol ' + cls + '"><b>' + p.name + "</b>" + bits.join(" · ") + extra + markLine + "</div>";
+    }).join("");
+  }
+
+  function fillRowFromLib(i) {
+    var r = rows[i];
+    var p = findProd(r.name);
+    if (!p) {
+      r.svc = "";
+      return;
+    }
+    if (!r.en) r.en = p.en || "";
+    if (!r.hs) r.hs = p.hsDecl || "";
+    r.svc = p.svc || "";
+  }
+
+  function renderTable() {
+    $("tbody").innerHTML = rows.map(function (r, i) {
+      return "<tr>" +
+        '<td class="idx">' + (i + 1) + "</td>" +
+        '<td><input data-k="fba" data-i="' + i + '" value="' + esc(r.fba) + '" placeholder="FBA…" /></td>' +
+        '<td><input data-k="ref" data-i="' + i + '" value="' + esc(r.ref) + '" /></td>' +
+        '<td><div class="dims">' +
+          '<input data-k="len" data-i="' + i + '" value="' + esc(r.len) + '" placeholder="长" />' +
+          '<input data-k="wid" data-i="' + i + '" value="' + esc(r.wid) + '" placeholder="宽" />' +
+          '<input data-k="hei" data-i="' + i + '" value="' + esc(r.hei) + '" placeholder="高" />' +
+        "</div></td>" +
+        '<td><select data-k="unit" data-i="' + i + '">' +
+          '<option value="CM"' + (r.unit === "CM" ? " selected" : "") + ">CM</option>" +
+          '<option value="IN"' + (r.unit === "IN" ? " selected" : "") + ">IN</option>" +
+        "</select></td>" +
+        '<td><input data-k="boxes" data-i="' + i + '" value="' + esc(r.boxes) + '" type="number" min="0" /></td>' +
+        '<td><input data-k="gw" data-i="' + i + '" value="' + esc(r.gw) + '" /></td>' +
+        '<td><input data-k="hs" data-i="' + i + '" value="' + esc(r.hs) + '" /></td>' +
+        '<td><input data-k="name" data-i="' + i + '" value="' + esc(r.name) + '" list="nameList" placeholder="如 泡泡水" /></td>' +
+        '<td><input data-k="en" data-i="' + i + '" value="' + esc(r.en) + '" /></td>' +
+        '<td><input data-k="pcs" data-i="' + i + '" value="' + esc(r.pcs) + '" /></td>' +
+        '<td><input data-k="price" data-i="' + i + '" value="' + esc(r.price) + '" /></td>' +
+        '<td><input data-k="brand" data-i="' + i + '" value="' + esc(r.brand) + '" /></td>' +
+        '<td><input data-k="spec" data-i="' + i + '" value="' + esc(r.spec) + '" /></td>' +
+        '<td><input data-k="material" data-i="' + i + '" value="' + esc(r.material) + '" /></td>' +
+        '<td><input data-k="earliest" data-i="' + i + '" value="' + esc(r.earliest) + '" placeholder="YYYY-MM-DD" /></td>' +
+        '<td><input data-k="use" data-i="' + i + '" value="' + esc(r.use) + '" /></td>' +
+        '<td><span class="linkish">上传</span></td>' +
+        '<td><select data-k="attach" data-i="' + i + '">' +
+          '<option value="none"' + (r.attach === "none" ? " selected" : "") + ">无</option>" +
+          '<option value="yes"' + (r.attach === "yes" ? " selected" : "") + ">有</option>" +
+        "</select></td>" +
+        "<td>" + (r.svc || "—") + "</td>" +
+      "</tr>";
+    }).join("");
+    var boxes = rows.reduce(function (n, r) { return n + (parseInt(r.boxes, 10) || 0); }, 0);
+    $("boxTotal").textContent = boxes;
+    renderPolicy();
+  }
+
+  function bind() {
+    $("tbody").oninput = $("tbody").onchange = function (e) {
+      var t = e.target;
+      var i = t.getAttribute("data-i");
+      var k = t.getAttribute("data-k");
+      if (i == null || !k) return;
+      rows[i][k] = t.value;
+      if (k === "name") fillRowFromLib(+i);
+      if (k === "name" || k === "attach") renderTable();
+      else {
+        var boxes = rows.reduce(function (n, r) { return n + (parseInt(r.boxes, 10) || 0); }, 0);
+        $("boxTotal").textContent = boxes;
+        renderPolicy();
+      }
+    };
+  }
+
+  function trySubmit(asDraft) {
+    var filled = rows.filter(function (r) { return (r.name || "").trim(); });
+    if (!filled.length) { toast("请填写中文品名"); return; }
+    var hits = collectHits();
+    var banned = hits.filter(function (h) { return h.ship.consistent && h.ship.code === "ban"; });
+    if (banned.length) {
+      toast(banned[0].prod.name + " 五仓均为不接，无法下单");
+      return;
+    }
+    var needHold = hits.filter(function (h) { return h.ship.consistent && h.ship.code === "doc" && h.row.attach !== "yes"; });
+    if (needHold.length) {
+      toast(asDraft ? "已客户下单。缺资料将扣件（类型待定）" : "已提交预报。缺资料已扣件（类型待定）");
+      return;
+    }
+    toast(asDraft ? "已客户下单" : "已提交预报");
+  }
+
+  $("wh").innerHTML = WAREHOUSES.map(function (w) {
+    return '<option value="' + w + '">' + w + "</option>";
+  }).join("");
+  $("wh").value = "义乌总仓";
+  $("btnAdd").addEventListener("click", function () {
+    rows.push(emptyRow());
+    renderTable();
+  });
+  $("btnDraft").addEventListener("click", function () { trySubmit(true); });
+  $("btnSubmit").addEventListener("click", function () { trySubmit(false); });
+  $("btnReset").addEventListener("click", function () {
+    rows = [emptyRow(), emptyRow(), emptyRow()];
+    renderTable();
+    toast("已重置货物明细");
+  });
+
+  var dl = document.createElement("datalist");
+  dl.id = "nameList";
+  dl.innerHTML = LIB.map(function (p) { return "<option value=\"" + p.name + "\"></option>"; }).join("");
+  document.body.appendChild(dl);
+
+  bind();
+  renderTable();
+})();
+  </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>提单创建(批量) · AI识别提单信息（MVP）</title>
+  <title>提单创建 / 批量创建提单 · AI识别（MVP）</title>
   <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
   <style>
     :root {
@@ -68,6 +68,11 @@
       display: inline-block; margin-left: 2px; padding: 0 4px; height: 16px; line-height: 16px;
       font-size: 10px; font-weight: 700; border-radius: 2px;
       background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .badge-chg {
+      display: inline-block; margin-left: 2px; padding: 0 4px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff7e6; color: #d46b08; border: 1px solid #ffd591;
     }
     .tip-bar {
       margin: 0; padding: 8px 10px; font-size: 12px; line-height: 1.55;
@@ -251,11 +256,28 @@
       box-shadow: 0 12px 40px rgba(0,0,0,.2);
     }
     .modal.wide { width: min(1180px, 100%); }
+    .modal.xl { width: min(1400px, 100%); height: calc(100vh - 48px); max-height: calc(100vh - 48px); }
     .modal-hd {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 16px; border-bottom: 1px solid var(--line);
     }
     .modal-hd h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .modal-hd-actions { display: flex; align-items: center; gap: 8px; }
+    .ai-dock {
+      display: none; position: fixed; right: 20px; bottom: 20px; z-index: 1100;
+      align-items: center; gap: 10px; min-width: 280px; max-width: 420px;
+      padding: 10px 12px; background: #fff; border: 1px solid #ffa39e;
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(207,19,34,.18);
+    }
+    .ai-dock.show { display: flex; }
+    .ai-dock-mark {
+      flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(145deg, #ff4d4f, #cf1322); color: #fff;
+      font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    }
+    .ai-dock-body { flex: 1; min-width: 0; }
+    .ai-dock-body strong { display: block; font-size: 12px; color: #cf1322; }
+    .ai-dock-body span { display: block; font-size: 11px; color: #8c8c8c; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .modal-bd { padding: 14px 16px; overflow: auto; flex: 1; }
     .modal-ft {
       padding: 10px 16px; border-top: 1px solid var(--line);
@@ -299,6 +321,61 @@
     .file-chip button {
       border: none; background: none; color: #cf1322; cursor: pointer; padding: 0; font-size: 14px;
     }
+    .file-tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    .file-tbl th, .file-tbl td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+    .file-tbl th { background: #fafafa; color: var(--sub); }
+    .file-tbl .nm { word-break: break-all; }
+    .st {
+      display: inline-block; padding: 0 6px; height: 18px; line-height: 16px;
+      font-size: 11px; border-radius: 2px; border: 1px solid; font-weight: 700;
+    }
+    .st.ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .st.run { color: #0958d9; background: #e6f4ff; border-color: #91caff; }
+    .st.need { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .st.fail { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .st.wait { color: #8c8c8c; background: #f5f5f5; border-color: #d9d9d9; }
+    .ai-prog {
+      padding: 8px 10px; background: #fff7e6; border: 1px solid #ffd591; border-radius: 2px;
+      font-size: 12px; color: #ad6800; margin-bottom: 10px;
+    }
+    .ai-work { display: flex; gap: 10px; min-height: 0; flex: 1; }
+    .ai-files {
+      width: 260px; flex-shrink: 0; border: 1px solid var(--line); overflow: auto; background: #fff;
+    }
+    .ai-files button.frow {
+      display: block; width: 100%; text-align: left; border: none; border-bottom: 1px solid var(--line);
+      background: #fff; padding: 8px 10px; cursor: pointer;
+    }
+    .ai-files button.frow:hover { background: #fafafa; }
+    .ai-files button.frow.on { background: #fff1f0; box-shadow: inset 3px 0 0 var(--ai); }
+    .ai-files .fn { display: block; font-size: 12px; color: #262626; word-break: break-all; }
+    .ai-files .fm { display: block; margin-top: 4px; font-size: 11px; color: var(--sub); }
+    .ai-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .ai-right .sheet-fx { border: 1px solid #c6c6c6; border-bottom: none; }
+    .ai-right .table-wrap {
+      flex: 1; min-height: 240px; max-height: calc(100vh - 320px);
+      border: 1px solid #c6c6c6; background: #eef1f4;
+    }
+    .ai-right table.grid { min-width: 1680px; }
+    .ai-lo { background: #fff1f0 !important; }
+    .ai-dup { outline: 1px solid #faad14; }
+    .ai-filters { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+    .ai-filters button {
+      height: 24px; padding: 0 10px; border: 1px solid #d9d9d9; background: #fff;
+      cursor: pointer; border-radius: 2px; font-size: 12px;
+    }
+    .ai-filters button.on { border-color: var(--ai); color: var(--ai); background: #fff1f0; font-weight: 700; }
+    .modal.xl .modal-bd { overflow: hidden; display: flex; flex-direction: column; }
+    #panelPreview.show { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .ai-right td.rn { width: 88px; min-width: 88px; }
+    .ai-empty { padding: 48px 16px; text-align: center; color: var(--sub); font-size: 13px; line-height: 1.6; }
+    .ai-failbox {
+      padding: 10px 12px; margin-bottom: 8px; background: #fff1f0; border: 1px solid #ffa39e;
+      color: #a8071a; font-size: 12px; display: none; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .ai-failbox.show { display: flex; }
+    table.grid td input.ai-lo-in, table.grid td select.ai-lo-in { background: #fff1f0; }
+    .dup-tag { color: #d46b08; font-size: 10px; font-weight: 700; margin-left: 2px; }
 
     .form-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 12px;
@@ -356,6 +433,14 @@
       flex-direction: column;
     }
     .form-page.show { display: flex; }
+    .form-hd {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 16px; border-bottom: 1px solid var(--line); background: #fff;
+      flex-shrink: 0;
+    }
+    .form-hd-title { font-size: 14px; font-weight: 600; color: #262626; }
+    .form-hd-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .form-hd-hint { font-size: 12px; color: #8c8c8c; }
     .form-scroll { flex: 1; overflow: auto; padding: 12px 20px 16px; }
     .sec-hd {
       display: flex; align-items: center; gap: 8px;
@@ -380,6 +465,9 @@
     .fi input:focus, .fi select:focus, .fi textarea:focus {
       outline: none; border-color: #40a9ff;
     }
+    .fi input.ai-lo, .fi select.ai-lo, .fi textarea.ai-lo {
+      border-color: #ffa39e; background: #fff1f0;
+    }
     .fi.span2 { grid-column: span 2; }
     .form-ft {
       display: flex; justify-content: flex-end; gap: 8px;
@@ -400,13 +488,15 @@
         <button type="button" class="nav-tab">卡派跟进(新)</button>
         <button type="button" class="nav-tab">整柜下单</button>
         <button type="button" class="nav-tab" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</button>
-        <button type="button" class="nav-tab active" id="navCreateTab">提单创建(批量)</button>
+        <button type="button" class="nav-tab" id="navCreateSingle" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html?mode=single'">提单创建 <span class="badge-chg">改</span></button>
+        <button type="button" class="nav-tab active" id="navCreateBatch" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">批量创建提单 <span class="badge-chg">改</span></button>
         <button type="button" class="nav-tab" onclick="location.href='船务组-运价管理-我司与代理订舱-MVP.html'">运价管理</button>
         <button type="button" class="nav-tab" onclick="location.href='船务组-待配仓-MVP.html'">待配仓</button>
       </div>
       <div class="header-right">
-        <span>原型 · 船务 · AI识别</span>
+        <span>船务</span>
         <a href="船务组-导航.html" style="color:#91d5ff">船务导航</a>
+        <a href="../关务组/关务组-导航.html" style="color:#91d5ff">关务导航</a>
       </div>
     </header>
 
@@ -414,8 +504,8 @@
       <aside class="sidebar">
         <div class="side-title">提单</div>
         <div class="side-item" id="sideList" style="cursor:pointer" onclick="location.href='船务组-提单管理-按周分组与分配-MVP.html'">提单管理</div>
-        <div class="side-item" id="sideCreateSingle" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html?mode=single'">提单创建</div>
-        <div class="side-item on" id="sideCreateBatch" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">批量创建提单</div>
+        <div class="side-item" id="sideCreateSingle" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html?mode=single'">提单创建 <span class="badge-chg">改</span></div>
+        <div class="side-item on" id="sideCreateBatch" style="cursor:pointer" onclick="location.href='船务组-提单创建批量-AI识别-MVP.html'">批量创建提单 <span class="badge-chg">改</span></div>
         <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-运价管理-我司与代理订舱-MVP.html'">运价 · 点价订舱</div>
         <div class="side-item" style="cursor:pointer" onclick="location.href='数据字典-船公司航运-提单号规则-MVP.html'">数据字典 · 船公司</div>
         <div class="side-item" style="cursor:pointer" onclick="location.href='船务组-待配仓-MVP.html'">待配仓</div>
@@ -465,6 +555,13 @@
         </section>
 
         <section class="form-page" id="formPage">
+          <div class="form-hd">
+            <span class="form-hd-title" id="formHdTitle">提单创建</span>
+            <div class="form-hd-actions">
+              <span class="form-hd-hint" id="formAiHint">单票只能传 1 份；识别完成直接填入本页，不进校对列表</span>
+              <button type="button" class="tool-btn danger" id="btnFormAi">AI 识别 <span class="badge-new">NEW</span></button>
+            </div>
+          </div>
           <div class="form-scroll">
             <div class="sec-hd">基本信息</div>
             <div class="form-3">
@@ -535,6 +632,14 @@
               <div class="fi"><label>截关时间</label><input id="fCutOff" type="datetime-local" /></div>
               <div class="fi"><label>开港时间</label><input id="fOpenAt" type="datetime-local" /></div>
               <div class="fi"><label>装柜时间</label><input id="fLoadAt" type="datetime-local" /></div>
+              <div class="fi"><label>进港时间补录 <span class="badge-new">改</span></label>
+                <input id="fArriveAt" type="datetime-local" />
+                <span class="src-hint" style="display:block;margin-top:4px;color:#8c8c8c;font-size:11px">飞驼/码头/口岸能抓则回写；抓不到可手补。补录后列表未进港预警清除。不触发落箱费</span>
+              </div>
+              <div class="fi"><label>进港代码 <span class="badge-new">新</span></label>
+                <input id="fPortCode" placeholder="如 SHA / NGB，抓不到可手填" />
+                <span class="src-hint" style="display:block;margin-top:4px;color:#8c8c8c;font-size:11px">能抓则回写列表；抓不到在本页手录。工具栏无进港代码按钮</span>
+              </div>
               <div class="fi"><label>委托单位</label><input id="fEntrust" placeholder="请输入委托单位" /></div>
               <div class="fi"><label>转船单位</label><input id="fTransship" placeholder="请输入转船单位" /></div>
               <div class="fi"><label>GPS设备号</label><input id="fGps" placeholder="请输入GPS设备号" /></div>
@@ -552,6 +657,9 @@
                 <select id="fBlType"><option value="">请输入提单方式</option><option>正本</option><option>电放</option><option>SEAWAY</option></select>
               </div>
               <div class="fi"><label>铅封号</label><input id="fSeal" placeholder="请输入铅封号" /></div>
+              <div class="fi"><label>过磅重(KG) <span class="badge-new">新</span></label>
+                <input id="fWeighKg" type="number" step="0.01" min="0" placeholder="装柜过磅重，如 14280.5" />
+              </div>
               <div class="fi"><label>码头</label><input id="fWharf" placeholder="请输入码头" /></div>
             </div>
 
@@ -595,7 +703,6 @@
             </div>
           </div>
           <div class="form-ft">
-            <button type="button" class="tool-btn danger" id="btnFormAi" style="margin-right:auto">AI 识别</button>
             <button type="button" class="tool-btn ok" id="btnFormOk">确定</button>
             <button type="button" class="tool-btn outline" id="btnFormCancel">取消</button>
           </div>
@@ -606,30 +713,30 @@
 
   <!-- AI 识别弹窗 -->
   <div class="mask" id="aiMask" aria-hidden="true">
-    <div class="modal wide" role="dialog">
+    <div class="modal xl" id="aiModalBox" role="dialog">
       <div class="modal-hd">
         <h3>AI 识别提单信息 <span class="badge-new">NEW</span></h3>
-        <button type="button" class="tool-btn outline" id="aiClose">关闭</button>
+        <div class="modal-hd-actions">
+          <button type="button" class="tool-btn outline" id="aiCollapse" title="收起后可继续操作本页表格或其他页">收起</button>
+          <button type="button" class="tool-btn outline" id="aiClose">关闭</button>
+        </div>
       </div>
       <div class="modal-bd">
         <div class="ai-steps" id="aiSteps">
           <div class="ai-step on" data-step="1"><b>1</b>上传 / 粘贴</div>
           <div class="ai-step" data-step="2"><b>2</b>识别中</div>
-          <div class="ai-step" data-step="3"><b>3</b>校对回填</div>
+          <div class="ai-step" data-step="3" id="aiStep3"><b>3</b>校对回填</div>
         </div>
 
         <div class="panel-block show" id="panelUpload">
-          <div class="alert info">
-            支持：<strong>订舱确认 PDF / 邮件截图 / 提单副本 / Excel 舱单摘录</strong>。
-            一次可多文件；多柜会拆成多行。与「改单」无关——此处仅服务<strong>批量创建</strong>录入。
-          </div>
+          <div class="alert info" id="uploadAlert">一次最多 30 份。先识别完的可先校对、先写入；失败件不挡道。</div>
           <div class="upload-zone" id="uploadZone">
             <div class="big">📄</div>
             <p><strong>点击选择</strong>或拖拽文件到此处</p>
-            <p>PDF / PNG / JPG / Excel · 单文件建议 ≤ 20MB</p>
-            <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.eml" hidden />
+            <p id="uploadSub">PDF / PNG / JPG / Excel · 最多 30 份 · 单文件 ≤ 20MB</p>
+            <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.eml" hidden />
           </div>
-          <div class="file-chips" id="fileChips"></div>
+          <div id="fileTblWrap"></div>
           <div class="form-grid">
             <div class="form-item">
               <label>识别模式</label>
@@ -639,7 +746,7 @@
                 <option value="mix">混合材料（自动判断）</option>
               </select>
             </div>
-            <div class="form-item">
+            <div class="form-item" id="writeModeItem">
               <label>写入方式</label>
               <select id="aiWriteMode">
                 <option value="append">追加新行（保留已填）</option>
@@ -654,41 +761,39 @@
         </div>
 
         <div class="scan-panel" id="panelScan">
-          <div class="scan-ring"></div>
-          <div style="font-size:14px;font-weight:600;color:#cf1322">正在识别提单信息…</div>
+          <div class="scan-ring" id="scanRing"></div>
+          <div style="font-size:14px;font-weight:600;color:#cf1322" id="scanTitle">正在识别提单信息…</div>
           <div style="font-size:12px;color:var(--sub)" id="scanHint">请稍候</div>
+          <button type="button" class="tool-btn outline" id="aiRetrySingle" style="display:none;height:28px">重试本份</button>
         </div>
 
         <div class="panel-block" id="panelPreview">
-          <div class="alert ok" id="previewSummary">识别完成</div>
-          <p style="margin:0 0 8px;font-size:12px;color:var(--sub)">红色字段请先核对再写入。</p>
-          <div style="overflow:auto;max-height:360px;border:1px solid var(--line)">
-            <table class="preview-table" id="previewTable">
-              <thead>
-                <tr>
-                  <th><input type="checkbox" id="pvChkAll" checked /></th>
-                  <th>置信度</th>
-                  <th>运输方式</th>
-                  <th>提单号</th>
-                  <th>海运费</th>
-                  <th>国内免用箱</th>
-                  <th>国外免用箱</th>
-                  <th>开船时间</th>
-                  <th>截单时间</th>
-                  <th>装柜时间</th>
-                  <th>柜号</th>
-                  <th>柜型</th>
-                  <th>出发港</th>
-                  <th>目的港</th>
-                  <th>中转港</th>
-                  <th>船公司</th>
-                  <th>船名航次</th>
-                  <th>订柜供应商</th>
-                  <th>备注</th>
-                </tr>
-              </thead>
-              <tbody id="previewBody"></tbody>
-            </table>
+          <div class="ai-prog" id="aiProg">排队中</div>
+          <div class="ai-filters" id="aiFilters">
+            <button type="button" data-aif="all">全部</button>
+            <button type="button" data-aif="need" class="on">需校对</button>
+            <button type="button" data-aif="fail">失败</button>
+            <span style="font-size:12px;color:var(--sub)">红格先核。同提单号默认只勾一份。失败不挡已成功件写入。</span>
+          </div>
+          <div class="ai-work">
+            <div class="ai-files" id="aiFileList"></div>
+            <div class="ai-right">
+              <div class="ai-failbox" id="aiFailBox">
+                <span id="aiFailText">识别失败</span>
+                <button type="button" class="tool-btn outline" id="aiRetry" style="height:26px">重试本份</button>
+              </div>
+              <div class="sheet-fx" id="aiSheetFx">
+                <div class="fx-name" id="aiFxName">A1</div>
+                <input class="fx-input" id="aiFxInput" placeholder="选中格子后可在此编辑" />
+              </div>
+              <div class="table-wrap" id="aiSheetWrap">
+                <table class="grid" id="aiSheet">
+                  <thead id="aiThead"></thead>
+                  <tbody id="aiTbody"></tbody>
+                </table>
+                <div class="ai-empty" id="aiEmpty" style="display:none"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -696,18 +801,26 @@
         <button type="button" class="tool-btn outline" id="aiCancel">取消</button>
         <button type="button" class="tool-btn outline" id="aiBack" style="display:none">上一步</button>
         <button type="button" class="tool-btn danger" id="aiStart">开始识别</button>
-        <button type="button" class="tool-btn ok" id="aiApply" style="display:none">确认写入表格</button>
+        <button type="button" class="tool-btn ok" id="aiApply" style="display:none">确认写入已勾选</button>
       </div>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
+  <div class="ai-dock" id="aiDock" aria-hidden="true">
+    <span class="ai-dock-mark">AI</span>
+    <div class="ai-dock-body">
+      <strong>AI 识别已收起</strong>
+      <span id="aiDockText">点展开继续校对</span>
+    </div>
+    <button type="button" class="tool-btn outline" id="aiExpand">展开</button>
+  </div>
 
-  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-需求PRD.html" data-prd-anchor="m3">
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-提单创建批量-AI识别-MVP-PRD.html">
     <span class="ess-prd-chip">PRD · 提单创建 AI</span>
   </div>
 
-  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script src="../../二期/ess-prototype-prd.js?v=aidock1"></script>
   <script>
     (function () {
       var PAGE_MODE = (function () {
@@ -726,7 +839,6 @@
       var CREATE_MODE = IS_FORM ? "single" : "batch";
       var CARRIER_OPTS = ["", "COSCO", "Hapag", "MSC", "ONE", "EMC", "OOCL", "Matson", "ZIM", "HEDE"];
       var COLS = [
-        { k: "mode", title: "运输方式", short: "运输方式", req: true, type: "select", options: ["海运", "空运", "铁路"], w: 92, g: "基本" },
         { k: "bl", title: "提单号", short: "提单号", req: false, type: "text", ph: "非必填，可后补", w: 148, g: "基本" },
         { k: "freight", title: "海运费", short: "海运费", req: true, type: "text", ph: "金额", w: 80, g: "费用" },
         { k: "freeCn", title: "国内免用箱（天）", short: "国内免箱", req: true, type: "text", ph: "如 7", w: 92, g: "费用" },
@@ -734,7 +846,9 @@
         { k: "etd", title: "开船时间", short: "开船时间", req: false, type: "text", ph: "如 08-12", w: 88, g: "船期" },
         { k: "cutOff", title: "截单时间", short: "截单时间", req: false, type: "text", ph: "如 08-04 17:00", w: 112, g: "船期" },
         { k: "loadAt", title: "装柜时间", short: "装柜时间", req: false, type: "text", ph: "如 08-05 09:00", w: 112, g: "船期" },
+        { k: "arriveAt", title: "进港时间补录", short: "进港补录", req: false, type: "text", ph: "如 08-20 09:30", w: 112, g: "船期" },
         { k: "cntr", title: "柜号", short: "柜号", req: false, type: "text", ph: "柜号", w: 120, g: "柜子" },
+        { k: "weighKg", title: "过磅重(KG)", short: "过磅重", req: false, type: "text", ph: "如 14280.5", w: 100, g: "柜子" },
         { k: "type", title: "柜型", short: "柜型", req: true, type: "select", options: ["", "20GP", "40GP", "40HQ", "45HQ"], w: 80, g: "柜子" },
         { k: "pol", title: "国内出发港口", short: "出发港", req: true, type: "text", ph: "搜索港口", w: 110, g: "港口" },
         { k: "pod", title: "国外到达港口", short: "目的港", req: true, type: "text", ph: "搜索港口", w: 110, g: "港口" },
@@ -800,8 +914,8 @@
       }
       var emptyRow = function () {
         return {
-          mode: "海运", bl: "", freight: "", freeCn: "", freeOs: "", etd: "", cutOff: "", loadAt: "",
-          cntr: "", type: "", pol: "", pod: "", transit: "", carrier: "", voy: "",
+          mode: "海运", bl: "", freight: "", freeCn: "", freeOs: "", etd: "", cutOff: "", loadAt: "", arriveAt: "", portCode: "",
+          cntr: "", weighKg: "", type: "", pol: "", pod: "", transit: "", carrier: "", voy: "",
           supplier: "", remark: "", ai: false, lock: {}, baseHit: {}
         };
       };
@@ -850,34 +964,42 @@
         return changed;
       }
       var ROWS = [emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow()];
-      var FILES = [];
-      var PREVIEW = [];
+      var JOBS = [];
       var step = 1;
       var sel = { r: 0, c: 0 };
       var rng = null;
+      var AI_MAX = 30;
+      var AI_MAX_SIZE = 20 * 1024 * 1024;
+      var jobSeq = 1;
+      var activeJobId = null;
+      var aiFilter = "need";
+      var aiBusy = false;
+      var aiTimers = [];
+      var aiDidWrite = false;
+      var aiSel = { r: 0, c: 0 };
 
       var SAMPLE = [
         {
           conf: 96, mode: "海运", bl: "COSU1234567890", freight: "2850", freeCn: "7", freeOs: "10",
-          etd: "08-12", cutOff: "08-04 17:00", loadAt: "08-05 09:00", cntr: "CSNU6688123", type: "40HQ",
+          etd: "08-12", cutOff: "08-04 17:00", loadAt: "08-05 09:00", cntr: "CSNU6688123", weighKg: "14280.5", type: "40HQ",
           pol: "CNSHA 上海", pod: "USLAX 洛杉矶", transit: "KRPUS 釜山", carrier: "COSCO",
           voy: "COSCO SHIPPING 088E", supplier: "我司订舱", remark: "", pick: true
         },
         {
           conf: 94, mode: "海运", bl: "COSU1234567890", freight: "2850", freeCn: "7", freeOs: "10",
-          etd: "08-12", cutOff: "08-04 17:00", cntr: "CSNU6688456", type: "40HQ",
+          etd: "08-12", cutOff: "08-04 17:00", cntr: "CSNU6688456", weighKg: "14110.0", type: "40HQ",
           pol: "CNSHA 上海", pod: "USLAX 洛杉矶", transit: "KRPUS 釜山", carrier: "COSCO",
           voy: "COSCO SHIPPING 088E", supplier: "我司订舱", remark: "同票第二柜", pick: true
         },
         {
           conf: 78, mode: "海运", bl: "HLCUTS12698AZMK1", freight: "", freeCn: "", freeOs: "",
-          etd: "08-14", cutOff: "08-10 12:00", cntr: "HLBU2877104", type: "20GP",
+          etd: "08-14", cutOff: "08-10 12:00", cntr: "HLBU2877104", weighKg: "", type: "20GP",
           pol: "CNTJN 天津", pod: "USNYC 纽约", transit: "", carrier: "Hapag",
           voy: "YM MOVEMENT 0TH5FE1MA", supplier: "代理订舱", remark: "", pick: true
         },
         {
           conf: 62, mode: "海运", bl: "MEDU9988776655", freight: "3100", freeCn: "5", freeOs: "7",
-          etd: "08-18", cutOff: "", cntr: "MEDU1122334", type: "40HQ",
+          etd: "08-18", cutOff: "", cntr: "MEDU1122334", weighKg: "15850.0", type: "40HQ",
           pol: "CNNGB 宁波", pod: "USLGB 长滩", transit: "", carrier: "MSC",
           voy: "MSC OSCAR 12W", supplier: "", remark: "", pick: true
         }
@@ -1178,7 +1300,7 @@
         var rows = lines.map(function (l) { return l.split("\t"); });
         var head = rows[0].map(function (h) { return String(h || "").trim().replace(/^\*/, ""); });
         var joined = head.join(" ");
-        if (!/提单号|柜号|运输方式|海运费|船公司/.test(joined)) {
+        if (!/提单号|柜号|海运费|船公司/.test(joined)) {
           return { rows: rows, keys: null };
         }
         var keys = head.map(function (h) {
@@ -1194,7 +1316,9 @@
             "国内免用箱": "freeCn", "国内免箱": "freeCn", "国外免用箱": "freeOs", "国外免箱": "freeOs",
             "开船时间": "etd", "ETD": "etd",
             "截单时间": "cutOff", "截单": "cutOff",
-            "装柜时间": "loadAt", "装柜": "loadAt"
+            "装柜时间": "loadAt", "装柜": "loadAt",
+            "进港时间": "arriveAt", "进港时间补录": "arriveAt", "进港补录": "arriveAt",
+            "过磅重": "weighKg", "过磅重(KG)": "weighKg", "过磅": "weighKg"
           };
           return alias[h] || null;
         });
@@ -1314,6 +1438,135 @@
       };
 
       /* —— AI 弹窗 —— */
+      var DEMO_BATCH = [
+        "COSU-SHA-LAX-booking.pdf",
+        "Hapag-TSN-NY-booking.pdf",
+        "OOCL-YTN-LAX.xlsx",
+        "模糊截图.png",
+        "COSU-dup-copy.pdf",
+        "MSC-NGB-LGB.jpg",
+        "订舱邮件.eml",
+        "损坏文件.pdf"
+      ];
+      var AI_KINDS = ["ok2", "need", "ok", "fail", "dup", "needlo", "ok", "need"];
+
+      function makeJob(name) {
+        return { id: jobSeq++, name: name, status: "wait", err: "", rows: [], fromPaste: false };
+      }
+      function jobById(id) {
+        for (var i = 0; i < JOBS.length; i++) if (JOBS[i].id === id) return JOBS[i];
+        return null;
+      }
+      function markLoKeys(r) {
+        var keys = [];
+        COLS.forEach(function (c) {
+          if (c.req && !String(r[c.k] || "").trim()) keys.push(c.k);
+        });
+        if ((r.conf || 0) < 75) {
+          ["bl", "cntr", "pol", "pod", "carrier", "voy", "freight"].forEach(function (k) {
+            if (keys.indexOf(k) < 0) keys.push(k);
+          });
+        }
+        r.loKeys = keys;
+      }
+      function rowFromSample(i, extra) {
+        var r = Object.assign(emptyRow(), SAMPLE[i] || SAMPLE[0], extra || {});
+        r.ai = true;
+        if (r.pick == null) r.pick = true;
+        markLoKeys(r);
+        return r;
+      }
+      function fillJob(job, kind) {
+        if (kind === "fail") {
+          job.status = "fail";
+          job.err = "文件无法读取或版面过糊，请换一份清晰件后重试";
+          job.rows = [];
+          return;
+        }
+        if (kind === "ok2") {
+          job.rows = [rowFromSample(0), rowFromSample(1)];
+        } else if (kind === "need") {
+          job.rows = [rowFromSample(2)];
+        } else if (kind === "needlo") {
+          job.rows = [rowFromSample(3)];
+        } else if (kind === "dup") {
+          job.rows = [rowFromSample(0, {
+            cntr: "CSNU6688999", remark: "可能重复", pick: false, dup: true
+          })];
+        } else {
+          job.rows = IS_FORM
+            ? [rowFromSample(0)]
+            : [rowFromSample(0, {
+                bl: "OOLU5566778899", cntr: "OOLU1234567", carrier: "OOCL",
+                voy: "OOCL TOKYO 072E", freight: "2600", freeCn: "7", freeOs: "14",
+                supplier: "我司订舱", remark: ""
+              })];
+        }
+        if (IS_FORM && job.rows.length > 1) {
+          job.rows.forEach(function (r, i) { r.pick = i === 0; });
+        }
+        var need = job.rows.some(function (r) { return (r.conf || 0) < 90 || r.dup; });
+        job.status = need ? "need" : "ok";
+      }
+      function kindFor(job, idx) {
+        if (job.retried) return IS_FORM ? "ok" : "need";
+        var n = job.name || "";
+        if (/失败|模糊|损坏|无法|corrupt|blur/i.test(n)) return "fail";
+        if (IS_FORM) return "ok";
+        if (/dup|重复/i.test(n)) return "dup";
+        return AI_KINDS[idx % AI_KINDS.length];
+      }
+      function markDups() {
+        var seen = {};
+        JOBS.forEach(function (job) {
+          job.rows.forEach(function (r) {
+            var bl = String(r.bl || "").trim().toUpperCase();
+            if (!bl) return;
+            if (seen[bl] != null && seen[bl] !== job.id) {
+              r.dup = true;
+              if (!r.written) r.pick = false;
+              if (!r.remark) r.remark = "可能重复";
+              job.status = job.status === "fail" ? "fail" : "need";
+            } else if (seen[bl] == null) {
+              seen[bl] = job.id;
+            }
+          });
+        });
+      }
+      function allPickedRows() {
+        var out = [];
+        JOBS.forEach(function (job) {
+          job.rows.forEach(function (r) {
+            if (r.pick && !r.written) out.push(r);
+          });
+        });
+        return out;
+      }
+      function jobMatchesFilter(j) {
+        if (aiFilter === "fail") return j.status === "fail";
+        if (aiFilter === "need") {
+          return j.status === "need" || j.rows.some(function (r) { return (r.conf || 0) < 90 || r.dup; });
+        }
+        return true;
+      }
+      function stHtml(j) {
+        var map = {
+          wait: ["wait", "排队"], run: ["run", "识别中"], ok: ["ok", "成功"],
+          need: ["need", "需校对"], fail: ["fail", "失败"]
+        };
+        var x = map[j.status] || map.wait;
+        return '<span class="st ' + x[0] + '">' + x[1] + "</span>";
+      }
+
+      function setScanBusy(busy, title, hint) {
+        var ring = document.getElementById("scanRing");
+        var retry = document.getElementById("aiRetrySingle");
+        if (ring) ring.style.display = busy ? "" : "none";
+        document.getElementById("scanTitle").textContent = title || (busy ? "正在识别提单信息…" : "识别失败");
+        document.getElementById("scanHint").textContent = hint || (busy ? (IS_FORM ? "完成后直接填入提单编辑页，不进列表" : "请稍候") : "");
+        if (retry) retry.style.display = busy || !IS_FORM ? "none" : "";
+      }
+
       function setStep(n) {
         step = n;
         document.querySelectorAll(".ai-step").forEach(function (el) {
@@ -1325,34 +1578,65 @@
         document.getElementById("panelScan").classList.toggle("show", n === 2);
         document.getElementById("panelPreview").classList.toggle("show", n === 3);
         document.getElementById("aiStart").style.display = n === 1 ? "" : "none";
-        document.getElementById("aiApply").style.display = n === 3 ? "" : "none";
-        document.getElementById("aiBack").style.display = n === 3 ? "" : "none";
+        document.getElementById("aiApply").style.display = n === 3 && !IS_FORM ? "" : "none";
+        document.getElementById("aiBack").style.display = n === 3 || (IS_FORM && n === 2) ? "" : "none";
+        if (n === 2) setScanBusy(true);
       }
 
-      function renderChips() {
-        var box = document.getElementById("fileChips");
-        box.innerHTML = FILES.map(function (f, i) {
-          return '<span class="file-chip">' + f +
-            '<button type="button" data-rm="' + i + '" title="移除">×</button></span>';
-        }).join("");
+      function renderFileTbl() {
+        var box = document.getElementById("fileTblWrap");
+        if (!JOBS.length) { box.innerHTML = ""; return; }
+        var html = '<table class="file-tbl"><thead><tr><th>文件</th><th style="width:72px">操作</th></tr></thead><tbody>';
+        JOBS.forEach(function (j, i) {
+          html += "<tr><td class=\"nm\">" + j.name + "</td><td>" +
+            '<button type="button" class="tool-btn outline" data-rm="' + i + '" style="height:24px;padding:0 8px">移除</button></td></tr>';
+        });
+        box.innerHTML = html + "</tbody></table>";
       }
 
-      document.getElementById("fileChips").addEventListener("click", function (e) {
+      document.getElementById("fileTblWrap").addEventListener("click", function (e) {
         var btn = e.target.closest("[data-rm]");
         if (!btn) return;
-        FILES.splice(Number(btn.getAttribute("data-rm")), 1);
-        renderChips();
+        JOBS.splice(Number(btn.getAttribute("data-rm")), 1);
+        renderFileTbl();
       });
+
+      function addFileNames(names, sizes) {
+        var skipped = 0;
+        var blocked = false;
+        names.forEach(function (name, i) {
+          if (sizes && sizes[i] > AI_MAX_SIZE) {
+            toast(name + " 超过 20MB，未加入");
+            return;
+          }
+          if (IS_FORM) {
+            if (JOBS.length >= 1) {
+              blocked = true;
+              return;
+            }
+          } else if (JOBS.length >= AI_MAX) {
+            skipped += 1;
+            return;
+          }
+          JOBS.push(makeJob(name));
+        });
+        if (blocked) toast("单票只能传 1 份，多份请走批量创建");
+        else if (skipped) toast("一次最多 30 份，超出未加入");
+        renderFileTbl();
+      }
 
       var zone = document.getElementById("uploadZone");
       var fileInput = document.getElementById("fileInput");
       zone.addEventListener("click", function () { fileInput.click(); });
       fileInput.addEventListener("change", function () {
+        var names = [];
+        var sizes = [];
         Array.prototype.forEach.call(fileInput.files || [], function (f) {
-          FILES.push(f.name);
+          names.push(f.name);
+          sizes.push(f.size || 0);
         });
         fileInput.value = "";
-        renderChips();
+        addFileNames(names, sizes);
       });
       zone.addEventListener("dragover", function (e) {
         e.preventDefault(); zone.classList.add("drag");
@@ -1360,115 +1644,629 @@
       zone.addEventListener("dragleave", function () { zone.classList.remove("drag"); });
       zone.addEventListener("drop", function (e) {
         e.preventDefault(); zone.classList.remove("drag");
+        var names = [];
+        var sizes = [];
         Array.prototype.forEach.call(e.dataTransfer.files || [], function (f) {
-          FILES.push(f.name);
+          names.push(f.name);
+          sizes.push(f.size || 0);
         });
-        renderChips();
+        addFileNames(names, sizes);
       });
 
-      function renderPreview() {
-        var html = "";
-        PREVIEW.forEach(function (r, i) {
-          html += "<tr>" +
-            '<td><input type="checkbox" class="pv-ck"' + (r.pick ? " checked" : "") + ' data-i="' + i + '" /></td>' +
-            "<td>" + confTag(r.conf) + "</td>" +
-            "<td><select data-pk=\"mode\" data-i=\"" + i + "\"><option>海运</option><option>空运</option></select></td>" +
-            '<td><input data-pk="bl" data-i="' + i + '" value="' + r.bl + '" /></td>' +
-            '<td><input data-pk="freight" data-i="' + i + '" value="' + r.freight + '" /></td>' +
-            '<td><input data-pk="freeCn" data-i="' + i + '" value="' + (r.freeCn || "") + '" style="width:52px" placeholder="国内" /></td>' +
-            '<td><input data-pk="freeOs" data-i="' + i + '" value="' + (r.freeOs || "") + '" style="width:52px" placeholder="国外" /></td>' +
-            '<td><input data-pk="etd" data-i="' + i + '" value="' + (r.etd || "") + '" placeholder="08-12" style="width:56px" /></td>' +
-            '<td><input data-pk="cutOff" data-i="' + i + '" value="' + (r.cutOff || "") + '" placeholder="08-04 17:00" style="width:88px" /></td>' +
-            '<td><input data-pk="loadAt" data-i="' + i + '" value="' + (r.loadAt || "") + '" placeholder="08-05 09:00" style="width:88px" /></td>' +
-            '<td><input data-pk="cntr" data-i="' + i + '" value="' + r.cntr + '" /></td>' +
-            '<td><select data-pk="type" data-i="' + i + '"><option>20GP</option><option>40GP</option><option>40HQ</option><option>45HQ</option></select></td>' +
-            '<td><input data-pk="pol" data-i="' + i + '" value="' + r.pol + '" /></td>' +
-            '<td><input data-pk="pod" data-i="' + i + '" value="' + r.pod + '" /></td>' +
-            '<td><input data-pk="transit" data-i="' + i + '" value="' + (r.transit || "") + '" placeholder="非必填" /></td>' +
-            '<td><input data-pk="carrier" data-i="' + i + '" value="' + r.carrier + '" style="width:72px" /></td>' +
-            '<td><input data-pk="voy" data-i="' + i + '" value="' + r.voy + '" /></td>' +
-            '<td><input data-pk="supplier" data-i="' + i + '" value="' + r.supplier + '" style="width:88px" /></td>' +
-            '<td><input data-pk="remark" data-i="' + i + '" value="' + (r.remark || "") + '" placeholder="非必填" /></td>' +
-            "</tr>";
-        });
-        document.getElementById("previewBody").innerHTML = html;
-        PREVIEW.forEach(function (r, i) {
-          var tr = document.getElementById("previewBody").rows[i];
-          if (!tr) return;
-          tr.querySelector('[data-pk="mode"]').value = r.mode;
-          tr.querySelector('[data-pk="type"]').value = r.type || "40HQ";
-        });
-        var hi = PREVIEW.filter(function (r) { return r.conf >= 90; }).length;
-        var lo = PREVIEW.filter(function (r) { return r.conf < 75; }).length;
-        document.getElementById("previewSummary").innerHTML =
-          "识别到 <strong>" + PREVIEW.length + "</strong> 行（含多柜拆分）· 高置信 " + hi +
-          " · 需校对 " + lo + " · 来源：" +
-          (FILES.length ? FILES.join("、") : "识别结果");
+      function stopAiQueue() {
+        aiBusy = false;
+        aiTimers.forEach(function (t) { clearTimeout(t); });
+        aiTimers = [];
+        JOBS.forEach(function (j) { if (j.status === "run") j.status = "wait"; });
       }
-
-      document.getElementById("previewBody").addEventListener("change", function (e) {
-        var el = e.target;
-        if (el.classList.contains("pv-ck")) {
-          PREVIEW[Number(el.getAttribute("data-i"))].pick = el.checked;
+      function updateAiProg() {
+        var n = JOBS.length;
+        var done = 0, ok = 0, fail = 0, run = 0, wait = 0;
+        JOBS.forEach(function (j) {
+          if (j.status === "run") run += 1;
+          else if (j.status === "wait") wait += 1;
+          else {
+            done += 1;
+            if (j.status === "fail") fail += 1;
+            else ok += 1;
+          }
+        });
+        document.getElementById("aiProg").innerHTML =
+          done + "/" + n + " 完成 · 成功 " + ok + " · 失败 " + fail +
+          " · 进行中 " + run + (wait ? " · 排队 " + wait : "") +
+          (run || wait ? "　先完成的可先核对并写入" : "");
+        syncAiDock();
+      }
+      function pickActiveIfNeeded(justDone) {
+        var cur = jobById(activeJobId);
+        if (!cur || cur.status === "run" || cur.status === "wait") {
+          activeJobId = justDone.id;
           return;
         }
-        var pk = el.getAttribute("data-pk");
-        if (!pk) return;
-        PREVIEW[Number(el.getAttribute("data-i"))][pk] = el.value;
+        if (aiFilter === "need" && justDone.status === "need" && cur.status === "ok") {
+          activeJobId = justDone.id;
+        }
+      }
+      function startAiQueue() {
+        if (aiBusy) return;
+        aiBusy = true;
+        function tick() {
+          if (!aiBusy) return;
+          var job = null;
+          for (var i = 0; i < JOBS.length; i++) {
+            if (JOBS[i].status === "wait") { job = JOBS[i]; break; }
+          }
+          if (!job) {
+            aiBusy = false;
+            updateAiProg();
+            renderAiFiles();
+            if (IS_FORM) applySingleAiResult();
+            return;
+          }
+          job.status = "run";
+          updateAiProg();
+          renderAiFiles();
+          var t = setTimeout(function () {
+            fillJob(job, kindFor(job, JOBS.indexOf(job)));
+            var paste = (document.getElementById("aiPaste").value || "").trim();
+            if (job.fromPaste && paste && job.rows[0]) {
+              var m = paste.match(/[A-Z]{4}[A-Z0-9]{8,}/);
+              if (m) job.rows[0].bl = m[0];
+            }
+            markDups();
+            pickActiveIfNeeded(job);
+            renderAiFiles();
+            renderAiSheet();
+            updateAiProg();
+            if (IS_FORM) {
+              aiBusy = false;
+              applySingleAiResult();
+              return;
+            }
+            tick();
+          }, 650);
+          aiTimers.push(t);
+        }
+        tick();
+      }
+
+      function aiCell(r, col) {
+        var key = col.k;
+        var lo = (r.loKeys || []).indexOf(key) >= 0;
+        var cls = ' class="ai-fill' + (lo ? " ai-lo-in" : "") + '"';
+        var dk = ' data-ai-k="' + key + '"';
+        if (col.type === "select") {
+          var html = "<select" + cls + dk + ">";
+          col.options.forEach(function (o) {
+            html += '<option value="' + o + '"' + (r[key] === o ? " selected" : "") + ">" + (o || " ") + "</option>";
+          });
+          return html + "</select>";
+        }
+        var ph = col.ph || "";
+        if (key === "bl") {
+          var p = blPrefix(r.carrier);
+          ph = p ? p + "…" : (col.ph || "");
+        }
+        var val = r[key] || "";
+        if (key === "etd") val = mdOnly(val);
+        if (key === "cutOff" || key === "loadAt") val = mdTime(val);
+        return '<input type="text"' + cls + dk + ' value="' +
+          String(val).replace(/"/g, "&quot;") + '" placeholder="' + ph + '" />';
+      }
+      function renderAiHead() {
+        var groups = [];
+        COLS.forEach(function (c) {
+          var last = groups[groups.length - 1];
+          if (!last || last.name !== c.g) groups.push({ name: c.g, n: 1 });
+          else last.n += 1;
+        });
+        var ghtml = '<tr class="groups"><th class="corner"></th>';
+        groups.forEach(function (g) {
+          ghtml += '<th colspan="' + g.n + '" class="g-start ' + (GROUP_CLS[g.name] || "") + '">' + g.name + "</th>";
+        });
+        ghtml += "</tr>";
+        var cols = '<tr class="cols"><th class="corner"><input type="checkbox" id="aiChkAll" title="本份全选" /></th>';
+        COLS.forEach(function (c, i) {
+          var start = i === 0 || c.g !== COLS[i - 1].g;
+          var gcls = GROUP_CLS[c.g] || "";
+          cols += '<th class="' + (start ? "g-start " : "") + gcls + '" title="' + c.title +
+            '" style="min-width:' + (c.w || 80) + 'px"><div class="th-inner">' +
+            '<span class="th-letter">' + colLetter(i) + "</span>" +
+            '<span class="th-name">' + (c.req ? '<span class="req">*</span>' : "") +
+            (c.short || c.title) + "</span></div></th>";
+        });
+        cols += "</tr>";
+        document.getElementById("aiThead").innerHTML = ghtml + cols;
+        var all = document.getElementById("aiChkAll");
+        if (all) {
+          all.onchange = function () {
+            var job = jobById(activeJobId);
+            if (!job) return;
+            var on = all.checked;
+            job.rows.forEach(function (r) { if (!r.written) r.pick = on; });
+            renderAiSheet();
+          };
+        }
+      }
+      function renderAiFiles() {
+        var box = document.getElementById("aiFileList");
+        var html = "";
+        JOBS.forEach(function (j) {
+          if (!jobMatchesFilter(j) && j.id !== activeJobId) return;
+          var meta = j.status === "fail" ? (j.err || "失败") :
+            (j.rows.length ? j.rows.length + " 行" : (j.status === "run" ? "识别中" : "排队"));
+          html += '<button type="button" class="frow' + (j.id === activeJobId ? " on" : "") +
+            '" data-jid="' + j.id + '"><span class="fn">' + j.name + "</span>" +
+            '<span class="fm">' + stHtml(j) + " · " + meta + "</span></button>";
+        });
+        if (!html) {
+          html = '<div class="ai-empty" style="padding:16px">当前筛选没有文件</div>';
+        }
+        box.innerHTML = html;
+      }
+      function paintAiSel() {
+        document.querySelectorAll("#aiTbody td.cell").forEach(function (td) {
+          var ri = Number(td.getAttribute("data-r"));
+          var ci = Number(td.getAttribute("data-c"));
+          td.classList.toggle("sel", ri === aiSel.r && ci === aiSel.c);
+        });
+        var col = COLS[aiSel.c];
+        var job = jobById(activeJobId);
+        var r = job && job.rows[aiSel.r];
+        document.getElementById("aiFxName").textContent = colLetter(aiSel.c) + (aiSel.r + 1);
+        var fx = document.getElementById("aiFxInput");
+        if (fx && r && col) fx.value = r[col.k] || "";
+      }
+      function renderAiSheet() {
+        var job = jobById(activeJobId);
+        var failBox = document.getElementById("aiFailBox");
+        var empty = document.getElementById("aiEmpty");
+        var wrapTbl = document.getElementById("aiSheet");
+        var fx = document.getElementById("aiSheetFx");
+        if (!job) {
+          failBox.classList.remove("show");
+          wrapTbl.style.display = "none";
+          fx.style.display = "none";
+          empty.style.display = "block";
+          empty.textContent = aiFilter === "need"
+            ? "暂无待校对。成功件可切「全部」查看，或等识别完成。"
+            : "请选择左侧文件";
+          return;
+        }
+        if (job.status === "fail") {
+          failBox.classList.add("show");
+          document.getElementById("aiFailText").textContent = job.name + " · " + (job.err || "识别失败");
+          wrapTbl.style.display = "none";
+          fx.style.display = "none";
+          empty.style.display = "none";
+          return;
+        }
+        failBox.classList.remove("show");
+        if (job.status === "wait" || job.status === "run") {
+          wrapTbl.style.display = "none";
+          fx.style.display = "none";
+          empty.style.display = "block";
+          empty.textContent = job.status === "run" ? "正在识别本份…" : "排队中";
+          return;
+        }
+        empty.style.display = "none";
+        wrapTbl.style.display = "";
+        fx.style.display = "";
+        renderAiHead();
+        var html = "";
+        job.rows.forEach(function (r, i) {
+          html += '<tr data-i="' + i + '" class="' + (r.dup ? "ai-dup" : "") + '">' +
+            '<td class="rn"><input type="checkbox" class="ai-ck"' + (r.pick ? " checked" : "") +
+            (r.written ? " disabled" : "") + ' data-i="' + i + '" /> ' + (i + 1) +
+            ' <span class="ai-tag">' + (r.conf || 0) + "%</span>" +
+            (r.dup ? '<span class="dup-tag">重复</span>' : "") +
+            (r.written ? '<span class="dup-tag">已写</span>' : "") + "</td>";
+          COLS.forEach(function (col, ci) {
+            var start = ci === 0 || col.g !== COLS[ci - 1].g;
+            html += '<td class="cell' + (start ? " g-start" : "") +
+              ((r.loKeys || []).indexOf(col.k) >= 0 ? " ai-lo" : "") +
+              '" data-r="' + i + '" data-c="' + ci + '" style="min-width:' + (col.w || 80) + 'px">' +
+              aiCell(r, col) + "</td>";
+          });
+          html += "</tr>";
+        });
+        document.getElementById("aiTbody").innerHTML = html;
+        var all = document.getElementById("aiChkAll");
+        if (all) all.checked = job.rows.length && job.rows.every(function (r) { return r.pick || r.written; });
+        paintAiSel();
+      }
+
+      document.getElementById("aiFileList").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-jid]");
+        if (!btn) return;
+        syncAiSheet();
+        activeJobId = Number(btn.getAttribute("data-jid"));
+        renderAiFiles();
+        renderAiSheet();
       });
-      document.getElementById("pvChkAll").onchange = function () {
-        var on = this.checked;
-        PREVIEW.forEach(function (r) { r.pick = on; });
-        document.querySelectorAll(".pv-ck").forEach(function (c) { c.checked = on; });
+      document.getElementById("aiFilters").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-aif]");
+        if (!btn) return;
+        aiFilter = btn.getAttribute("data-aif");
+        document.querySelectorAll("#aiFilters [data-aif]").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-aif") === aiFilter);
+        });
+        renderAiFiles();
+        renderAiSheet();
+      });
+      function syncAiSheet() {
+        var job = jobById(activeJobId);
+        if (!job) return;
+        document.querySelectorAll("#aiTbody tr").forEach(function (tr) {
+          var i = Number(tr.getAttribute("data-i"));
+          var r = job.rows[i];
+          if (!r) return;
+          tr.querySelectorAll("[data-ai-k]").forEach(function (el) {
+            r[el.getAttribute("data-ai-k")] = el.value;
+          });
+        });
+      }
+      document.getElementById("aiTbody").addEventListener("change", function (e) {
+        var job = jobById(activeJobId);
+        if (!job) return;
+        var el = e.target;
+        if (el.classList.contains("ai-ck")) {
+          var row = job.rows[Number(el.getAttribute("data-i"))];
+          if (row && !row.written) row.pick = el.checked;
+          return;
+        }
+        var k = el.getAttribute("data-ai-k");
+        var tr = el.closest("tr");
+        if (!k || !tr) return;
+        var r = job.rows[Number(tr.getAttribute("data-i"))];
+        if (!r) return;
+        r[k] = el.value;
+        if (k === "carrier") applyBlPrefix(r, "");
+        markLoKeys(r);
+      });
+      document.getElementById("aiTbody").addEventListener("input", function (e) {
+        var td = e.target.closest("td.cell");
+        if (!td) return;
+        aiSel = { r: Number(td.getAttribute("data-r")), c: Number(td.getAttribute("data-c")) };
+        var job = jobById(activeJobId);
+        var r = job && job.rows[aiSel.r];
+        var col = COLS[aiSel.c];
+        if (r && col) {
+          r[e.target.getAttribute("data-ai-k") || col.k] = e.target.value;
+          document.getElementById("aiFxName").textContent = colLetter(aiSel.c) + (aiSel.r + 1);
+          document.getElementById("aiFxInput").value = r[col.k] || "";
+        }
+      });
+      document.getElementById("aiTbody").addEventListener("focusin", function (e) {
+        var td = e.target.closest("td.cell");
+        if (!td) return;
+        aiSel = { r: Number(td.getAttribute("data-r")), c: Number(td.getAttribute("data-c")) };
+        paintAiSel();
+      });
+      document.getElementById("aiFxInput").addEventListener("keydown", function (e) {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        var job = jobById(activeJobId);
+        var col = COLS[aiSel.c];
+        var r = job && job.rows[aiSel.r];
+        if (!col || !r) return;
+        r[col.k] = this.value;
+        renderAiSheet();
+      });
+      document.getElementById("aiRetry").onclick = function () {
+        var job = jobById(activeJobId);
+        if (!job || job.status !== "fail") return;
+        job.status = "wait";
+        job.err = "";
+        job.rows = [];
+        job.retried = true;
+        renderAiFiles();
+        renderAiSheet();
+        startAiQueue();
+      };
+      document.getElementById("aiRetrySingle").onclick = function () {
+        var job = JOBS[0];
+        if (!job) return;
+        job.status = "wait";
+        job.err = "";
+        job.rows = [];
+        job.retried = true;
+        setScanBusy(true);
+        startAiQueue();
       };
 
+      function resetAiSession() {
+        stopAiQueue();
+        JOBS = [];
+        activeJobId = null;
+        aiDidWrite = false;
+        aiFilter = "need";
+        document.getElementById("aiPaste").value = "";
+        renderFileTbl();
+      }
+      function mapAiRow(r) {
+        var pair = parseFreePair(r.free);
+        var row = {
+          mode: r.mode || "海运",
+          bl: r.bl || "",
+          freight: r.freight || "",
+          freeCn: r.freeCn || pair.freeCn,
+          freeOs: r.freeOs || pair.freeOs,
+          etd: r.etd,
+          eta: r.eta,
+          cutOff: r.cutOff,
+          loadAt: r.loadAt,
+          arriveAt: r.arriveAt || "",
+          cntr: r.cntr || "",
+          weighKg: r.weighKg || "",
+          type: r.type || "",
+          pol: r.pol || "",
+          pod: r.pod || "",
+          transit: r.transit || "",
+          carrier: r.carrier || "",
+          voy: r.voy || "",
+          supplier: r.supplier || "",
+          remark: r.remark || "",
+          loKeys: r.loKeys || [],
+          ai: true
+        };
+        applyBlPrefix(row, "");
+        return row;
+      }
+      function paintFormLo(keys) {
+        document.querySelectorAll("#formPage .ai-lo").forEach(function (el) {
+          el.classList.remove("ai-lo");
+        });
+        var map = {
+          bl: "fBl", cntr: "fCntr", mode: "fMode", type: "fType",
+          pol: "fPol", pod: "fPod", transit: "fTransit", carrier: "fCarrier",
+          voy: "fVoy", freight: "fFreight", freeCn: "fFreeCn", freeOs: "fFreeOs",
+          weighKg: "fWeighKg", supplier: "fBooker", remark: "fRemark",
+          etd: "fEtd", eta: "fEta", cutOff: "fCutOff", loadAt: "fLoadAt"
+        };
+        (keys || []).forEach(function (k) {
+          var el = document.getElementById(map[k]);
+          if (el) el.classList.add("ai-lo");
+        });
+      }
+      function applySingleAiResult() {
+        var job = JOBS[0];
+        if (!job) { toast("未识别到提单"); return; }
+        if (job.status === "run" || job.status === "wait") return;
+        if (job.status === "fail") {
+          setStep(2);
+          setScanBusy(false, "识别失败", job.err || "文件无法读取或版面过糊，请换一份清晰件后重试");
+          document.getElementById("aiBack").style.display = "";
+          return;
+        }
+        var rows = job.rows || [];
+        if (!rows.length) {
+          setScanBusy(false, "未识别到提单", "请换一份材料或走手工录入");
+          return;
+        }
+        var extra = Math.max(0, rows.length - 1);
+        fillForm(mapAiRow(rows[0]));
+        paintFormLo(rows[0].loKeys);
+        applyFormBase();
+        closeAi();
+        toast(extra
+          ? "已填入编辑页 · 其余 " + extra + " 柜请走批量创建"
+          : "已填入编辑页 · 请核对后确定");
+      }
       function openAi() {
+        fileInput.multiple = !IS_FORM;
+        document.getElementById("uploadAlert").textContent = IS_FORM
+          ? "单票只能传 1 份。识别完成后直接填入本页编辑，不经 Excel 校对列表。多柜只回填第 1 柜，其余请走批量创建。"
+          : "一次最多 30 份。先识别完的可先校对、先写入；失败件不挡道，可单份重试。";
+        document.getElementById("uploadSub").textContent = IS_FORM
+          ? "PDF / PNG / JPG / Excel · 仅 1 份 · 单文件 ≤ 20MB"
+          : "PDF / PNG / JPG / Excel · 最多 30 份 · 单文件 ≤ 20MB";
+        document.getElementById("writeModeItem").style.display = IS_FORM ? "none" : "";
+        var step3 = document.getElementById("aiStep3");
+        if (step3) step3.style.display = IS_FORM ? "none" : "";
+        document.getElementById("aiApply").textContent = "确认写入已勾选";
+        document.querySelectorAll("#aiFilters [data-aif]").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-aif") === "need");
+        });
         setStep(1);
+        renderFileTbl();
+        expandAi(true);
         document.getElementById("aiMask").classList.add("open");
       }
       function closeAi() {
+        resetAiSession();
+        persistAiDock(false);
+        expandAi(true);
         document.getElementById("aiMask").classList.remove("open");
+        setStep(1);
+      }
+      var AI_DOCK_KEY = "ess-ai-scan-dock";
+      function aiOpenFlag() {
+        return /(?:\?|&)ai=open(?:&|$)/.test(location.search);
+      }
+      function stripAiOpenQuery() {
+        try {
+          var u = new URL(location.href);
+          u.searchParams.delete("ai");
+          history.replaceState(null, "", u.pathname + u.search + u.hash);
+        } catch (e) {}
+      }
+      function dockTextNow() {
+        if (step === 3) {
+          var el = document.getElementById("aiProg");
+          return el ? (el.innerText || "").replace(/\s+/g, " ").trim() : "点展开继续校对";
+        }
+        if (step === 2) return "识别中…";
+        return "待上传 / 粘贴";
+      }
+      function persistAiDock(collapsed) {
+        try {
+          if (!collapsed) {
+            sessionStorage.removeItem(AI_DOCK_KEY);
+            return;
+          }
+          var href = location.pathname + location.search.replace(/[?&]ai=open\b/g, "").replace(/\?$/, "");
+          var jobs = JSON.parse(JSON.stringify(JOBS || []));
+          jobs.forEach(function (j) { if (j.status === "run") j.status = "wait"; });
+          sessionStorage.setItem(AI_DOCK_KEY, JSON.stringify({
+            v: 1,
+            collapsed: true,
+            pageMode: PAGE_MODE,
+            returnHref: href,
+            text: dockTextNow(),
+            step: step,
+            jobs: jobs,
+            activeJobId: activeJobId,
+            aiFilter: aiFilter,
+            aiDidWrite: aiDidWrite,
+            paste: (document.getElementById("aiPaste") || {}).value || "",
+            jobSeq: jobSeq
+          }));
+        } catch (e) {}
+      }
+      function loadAiDock() {
+        try { return JSON.parse(sessionStorage.getItem(AI_DOCK_KEY) || "null"); } catch (e) { return null; }
+      }
+      function isAiCollapsed() {
+        return document.getElementById("aiDock").classList.contains("show");
+      }
+      function syncAiDock() {
+        var dock = document.getElementById("aiDock");
+        if (!dock.classList.contains("show")) return;
+        document.getElementById("aiDockText").textContent = dockTextNow() || "点展开继续";
+        persistAiDock(true);
+      }
+      function showDockBar(on) {
+        var dock = document.getElementById("aiDock");
+        dock.classList.toggle("show", !!on);
+        dock.setAttribute("aria-hidden", on ? "false" : "true");
+      }
+      function collapseAi() {
+        if (!document.getElementById("aiMask").classList.contains("open")) return;
+        document.getElementById("aiMask").classList.remove("open");
+        document.getElementById("aiMask").setAttribute("aria-hidden", "true");
+        showDockBar(true);
+        syncAiDock();
+        toast("已收起，切到其他页仍可在右下角展开");
+      }
+      function expandAi(silent) {
+        showDockBar(false);
+        persistAiDock(false);
+        if (silent) return;
+        document.getElementById("aiMask").classList.add("open");
+        document.getElementById("aiMask").setAttribute("aria-hidden", "false");
+      }
+      function applyRestoredJobs(st) {
+        JOBS = st.jobs || [];
+        JOBS.forEach(function (j) { if (j.status === "run") j.status = "wait"; });
+        var maxId = 0;
+        JOBS.forEach(function (j) { if (j.id > maxId) maxId = j.id; });
+        jobSeq = Math.max(st.jobSeq || 1, maxId + 1);
+        activeJobId = st.activeJobId || (JOBS[0] && JOBS[0].id) || null;
+        aiDidWrite = !!st.aiDidWrite;
+        aiFilter = st.aiFilter || "need";
+        var pasteEl = document.getElementById("aiPaste");
+        if (pasteEl) pasteEl.value = st.paste || "";
+        document.querySelectorAll("#aiFilters [data-aif]").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-aif") === aiFilter);
+        });
+        setStep(st.step || 1);
+        renderFileTbl();
+        if (step === 3) {
+          updateAiProg();
+          renderAiFiles();
+          renderAiSheet();
+        }
+        var waiting = JOBS.some(function (j) { return j.status === "wait"; });
+        if ((step === 2 || step === 3) && waiting) startAiQueue();
+      }
+      function bootAiDock() {
+        var st = loadAiDock();
+        var wantOpen = aiOpenFlag();
+        if (wantOpen) stripAiOpenQuery();
+        if (!st || !st.collapsed) return;
+        var samePage = st.pageMode === PAGE_MODE;
+        if (!samePage) {
+          showDockBar(true);
+          document.getElementById("aiDockText").textContent = st.text || "点展开继续";
+          document.getElementById("aiExpand").onclick = function () {
+            location.href = (st.returnHref || location.pathname) +
+              ((st.returnHref || "").indexOf("?") >= 0 ? "&" : "?") + "ai=open";
+          };
+          return;
+        }
+        applyRestoredJobs(st);
+        if (wantOpen) expandAi(false);
+        else {
+          showDockBar(true);
+          syncAiDock();
+        }
       }
 
-      document.getElementById("btnAi").onclick = openAi;
+      function openAiOrExpand() {
+        if (isAiCollapsed()) { expandAi(false); return; }
+        openAi();
+      }
+
+      document.getElementById("btnAi").onclick = openAiOrExpand;
       document.getElementById("aiClose").onclick = closeAi;
       document.getElementById("aiCancel").onclick = closeAi;
-      document.getElementById("aiMask").addEventListener("click", function (e) {
-        if (e.target === this) closeAi();
+      document.getElementById("aiCollapse").onclick = collapseAi;
+      document.getElementById("aiExpand").onclick = function () { expandAi(false); };
+      document.getElementById("aiDock").addEventListener("click", function (e) {
+        if (e.target.closest("button")) return;
+        document.getElementById("aiExpand").click();
       });
-      document.getElementById("aiBack").onclick = function () { setStep(1); };
+      document.getElementById("aiBack").onclick = function () {
+        stopAiQueue();
+        JOBS.forEach(function (j) { j.status = "wait"; j.err = ""; j.rows = []; });
+        activeJobId = null;
+        setStep(1);
+        renderFileTbl();
+      };
 
       document.getElementById("aiStart").onclick = function () {
         var paste = (document.getElementById("aiPaste").value || "").trim();
-        setStep(2);
-        var hints = [
-          "正在读取文件",
-          "正在抽取提单号、柜号、港口",
-          "正在匹配船司和港口"
-        ];
-        var i = 0;
-        document.getElementById("scanHint").textContent = hints[0];
-        var timer = setInterval(function () {
-          i += 1;
-          if (i < hints.length) {
-            document.getElementById("scanHint").textContent = hints[i];
+        if (!JOBS.length && !paste) {
+          (IS_FORM ? ["COSU-SHA-LAX-booking.pdf"] : DEMO_BATCH).forEach(function (n) {
+            JOBS.push(makeJob(n));
+          });
+        } else if (paste) {
+          var pj = makeJob("粘贴文本.txt");
+          pj.fromPaste = true;
+          if (IS_FORM && JOBS.length >= 1) {
+            toast("单票只能传 1 份，已忽略粘贴文本");
           } else {
-            clearInterval(timer);
-            PREVIEW = SAMPLE.map(function (r) {
-              return Object.assign({}, r);
-            });
-            if (paste && /B\/L|提单|COSU|HLCU|MEDU|ONEY/i.test(paste)) {
-              PREVIEW[0].bl = (paste.match(/[A-Z]{4}[A-Z0-9]{8,}/) || [PREVIEW[0].bl])[0];
-            }
-            renderPreview();
-            setStep(3);
+            JOBS.push(pj);
           }
-        }, 700);
+        }
+        if (!JOBS.length) { toast("请先选择文件"); return; }
+        activeJobId = null;
+        aiFilter = "need";
+        document.querySelectorAll("#aiFilters [data-aif]").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-aif") === "need");
+        });
+        if (IS_FORM) {
+          setStep(2);
+          startAiQueue();
+          return;
+        }
+        setStep(3);
+        updateAiProg();
+        renderAiFiles();
+        renderAiSheet();
+        startAiQueue();
       };
 
       document.getElementById("aiApply").onclick = function () {
-        var picked = PREVIEW.filter(function (r) { return r.pick; });
+        syncAiSheet();
+        var picked = allPickedRows();
         if (!picked.length) { toast("请至少勾选一行"); return; }
+        var extra = 0;
+        if (IS_FORM && picked.length > 1) {
+          extra = picked.length - 1;
+          picked = [picked[0]];
+        }
         var writeMode = document.getElementById("aiWriteMode").value;
         var mapped = picked.map(function (r) {
           var pair = parseFreePair(r.free);
@@ -1481,7 +2279,9 @@
             etd: mdOnly(r.etd),
             cutOff: mdTime(r.cutOff),
             loadAt: mdTime(r.loadAt),
+            arriveAt: r.arriveAt || "",
             cntr: r.cntr || "",
+            weighKg: r.weighKg || "",
             type: r.type || "",
             pol: r.pol || "",
             pod: r.pod || "",
@@ -1496,23 +2296,32 @@
           return row;
         });
         if (IS_FORM) {
-          fillForm(mapped[0]);
-          closeAi();
-          toast("已回填表单 · 请核对国内/国外免用箱天数后确定");
+          applySingleAiResult();
           return;
         }
         var sheetEmpty = ROWS.every(function (r) { return !rowReady(r); });
-        if (writeMode === "replace" || sheetEmpty) {
+        if (!aiDidWrite && (writeMode === "replace" || sheetEmpty)) {
           ROWS = mapped;
         } else {
           ROWS = ROWS.concat(mapped);
         }
+        aiDidWrite = true;
         if (CREATE_MODE !== "single") {
           while (ROWS.length < 8) ROWS.push(emptyRow());
         }
-        closeAi();
+        picked.forEach(function (r) { r.written = true; r.pick = false; });
         render();
-        toast("已写入 " + mapped.length + " 行 · AI 回填格已高亮，请核对必填项后保存");
+        var failN = JOBS.filter(function (j) { return j.status === "fail"; }).length;
+        var still = JOBS.some(function (j) { return j.status === "wait" || j.status === "run"; });
+        toast("已写入 " + mapped.length + " 行" +
+          (failN ? " · 失败 " + failN + " 份未写入，可重试" : "") +
+          (still ? " · 其余仍在识别" : " · 请核对必填项后保存"));
+        if (!still) {
+          closeAi();
+        } else {
+          renderAiFiles();
+          renderAiSheet();
+        }
       };
 
       /* —— 运价点价订舱接入 —— */
@@ -1570,7 +2379,7 @@
             (p.note ? " · " + p.note : "");
         }
         var btn = document.getElementById("btnRateAi");
-        if (btn) btn.onclick = openAi;
+        if (btn) btn.onclick = openAiOrExpand;
 
         var openAiFlag = p.openAi || params.get("ai") === "1";
         return { openAi: openAiFlag, qty: qty, data: p, rows: rows };
@@ -1581,7 +2390,12 @@
         var s = String(v).trim().replace(" ", "T");
         if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 16);
         if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s + "T00:00";
-        return "";
+        var m = s.match(/^(?:(\d{4})-)?(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+        if (!m) return "";
+        var y = m[1] || "2026";
+        var md = y + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[3]).slice(-2);
+        if (m[4] != null) return md + "T" + ("0" + m[4]).slice(-2) + ":" + m[5];
+        return md + "T00:00";
       }
       function setVal(id, v) {
         var el = document.getElementById(id);
@@ -1599,7 +2413,7 @@
         setVal("fType", p.type);
         setVal("fPol", (String(p.pol || "").match(/^[A-Z]{5}/) || [p.pol || ""])[0]);
         setVal("fPod", (String(p.pod || "").match(/^[A-Z]{5}/) || [p.pod || ""])[0]);
-        setVal("fTransit", p.transit || p.itTransit || p.transitPortCode);
+        setVal("fTransit", (String(p.transit || p.itTransit || p.transitPortCode || "").match(/^[A-Z]{5}/) || [p.transit || p.itTransit || p.transitPortCode || ""])[0]);
         setVal("fCarrier", p.carrier);
         setVal("fVoy", p.voy);
         setVal("fEtd", toLocal(p.etd));
@@ -1608,8 +2422,11 @@
         setVal("fFreeCn", p.freeCn);
         setVal("fFreeOs", p.freeOs);
         setVal("fSeal", p.seal);
+        setVal("fWeighKg", p.weighKg);
         setVal("fCs", p.cs);
         setVal("fLoadAt", toLocal(p.loadAt));
+        setVal("fArriveAt", toLocal(p.arriveAt));
+        setVal("fPortCode", p.portCode);
         setVal("fCutOff", toLocal(p.cutOff));
         setVal("fBooker", p.booker || p.supplier);
         setVal("fRemark", p.remark || p.note);
@@ -1670,6 +2487,8 @@
               pol: "CNSHA", pod: "USJAX", transit: "", carrier: "ZIM",
               voy: "ZIM MOUNT EVEREST 13/E", etd: "2025-07-04T22:37", eta: "2025-08-05T20:06",
               freight: "4300", freeCn: "7", freeOs: "10", seal: "A4240549942",
+              weighKg: "14280.5",
+              loadAt: "2025-07-03T14:00", arriveAt: "2025-07-04T09:30", portCode: "SHA",
               booker: "大海", st: "已清关"
             };
           }
@@ -1677,10 +2496,12 @@
           formLock = { freight: true, freeCn: true, freeOs: true };
         }
         var aiBtn = document.getElementById("btnFormAi");
+        var aiHint = document.getElementById("formAiHint");
         if (aiBtn) {
           aiBtn.style.display = PAGE_MODE === "single" ? "" : "none";
-          aiBtn.onclick = openAi;
+          aiBtn.onclick = openAiOrExpand;
         }
+        if (aiHint) aiHint.style.display = PAGE_MODE === "single" ? "" : "none";
         document.getElementById("fCarrier").addEventListener("change", function () {
           var row = { bl: getVal("fBl"), carrier: getVal("fCarrier") };
           applyBlPrefix(row, "");
@@ -1726,11 +2547,16 @@
       function applyModeUi() {
         var form = IS_FORM;
         var edit = PAGE_MODE === "edit";
-        document.title = edit ? "提单修改" : (form ? "提单创建" : "提单创建(批量) · AI识别提单信息（MVP）");
-        var nav = document.getElementById("navCreateTab");
-        if (nav) {
-          nav.textContent = edit ? "提单修改" : (form ? "提单创建" : "提单创建(批量)");
-          if (edit) nav.onclick = function () { location.href = "船务组-提单管理-按周分组与分配-MVP.html"; };
+        document.title = edit ? "提单修改" : (form ? "提单创建" : "批量创建提单 · AI识别提单信息（MVP）");
+        var navSingle = document.getElementById("navCreateSingle");
+        var navBatch = document.getElementById("navCreateBatch");
+        if (navSingle) {
+          navSingle.innerHTML = edit ? "提单修改" : '提单创建 <span class="badge-chg">改</span>';
+          navSingle.classList.toggle("active", edit || form);
+          if (edit) navSingle.onclick = function () { location.href = "船务组-提单管理-按周分组与分配-MVP.html"; };
+        }
+        if (navBatch) {
+          navBatch.classList.toggle("active", !edit && !form);
         }
         var sideSingle = document.getElementById("sideCreateSingle");
         var sideBatch = document.getElementById("sideCreateBatch");
@@ -1752,6 +2578,8 @@
         if (fillBtn) fillBtn.style.display = form ? "none" : "";
         var hd = document.getElementById("createHdTitle");
         if (hd) hd.textContent = form ? (edit ? "提单修改" : "基本信息") : "基本信息";
+        var formHd = document.getElementById("formHdTitle");
+        if (formHd) formHd.textContent = edit ? "提单修改" : "提单创建";
         if (!form && CREATE_MODE === "single" && !rateBootKeepRows) {
           ROWS = [emptyRow()];
         }
@@ -1761,6 +2589,8 @@
       var rateBoot = applyRateBooking();
       if (rateBoot) rateBootKeepRows = true;
       applyModeUi();
+      bootAiDock();
+      var aiHeld = document.getElementById("aiMask").classList.contains("open") || isAiCollapsed();
       if (IS_FORM) {
         bootForm();
         if (rateBoot && rateBoot.rows && rateBoot.rows[0]) {
@@ -1770,13 +2600,13 @@
         }
         if (rateBoot) {
           toast("已从运价带入，可改后再确定");
-          if (rateBoot.openAi) setTimeout(openAi, 280);
+          if (rateBoot.openAi && !aiHeld) setTimeout(openAi, 280);
         }
       } else {
         render();
         if (rateBoot) {
           toast("已从运价带入 " + rateBoot.qty + " 行 · 可补柜号（提单号非必填），或点 AI 识别订舱确认");
-          if (rateBoot.openAi) setTimeout(openAi, 280);
+          if (rateBoot.openAi && !aiHeld) setTimeout(openAi, 280);
         }
       }
     })();

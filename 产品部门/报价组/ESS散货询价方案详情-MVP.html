@@ -279,6 +279,8 @@
       border-radius: 6px; color: #166534; font-weight: 600;
     }
     .calc-log-card .zone { font-size: 10px; font-weight: 700; color: #c2410c; }
+    .calc-log-card.fail { border-color: #ffa39e; background: #fff1f0; }
+    .calc-log-card.fail .hd { background: #fff1f0; color: #820014; }
   </style>
 </head>
 <body>
@@ -636,6 +638,16 @@
       function cloneQuotes(arr) {
         return (arr || []).map(function (q) { return Object.assign({}, q); });
       }
+      function quoteHasPrice(q) {
+        if (!q || q.priceFail) return false;
+        var u = Math.round(parseFloat(q.unit));
+        var lm = Math.round(parseFloat(q.lastmile));
+        return u >= 1 && u <= 9 && lm >= 0 && !isNaN(u) && !isNaN(lm);
+      }
+      function allQuotesPriced(arr) {
+        arr = arr || quotes;
+        return arr.length > 0 && arr.every(quoteHasPrice);
+      }
       function primaryBindNo(raw) {
         if (Array.isArray(raw)) raw = raw.join(",");
         return String(raw || "").split(/[,，、\s]+/).map(function (s) { return s.trim(); }).filter(Boolean)[0] || "";
@@ -708,8 +720,16 @@
         }
         if (!all["XJ1777008888002"]) {
           all["XJ1777008888002"] = {
-            status: "pending",
-            quotes: [],
+            status: "aiwait",
+            quotes: cloneQuotes(DEFAULT_QUOTES).map(function (q, i) {
+              if (i === 2) {
+                q.priceFail = true;
+                q.unit = 0;
+                q.lastmile = 0;
+                q.failReason = "53 尺大车价表未匹配 / 尾程试算未返回";
+              }
+              return q;
+            }),
             boundWbs: [], locked: false, confirmedAt: "", replyNote: "", rejectNote: "", rejectAt: ""
           };
           changed = true;
@@ -1100,18 +1120,22 @@
 
       function buildCalcLogHtml() {
         var logs = CALC_LOG_DEMO;
-        if (status !== "aiwait" && quotes.length) {
-          return logs.map(function (log, i) {
-            var q = quotes[i] || quotes[0];
-            return '<article class="calc-log-card">' +
-              '<div class="hd"><span>' + (q.channel || log.channel) + '</span><span class="zone">' + log.zone + " · " + log.dist + " 迈</span></div>" +
+        if (quotes.length) {
+          return quotes.map(function (q, i) {
+            var log = logs[i] || logs[0];
+            var fail = !quoteHasPrice(q);
+            var result = fail
+              ? ('<span style="color:#cf1322">试算未出 · ' + (q.failReason || "该渠道无有效尾程 / 单价") + "</span>")
+              : ("算价结果：尾程 USD " + Math.round(q.lastmile) + " → 单价 USD " + Math.round(q.unit) + "/KG");
+            return '<article class="calc-log-card' + (fail ? " fail" : "") + '">' +
+              '<div class="hd"><span>' + (q.channel || log.channel) + '</span><span class="zone">' + log.zone + " · " + (quoteDist(q) || log.dist) + " 迈</span></div>" +
               '<div class="bd">' +
               '<div class="row"><span class="k">海外仓</span><span>' + (q.wh || log.wh) + "</span></div>" +
               '<div class="row"><span class="k">仓地址</span><span>' + log.whAddr + "</span></div>" +
               '<div class="row"><span class="k">目的地</span><span>' + log.dest + "</span></div>" +
-              '<div class="row"><span class="k">配送距离</span><span><b>' + log.dist + "</b> 迈</span></div>" +
+              '<div class="row"><span class="k">配送距离</span><span><b>' + (quoteDist(q) || log.dist) + "</b> 迈</span></div>" +
               '<div class="rules"><b>匹配规则</b><ol>' + log.rules.map(function (r) { return "<li>" + r + "</li>"; }).join("") + "</ol></div>" +
-              '<div class="result">算价结果：尾程 USD ' + Math.round(q.lastmile) + " → 单价 USD " + Math.round(q.unit) + "/KG</div>" +
+              '<div class="result">' + result + "</div>" +
               "</div></article>";
           }).join("");
         }
@@ -1249,11 +1273,12 @@
         var canWithdraw = status === "quoted" && !locked;
         if (btnReject) btnReject.hidden = !canReject();
         if (btnWithdraw) btnWithdraw.hidden = !canWithdraw;
-        if (btnCalcLog) btnCalcLog.hidden = preQuote || rejected;
+        if (btnCalcLog) btnCalcLog.hidden = rejected || (preQuote && !quotes.length);
+        var priced = allQuotesPriced();
         btnCheck.hidden = preQuote || rejected || status !== "aiwait";
-        btnEdit.hidden = status !== "aiwait";
-        btnCheck.disabled = locked;
-        btnEdit.disabled = locked || m === "edit";
+        btnEdit.hidden = status !== "aiwait" || !priced;
+        btnCheck.disabled = locked || !priced;
+        btnEdit.disabled = locked || m === "edit" || !priced;
         btnCheck.className = "btn btn-primary btn-check-on";
         btnEdit.className = "btn btn-ghost" + (m === "edit" ? " active-mode" : "");
         if (btnWithdraw) btnWithdraw.title = locked ? "已绑运单，须先解绑" : "撤回核对，回到 AI待确认 后再编辑";
@@ -1263,6 +1288,9 @@
           btnEdit.title = "正在编辑";
         } else if (preQuote) {
           btnEdit.title = "待报价阶段不可编辑";
+        } else if (!allQuotesPriced()) {
+          btnCheck.title = "部分渠道未出价，整票不可核对；请查看试算日志";
+          btnEdit.title = "全部渠道有价后才可编辑核对";
         } else {
           btnCheck.title = "按当前带出的价格核对确认并保存";
           btnEdit.title = "进入编辑，可改后再核对确认";
@@ -1273,13 +1301,17 @@
         var canBind = status === "quoted" && !locked && !boundWbs.length;
         page.className = "workspace page " + m + (canBind ? " has-bind bindwait" : "") + (locked ? " locked" : "");
         document.getElementById("btnSave").textContent = "核对确认";
-        document.getElementById("footHint").textContent = "改完后点「核对确认」保存。改价须填原因。";
+        document.getElementById("footHint").textContent = (quotes.length && !allQuotesPriced() && status === "aiwait")
+          ? "部分渠道未出价，整票不可核对 · 请查看试算日志"
+          : "改完后点「核对确认」保存。改价须填原因。";
         var bannerView = document.querySelector(".banner.view");
         if (bannerView) {
           if (status === "reject") {
             bannerView.innerHTML = "本票已<strong>打回</strong>。" + (rejectNote ? ('<div class="reject-box">' + rejectNote.replace(/</g, "&lt;") + "</div>") : "");
           } else if (status === "pending") {
             bannerView.textContent = "AI 尚未出账，处于待报价。可打回让业务员补充资料，或在列表点「报价」人工报价。";
+          } else if (quotes.length && !allQuotesPriced()) {
+            bannerView.innerHTML = "部分渠道试算<strong>未出价</strong>，<strong>整票暂不展示单价 / 尾程</strong>（不允许部分有价）。请点「试算日志」查看失败渠道；全部渠道有价后才可核对确认。";
           } else {
             bannerView.textContent = status === "quoted"
               ? (isBindWaitState()
@@ -1312,6 +1344,13 @@
           html = '<div class="banner view" style="margin:0">暂无 AI 报价卡片。后台测算完成后进入 <strong>AI待确认</strong>，或报价员人工报价。</div>';
         } else if (status === "reject") {
           html = '<div class="reject-box" style="margin:0">' + (rejectNote || "已打回") + "</div>";
+        } else if (quotes.length && !allQuotesPriced()) {
+          html = '<div class="banner warn" style="margin:0;line-height:1.65">本票 ' + quotes.length + ' 个渠道中，有渠道试算未出有效价格。<strong>整票不展示报价卡</strong>，请点顶部「试算日志」排查；补齐 / 重算至<strong>全部渠道有价</strong>后再核对确认。</div>';
+          html += '<ul style="margin:8px 0 0;padding-left:18px;font-size:12px;color:#595959;line-height:1.7">';
+          quotes.forEach(function (q) {
+            html += "<li>" + q.channel + " · " + (quoteHasPrice(q) ? "已出价" : ("<span style=\"color:#cf1322\">未出价" + (q.failReason ? "：" + q.failReason : "") + "</span>")) + "</li>";
+          });
+          html += "</ul>";
         } else quotes.forEach(function (q, i) {
           var vf = q.validFrom || TODAY, vt = q.validTo || VALID_TO;
           var valid = vf + " 至 " + vt;
@@ -1670,6 +1709,7 @@
       function saveConfirm() {
         if (locked) { toast("已绑运单锁定，解绑后可改"); return false; }
         if (status !== "aiwait") { toast("须处于 AI待确认 才可核对确认"); return false; }
+        if (!allQuotesPriced()) { toast("部分渠道未出价，整票不可核对；请查看试算日志"); openCalcLogModal(); return false; }
         if (mode() === "edit") readInputs();
         var best = quotes.filter(function (q) { return q.cheap; })[0] || quotes[0];
         for (var i = 0; i < quotes.length; i++) {

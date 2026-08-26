@@ -328,4 +328,55 @@
 
 })();
 
+/** 提单 AI 收起后跨页悬浮条：点展开回到原创建页弹窗 */
+(function () {
+  var KEY = "ess-ai-scan-dock";
+  function load() {
+    try { return JSON.parse(sessionStorage.getItem(KEY) || "null"); } catch (e) { return null; }
+  }
+  function goOpen(st) {
+    var href = (st && st.returnHref) || "";
+    if (!href) return;
+    href = href.replace(/[?&]ai=open\b/, "");
+    href += (href.indexOf("?") >= 0 ? "&" : "?") + "ai=open";
+    location.href = href;
+  }
+  function mount() {
+    var st = load();
+    if (!st || !st.collapsed) return;
+    if (document.getElementById("aiDock")) return;
+    if (document.getElementById("essAiGuestDock")) return;
+    if (!document.getElementById("essAiGuestDockCss")) {
+      var css = document.createElement("style");
+      css.id = "essAiGuestDockCss";
+      css.textContent =
+        ".ess-ai-guest-dock{display:flex;position:fixed;right:20px;bottom:20px;z-index:1250;align-items:center;gap:10px;min-width:280px;max-width:420px;padding:10px 12px;background:#fff;border:1px solid #ffa39e;border-radius:8px;box-shadow:0 8px 24px rgba(207,19,34,.18);font-family:Microsoft YaHei,PingFang SC,Segoe UI,sans-serif;cursor:pointer}" +
+        ".ess-ai-guest-dock .mk{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:linear-gradient(145deg,#ff4d4f,#cf1322);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}" +
+        ".ess-ai-guest-dock .bd{flex:1;min-width:0}.ess-ai-guest-dock .bd strong{display:block;font-size:12px;color:#cf1322}" +
+        ".ess-ai-guest-dock .bd span{display:block;font-size:11px;color:#8c8c8c;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+        ".ess-ai-guest-dock button{height:28px;padding:0 12px;border:1px solid #d9d9d9;border-radius:2px;background:#fff;cursor:pointer;font-size:12px}";
+      document.head.appendChild(css);
+    }
+    var dock = document.createElement("div");
+    dock.id = "essAiGuestDock";
+    dock.className = "ess-ai-guest-dock";
+    dock.setAttribute("role", "status");
+    dock.innerHTML =
+      '<span class="mk">AI</span><div class="bd"><strong>AI 识别已收起</strong><span></span></div><button type="button">展开</button>';
+    dock.querySelector(".bd span").textContent = st.text || "点展开继续";
+    function open() { goOpen(st); }
+    dock.addEventListener("click", function (e) {
+      if (e.target && e.target.closest("button")) return;
+      open();
+    });
+    dock.querySelector("button").addEventListener("click", function (e) {
+      e.stopPropagation();
+      open();
+    });
+    document.body.appendChild(dock);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
+  else mount();
+})();
+
 

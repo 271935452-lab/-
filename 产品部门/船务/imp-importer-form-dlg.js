@@ -835,7 +835,7 @@
     if ($("dlgUseChannel")) RECORDS[code].useChannel = $("dlgUseChannel").value;
     if ($("dlgBondInsCode")) RECORDS[code].bondInsCode = $("dlgBondInsCode").value;
     alert(
-      "原型演示：已保存\n进口商：" +
+      "已保存\n进口商：" +
         RECORDS[code].name +
         "\n证件：" +
         (RECORDS[code].nationality || "") +
