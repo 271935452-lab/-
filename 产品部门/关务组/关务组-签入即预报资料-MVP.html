@@ -100,6 +100,7 @@
     .btn.warn, .btn-warn { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
     .btn.danger, .btn-danger { background: #fff; border-color: #ffa39e; color: #ff4d4f; }
     .btn.purple, .btn-purple { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .btn.teal { border-color: #36cfc9; color: #08979c; background: #e6fffb; }
     .btn-ghost { background: #fff; color: var(--sub); }
     a.btn { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
 
@@ -171,6 +172,7 @@
     .tag.att-wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
     .tag.att-no { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
     .tag.att-skip { color: #8c8c8c; background: #f5f5f5; border-color: #d9d9d9; }
+    .tag.api-off { color: #d46b08; background: #fff7e6; border-color: #ffd591; font-size: 9px; margin-left: 2px; }
     .confirm-cell { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
     .confirm-cell label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
     .confirm-cell.locked label { cursor: not-allowed; color: var(--sub); }
@@ -224,6 +226,18 @@
       padding: 10px 16px; border-top: 1px solid var(--line);
       display: flex; justify-content: flex-end; gap: 8px;
     }
+    .modal .bd .upload-hint {
+      margin: 10px 0 0; padding: 8px 10px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 2px; color: #ad6800; font-size: 11px; line-height: 1.55;
+    }
+    .modal .bd .file-pick {
+      border: 1px dashed #d9d9d9; border-radius: 2px; padding: 12px; text-align: center;
+      background: #fafafa; color: var(--sub);
+    }
+    .panel-hint {
+      margin: 0; padding: 8px 12px; font-size: 12px; color: #134e4a;
+      background: #f0fdfa; border-bottom: 1px solid #99f6e4; line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -262,6 +276,9 @@
         <h1>预录工作台</h1>
       </div>
       <section class="panel">
+        <p class="panel-hint">
+          已对接 API 的报关行：推送后等系统回传预录单。未对接报关行：推送后线下通知报关行，收到预录单 PDF/Excel 后在本页<strong>上传预录单</strong>，进入预录待复审（与 API 回传口径一致）。
+        </p>
         <div class="filters">
           <div class="fi"><label>运单号</label><input id="qNo" placeholder="支持模糊" /></div>
           <div class="fi"><label>客户单号</label><input id="qCustNo" placeholder="客户单号" /></div>
@@ -380,6 +397,7 @@
           <button type="button" class="btn chg" id="btnMarkSplit">标记拆分报关</button>
           <button type="button" class="btn light" id="btnUrgeBatch" title="批量催业务员+客服上传报关资料">一键催促</button>
           <button type="button" class="btn chg" id="btnAttMark" title="未对接报关行时人工登记客户委托；无委托不可推送">委托标记</button>
+          <button type="button" class="btn teal" id="btnUploadPre" title="未对接报关行：报关行处理中状态下手工上传预录单">上传预录单 <span class="badge new">NEW</span></button>
           <button type="button" class="btn dark" id="btnOpenReview" title="推送后进入预录审核（字段对比 + 沟通）">预录审核</button>
           <a class="btn new" href="关务组-预录工作台-报关单号母子表-MVP.html">按报关单号选运单 <span class="badge new">NEW</span></a>
           <span class="muted" style="margin-left:8px">已选 <b id="selCount">0</b> 条</span>
@@ -535,6 +553,31 @@
     </div>
   </div>
 
+  <div class="modal-mask" id="uploadPreModal">
+    <div class="modal">
+      <h3>上传预录单 <span class="badge new">NEW</span></h3>
+      <div class="bd">
+        <p id="uploadPreTip">勾选运单处于「报关行处理中」，且报关行未对接 API。</p>
+        <label>运单 / 报关编号</label>
+        <div id="uploadPreIds" style="line-height:1.6;font-family:Consolas,'Courier New',monospace"></div>
+        <label>报关行</label>
+        <p id="uploadPreBroker" style="margin:0;color:#262626"></p>
+        <label>预录单文件</label>
+        <div class="file-pick">
+          <input type="file" id="uploadPreFile" accept=".pdf,.xlsx,.xls,.zip,.jpg,.jpeg,.png" />
+          <div style="margin-top:6px;font-size:11px">支持 PDF / Excel / 压缩包 / 图片</div>
+        </div>
+        <label>备注（可选）</label>
+        <textarea id="uploadPreNote" rows="2" placeholder="例：报关行微信回传 · 2026-08-20"></textarea>
+        <p class="upload-hint">上传后写入预录附件，状态进入「预录待复审」，等同 API #04 回传。已对接报关行由系统自动回传，无需手工上传。</p>
+      </div>
+      <div class="ft">
+        <button type="button" class="btn" id="btnUploadPreCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="btnUploadPreOk">确认上传</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="关务组-签入即预报资料-MVP-PRD.html">
@@ -544,6 +587,13 @@
   <script>
     (function () {
       var BROKERS = ["鸿程捷运", "通航顺", "聚航", "欣扬", "盛世通"];
+      var BROKER_API = {
+        "鸿程捷运": true,
+        "欣扬": true,
+        "聚航": true,
+        "通航顺": false,
+        "盛世通": false
+      };
       var CS = ["王敏", "李华", "张婷"];
       var SALES = ["陈伟", "刘芳", "周杰"];
       var SVC = ["赵雪", "孙丽", "吴倩"];
@@ -558,7 +608,7 @@
       var seed = [
         { id: "WY260820001", custNo: "HD20260820001", customer: "华东贸易", sales: "陈伟", svc: "赵雪", productCode: "PK1857", product: "(T16)FBA卡派", wh: "上海仓", checkinAt: "2026-08-20 09:12", uploaded: true, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "未委托", pcs: 8, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
         { id: "WY260820002", custNo: "SZ20260820002", customer: "深圳迅达", sales: "刘芳", svc: "孙丽", productCode: "PK1862", product: "T16私人卡派", wh: "盐田港", checkinAt: "2026-08-20 09:28", uploaded: false, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "无标记", pcs: 5, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
-        { id: "WY260820004", custNo: "NB20260820004", customer: "宁波海运", sales: "周杰", svc: "吴倩", productCode: "PK1821", product: "T16限时达", wh: "宁波仓", checkinAt: "2026-08-20 10:40", uploaded: true, cabin: "wait", forecasted: true, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 10, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
+        { id: "WY260820004", custNo: "NB20260820004", customer: "宁波海运", sales: "周杰", svc: "吴倩", productCode: "PK1821", product: "T16限时达", wh: "宁波仓", checkinAt: "2026-08-20 10:40", uploaded: true, cabin: "wait", forecasted: true, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 10, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null, broker: "通航顺", preFile: "" },
         { id: "WY260820006", custNo: "QD20260820006", customer: "青岛嘉运", sales: "陈伟", svc: "赵雪", productCode: "PK2499", product: "海运整柜", wh: "青岛港", checkinAt: "2026-08-20 11:18", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 5, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
         { id: "WY260820010", custNo: "YT20260820010", customer: "烟台海达", sales: "刘芳", svc: "孙丽", productCode: "PK2551", product: "整柜直送", wh: "青岛港", checkinAt: "2026-08-20 11:20", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 4, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
         { id: "WY260820011", custNo: "WH20260820011", customer: "威海联运", sales: "周杰", svc: "吴倩", productCode: "PK2552", product: "整柜拆送", wh: "青岛港", checkinAt: "2026-08-20 11:22", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 3, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
@@ -602,6 +652,7 @@
       var splitPending = [];
       var brokerPending = [];
       var attPending = [];
+      var uploadPrePending = [];
       var pickedIds = {};
       var tbody = document.getElementById("tbody");
       var toastEl = document.getElementById("toast");
@@ -687,14 +738,20 @@
         return CS[hashStr(declKey(r)) % CS.length];
       }
 
+      function brokerApi(broker) {
+        return !!BROKER_API[broker];
+      }
+
       function brokerCell(r) {
         var def = defaultBroker(r.wh);
         var tip = (r.wh ? ("收货仓 " + r.wh + " → 默认 " + (def || "未匹配")) : "未带收货仓");
         if (r.product) tip += " · " + (r.productCode ? r.productCode + " " : "") + r.product;
         if (r.broker && def && r.broker !== def) tip += " · 已手工改为 " + r.broker;
+        if (r.broker && !brokerApi(r.broker)) tip += " · 未对接 API，预录单需手工上传";
         var shown = r.broker || '<span class="tag skip">—</span>';
         var mark = (r.broker && def && r.broker !== def) ? ' <span class="tag skip" title="已手工改报关行">手工</span>' : "";
-        return '<span title="' + tip + '">' + shown + mark + "</span>";
+        var apiTag = (r.broker && !brokerApi(r.broker)) ? ' <span class="tag api-off" title="未对接 API">未对接</span>' : "";
+        return '<span title="' + tip + '">' + shown + mark + apiTag + "</span>";
       }
 
       function markTag(r) {
@@ -749,7 +806,10 @@
 
       function issuedCell(r) {
         if (r.amendState === "revoked") return '<span class="tag proc">已撤销</span>';
-        if (r.preIssued) return '<span class="tag yes">已出</span>';
+        if (r.preIssued) {
+          var tip = r.preFile ? ("附件：" + r.preFile) : "已出预录单";
+          return '<span class="tag yes" title="' + tip + '">已出</span>';
+        }
         return '<span class="tag no">未出</span>';
       }
 
@@ -907,6 +967,10 @@
         return out;
       }
 
+      function canUploadPre(r) {
+        return derive(r) === "processing" && r.broker && !brokerApi(r.broker) && !groupLocked(r);
+      }
+
       function opsHtml(r) {
         var s = derive(r);
         var id = r.id;
@@ -916,6 +980,9 @@
         }
         if (s === "ready") {
           btns.push('<button type="button" class="btn primary" data-act="forecast" data-id="' + id + '">推送报关行</button>');
+        }
+        if (canUploadPre(r)) {
+          btns.push('<button type="button" class="btn teal" data-act="uploadPre" data-id="' + id + '">上传预录单</button>');
         }
         if (s === "blocked") {
           btns.push('<button type="button" class="btn light" data-act="urge" data-id="' + id + '">催促上传</button>');
@@ -1103,6 +1170,8 @@
 
         if (act === "forecast") {
           if (pushRows([r])) render();
+        } else if (act === "uploadPre") {
+          openUploadPreModal([r]);
         } else if (act === "urge") {
           toast(groupIds(r) + " 已催促：业务员+客服「签入后上传报关资料」");
         } else if (act === "upload") {
@@ -1302,12 +1371,73 @@
           return false;
         }
         var names = [];
+        var offline = [];
         ok.forEach(function (r) {
           applyGroup(r, function (x) { x.forecasted = true; });
           names.push(declNo(r) + "（" + groupIds(r) + "）→ " + r.broker);
+          if (!brokerApi(r.broker)) offline.push(declNo(r));
         });
-        toast("已按报关编号推送报关行 · " + names.join("；") + "（报关行处理中）");
+        var msg = "已按报关编号推送报关行 · " + names.join("；") + "（报关行处理中）";
+        if (offline.length) {
+          msg += " · 未对接行 " + offline.join("、") + " 收到预录单后请「上传预录单」";
+        }
+        toast(msg);
         return true;
+      }
+
+      function openUploadPreModal(sel) {
+        var units = expandUnique(sel);
+        if (!units.length) { toast("请先勾选运单"); return; }
+        var badApi = [];
+        var badState = [];
+        var ok = [];
+        units.forEach(function (r) {
+          if (brokerApi(r.broker)) badApi.push(r.id);
+          else if (!canUploadPre(r)) badState.push(r.id + "（" + statusLabel(derive(r)) + "）");
+          else ok.push(r);
+        });
+        if (badApi.length && !ok.length) {
+          toast(badApi.join("、") + " 对应报关行已对接 API，预录单由系统自动回传，无需手工上传");
+          return;
+        }
+        if (!ok.length) {
+          toast(badState.length ? ("当前状态不可上传：" + badState.join("、")) : "没有可上传预录单的运单");
+          return;
+        }
+        if (badApi.length || badState.length) {
+          toast("已过滤不可上传的票，继续处理 " + ok.length + " 组");
+        }
+        uploadPrePending = ok;
+        document.getElementById("uploadPreIds").textContent = ok.map(function (r) {
+          return r.id + " · " + declNo(r);
+        }).join("；");
+        var brokers = [];
+        ok.forEach(function (r) {
+          if (r.broker && brokers.indexOf(r.broker) < 0) brokers.push(r.broker);
+        });
+        document.getElementById("uploadPreBroker").textContent =
+          brokers.join("、") + "（未对接 API · 线下回传）";
+        document.getElementById("uploadPreTip").textContent =
+          ok.length > 1
+            ? "将为 " + ok.length + " 组报关编号上传同一批预录附件（合并组同步）。"
+            : (ok[0].id + " 当前报关行处理中，上传报关行回传的预录单文件。");
+        document.getElementById("uploadPreFile").value = "";
+        document.getElementById("uploadPreNote").value = "";
+        document.getElementById("uploadPreModal").classList.add("show");
+      }
+
+      function applyUploadPre(units, fileName, note) {
+        var names = [];
+        units.forEach(function (r) {
+          applyGroup(r, function (x) {
+            x.preIssued = true;
+            x.amendState = "";
+            x.preFile = fileName || "预录单.pdf";
+            if (note) x.preUploadNote = note;
+          });
+          names.push(declNo(r) + "（" + groupIds(r) + "）");
+        });
+        return names;
       }
 
       document.getElementById("btnEditBroker").addEventListener("click", function () {
@@ -1345,6 +1475,25 @@
       }
       document.getElementById("btnAttMark").addEventListener("click", function () {
         openAttModal(checkedRows());
+      });
+      document.getElementById("btnUploadPre").addEventListener("click", function () {
+        openUploadPreModal(checkedRows());
+      });
+      document.getElementById("btnUploadPreCancel").addEventListener("click", function () {
+        document.getElementById("uploadPreModal").classList.remove("show");
+        uploadPrePending = [];
+      });
+      document.getElementById("btnUploadPreOk").addEventListener("click", function () {
+        if (!uploadPrePending.length) return;
+        var fileEl = document.getElementById("uploadPreFile");
+        var file = fileEl && fileEl.files && fileEl.files[0];
+        if (!file) { toast("请选择预录单文件"); return; }
+        var note = (document.getElementById("uploadPreNote").value || "").trim();
+        var names = applyUploadPre(uploadPrePending, file.name, note);
+        document.getElementById("uploadPreModal").classList.remove("show");
+        uploadPrePending = [];
+        toast("已上传预录单 · " + names.join("；") + " → 预录待复审（等同 #04 回传）");
+        render();
       });
       document.getElementById("btnAttCancel").addEventListener("click", function () {
         document.getElementById("attModal").classList.remove("show");

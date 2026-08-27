@@ -97,6 +97,13 @@
       background: #fff; border-radius: 2px; cursor: pointer; font-size: 12px;
       white-space: nowrap;
     }
+    .more-filter.open { border-color: var(--blue); color: var(--blue); background: #e6f7ff; }
+    .filters-more {
+      display: none; margin-top: 8px; padding-top: 8px;
+      border-top: 1px dashed var(--line);
+    }
+    .filters-more.open { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px 12px; }
+    @media (max-width: 1200px) { .filters-more.open { grid-template-columns: repeat(3, 1fr); } }
 
     .toolbar {
       padding: 8px 12px; background: var(--card);
@@ -212,6 +219,33 @@
       border: none; background: none; cursor: pointer; font-size: 12px;
     }
     .upload-dd .menu button:hover { background: #e6f7ff; }
+    .merge-dd { position: relative; display: inline-block; margin-left: 2px; }
+    .merge-dd .menu {
+      display: none; position: absolute; top: 100%; right: 0; margin-top: 2px;
+      background: #fff; border: 1px solid var(--line); border-radius: 2px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 12; min-width: 168px;
+    }
+    .merge-dd.open .menu { display: block; }
+    .merge-dd .menu-hint {
+      padding: 6px 10px; font-size: 11px; color: #8c8c8c; line-height: 1.45;
+      border-bottom: 1px solid var(--line); background: #fafafa;
+    }
+    .merge-dd .menu-hint a { color: var(--blue); text-decoration: none; }
+    .merge-dd .menu-hint a:hover { text-decoration: underline; }
+    .merge-dd .menu button {
+      display: block; width: 100%; text-align: left; padding: 6px 10px;
+      border: none; background: none; cursor: pointer; font-size: 12px;
+    }
+    .merge-dd .menu button:hover { background: #e6fffb; }
+    .merge-dd .menu button.danger { color: var(--red); }
+    .merge-dd .menu button.danger:hover { background: #fff1f0; }
+    .merge-dd-toggle {
+      height: 26px; padding: 0 8px; border-radius: 2px;
+      border: 1px solid #d9d9d9; background: #fafafa; color: #8c8c8c;
+      cursor: pointer; font-size: 11px; white-space: nowrap;
+    }
+    .merge-dd-toggle:hover { border-color: #bfbfbf; color: #595959; background: #f5f5f5; }
+    .merge-dd.open .merge-dd-toggle { border-color: #36cfc9; color: #08979c; background: #e6fffb; }
 
     .status-bar {
       background: var(--card);
@@ -688,6 +722,7 @@
           详情：<a href="报关管理-预录单审核详情-MVP.html">预录单结构化 + 沟通</a> ·
           <a href="报关管理-预录审核详情-兼容-MVP.html?tab=customs">提单详情 · 清报关</a> ·
           <a href="报关管理-做资料分票核准-MVP.html"><strong>做资料分票核准</strong></a> ·
+          <a href="../产品部门/关务组/关务组-预录工作台-报关单号母子表-MVP.html" title="合并报关主工作台">预录工作台 · 合并报关</a> ·
           <a href="报关管理-供应商上传审核-MVP.html">供应商上传审核</a> ·
           <a href="报关供应商-上传任务列表-MVP.html?token=ws-demo-qdgx-7d&scope=workspace">报关行协作入口</a> ·
           <a href="报关管理-流程图-MVP.html">业务流程图</a> ·
@@ -742,6 +777,9 @@
                 <option value="none">无标记</option>
               </select>
             </div>
+            <button type="button" class="more-filter" id="btnMoreFilter">更多筛选</button>
+          </div>
+          <div class="filter-grid filters-more" id="filtersMore">
             <div class="filter-item">
               <label>合并报关 <span class="badge-new">NEW</span></label>
               <select id="qMergeStatus">
@@ -751,21 +789,11 @@
                 <option value="none">未合并</option>
               </select>
             </div>
-            <button type="button" class="more-filter">更多筛选</button>
           </div>
         </section>
 
         <div class="toolbar" id="toolbar">
           <div class="toolbar-row">
-            <div class="tool-group" data-g="merge" data-show="declare">
-              <span class="tool-group-label">合并报关</span>
-              <button type="button" class="tool-btn merge outline" id="btnMergeMark">合并报关标记 <span class="badge-new">NEW</span></button>
-              <button type="button" class="tool-btn merge" id="btnMergeResplit">合并后再分票 <span class="badge-new">NEW</span></button>
-              <button type="button" class="tool-btn merge outline" id="btnMergeClear">取消合并标记</button>
-              <button type="button" class="tool-btn outline">单独报关</button>
-              <button type="button" class="tool-btn danger">取消报关</button>
-            </div>
-
             <div class="tool-group" data-g="check" data-show="check">
               <span class="tool-group-label">查验</span>
               <button type="button" class="tool-btn check" id="btnCheckNotify" data-check-only>一键通知客户查验 <span class="badge-new">NEW</span></button>
@@ -787,6 +815,17 @@
               <button type="button" class="tool-btn check outline" data-legacy data-tab-focus="check">报关查验</button>
               <button type="button" class="tool-btn release" data-legacy data-tab-focus="wait cleared released" id="btnFetch">放行资料抓取<span class="rv rv-yes" title="#10">10</span></button>
               <a class="tool-btn release outline" href="报关管理-做资料分票核准-MVP.html?ro=1" style="display:inline-flex;align-items:center;text-decoration:none" title="进做资料分票查看核准标记">做资料分票 <span class="badge-new">NEW</span></a>
+              <div class="merge-dd" id="mergeDd" title="合并报关主流程在预录工作台；此处为次要入口">
+                <button type="button" class="merge-dd-toggle" id="btnMergeToggle">更多 · 合并报关 ▾</button>
+                <div class="menu">
+                  <div class="menu-hint">主工作台：<a href="../产品部门/关务组/关务组-预录工作台-报关单号母子表-MVP.html">预录工作台</a></div>
+                  <button type="button" id="btnMergeMark">合并报关标记 <span class="badge-new">NEW</span></button>
+                  <button type="button" id="btnMergeResplit">合并后再分票 <span class="badge-new">NEW</span></button>
+                  <button type="button" id="btnMergeClear">取消合并标记</button>
+                  <button type="button">单独报关</button>
+                  <button type="button" class="danger">取消报关</button>
+                </div>
+              </div>
             </div>
             <span class="cur" id="toolbarCurTab">当前：待放行</span>
           </div>
@@ -2567,10 +2606,7 @@
         if (ntBtn) ntBtn.style.display = onCheck ? "" : "none";
         if (dispBtn) dispBtn.style.display = onCheck ? "" : "none";
 
-        var focusG = "declare";
-        if (onCheck) focusG = "check";
-        else if (tab === "wait" || tab === "cleared" || tab === "released" || tab === "all") focusG = "declare";
-        else focusG = "merge";
+        var focusG = onCheck ? "check" : "declare";
 
         document.querySelectorAll("#toolbar .tool-group").forEach(function (g) {
           var show = g.getAttribute("data-show") || "always";
@@ -2632,6 +2668,29 @@
           if (!e.target.closest("#uploadDd")) {
             var dd = document.getElementById("uploadDd");
             if (dd) dd.classList.remove("open");
+          }
+        });
+      }
+
+      var btnMoreFilter = document.getElementById("btnMoreFilter");
+      var filtersMore = document.getElementById("filtersMore");
+      if (btnMoreFilter && filtersMore) {
+        btnMoreFilter.addEventListener("click", function () {
+          var open = filtersMore.classList.toggle("open");
+          btnMoreFilter.classList.toggle("open", open);
+        });
+      }
+
+      var btnMergeToggle = document.getElementById("btnMergeToggle");
+      if (btnMergeToggle) {
+        btnMergeToggle.addEventListener("click", function (e) {
+          e.stopPropagation();
+          document.getElementById("mergeDd").classList.toggle("open");
+        });
+        document.addEventListener("click", function (e) {
+          if (!e.target.closest("#mergeDd")) {
+            var mdd = document.getElementById("mergeDd");
+            if (mdd) mdd.classList.remove("open");
           }
         });
       }

@@ -562,6 +562,52 @@
       width: auto; height: auto; padding: 0; margin: 0; border: none; border-radius: 0;
     }
     .form-item textarea { min-height: 72px; resize: vertical; }
+    .modal.ams-wide { width: min(1080px, 96vw); }
+    .ams-x {
+      border: none; background: transparent; font-size: 20px; color: #8c8c8c;
+      cursor: pointer; line-height: 1; padding: 0 4px; margin-left: 8px;
+    }
+    .ams-hd-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .ams-hd-tools[hidden],
+    #filingAmsPanel[hidden],
+    #filingIsfPanel[hidden] { display: none !important; }
+    .ams-hd-tools select { height: 28px; min-width: 140px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; }
+    .filing-sec { margin-bottom: 14px; }
+    .filing-sec h4 {
+      margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1890ff;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      border-left: 3px solid #1890ff; padding-left: 8px;
+    }
+    .filing-sec h4 .ams-hd-tools { margin-left: auto; }
+    .filing-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; }
+    .filing-grid.fg-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .filing-grid.fg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .filing-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filing-item .star { color: #ff4d4f; font-style: normal; margin-right: 2px; }
+    .filing-item input, .filing-item select, .filing-item textarea {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font-size: 12px;
+    }
+    .filing-item textarea { height: auto; min-height: 56px; padding: 6px 8px; resize: vertical; }
+    .filing-item.span-4 { grid-column: 1 / -1; }
+    .radio-row { display: flex; align-items: center; gap: 14px; height: 28px; font-size: 12px; }
+    .radio-row label { display: inline-flex; align-items: center; gap: 4px; margin: 0; color: var(--text); }
+    .party-tip {
+      padding: 6px 10px; margin-bottom: 8px; font-size: 12px; line-height: 1.55;
+      background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; color: #0050b3;
+    }
+    .box-tabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .box-chip {
+      display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px;
+      border-radius: 2px; background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; font-size: 12px;
+    }
+    .box-chip button {
+      border: none; background: transparent; color: #8c8c8c; cursor: pointer; padding: 0; line-height: 1; font-size: 12px;
+    }
+    .char-count { text-align: right; font-size: 11px; color: #8c8c8c; margin-top: 2px; }
+    .isf-row { display: grid; grid-template-columns: 1.4fr 1.6fr 0.9fr 0.9fr; gap: 8px 12px; margin-bottom: 8px; }
+    @media (max-width: 900px) {
+      .filing-grid, .filing-grid.fg-3, .isf-row { grid-template-columns: 1fr 1fr; }
+    }
     .hang-mode {
       display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center;
       margin: 0 0 8px; font-size: 12px;
@@ -1091,41 +1137,211 @@
     </div>
   </div>
 
-  <!-- 发 AMS / ISF（装柜前 · 船务） -->
+  <!-- 发 AMS / ISF：弹窗按现网「新增AMS」「新增ISF」，不另加字段 -->
   <div class="mask" id="amsMask" aria-hidden="true">
-    <div class="modal" role="dialog">
+    <div class="modal ams-wide" role="dialog">
       <div class="modal-hd">
-        <h3 id="amsTitle">发 AMS <span class="badge-new">新</span></h3>
-        <button type="button" class="tool-btn outline" id="amsClose">关闭</button>
+        <h3 id="amsTitle">新增AMS</h3>
+        <div class="ams-hd-tools" id="isfHdTools" hidden>
+          <select id="isfTpl" title="选择模板">
+            <option value="">请选择模板</option>
+            <option value="us-isf">常用美线 ISF-10</option>
+          </select>
+          <button type="button" class="tool-btn primary" id="isfTplSave">另存为模板</button>
+        </div>
+        <button type="button" class="ams-x" id="amsClose" aria-label="关闭">×</button>
       </div>
       <div class="modal-bd">
-        <div class="alert" id="amsTip">AMS / ISF 由船务在<strong>装柜前</strong>发送。舱单仍在报关管理发送。</div>
-        <div class="form-grid">
-          <div class="form-item full">
-            <label>适用提单</label>
-            <input id="amsTargets" readonly />
+        <div id="filingAmsPanel">
+          <div class="filing-sec">
+            <h4>基本信息</h4>
+            <div class="filing-grid">
+              <div class="filing-item"><label><i class="star">*</i>主提单号</label><input id="amsMbl" /></div>
+              <div class="filing-item"><label><i class="star">*</i>分代提单号</label><input id="amsHbl" /></div>
+              <div class="filing-item">
+                <label><i class="star">*</i>船公司scac</label>
+                <select id="amsScac">
+                  <option value="COSU">COSU</option>
+                  <option value="HLCU">HLCU</option>
+                  <option value="ONEY">ONEY</option>
+                  <option value="MSCU">MSCU</option>
+                  <option value="MEDU">MEDU</option>
+                  <option value="ZIMU">ZIMU</option>
+                  <option value="EGLV">EGLV</option>
+                  <option value="MAEU">MAEU</option>
+                </select>
+              </div>
+              <div class="filing-item"><label><i class="star">*</i>船名(英)</label><input id="amsVessel" /></div>
+              <div class="filing-item"><label><i class="star">*</i>航次</label><input id="amsVoy" /></div>
+              <div class="filing-item">
+                <label><i class="star">*</i>发货港</label>
+                <select id="amsPlace"><option value="">请选择发货港</option></select>
+              </div>
+              <div class="filing-item">
+                <label><i class="star">*</i>装货港</label>
+                <select id="amsPol"><option value="">请选择装货港</option></select>
+              </div>
+              <div class="filing-item">
+                <label><i class="star">*</i>卸货港</label>
+                <select id="amsPod"><option value="">请选择卸货港</option></select>
+              </div>
+              <div class="filing-item">
+                <label>中转港</label>
+                <select id="amsTrans"><option value="">请选择中转港</option></select>
+              </div>
+              <div class="filing-item"><label><i class="star">*</i>预计出发日期</label><input id="amsEtd" type="date" /></div>
+              <div class="filing-item"><label><i class="star">*</i>预计到达日期（卸港）</label><input id="amsEta" type="date" /></div>
+            </div>
           </div>
-          <div class="form-item">
-            <label>船名航次</label>
-            <input id="amsVoy" readonly />
+          <div class="filing-sec">
+            <h4>
+              收发通信息
+              <span class="ams-hd-tools">
+                <select id="amsTpl">
+                  <option value="">选择模板</option>
+                  <option value="us-ams">常用美线 AMS</option>
+                </select>
+                <button type="button" class="tool-btn primary" id="amsTplSave">保存模板</button>
+              </span>
+            </h4>
+            <div class="party-tip">提示：请务必确认与真实收发货人信息。否则，被目的港退网、产生罚款等后果由用户自行承担。</div>
+            <div class="filing-grid fg-3">
+              <div class="filing-item">
+                <label><i class="star">*</i>收货人名称</label>
+                <select id="amsCneeName"><option value="">请选择收货人名称</option><option>AMAZON.COM SERVICES LLC</option></select>
+              </div>
+              <div class="filing-item"><label><i class="star">*</i>收货人地址</label><textarea id="amsCneeAddr" rows="2" placeholder="请填写收货人地址"></textarea></div>
+              <div class="filing-item"><label>联系方式</label><input id="amsCneeContact" placeholder="请填写联系方式" /></div>
+              <div class="filing-item">
+                <label><i class="star">*</i>发货人名称</label>
+                <select id="amsShipperName"><option value="">请选择发货人名称</option><option>SHENZHEN XX TRADING CO LTD</option></select>
+              </div>
+              <div class="filing-item"><label>发货人地址</label><textarea id="amsShipperAddr" rows="2" placeholder="请填写发货人地址"></textarea></div>
+              <div class="filing-item"><label>联系方式</label><input id="amsShipperContact" placeholder="请填写联系方式" /></div>
+              <div class="filing-item">
+                <label><i class="star">*</i>通知人名称</label>
+                <select id="amsNotifyName"><option value="">请选择通知人名称</option><option>AMAZON.COM SERVICES LLC</option></select>
+              </div>
+              <div class="filing-item"><label><i class="star">*</i>通知人地址</label><textarea id="amsNotifyAddr" rows="2" placeholder="请填写通知人地址"></textarea></div>
+              <div class="filing-item"><label>联系方式</label><input id="amsNotifyContact" placeholder="请填写联系方式" /></div>
+            </div>
           </div>
-          <div class="form-item">
-            <label>柜号</label>
-            <input id="amsCntr" readonly />
+          <div class="filing-sec">
+            <div class="box-tabs" id="amsBoxTabs"></div>
+            <div class="filing-grid">
+              <div class="filing-item"><label><i class="star">*</i>箱号</label><input id="amsCntr" /></div>
+              <div class="filing-item"><label><i class="star">*</i>封号</label><input id="amsSeal" /></div>
+              <div class="filing-item">
+                <label><i class="star">*</i>箱型</label>
+                <select id="amsCtype">
+                  <option value="20GP">20尺普箱</option>
+                  <option value="20HC">20尺高箱</option>
+                  <option value="40GP">40尺普箱</option>
+                  <option value="40HQ">40尺高柜</option>
+                </select>
+              </div>
+            </div>
+            <div class="filing-grid fg-4" style="margin-top:8px">
+              <div class="filing-item"><label><i class="star">*</i>件数</label><input id="amsPcs" /></div>
+              <div class="filing-item"><label><i class="star">*</i>毛重</label><input id="amsGw" /></div>
+              <div class="filing-item"><label><i class="star">*</i>体积</label><input id="amsCbm" /></div>
+              <div class="filing-item">
+                <label><i class="star">*</i>包装单位</label>
+                <select id="amsPkg"><option value="">请选择包装单位</option><option value="CTNS">CARTONS</option><option value="PKGS">PACKAGES</option><option value="PLTS">PALLETS</option></select>
+              </div>
+            </div>
+            <div class="filing-item" style="margin-top:8px">
+              <label><i class="star">*</i>品名</label>
+              <textarea id="amsGoods" rows="4" placeholder="不可包含中文，小写字母，全角字符，不超过2000字符，如有多种获取，请用逗号分隔"></textarea>
+              <div class="char-count"><span id="amsGoodsN">0</span>/2000</div>
+            </div>
           </div>
-          <div class="form-item">
-            <label>装货港 / 卸货港</label>
-            <input id="amsPorts" readonly />
+        </div>
+
+        <div id="filingIsfPanel" hidden>
+          <div class="filing-sec">
+            <h4>ISF基本信息</h4>
+            <div class="filing-grid">
+              <div class="filing-item">
+                <label><i class="star">*</i>进口商类型</label>
+                <select id="isfImpType"><option value="">请选择进口商类型</option><option>Importer of Record</option><option>Consignee</option></select>
+              </div>
+              <div class="filing-item">
+                <label><i class="star">*</i>申报类型</label>
+                <div class="radio-row">
+                  <label><input type="radio" name="isfFileType" value="ISF-10" checked /> ISF-10</label>
+                </div>
+              </div>
+              <div class="filing-item">
+                <label><i class="star">*</i>提单类型</label>
+                <div class="radio-row">
+                  <label><input type="radio" name="isfBlType" value="House" checked /> House bill</label>
+                  <label><input type="radio" name="isfBlType" value="Ocean" /> Ocean bill</label>
+                </div>
+              </div>
+              <div class="filing-item"><label><i class="star">*</i>进口商 ID</label><input id="isfImpId" placeholder="请输入进口商ID" /></div>
+              <div class="filing-item">
+                <label>Bond Holder Type</label>
+                <select id="isfBondType"><option value="">请输入Bond Holder Type</option><option>Consignee</option><option>Principal</option><option>Shipper</option></select>
+              </div>
+              <div class="filing-item"><label><i class="star">*</i>Bond Holder ID</label><input id="isfBondId" placeholder="请输入Bond Holder ID" /></div>
+              <div class="filing-item">
+                <label><i class="star">*</i>收货人类型</label>
+                <select id="isfCneeType"><option value="">请选择收货人类型</option><option>Consignee</option><option>Importer of Record</option></select>
+              </div>
+              <div class="filing-item"><label><i class="star">*</i>HSCODE</label><input id="isfHs" placeholder="请输入HSCODE" /></div>
+              <div class="filing-item"><label><i class="star">*</i>AMS B/L NO</label><input id="isfAmsBl" placeholder="请输入AMS B/L NO" /></div>
+              <div class="filing-item"><label><i class="star">*</i>收货人 ID</label><input id="isfCneeId" placeholder="请输入收货人ID" /></div>
+            </div>
           </div>
-          <div class="form-item">
-            <label>预计开船</label>
-            <input id="amsEtd" readonly />
+          <div class="filing-sec">
+            <h4>出口方信息</h4>
+            <div class="isf-row">
+              <div class="filing-item"><label><i class="star">*</i>卖方公司</label><select id="isfSeller"><option value="">请选择卖方公司</option></select></div>
+              <div class="filing-item"><label>卖方地址</label><input id="isfSellerAddr" placeholder="请填写地址" /></div>
+              <div class="filing-item"><label>国家</label><input id="isfSellerCty" placeholder="请填写国家" /></div>
+              <div class="filing-item"><label>城市</label><input id="isfSellerCity" placeholder="请填写城市" /></div>
+            </div>
+            <div class="isf-row">
+              <div class="filing-item"><label><i class="star">*</i>装柜公司</label><select id="isfStuff"><option value="">请选择装柜公司</option></select></div>
+              <div class="filing-item"><label>装柜地址</label><input id="isfStuffAddr" placeholder="请填写装柜地址" /></div>
+              <div class="filing-item"><label>国家</label><input id="isfStuffCty" placeholder="请填写国家" /></div>
+              <div class="filing-item"><label>城市</label><input id="isfStuffCity" placeholder="请填写城市" /></div>
+            </div>
+            <div class="isf-row">
+              <div class="filing-item"><label><i class="star">*</i>工厂</label><select id="isfFactory"><option value="">请选择卖方公司</option></select></div>
+              <div class="filing-item"><label>工厂地址</label><input id="isfFactoryAddr" placeholder="请填写地址" /></div>
+              <div class="filing-item"><label>国家</label><input id="isfFactoryCty" placeholder="请填写国家" /></div>
+              <div class="filing-item"><label>城市</label><input id="isfFactoryCity" placeholder="请填写城市" /></div>
+            </div>
+            <div class="isf-row">
+              <div class="filing-item"><label><i class="star">*</i>拼箱公司</label><select id="isfConsol"><option value="">请选择拼箱公司</option></select></div>
+              <div class="filing-item"><label>拼箱地址</label><input id="isfConsolAddr" placeholder="请填写地址" /></div>
+              <div class="filing-item"><label>国家</label><input id="isfConsolCty" placeholder="请填写国家" /></div>
+              <div class="filing-item"><label>城市</label><input id="isfConsolCity" placeholder="请填写城市" /></div>
+            </div>
+          </div>
+          <div class="filing-sec">
+            <h4>进口方信息</h4>
+            <div class="isf-row">
+              <div class="filing-item"><label><i class="star">*</i>买方公司信息</label><select id="isfBuyer"><option value="">请选择买方公司信息</option></select></div>
+              <div class="filing-item"><label><i class="star">*</i>送达地址</label><input id="isfBuyerAddr" placeholder="请填写送达地址" /></div>
+              <div class="filing-item"><label>国家</label><input id="isfBuyerCty" placeholder="请填写国家" /></div>
+              <div class="filing-item"><label>城市</label><input id="isfBuyerCity" placeholder="请填写城市" /></div>
+            </div>
+            <div class="isf-row">
+              <div class="filing-item"><label><i class="star">*</i>送达公司</label><select id="isfRecv"><option value="">请选择送达公司</option></select></div>
+              <div class="filing-item"><label><i class="star">*</i>送达地址</label><input id="isfRecvAddr" placeholder="请填写送达地址" /></div>
+              <div class="filing-item"><label>国家</label><input id="isfRecvCty" placeholder="请填写国家" /></div>
+              <div class="filing-item"><label>城市</label><input id="isfRecvCity" placeholder="请填写城市" /></div>
+            </div>
           </div>
         </div>
       </div>
       <div class="modal-ft">
-        <button type="button" class="tool-btn outline" id="amsCancel">取消</button>
-        <button type="button" class="tool-btn primary" id="amsConfirm">确认发送</button>
+        <button type="button" class="tool-btn primary" id="amsSaveSubmit">保存并提交</button>
+        <button type="button" class="tool-btn primary" id="amsSubmit">提交</button>
+        <button type="button" class="tool-btn outline" id="amsCancel">关闭</button>
       </div>
     </div>
   </div>
@@ -3748,22 +3964,136 @@
         openIt();
       };
       var amsKind = "ams";
+      var amsBoxN = 1;
+      var AMS_PORT = {
+        CNSHA: "CNSHA上海港 (CNSHA)", CNTJN: "CNTJN天津港 (CNTJN)",
+        CNNGB: "CNNGB宁波港 (CNNGB)", CNYTN: "CNYTN盐田港 (CNYTN)",
+        CNTAO: "CNTAO青岛港 (CNTAO)", USNYC: "USNYC纽约港 (USNYC)",
+        USLAX: "USLAX洛杉矶港 (USLAX)", USLGB: "USLGB长滩港 (USLGB)",
+        USHOU: "USHOU休斯敦港 (USHOU)", USSAV: "USSAV萨凡纳港 (USSAV)"
+      };
+      var AMS_SCAC = { Hapag: "HLCU", COSCO: "COSU", MSC: "MSCU", ONE: "ONEY" };
+      function portLabel(code) {
+        if (!code) return "";
+        return AMS_PORT[code] || (code + " (" + code + ")");
+      }
+      function fillPortSelect(id, extra) {
+        var el = document.getElementById(id);
+        var keep = extra || [];
+        var codes = Object.keys(AMS_PORT);
+        keep.forEach(function (c) { if (c && codes.indexOf(c) < 0) codes.push(c); });
+        var ph = el.options[0] ? el.options[0].text : "请选择";
+        el.innerHTML = '<option value="">' + ph + "</option>";
+        codes.forEach(function (c) { el.appendChild(new Option(portLabel(c), c)); });
+      }
+      function datePart(s) {
+        return (s || "").toString().slice(0, 10);
+      }
+      function addDays(ymd, n) {
+        if (!ymd) return "";
+        var d = new Date(ymd.replace(/-/g, "/") + " 00:00:00");
+        if (isNaN(d.getTime())) return "";
+        d.setDate(d.getDate() + n);
+        var m = d.getMonth() + 1, day = d.getDate();
+        return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+      }
+      function splitVoy(voy) {
+        var t = (voy || "").trim().split(/\s+/);
+        if (t.length < 2) return { vessel: voy || "", voy: voy || "" };
+        return { vessel: t.slice(0, -1).join(" "), voy: t[t.length - 1] };
+      }
+      function fillCompanySelect(id, placeholder) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = '<option value="">' + (placeholder || "请选择") + "</option>";
+        ["SHENZHEN XX TRADING CO LTD", "AMAZON.COM SERVICES LLC", "PACIFIC TRADE LOGISTICS LLC"].forEach(function (n) {
+          el.appendChild(new Option(n, n));
+        });
+      }
+      function renderAmsBoxTabs() {
+        var html = "";
+        for (var i = 1; i <= amsBoxN; i++) {
+          html += '<span class="box-chip">箱号' + i +
+            (amsBoxN > 1 ? '<button type="button" data-rm="' + i + '" aria-label="删除">×</button>' : "") +
+            "</span>";
+        }
+        html += '<button type="button" class="tool-btn primary" id="amsAddBox">+添加箱号</button>';
+        document.getElementById("amsBoxTabs").innerHTML = html;
+      }
       function openAmsIsf(kind) {
         var rows = checkedRows();
         if (!rows.length) { toast("请先勾选提单"); return; }
         if (rows.length > 1) { toast("请只勾选一票提单发送 " + kind.toUpperCase()); return; }
         amsKind = kind;
         var r = rows[0];
-        document.getElementById("amsTitle").innerHTML = (kind === "ams" ? "发 AMS" : "发 ISF") + ' <span class="badge-new">新</span>';
-        var loaded = loadStatus(r) === "装完";
-        document.getElementById("amsTip").innerHTML = loaded
-          ? "本票<strong>已装柜</strong>。AMS/ISF 宜在装柜前发送，仍可补发。舱单在报关管理发送。"
-          : "AMS / ISF 由船务在<strong>装柜前</strong>发送。舱单仍在报关管理发送。";
-        document.getElementById("amsTargets").value = r.bl + " / " + r.cntr;
-        document.getElementById("amsVoy").value = r.voy || "—";
-        document.getElementById("amsCntr").value = r.cntr || "—";
-        document.getElementById("amsPorts").value = (r.pol || "—") + " → " + (r.pod || "—");
-        document.getElementById("amsEtd").value = r.etd || "—";
+        var isAms = kind === "ams";
+        document.getElementById("amsTitle").textContent = isAms ? "新增AMS" : "新增ISF";
+        document.getElementById("isfHdTools").hidden = isAms;
+        document.getElementById("filingAmsPanel").hidden = !isAms;
+        document.getElementById("filingIsfPanel").hidden = isAms;
+        if (isAms) {
+          amsBoxN = 1;
+          fillPortSelect("amsPlace", [r.pol, r.pod]);
+          fillPortSelect("amsPol", [r.pol]);
+          fillPortSelect("amsPod", [r.pod]);
+          fillPortSelect("amsTrans", [r.transitPort]);
+          document.getElementById("amsMbl").value = r.bl || "";
+          document.getElementById("amsHbl").value = r.cntr || "";
+          document.getElementById("amsScac").value = AMS_SCAC[r.carrier] || "MEDU";
+          var sv = splitVoy(r.voy);
+          document.getElementById("amsVessel").value = sv.vessel;
+          document.getElementById("amsVoy").value = sv.voy;
+          document.getElementById("amsPlace").value = r.pol || "";
+          document.getElementById("amsPol").value = r.pol || "";
+          document.getElementById("amsPod").value = r.pod || "";
+          document.getElementById("amsTrans").value = "";
+          document.getElementById("amsEtd").value = datePart(r.etd);
+          document.getElementById("amsEta").value = addDays(datePart(r.etd), 30);
+          document.getElementById("amsCneeName").value = "";
+          document.getElementById("amsCneeAddr").value = "";
+          document.getElementById("amsCneeContact").value = "";
+          document.getElementById("amsShipperName").value = "";
+          document.getElementById("amsShipperAddr").value = "";
+          document.getElementById("amsShipperContact").value = "";
+          document.getElementById("amsNotifyName").value = "";
+          document.getElementById("amsNotifyAddr").value = "";
+          document.getElementById("amsNotifyContact").value = "";
+          document.getElementById("amsTpl").value = "";
+          document.getElementById("amsCntr").value = r.cntr || "";
+          document.getElementById("amsSeal").value = r.seal || "";
+          document.getElementById("amsCtype").value = r.type === "20GP" ? "20GP" : (r.type === "40HQ" ? "40HQ" : (r.type || "40HQ"));
+          document.getElementById("amsPcs").value = r.type === "20GP" ? "756" : "1100";
+          document.getElementById("amsGw").value = r.type === "20GP" ? "10580.709" : "18500.000";
+          document.getElementById("amsCbm").value = r.type === "20GP" ? "73.22" : "68.00";
+          document.getElementById("amsPkg").value = "";
+          document.getElementById("amsGoods").value = "";
+          document.getElementById("amsGoodsN").textContent = "0";
+          renderAmsBoxTabs();
+        } else {
+          document.getElementById("isfTpl").value = "";
+          document.getElementById("isfImpType").value = "";
+          document.querySelector('input[name="isfFileType"][value="ISF-10"]').checked = true;
+          document.querySelector('input[name="isfBlType"][value="House"]').checked = true;
+          document.getElementById("isfImpId").value = r.impCode || "";
+          document.getElementById("isfBondType").value = "";
+          document.getElementById("isfBondId").value = "";
+          document.getElementById("isfCneeType").value = "";
+          document.getElementById("isfHs").value = "";
+          document.getElementById("isfAmsBl").value = r.bl || "";
+          document.getElementById("isfCneeId").value = "";
+          ["isfSeller", "isfStuff", "isfFactory", "isfConsol", "isfBuyer", "isfRecv"].forEach(function (id) {
+            var ph = document.getElementById(id).options[0] ? document.getElementById(id).options[0].text : "请选择";
+            fillCompanySelect(id, ph);
+          });
+          ["isfSellerAddr", "isfSellerCty", "isfSellerCity",
+            "isfStuffAddr", "isfStuffCty", "isfStuffCity",
+            "isfFactoryAddr", "isfFactoryCty", "isfFactoryCity",
+            "isfConsolAddr", "isfConsolCty", "isfConsolCity",
+            "isfBuyerAddr", "isfBuyerCty", "isfBuyerCity",
+            "isfRecvAddr", "isfRecvCty", "isfRecvCity"].forEach(function (id) {
+            document.getElementById(id).value = "";
+          });
+        }
         document.getElementById("amsMask").classList.add("open");
         document.getElementById("amsMask").setAttribute("aria-hidden", "false");
       }
@@ -3771,25 +4101,53 @@
         document.getElementById("amsMask").classList.remove("open");
         document.getElementById("amsMask").setAttribute("aria-hidden", "true");
       }
-      document.getElementById("btnAms").onclick = function () { openAmsIsf("ams"); };
-      document.getElementById("btnIsf").onclick = function () { openAmsIsf("isf"); };
-      document.getElementById("amsClose").onclick = closeAmsIsf;
-      document.getElementById("amsCancel").onclick = closeAmsIsf;
-      document.getElementById("amsMask").addEventListener("click", function (e) {
-        if (e.target === this) closeAmsIsf();
-      });
-      document.getElementById("amsConfirm").onclick = function () {
+      function submitAmsIsf() {
         var rows = checkedRows();
         if (!rows.length) { toast("请先勾选提单"); return; }
         var r = rows[0];
-        if (amsKind === "ams") r.ams = true;
-        else r.isf = true;
+        if (amsKind === "ams") {
+          if (!document.getElementById("amsMbl").value.trim()) { toast("请填写主提单号"); return; }
+          r.ams = true;
+        } else {
+          if (!document.getElementById("isfAmsBl").value.trim()) { toast("请填写 AMS B/L NO"); return; }
+          r.isf = true;
+        }
         addLog(r, amsKind === "ams" ? "发AMS" : "发ISF",
           (amsKind === "ams" ? "AMS" : "ISF") + " 已发（装柜前 · 船务）· " + r.bl);
         closeAmsIsf();
         toast("已标记" + (amsKind === "ams" ? "AMS" : "ISF") + "已发 · " + r.bl + "（示意，不连报文网关）");
         render();
+      }
+      document.getElementById("btnAms").onclick = function () { openAmsIsf("ams"); };
+      document.getElementById("btnIsf").onclick = function () { openAmsIsf("isf"); };
+      document.getElementById("amsClose").onclick = closeAmsIsf;
+      document.getElementById("amsCancel").onclick = closeAmsIsf;
+      document.getElementById("amsSaveSubmit").onclick = submitAmsIsf;
+      document.getElementById("amsSubmit").onclick = submitAmsIsf;
+      document.getElementById("amsTplSave").onclick = function () { toast("模板已保存（示意）"); };
+      document.getElementById("isfTplSave").onclick = function () { toast("模板已保存（示意）"); };
+      document.getElementById("amsTpl").onchange = function () {
+        if (!this.value) return;
+        toast("已套用模板（示意）");
       };
+      document.getElementById("isfTpl").onchange = function () {
+        if (!this.value) return;
+        toast("已套用模板（示意）");
+      };
+      document.getElementById("amsGoods").addEventListener("input", function () {
+        var v = this.value || "";
+        if (v.length > 2000) this.value = v.slice(0, 2000);
+        document.getElementById("amsGoodsN").textContent = String((this.value || "").length);
+      });
+      document.getElementById("amsBoxTabs").addEventListener("click", function (e) {
+        var add = e.target.closest("#amsAddBox");
+        if (add) { amsBoxN += 1; renderAmsBoxTabs(); return; }
+        var rm = e.target.getAttribute("data-rm");
+        if (rm) {
+          amsBoxN = Math.max(1, amsBoxN - 1);
+          renderAmsBoxTabs();
+        }
+      });
       document.getElementById("itClose").onclick = closeIt;
       document.getElementById("itCancel").onclick = closeIt;
       document.getElementById("itMask").addEventListener("click", function (e) {

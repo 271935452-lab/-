@@ -275,7 +275,7 @@ COVER = r'''    <section class="hero">
           <tr><td>发 AMS / 发 ISF</td><td>改由船务提单管理装柜前发送。报关执行只读展示已发标</td><td class="proto"><a href="../船务/船务组-提单管理-按周分组与分配-MVP.html">船务提单管理</a></td></tr>
           <tr><td>按分票号查委托</td><td>已对接报关行不按分票号查询委托。报关行自行匹配电子委托书</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">报关执行</a></td></tr>
           <tr><td>待放行及之后改报关行</td><td>待放行、已放行不可改。改单已撤销后可改再重发</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
-          <tr><td>清关查验通知邮件 / 站内待办</td><td>FYI only。客户与业务员无需操作/补资料/回复。不做邮件、不转客户待办</td><td class="proto"><a href="../../清关管理-MVP.html">清关管理</a></td></tr>
+          <tr><td>清关查验通知邮件 / 站内待办</td><td>发给业务员/客服。文案只同步查验进度，不强调是否转发客户。不做邮件、不建客户待办</td><td class="proto"><a href="../../清关管理-MVP.html">清关管理</a></td></tr>
           <tr><td>已核准作为报关执行状态</td><td>「已核准」只在做资料分票页内标记。执行侧仅入口</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">做资料分票</a></td></tr>
           <tr><td>做资料「比对」操作列 / 差异处置 / 打开预录附件 #04 / 页头进数来源卡</td><td>已从原型去掉，规则在分册。点行看比对。#04 走通道①列表或清报关附件</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">做资料分票</a></td></tr>
           <tr><td>预录工作台催办态</td><td>委托标记仅 无标记 / 未委托 / 已委托。不做已催办、已标记·催客户</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
@@ -340,7 +340,7 @@ COVER = r'''    <section class="hero">
           <tr><td>发 AMS / ISF</td><td>船务提单管理装柜前发。关务列表只读已发标</td><td class="proto"><a href="../船务/船务组-提单管理-按周分组与分配-MVP.html">船务提单管理</a></td></tr>
           <tr><td>放行抓取 #10</td><td>主键报关编号。抓齐后自动「报关放行」（未布控）</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">报关执行</a></td></tr>
           <tr><td>报关查验 #11</td><td>本期不对接，手登。一键通知客户 / 查验处置。与清关查验通知口径分开：出口报关查验可通知；清关查验 FYI</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html?tab=check">报关查验</a></td></tr>
-          <tr><td>清关查验通知</td><td>FYI。不发邮件、不建客户待办。接收人：业务员+客服 / 仅业务员 / 仅客服</td><td class="proto"><a href="../../清关管理-MVP.html">清关管理</a></td></tr>
+          <tr><td>清关查验通知</td><td>发给业务员/客服。文案不写请转发/无需转发客户。不发邮件、不建客户待办。接收人：业务员+客服 / 仅业务员 / 仅客服</td><td class="proto"><a href="../../清关管理-MVP.html">清关管理</a></td></tr>
           <tr><td>电子委托 #12</td><td>不按分票号查。已对接自行匹配回传；未对接三值标记+截图</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
           <tr><td>改报关行</td><td>待放行及之后不可改（含已放行）。改单已撤销仍可改再重发</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
           <tr><td>海放 / 码放</td><td>订阅回写船务业务标记。关务仍用清关放行粗状态</td><td class="proto"><a href="../船务/船务组-提单管理-按周分组与分配-MVP.html">船务列表</a></td></tr>
