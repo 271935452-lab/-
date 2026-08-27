@@ -51,7 +51,7 @@
     .page-hd p { margin: 0; color: var(--sub); line-height: 1.55; }
 
     .summary {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px;
     }
     @media (max-width: 900px) { .summary { grid-template-columns: 1fr 1fr; } }
     .sum-card {
@@ -60,9 +60,39 @@
     .sum-card .k { color: var(--sub); font-size: 11px; }
     .sum-card .v { font-weight: 700; font-size: 14px; margin-top: 2px; word-break: break-all; }
     .sum-card.teal { border-top: 3px solid #13c2c2; }
-    .sum-card.purple { border-top: 3px solid var(--ch2); }
     .sum-card.blue { border-top: 3px solid var(--blue); }
     .sum-card.orange { border-top: 3px solid var(--warn); }
+    .sum-card.ok { border-top: 3px solid var(--ok); }
+    .st-field {
+      display: flex; align-items: center; gap: 8px; margin-top: 6px;
+    }
+    .st-field label { color: var(--sub); font-size: 11px; white-space: nowrap; }
+    .st-field input {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 10px; font: inherit; font-weight: 700; color: #8c8c8c;
+      background: #fafafa; width: 120px; cursor: default;
+    }
+    .st-field input.marked {
+      color: #389e0d; background: #f6ffed; border-color: #b7eb8f;
+    }
+    .mark-hint { margin: 6px 0 0; font-size: 11px; color: var(--sub); line-height: 1.45; }
+    body.is-ro .btn.ok, body.is-ro .btn.warn, body.is-ro .btn.primary,
+    body.is-ro .btn.new, body.is-ro .btn.ch1, body.is-ro .btn.ch2,
+    body.is-ro #btnAddDecl, body.is-ro #btnMoveUp, body.is-ro #btnMoveDown,
+    body.is-ro #btnDel {
+      opacity: 0.4; pointer-events: none;
+    }
+    body.is-ro input[type="number"], body.is-ro .grid input {
+      background: #f5f5f5; pointer-events: none;
+    }
+    body.is-ro .ro-banner {
+      display: block;
+    }
+    .ro-banner {
+      display: none; margin: 0 0 8px; padding: 8px 12px;
+      background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d;
+      border-radius: 2px; font-size: 12px;
+    }
 
     .bind-strip {
       background: #fff; border: 1px solid var(--line); border-radius: 2px;
@@ -142,8 +172,9 @@
     table.grid tr.buy-row td { background: #fffbe6; }
     table.grid tr.sum-row td { background: #f6ffed; font-weight: 700; }
     table.grid tr.mismatch td { background: #fff1f0; }
+    table.grid tr.is-sel td { outline: 2px solid #91d5ff; outline-offset: -2px; background: #e6f7ff; }
+    table.grid tr.is-sel.mismatch td { background: #fff1f0; }
     table.grid .ro { color: var(--sub); }
-    .row-acts { display: flex; gap: 4px; flex-wrap: wrap; }
     .link-btn {
       border: none; background: none; color: var(--blue); cursor: pointer; font: inherit; padding: 0;
     }
@@ -194,7 +225,9 @@
         按<a href="../产品部门/各组sop/关务组-资料核准双通道-流程与页面设计.html">双核准通道</a>落资料员做资料：
         <strong>报关件</strong>取报关行预录结构化（通道②优先）；
         <strong>最后一票固定买单</strong> = 终配合计（可调） − Σ报关件；
-        总重量 / 总方数 / 总件数支持调整并留痕。分单号可联动
+        总重量 / 总方数 / 总件数支持调整并留痕。
+        <strong>已核准是本页标记</strong>，资料岗点「核准通过」写入；报关执行不设核准状态。
+        分单号可联动
         <a href="报关管理-列表-MVP.html?tab=push">自动生成</a>。
       </p>
     </div>
@@ -208,15 +241,17 @@
         <div class="k">船司 × 港口 · 报关行</div>
         <div class="v">COSCO · 上海 · 青岛港兴</div>
       </div>
-      <div class="sum-card purple">
-        <div class="k">进数来源（双通道）</div>
-        <div class="v">通道② 预录结构化优先</div>
-      </div>
-      <div class="sum-card orange">
-        <div class="k">核准状态</div>
-        <div class="v" id="approveStatus">待核准 · 差异 2</div>
+      <div class="sum-card orange" id="stCard">
+        <div class="k">核准标记</div>
+        <div class="v" id="approveStatus">未标记</div>
+        <div class="st-field">
+          <label>标记</label>
+          <input id="stField" value="未标记" readonly tabindex="-1" />
+        </div>
+        <p class="mark-hint" id="markHint">资料岗在本页点「核准通过」写入。报关执行不设此状态。</p>
       </div>
     </div>
+    <div class="ro-banner" id="roBanner">报关执行仅入口：核准标记在本页。「已核准」后分票锁定，不可再改。</div>
     <div class="bind-strip">
       <div><span class="k">进口商</span><span class="v">Pacific Trade Logistics LLC · IMP-US-2024-018</span></div>
       <div><span class="k">清关行</span><span class="v">精准</span></div>
@@ -227,7 +262,6 @@
       <div class="bar">
         <div>分票数据表 · COSU6502971850 · 终配 260609-青岛T25-1</div>
         <div class="acts">
-          <button type="button" class="btn ghost" id="btnOpenAttach">打开预录附件 #04</button>
           <button type="button" class="btn ghost" id="btnHouse">分单号自动生成</button>
           <button type="button" class="btn warn" id="btnReject">退回修改</button>
           <button type="button" class="btn ok" id="btnApprove">核准通过</button>
@@ -247,7 +281,7 @@
 
       <div class="hint">
         <strong>规则：</strong>① 柜级合计（总件/总重/总方）以<strong>终配</strong>为准，支持调整留痕；
-        ② 报关件行数据取<strong>报关行预录件</strong>（通道②），可与下单/识别结果 diff；
+        ② 报关件行数据取<strong>报关行预录件</strong>（通道②），可与报关资料/识别结果 diff；
         ③ <strong>最后一票固定为买单</strong>，件数/毛重/方数 = 合计 − Σ其他报关件（只读自动算）；
         ④ 支持调整报关件顺序（末票始终买单）、增删报关件后即时重算。
         品牌授权比对已移除：查货侧提前确认侵权；本页核准不卡授权。
@@ -272,7 +306,7 @@
       <div class="body-grid">
         <div class="col">
           <h3>分票清单 <span class="badge new">NEW</span></h3>
-          <div class="src">报关件 = 预录件信息 · 买单 = 轧差（始终最后一行）</div>
+          <div class="src">报关件 = 预录件信息 · 买单 = 轧差（始终最后一行）· <strong>点击报关件行</strong>即看右侧比对</div>
           <div style="overflow:auto">
             <table class="grid" id="splitTable">
               <thead>
@@ -286,7 +320,6 @@
                   <th>毛重</th>
                   <th>方数</th>
                   <th>预录核对</th>
-                  <th>操作</th>
                 </tr>
               </thead>
               <tbody id="splitBody"></tbody>
@@ -304,10 +337,10 @@
 
         <div class="col">
           <h3><span class="badge ch2">通道②</span> 预录结构化 · 字段比对</h3>
-          <div class="src">基准=下单资料；对照=报关行预录（当前选中报关件）· 比对品名/HS/件毛体/<strong>申报金额</strong>/<strong>报关方式</strong>（不含抬头）· 买单行不比对预录</div>
+          <div class="src">基准=报关资料；对照=报关行预录（当前选中报关件，点行切换）· 比对品名/HS/件毛体/<strong>申报金额</strong>/<strong>报关方式</strong>（不含抬头）· 买单行不比对预录</div>
           <table class="grid diff" id="diffTable">
             <thead>
-              <tr><th>字段</th><th>下单（基准）</th><th>预录（报关侧）</th><th>结果</th></tr>
+              <tr><th>字段</th><th>报关资料基准</th><th>预录（报关侧）</th><th>结果</th></tr>
             </thead>
             <tbody id="diffBody"></tbody>
           </table>
@@ -319,13 +352,6 @@
             <div class="item"><span><a href="#">装箱单-票1.xlsx</a></span><span>已识别 · 91%</span></div>
             <div class="item"><span><a href="#">预录单_YL8891.pdf</a></span><span>#04 回传 · 对照</span></div>
           </div>
-
-          <h3 style="margin-top:14px">差异处置</h3>
-          <div class="src">不一致项需处置后才可「核准通过」；买单行仅校验轧差非负</div>
-          <table class="grid">
-            <thead><tr><th>差异</th><th>建议</th><th>处置</th></tr></thead>
-            <tbody id="disposeBody"></tbody>
-          </table>
         </div>
       </div>
     </div>
@@ -440,8 +466,8 @@
       var mismatch = r.order.pcs !== r.pre.pcs || r.order.hs !== r.pre.hs
         || String(r.order.amount) !== String(r.pre.amount)
         || String(r.order.method) !== String(r.pre.method);
-      var sel = selected === i ? " background:#e6f7ff;" : "";
-      return '<tr class="' + (mismatch ? "mismatch" : "") + '" data-i="' + i + '" style="cursor:pointer;' + sel + '">' +
+      var selCls = selected === i ? " is-sel" : "";
+      return '<tr class="' + (mismatch ? "mismatch" : "") + selCls + '" data-i="' + i + '" style="cursor:pointer">' +
         "<td>" + (i + 1) + "</td>" +
         '<td><span class="badge ch2">报关件</span></td>' +
         "<td>" + r.houseNo + "</td>" +
@@ -452,7 +478,6 @@
         '<td><input data-f="cbm" data-i="' + i + '" type="number" step="0.000001" value="' + r.cbm + '" /></td>' +
         "<td>" + (mismatch ? '<span class="mark bad">与预录/下单有差</span>' : '<span class="mark ok">与预录一致</span>') +
         "<div class='ro'>" + r.preNo + "</div></td>" +
-        '<td class="row-acts"><button type="button" class="link-btn" data-sel="' + i + '">比对</button></td>' +
         "</tr>";
     }).join("");
 
@@ -467,7 +492,6 @@
       '<td class="ro">' + buy.w + "</td>" +
       '<td class="ro">' + buy.cbm + "</td>" +
       '<td class="ro">由终配合计轧差 · 无预录</td>' +
-      "<td>—</td>" +
       "</tr>";
 
     rows +=
@@ -476,14 +500,13 @@
       "<td>" + totals.pcs + "</td>" +
       "<td>" + totals.w + "</td>" +
       "<td>" + totals.cbm + "</td>" +
-      "<td colspan='2'>" + (neg ? "轧差异常" : "已对齐") + "</td>" +
+      "<td>" + (neg ? "轧差异常" : "已对齐") + "</td>" +
       "</tr>";
 
     document.getElementById("splitBody").innerHTML = rows;
     document.getElementById("adjLog").innerHTML = logs.map(function (x) { return "<div>" + x + "</div>"; }).join("");
 
     renderDiff();
-    renderDispose();
   }
 
   function renderDiff() {
@@ -514,48 +537,13 @@
     }).join("");
     document.getElementById("diffStat").textContent =
       "差异 " + mismatchN + " · 一致 " + (fields.length - mismatchN) + " · 买单自动轧差";
-    document.getElementById("approveStatus").textContent =
-      mismatchN ? "待核准 · 差异 " + mismatchN : "可核准 · 报关件一致";
-  }
-
-  function renderDispose() {
-    var r = decls[selected];
-    var rows = [];
-    if (!r) {
-      document.getElementById("disposeBody").innerHTML = "<tr><td colspan='3'>—</td></tr>";
-      return;
-    }
-    if (r.order.hs !== r.pre.hs) {
-      rows.push(["HS " + r.order.hs + "↔" + r.pre.hs, "采纳预录并改下单 / 退回客户", "采纳预录"]);
-    }
-    if (r.order.pcs !== r.pre.pcs) {
-      rows.push(["件数 " + r.order.pcs + "↔" + r.pre.pcs, "以预录为准写入报关件并重算买单", "以预录为准"]);
-    }
-    if (String(r.order.amount) !== String(r.pre.amount)) {
-      rows.push(["申报金额 " + r.order.amount + "↔" + r.pre.amount, "核对发票/合同；以预录或下单择一写回", "核对金额"]);
-    }
-    if (String(r.order.method) !== String(r.pre.method)) {
-      rows.push(["报关方式 " + r.order.method + "↔" + r.pre.method, "确认一般贸易 / 买单报关等口径后统一", "统一方式"]);
-    }
-    if (!rows.length) {
-      rows.push(["无差异", "可核准通过", "—"]);
-    }
-    document.getElementById("disposeBody").innerHTML = rows.map(function (x) {
-      return "<tr><td>" + x[0] + "</td><td>" + x[1] + "</td><td>" +
-        (x[2] === "以预录为准"
-          ? '<button type="button" class="link-btn" id="btnAdoptPre">采纳预录件数</button>'
-          : x[2]) +
-        "</td></tr>";
-    }).join("");
-    var adopt = document.getElementById("btnAdoptPre");
-    if (adopt) {
-      adopt.onclick = function () {
-        r.pcs = r.pre.pcs;
-        r.order.pcs = r.pre.pcs;
-        pushLog("采纳预录件数 → " + r.pcs + "，已重算买单");
-        render();
-        toast("已按预录更新报关件件数并重算买单");
-      };
+    if (!window.__splitLocked) {
+      var hint = document.getElementById("markHint");
+      if (hint) {
+        hint.textContent = mismatchN
+          ? "差异 " + mismatchN + "。资料岗在本页点「核准通过」写入已核准标记；报关执行不设此状态。"
+          : "报关件已一致。点「核准通过」写入本页已核准标记。";
+      }
     }
   }
 
@@ -579,18 +567,24 @@
     toast("已重算买单轧差");
   };
 
+  function paintSel() {
+    document.querySelectorAll("#splitBody tr[data-i]").forEach(function (tr) {
+      tr.classList.toggle("is-sel", +tr.getAttribute("data-i") === selected);
+    });
+  }
+
   document.getElementById("splitBody").addEventListener("click", function (e) {
     var tr = e.target.closest("tr[data-i]");
-    var btn = e.target.closest("[data-sel]");
-    if (btn) {
-      selected = +btn.getAttribute("data-sel");
-      render();
+    if (!tr) return;
+    var i = +tr.getAttribute("data-i");
+    if (selected === i) return;
+    selected = i;
+    if (e.target.closest("input,select,textarea")) {
+      paintSel();
+      renderDiff();
       return;
     }
-    if (tr) {
-      selected = +tr.getAttribute("data-i");
-      render();
-    }
+    render();
   });
 
   document.getElementById("splitBody").addEventListener("change", function (e) {
@@ -600,7 +594,6 @@
     var f = inp.getAttribute("data-f");
     var old = decls[i][f];
     decls[i][f] = Number(inp.value);
-    // 手工改报关件量时，同步预录侧展示值（示意：资料员确认以预录为准时可再点采纳）
     pushLog("改报关件#" + (i + 1) + " " + f + "：" + old + " → " + decls[i][f] + "，买单已重算");
     render();
   });
@@ -656,9 +649,6 @@
   document.getElementById("btnReOcr").onclick = function () {
     toast("已触发附件识别（通道① · 示意）");
   };
-  document.getElementById("btnOpenAttach").onclick = function () {
-    location.href = "报关管理-预录审核详情-兼容-MVP.html?tab=customs";
-  };
   document.getElementById("btnHouse").onclick = function () {
     location.href = "报关管理-列表-MVP.html?tab=push";
   };
@@ -676,12 +666,36 @@
         || String(r.order.amount) !== String(r.pre.amount)
         || String(r.order.method) !== String(r.pre.method);
     });
-    if (hasDiff && !confirm("仍有字段差异未全部处置，确定核准通过？")) return;
-    toast("核准通过：分票+买单已锁定，可进入舱单链（示意）");
-    document.getElementById("approveStatus").textContent = "已核准";
+    if (hasDiff && !confirm("字段比对仍有不一致，确定核准通过？")) return;
+    toast("已写入核准标记「已核准」，分票锁定");
+    setApproved();
     pushLog("核准通过");
     render();
   };
+
+  function setApproved() {
+    window.__splitLocked = true;
+    document.getElementById("approveStatus").textContent = "已核准";
+    var st = document.getElementById("stField");
+    st.value = "已核准";
+    st.classList.add("marked");
+    var hint = document.getElementById("markHint");
+    if (hint) hint.textContent = "本页已标记已核准，分票锁定。报关执行不另设核准状态。";
+    var card = document.getElementById("stCard");
+    if (card) {
+      card.classList.remove("orange");
+      card.classList.add("ok");
+    }
+  }
+
+  (function applyRo() {
+    var q = new URLSearchParams(location.search);
+    if (q.get("ro") !== "1") return;
+    document.body.classList.add("is-ro");
+    setApproved();
+    document.getElementById("roBanner").style.display = "block";
+    document.title = "报关管理 · 做资料分票（核准标记 · 已核准）";
+  })();
 
   render();
 })();

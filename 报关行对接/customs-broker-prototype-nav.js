@@ -14,8 +14,6 @@
       label: "报关管理",
       links: [
         { file: "报关管理-列表-MVP.html", label: "报关执行列表（已排柜）" },
-        { file: "报关管理-列表-MVP.html?tab=unbound", label: "未绑分单号" },
-        { file: "报关管理-列表-MVP.html?tab=push", label: "分单号规则（待推送）" },
         { file: "分单号规则配置-MVP.html", label: "分单号规则配置" },
         { file: "报关管理-做资料分票核准-MVP.html", label: "做资料分票核准（买单·双通道）" },
         { file: "报关管理-供应商上传审核-MVP.html", label: "供应商上传审核" },
@@ -34,7 +32,6 @@
       links: [
         { file: "报关管理-预录单审核详情-MVP.html", label: "预录单结构化 + 沟通" },
         { file: "报关管理-预录审核详情-兼容-MVP.html", label: "提单详情（含清报关）" },
-        { file: "../产品部门/关务组/关务组-签入即预报资料-MVP.html", label: "预录工作台" },
         { file: "../产品部门/关务组/关务组-导航.html", label: "关务组导航" },
       ],
     },

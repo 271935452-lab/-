@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>报关管理（MVP · 含预录单对接）</title>
+  <title>报关管理（MVP · 申报/放行）</title>
   <style>
     :root {
       --header: #0b1f3a;
@@ -109,7 +109,6 @@
       display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center;
       padding: 4px 6px; border-radius: 3px; border: 1px solid transparent;
     }
-    .tool-group[data-g="common"] { background: #fafafa; border-color: #f0f0f0; }
     .tool-group[data-g="pre"] { background: #f9f0ff; border-color: #efdbff; }
     .tool-group[data-g="check"] { background: #fff7e6; border-color: #ffd591; }
     .tool-group[data-g="declare"] { background: #e6f7ff; border-color: #91d5ff; }
@@ -119,7 +118,6 @@
       padding: 0 6px; height: 20px; line-height: 20px; border-radius: 2px;
       margin-right: 2px; white-space: nowrap;
     }
-    .tool-group[data-g="common"] .tool-group-label { color: #595959; background: #f0f0f0; }
     .tool-group[data-g="pre"] .tool-group-label { color: #531dab; background: #efdbff; }
     .tool-group[data-g="check"] .tool-group-label { color: #d46b08; background: #ffe7ba; }
     .tool-group[data-g="declare"] .tool-group-label { color: #096dd9; background: #bae7ff; }
@@ -407,6 +405,7 @@
     .doc-ico.ok { border-color: #b7eb8f; background: #f6ffed; color: #389e0d; }
     .doc-ico.miss { border-color: #ffa39e; background: #fff1f0; color: #cf1322; }
     .cell-biz { white-space: nowrap; }
+    .cell-biz .ship-amd { margin-right: 3px; }
     .biz-tag {
       display: inline-block; padding: 0 5px; height: 18px; line-height: 16px;
       font-size: 10px; border-radius: 2px; border: 1px solid; margin-right: 3px;
@@ -415,10 +414,10 @@
     .biz-ams { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
     .biz-isf { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
     .biz-mf { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+    .biz-agent { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
     .biz-amend { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
     .biz-splitcab { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
     .biz-empty { color: #bfbfbf; }
-    .cell-ship-amd { white-space: nowrap; }
     .ship-amd {
       display: inline-block; padding: 0 6px; height: 18px; line-height: 16px;
       font-size: 10px; border-radius: 2px; border: 1px solid;
@@ -440,6 +439,8 @@
 
     .proto-link { font-size: 12px; color: var(--sub); padding: 6px 12px 0; }
     .hidden { display: none !important; }
+    tr.data-row[data-phase="pre"],
+    tr.data-row[data-phase="pre"] + tr.expand-row { display: none !important; }
 
     /* 双模式切换（与提前报关列表共用口径） */
     .mode-bar {
@@ -482,6 +483,10 @@
     .att-tag.gray { background: #fafafa; color: #8c8c8c; border-color: #d9d9d9; }
     .att-cell .att-ops { margin-top: 3px; font-size: 11px; white-space: nowrap; }
     .att-cell .att-ops a { margin-right: 4px; }
+    .confirm-cell { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .confirm-cell label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 12px; }
+    .confirm-cell.locked label { cursor: not-allowed; color: var(--sub); }
+    .pre-st-cell .att-tag { font-size: 11px; }
     .merge-tag {
       display: inline-block; margin-left: 4px; padding: 0 6px; height: 18px; line-height: 16px;
       font-size: 10px; font-weight: 700; border-radius: 2px;
@@ -601,6 +606,11 @@
     }
     .src-tag.ch2 { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
     .src-tag.imp { color: #0958d9; background: #e6f4ff; border-color: #91caff; }
+    .src-tag.fleet { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .src-tag.load { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+    .src-tag.wh { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .src-tag.bl { color: #1d39c4; background: #f0f5ff; border-color: #adc6ff; }
+    .src-tag.stow { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
     .filing-sec { margin: 12px 0 0; }
     .filing-sec h4 { margin: 0 0 8px; font-size: 13px; }
     .party-block {
@@ -610,16 +620,6 @@
     .filing-note {
       font-size: 11px; color: var(--sub); line-height: 1.5; margin: 4px 0 0;
     }
-    .logic-box {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;
-    }
-    @media (max-width: 720px) { .logic-box { grid-template-columns: 1fr; } }
-    .logic-card {
-      border: 1px solid var(--line); border-radius: 2px; padding: 8px 10px; font-size: 12px; line-height: 1.55;
-    }
-    .logic-card b { display: block; margin-bottom: 4px; }
-    .logic-card.ch2 { background: #f9f0ff; border-color: #d3adf7; }
-    .logic-card.imp { background: #e6f4ff; border-color: #91caff; }
     .star { color: #ff4d4f; font-style: normal; margin-right: 2px; }
     .filing-grid { display: grid; gap: 8px 10px; }
     .fg-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -692,7 +692,6 @@
           <a href="报关供应商-上传任务列表-MVP.html?token=ws-demo-qdgx-7d&scope=workspace">报关行协作入口</a> ·
           <a href="报关管理-流程图-MVP.html">业务流程图</a> ·
           <a href="报关行API配置-MVP.html">报关行 API 配置</a> ·
-          <a href="../产品部门/关务组/关务组-签入即预报资料-MVP.html">预录工作台</a> ·
           <a href="../index.html">返回导航</a>
         </div>
 
@@ -719,26 +718,28 @@
               </select>
             </div>
             <div class="filter-item">
+              <label>预录已确认 <span class="badge-new">NEW</span></label>
+              <select id="qPreCf">
+                <option value="">全部</option>
+                <option value="1">已确认</option>
+                <option value="0">未确认</option>
+              </select>
+            </div>
+            <div class="filter-item">
               <label>业务标记 <span class="badge-new">NEW</span></label>
               <select id="qBizMark">
                 <option value="">全部</option>
                 <option value="isf">ISF</option>
                 <option value="ams">AMS</option>
                 <option value="mf">舱单</option>
+                <option value="agent">已发代理</option>
                 <option value="amend">改单</option>
+                <option value="s1">①甩柜</option>
+                <option value="s2">②换单</option>
+                <option value="s3">③换柜</option>
+                <option value="ship-pending">改单待处理</option>
                 <option value="splitcab">合并分柜</option>
                 <option value="none">无标记</option>
-              </select>
-            </div>
-            <div class="filter-item">
-              <label>船务改单 <span class="badge-new">NEW</span></label>
-              <select id="qShipAmd">
-                <option value="">全部</option>
-                <option value="1">①甩柜</option>
-                <option value="2">②换单</option>
-                <option value="3">③换柜</option>
-                <option value="pending">待处理</option>
-                <option value="none">无</option>
               </select>
             </div>
             <div class="filter-item">
@@ -756,36 +757,6 @@
 
         <div class="toolbar" id="toolbar">
           <div class="toolbar-row">
-            <div class="tool-group" data-g="common" data-show="always">
-              <span class="tool-group-label">通用</span>
-              <button type="button" class="tool-btn">查询数据</button>
-              <button type="button" class="tool-btn outline" id="btnAttQuery">委托查询 <span class="rv rv-new" title="#12">12</span></button>
-              <button type="button" class="tool-btn warn" id="btnAttMark">委托标记 <span class="badge-new">NEW</span></button>
-              <button type="button" class="tool-btn outline">报关信息修改</button>
-              <button type="button" class="tool-btn outline" id="btnRebook" title="船务换柜换船时显示改单提醒">改配 <span class="badge-new">NEW</span></button>
-              <button type="button" class="tool-btn outline" id="btnAms">发 AMS <span class="badge-new">NEW</span></button>
-              <button type="button" class="tool-btn outline" id="btnIsf">发 ISF <span class="badge-new">NEW</span></button>
-              <button type="button" class="tool-btn outline" id="btnManifest">发舱单 <span class="badge-new">NEW</span></button>
-              <button type="button" class="tool-btn outline">箱单导出</button>
-            </div>
-
-            <div class="tool-group" data-g="pre" data-show="pre">
-              <span class="tool-group-label">预录</span>
-              <button type="button" class="tool-btn pre outline" data-pre-push id="btnBindHouse">绑定分单号<span class="rv rv-yes" title="#01">01</span></button>
-              <a class="tool-btn new-hb" id="btnHouseRule" data-pre-push data-pre-review href="分单号规则配置-MVP.html" style="display:inline-flex;align-items:center;text-decoration:none">分单号规则</a>
-              <div class="upload-dd" id="uploadDd" data-pre-push>
-                <button type="button" class="tool-btn pre outline" id="btnUploadToggle">上传资料 ▾<span class="rv rv-yes" title="#01">01</span></button>
-                <div class="menu">
-                  <button type="button">上传报关资料</button>
-                  <button type="button">上传商检资料</button>
-                </div>
-              </div>
-              <button type="button" class="tool-btn pre" data-pre-review id="btnPushBroker">推送报关行<span class="rv rv-yes" title="#01">01</span></button>
-              <a class="tool-btn pre" data-pre-review href="报关管理-预录审核详情-兼容-MVP.html?tab=customs" style="display:inline-flex;align-items:center;text-decoration:none">预录审核<span class="rv rv-yes" title="#04">04</span></a>
-              <a class="tool-btn pre outline" data-pre-review href="报关管理-做资料分票核准-MVP.html" style="display:inline-flex;align-items:center;text-decoration:none">做资料分票 <span class="badge-new">NEW</span></a>
-              <button type="button" class="tool-btn pre" data-pre-review id="btnReceiveFormal">收取正式件<span class="rv rv-mix" title="#08">08</span></button>
-            </div>
-
             <div class="tool-group" data-g="merge" data-show="declare">
               <span class="tool-group-label">合并报关</span>
               <button type="button" class="tool-btn merge outline" id="btnMergeMark">合并报关标记 <span class="badge-new">NEW</span></button>
@@ -803,35 +774,32 @@
 
             <div class="tool-group" data-g="declare" data-show="declare">
               <span class="tool-group-label">申报/放行</span>
+              <button type="button" class="tool-btn">查询数据</button>
+              <button type="button" class="tool-btn outline">报关信息修改</button>
+              <button type="button" class="tool-btn outline" id="btnRebook" title="船务换柜换船时显示改单提醒">改配 <span class="badge-new">NEW</span></button>
+              <button type="button" class="tool-btn outline" id="btnManifest" title="推海管家：系统直推舱单，发送成功自动打「舱单」标">发舱单 <span class="badge-new">NEW</span></button>
+              <button type="button" class="tool-btn outline" id="btnDlManifest" title="推代理：下载舱单表格，发给代理后可手工标记；系统发送则自动标记">下载舱单 <span class="badge-new">NEW</span></button>
+              <button type="button" class="tool-btn outline" id="btnMarkAgent" title="已线下发给代理时手工打标；系统直发会自动标记，不必再点">标记已发代理 <span class="badge-new">NEW</span></button>
+              <button type="button" class="tool-btn outline">箱单导出</button>
+              <button type="button" class="tool-btn outline" id="btnBindHouse" title="舱单用：手填/申请池绑定分单号">绑定分单号</button>
+              <a class="tool-btn outline" id="btnHouseRule" href="分单号规则配置-MVP.html" style="display:inline-flex;align-items:center;text-decoration:none" title="终配舱后按船司×港口生成分单号，供舱单使用">分单号规则</a>
               <button type="button" class="tool-btn release outline" data-legacy data-tab-focus="wait cleared">报关放行</button>
               <button type="button" class="tool-btn check outline" data-legacy data-tab-focus="check">报关查验</button>
               <button type="button" class="tool-btn release" data-legacy data-tab-focus="wait cleared released" id="btnFetch">放行资料抓取<span class="rv rv-yes" title="#10">10</span></button>
+              <a class="tool-btn release outline" href="报关管理-做资料分票核准-MVP.html?ro=1" style="display:inline-flex;align-items:center;text-decoration:none" title="进做资料分票查看核准标记">做资料分票 <span class="badge-new">NEW</span></a>
             </div>
-            <span class="cur" id="toolbarCurTab">当前：预录待复审</span>
+            <span class="cur" id="toolbarCurTab">当前：待放行</span>
           </div>
         </div>
 
         <div class="status-bar" id="statusBar">
-          <div class="status-group pre is-active" id="groupPre" role="tablist" aria-label="预录阶段">
-            <div class="status-group-hd">
-              <span class="phase-badge pre">预录阶段</span>
-            </div>
-            <div class="status-tabs">
-              <button type="button" class="status-tab pre" data-tab="pre-all">全部<span class="cnt">(165)</span></button>
-              <button type="button" class="status-tab pre" data-tab="unbound">未绑分单号<span class="cnt">(12)</span></button>
-              <button type="button" class="status-tab pre" data-tab="push">待推送<span class="cnt">(30)</span></button>
-              <button type="button" class="status-tab pre" data-tab="broker">报关行处理中<span class="cnt">(86)</span></button>
-              <button type="button" class="status-tab pre active" data-tab="review">预录待复审<span class="cnt">(37)</span></button>
-            </div>
-          </div>
-          <div class="status-group-divider" aria-hidden="true"></div>
-          <div class="status-group declare" id="groupDeclare" role="tablist" aria-label="申报与放行">
+          <div class="status-group declare is-active" id="groupDeclare" role="tablist" aria-label="申报与放行">
             <div class="status-group-hd">
               <span class="phase-badge declare">申报 / 放行</span>
             </div>
             <div class="status-tabs">
               <button type="button" class="status-tab" data-tab="all">全部<span class="cnt">(15430)</span></button>
-              <button type="button" class="status-tab" data-tab="wait">待放行<span class="cnt">(15083)</span></button>
+              <button type="button" class="status-tab active" data-tab="wait">待放行<span class="cnt">(15083)</span></button>
               <button type="button" class="status-tab" data-tab="check">报关查验<span class="cnt">(27)</span></button>
               <button type="button" class="status-tab" data-tab="cleared">报关放行<span class="cnt">(156)</span></button>
               <button type="button" class="status-tab" data-tab="released">查验放行<span class="cnt">(184)</span></button>
@@ -848,8 +816,7 @@
                 <th>终配舱单号</th>
                 <th>提单号</th>
                 <th>柜号</th>
-                <th>业务标记</th>
-                <th title="船务发起 · ①甩柜同单同柜 / ②换单同柜换提单 / ③换柜换提单换柜">船务改单 <span class="badge-new">NEW</span></th>
+                <th title="ISF / AMS / 舱单 / 已发代理 / 改单 / 合并分柜；船务改单 ①甩柜 ②换单 ③换柜">业务标记</th>
                 <th><span class="th-rv-wrap">报关单号<span class="rv rv-new" title="#09 报关行回传">09</span></span></th>
                 <th class="col-declare"><span class="th-rv-wrap">放行资料<span class="rv rv-yes" title="#10 接收+抓取报关资料">10</span></span></th>
                 <th class="col-declare">最近抓取</th>
@@ -895,8 +862,7 @@
                 <td>260609-青岛T25-1</td>
                 <td><a href="报关管理-预录审核详情-兼容-MVP.html?tab=customs">COSU6502971850</a></td>
                 <td>OOCU9737915</td>
-                <td class="cell-biz"><span class="biz-empty">—</span></td>
-                <td class="cell-ship-amd"><span class="ship-amd s3 pending" title="船务改单 · 查验换柜换船（换提单换柜） · 待处理">③换柜</span></td>
+                <td class="cell-biz"><span class="ship-amd s3 pending" title="船务改单 · 查验换柜换船（换提单换柜） · 待处理">③换柜</span></td>
                 <td>—</td>
                 <td class="col-declare">—</td>
                 <td class="col-declare">—</td>
@@ -926,7 +892,7 @@
                 <td><a href="报关管理-预录审核详情-兼容-MVP.html?tab=customs">预录审核</a> · <a href="报关管理-做资料分票核准-MVP.html">做资料分票</a></td>
               </tr>
               <tr class="expand-row" id="exp-r1" data-parent="r1">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -978,8 +944,7 @@
                 <td>260608-宁波T18-2</td>
                 <td><a href="报关管理-预录审核详情-兼容-MVP.html?id=2&tab=customs">HLCU1234567890</a></td>
                 <td>TCLU8822100</td>
-                <td class="cell-biz"><span class="biz-empty">—</span></td>
-                <td class="cell-ship-amd"><span class="ship-amd s2 pending" title="船务改单 · 查验换船（换提单同柜） · 待处理">②换单</span></td>
+                <td class="cell-biz"><span class="ship-amd s2 pending" title="船务改单 · 查验换船（换提单同柜） · 待处理">②换单</span></td>
                 <td>—</td>
                 <td class="col-declare">—</td>
                 <td class="col-declare">—</td>
@@ -1009,7 +974,7 @@
                 <td><a href="报关管理-预录审核详情-兼容-MVP.html?id=2&tab=customs">预录审核</a> · <a href="报关管理-做资料分票核准-MVP.html">做资料分票</a></td>
               </tr>
               <tr class="expand-row hidden" id="exp-r2" data-parent="r2">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1046,8 +1011,7 @@
                 <td>260607-深圳T09-1</td>
                 <td><a href="#">ONEY9876543210</a></td>
                 <td>MSKU5566778</td>
-                <td class="cell-biz"><span class="biz-empty">—</span></td>
-                <td class="cell-ship-amd"><span class="ship-amd s1 done" title="船务改单 · 甩柜换船（同提单同柜） · 已处理">①甩柜</span></td>
+                <td class="cell-biz"><span class="ship-amd s1 done" title="船务改单 · 甩柜换船（同提单同柜） · 已处理">①甩柜</span></td>
                 <td>—</td>
                 <td class="col-declare">—</td>
                 <td class="col-declare">—</td>
@@ -1077,7 +1041,7 @@
                 <td>—</td>
               </tr>
               <tr class="expand-row hidden" id="exp-r3" data-parent="r3">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1113,7 +1077,6 @@
                 <td><a href="#">EGLV2026060601</a></td>
                 <td>CAIU3344556</td>
                 <td class="cell-biz"><span class="biz-empty">—</span></td>
-                <td class="cell-ship-amd"><span class="biz-empty">—</span></td>
                 <td>—</td>
                 <td class="col-declare">—</td>
                 <td class="col-declare">—</td>
@@ -1129,7 +1092,7 @@
                 <td>EVER GOLDEN / 012E</td>
                 <td>EVQD334455</td>
                 <td>义乌总部</td>
-                <td>资料已齐·待按规则生成分单号 <span class="badge-new">NEW</span></td>
+                <td>终配舱后待按规则生成分单号 <span class="badge-new">NEW</span></td>
                 <td>—</td>
                 <td>—</td>
                 <td>15</td>
@@ -1143,7 +1106,7 @@
                 <td><a href="分单号规则配置-MVP.html">分单号规则</a> · <a href="#">绑定分单号</a></td>
               </tr>
               <tr class="expand-row hidden" id="exp-r4" data-parent="r4">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1190,7 +1153,6 @@
                 <td><a href="#">COSU6502971999</a></td>
                 <td>CSNU7788990</td>
                 <td class="cell-biz"><span class="biz-empty">—</span></td>
-                <td class="cell-ship-amd"><span class="biz-empty">—</span></td>
                 <td>—</td>
                 <td class="col-declare">—</td>
                 <td class="col-declare">—</td>
@@ -1206,7 +1168,7 @@
                 <td>COSCO FORTUNE / 088E</td>
                 <td>CSQD778899</td>
                 <td>青岛分公司</td>
-                <td>分单号已绑·待推送报关行 <span class="badge-new">NEW</span></td>
+                <td>资料已齐·待按报关编号推送报关行 <span class="badge-new">NEW</span></td>
                 <td>—</td>
                 <td>—</td>
                 <td>8</td>
@@ -1220,7 +1182,7 @@
                 <td><a href="#">推送报关行</a></td>
               </tr>
               <tr class="expand-row hidden" id="exp-r10" data-parent="r10">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1248,15 +1210,21 @@
               </tr>
 
               <!-- 申报/放行（原列表）· 合并报关样例：客户合并1组（示意10票）→ 再分票3 -->
-              <tr class="data-row" data-tab="wait all" data-phase="legacy" data-merge="MG-20260609-01" data-merge-status="resplit">
+              <tr class="data-row" data-tab="wait all" data-phase="legacy" data-merge="MG-20260609-01" data-merge-status="resplit"
+                  data-swap="1" data-ship-amd="3" data-ship-amd-st="pending"
+                  data-swap-scene="3" data-swap-scene-name="③ 查验换柜换船"
+                  data-swap-old-bl="HLCUSZX2608BDCK3" data-swap-new-bl="HLCUSZX2608BDCK9"
+                  data-swap-old-voy="BERLIN EXPRESS / 018E" data-swap-new-voy="BERLIN EXPRESS / 019E"
+                  data-swap-old-cntr="NIDU2349116" data-swap-new-cntr="NIDU2349220"
+                  data-swap-old-seal="HLNB882210" data-swap-new-seal="HLNB882301"
+                  data-swap-at="2026-08-25 15:40" data-swap-by="船务 李航">
                 <td><input type="checkbox" checked /></td>
                 <td><button type="button" class="exp-toggle open" data-exp="r5">›</button></td>
                 <td><span class="tag wait">待放行</span><span class="merge-tag">客户合并1组</span><span class="merge-tag resplit">再分票 3</span></td>
                 <td>260609-T16卡派15</td>
                 <td><a href="#">HLCUSZX2608BDCK3</a></td>
                 <td>NIDU2349116</td>
-                <td class="cell-biz"><span class="biz-tag biz-splitcab" title="合并报关件不在一个终配舱">合并分柜</span></td>
-                <td class="cell-ship-amd"><span class="biz-empty">—</span></td>
+                <td class="cell-biz"><span class="biz-tag biz-splitcab" title="合并报关件不在一个终配舱">合并分柜</span> <span class="ship-amd s3 pending" title="船务改单 · 查验换柜换船（换提单换柜） · 待处理">③换柜</span></td>
                 <td>—</td>
                 <td class="col-declare">
                   <div class="doc-icons">
@@ -1291,7 +1259,7 @@
                 <td><a href="#">报关放行</a> · <a href="#" class="js-fetch-row">抓取</a></td>
               </tr>
               <tr class="expand-row" id="exp-r5" data-parent="r5">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1367,15 +1335,21 @@
                 </td>
               </tr>
 
-              <tr class="data-row" data-tab="all" data-phase="legacy">
+              <tr class="data-row" data-tab="all" data-phase="legacy"
+                  data-swap="1" data-ship-amd="3" data-ship-amd-st="pending"
+                  data-swap-scene="3" data-swap-scene-name="③ 查验换柜换船"
+                  data-swap-old-bl="COSU6502971850" data-swap-new-bl="COSU6502971999"
+                  data-swap-old-voy="COSCO SHIPPING / 025W" data-swap-new-voy="COSCO AQUARIUS / 026W"
+                  data-swap-old-cntr="OOCU9737915" data-swap-new-cntr="OOCU9800123"
+                  data-swap-old-seal="CSQD882901" data-swap-new-seal="CSQD883010"
+                  data-swap-at="2026-08-25 15:40" data-swap-by="船务 李航">
                 <td><input type="checkbox" /></td>
                 <td><button type="button" class="exp-toggle" data-exp="r6">›</button></td>
                 <td><span class="tag declare">报关中</span></td>
                 <td>260609-青岛T25-1</td>
                 <td><a href="#">COSU6502971850</a></td>
                 <td>OOCU9737915</td>
-                <td class="cell-biz"><span class="biz-empty">—</span></td>
-                <td class="cell-ship-amd"><span class="biz-empty">—</span></td>
+                <td class="cell-biz"><span class="ship-amd s3 pending" title="船务改单 · 查验换柜换船（换提单换柜） · 待处理">③换柜</span></td>
                 <td>—</td>
                 <td class="col-declare">
                   <div class="doc-icons">
@@ -1411,7 +1385,7 @@
                 <td><a href="#" class="js-fetch-row">抓取</a></td>
               </tr>
               <tr class="expand-row hidden" id="exp-r6" data-parent="r6">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1433,7 +1407,14 @@
                 </td>
               </tr>
 
-              <tr class="data-row" data-tab="check all" data-phase="legacy" data-notify="未通知" data-check-start="2026-06-06" data-check-dispose="处理中" data-sail-remind="待提醒">
+              <tr class="data-row" data-tab="check all" data-phase="legacy" data-notify="未通知" data-check-start="2026-06-06" data-check-dispose="处理中" data-sail-remind="待提醒"
+                  data-swap="1" data-ship-amd="2" data-ship-amd-st="pending"
+                  data-swap-scene="2" data-swap-scene-name="② 查验换船"
+                  data-swap-old-bl="HLCU1234567890" data-swap-new-bl="HLCU1234567999"
+                  data-swap-old-voy="BERLIN EXPRESS / 018E" data-swap-new-voy="BERLIN EXPRESS / 019E"
+                  data-swap-old-cntr="TCLU8822100" data-swap-new-cntr="TCLU8822100"
+                  data-swap-old-seal="HLNB882210" data-swap-new-seal="HLNB882210"
+                  data-swap-at="2026-08-24 11:20" data-swap-by="船务 陈舟">
                 <td><input type="checkbox" /></td>
                 <td><button type="button" class="exp-toggle" data-exp="r7">›</button></td>
                 <td>
@@ -1446,8 +1427,7 @@
                 <td>260608-宁波T18-2</td>
                 <td><a href="#">HLCU1234567890</a></td>
                 <td>TCLU8822100</td>
-                <td class="cell-biz"><span class="biz-tag biz-ams" title="AMS 已发">AMS</span> <span class="biz-tag biz-mf" title="舱单已发">舱单</span></td>
-                <td class="cell-ship-amd"><span class="biz-empty">—</span></td>
+                <td class="cell-biz"><span class="biz-tag biz-ams" title="AMS 已发">AMS</span> <span class="biz-tag biz-mf" title="舱单已发">舱单</span> <span class="ship-amd s2 pending" title="船务改单 · 查验换船（换提单同柜） · 待处理">②换单</span></td>
                 <td>330120260608001</td>
                 <td class="col-declare">
                   <div class="doc-icons">
@@ -1482,7 +1462,7 @@
                 <td><a href="#" class="js-fetch-row">抓取</a></td>
               </tr>
               <tr class="expand-row hidden" id="exp-r7" data-parent="r7">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1504,15 +1484,15 @@
                 </td>
               </tr>
 
-              <tr class="data-row" data-tab="cleared all" data-phase="legacy">
+              <tr class="data-row" data-tab="cleared all" data-phase="legacy"
+                  data-ship-amd="1" data-ship-amd-st="done" data-swap-scene="1">
                 <td><input type="checkbox" /></td>
                 <td><button type="button" class="exp-toggle" data-exp="r9">›</button></td>
                 <td><span class="tag cleared">报关放行</span></td>
                 <td>260606-青岛T08-2</td>
                 <td><a href="#">COSU8822100456</a></td>
                 <td>TRHU5566123</td>
-                <td class="cell-biz"><span class="biz-tag biz-ams" title="AMS 已发">AMS</span> <span class="biz-tag biz-isf" title="ISF 已发">ISF</span> <span class="biz-tag biz-mf" title="舱单已发">舱单</span></td>
-                <td class="cell-ship-amd"><span class="biz-empty">—</span></td>
+                <td class="cell-biz"><span class="biz-tag biz-ams" title="AMS 已发">AMS</span> <span class="biz-tag biz-isf" title="ISF 已发">ISF</span> <span class="biz-tag biz-mf" title="舱单已发 · 系统直推海管家">舱单</span> <span class="biz-tag biz-agent" data-src="sys" title="已发代理 · 系统发送">已发代理</span> <span class="ship-amd s1 done" title="船务改单 · 甩柜换船（同提单同柜） · 已处理">①甩柜</span></td>
                 <td>420120260606033</td>
                 <td class="col-declare">
                   <div class="doc-icons">
@@ -1548,7 +1528,7 @@
                 <td><a href="#">下载资料</a></td>
               </tr>
               <tr class="expand-row hidden" id="exp-r9" data-parent="r9">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1578,7 +1558,6 @@
                 <td><a href="#">MAEU5566778899</a></td>
                 <td>HLBU9988776</td>
                 <td class="cell-biz"><span class="biz-tag biz-ams" title="AMS 已发">AMS</span> <span class="biz-tag biz-amend" title="改单">改单</span></td>
-                <td class="cell-ship-amd"><span class="biz-empty">—</span></td>
                 <td>330120260605088</td>
                 <td class="col-declare">
                   <div class="doc-icons">
@@ -1614,7 +1593,7 @@
                 <td><a href="#">报关放行</a> · <a href="#">下载资料</a></td>
               </tr>
               <tr class="expand-row hidden" id="exp-r8" data-parent="r8">
-                <td colspan="35">
+                <td colspan="34">
                   <div class="sub-table-wrap">
                     <table class="sub-table">
                       <thead>
@@ -1661,8 +1640,8 @@
       </div>
       <div class="hb-modal-bd">
         <div class="hb-alert warn" id="attTip">
-          对接报关行：优先「委托查询」(#12)，按<strong>客户名称 + 报关行</strong>查询，回写委托状态与内容。<br />
-          未对接：人工标记催办，上传客户委托截图归档；催到截图为止。无委托不可报关。
+          对接报关行：<strong>不按分票号查询委托</strong>。报关行自行匹配电子委托书，与报关单、放行单打包回传（#09/#10）。本页可核对回传结果。<br />
+          未对接：人工标记催办，上传客户委托截图归档。无委托不可报关。
         </div>
 
         <!-- 查询模式：客户名称 + 报关行 -->
@@ -2051,7 +2030,7 @@
     </div>
   </div>
 
-  <!-- AMS / ISF / 舱单 报文弹窗：双通道资料 + 进口商绑定带出 -->
+  <!-- AMS / ISF：装柜表+进口商 / 车队或代理 / 仓库。舱单：提单管理 / 进口商 / 终配舱 -->
   <div class="hb-mask" id="filingMask" aria-hidden="true">
     <div class="hb-modal" role="dialog" aria-labelledby="filingTitle" style="width:min(1080px,96vw)">
       <div class="hb-modal-hd">
@@ -2067,20 +2046,8 @@
         </div>
       </div>
       <div class="hb-modal-bd">
-        <div class="logic-box">
-          <div class="logic-card ch2">
-            <b>① 关务双通道核准后的资料 <span class="src-tag ch2">双通道</span></b>
-            通道②预录结构化优先，通道①附件识别补齐。带出：主/分提单、船名航次、SCAC、港口、ETD/ETA、箱号封号、箱型、件毛体、英文品名、HS、发货人（出口方）。
-            <div class="filing-note">来源页：<a href="报关管理-做资料分票核准-MVP.html" target="_blank" rel="noopener">做资料分票核准</a>。可改，不回写双通道。</div>
-          </div>
-          <div class="logic-card imp">
-            <b>② 柜子已绑定的进口商档案 <span class="src-tag imp">进口商绑定</span></b>
-            带出：收货人 / 通知人（通知人默认跟随收货人）、地址与联系方式、进口商 ID、Bond Holder 类型与 ID。
-            <div class="filing-note">来源页：<a href="../产品部门/船务/柜子编辑-绑定进口商-MVP.html" target="_blank" rel="noopener">柜子绑定进口商</a> · <a href="../产品部门/船务/进口商管理-MVP.html" target="_blank" rel="noopener">进口商档案</a>。可改，不回写进口商主档。</div>
-          </div>
-        </div>
         <div class="hb-alert warn" id="filingReviewWarn" hidden>
-          本票仍为<strong>预录待复审</strong>。弹窗可按双通道+进口商绑定预填核对；正式连报文网关需核准后。本期保存只打业务标记，不回写提单管理。
+          本票仍为<strong>预录待复审</strong>。弹窗可预填核对；正式连报文网关需核准后。本期保存只打业务标记，不回写提单管理。
         </div>
 
         <!-- AMS -->
@@ -2089,15 +2056,15 @@
             <h4>基本信息</h4>
             <div class="filing-grid fg-4">
               <div class="filing-item">
-                <label><i class="star">*</i>主提单号 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>主提单号 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsMbl" />
               </div>
               <div class="filing-item">
-                <label>分代提单号 <span class="src-tag ch2">双通道</span></label>
+                <label>分代提单号 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsHbl" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>船公司SCAC <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>船公司SCAC <span class="src-tag fleet">车队/代理</span></label>
                 <select id="amsScac">
                   <option value="COSU">COSU</option>
                   <option value="HLCU">HLCU</option>
@@ -2109,23 +2076,23 @@
                 </select>
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>船名(英) <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>船名(英) <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsVessel" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>航次 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>航次 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsVoy" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>发送地 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>发送地 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsSend" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>装货港 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>装货港 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsPol" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>卸货港 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>卸货港 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsPod" />
               </div>
               <div class="filing-item">
@@ -2133,20 +2100,20 @@
                 <input id="amsTrans" placeholder="无则空" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>预计出发时间 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>预计出发时间 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsEtd" type="date" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>预计到达时间（卸港） <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>预计到达时间（卸港） <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsEta" type="date" />
               </div>
             </div>
           </div>
           <div class="filing-sec">
             <h4>收发通信息</h4>
-            <div class="hb-alert warn">请准确填写收发通，否则舱单退单、罚款等由使用人承担。收货人/通知人来自进口商绑定；发货人来自双通道出口方。</div>
+            <div class="hb-alert warn">请准确填写收发通，否则退单、罚款等由使用人承担。发货人来自装柜表抬头；收货人/通知人来自进口商档案（通知人默认跟随收货人）。</div>
             <div class="party-block">
-              <div class="party-hd">发货人 <span class="src-tag ch2">双通道</span></div>
+              <div class="party-hd">发货人 <span class="src-tag load">装柜表</span></div>
               <div class="filing-grid fg-3">
                 <div class="filing-item"><label>名称</label><input id="amsShipperName" /></div>
                 <div class="filing-item"><label>地址</label><textarea id="amsShipperAddr" rows="2"></textarea></div>
@@ -2154,7 +2121,7 @@
               </div>
             </div>
             <div class="party-block">
-              <div class="party-hd">收货人 <span class="src-tag imp">进口商绑定</span></div>
+              <div class="party-hd">收货人 <span class="src-tag imp">进口商</span></div>
               <div class="filing-grid fg-3">
                 <div class="filing-item"><label>名称</label><input id="amsCneeName" /></div>
                 <div class="filing-item"><label>地址</label><textarea id="amsCneeAddr" rows="2"></textarea></div>
@@ -2162,7 +2129,7 @@
               </div>
             </div>
             <div class="party-block">
-              <div class="party-hd">通知人 <span class="src-tag imp">进口商绑定</span> <span class="filing-note" style="font-weight:400">默认跟随收货人</span></div>
+              <div class="party-hd">通知人 <span class="src-tag imp">进口商</span> <span class="filing-note" style="font-weight:400">默认跟随收货人</span></div>
               <div class="filing-grid fg-3">
                 <div class="filing-item"><label>名称</label><input id="amsNotifyName" /></div>
                 <div class="filing-item"><label>地址</label><textarea id="amsNotifyAddr" rows="2"></textarea></div>
@@ -2178,15 +2145,15 @@
             </div>
             <div class="filing-grid fg-4">
               <div class="filing-item">
-                <label><i class="star">*</i>箱号 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>箱号 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsCntr" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>封号 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>封号 <span class="src-tag fleet">车队/代理</span></label>
                 <input id="amsSeal" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>箱型 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>箱型 <span class="src-tag fleet">车队/代理</span></label>
                 <select id="amsCtype">
                   <option value="20GP">20尺干箱</option>
                   <option value="40GP">40尺干箱</option>
@@ -2203,21 +2170,21 @@
                 </select>
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>件数 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>件数 <span class="src-tag wh">仓库</span></label>
                 <input id="amsPcs" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>毛重 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>毛重 <span class="src-tag wh">仓库</span></label>
                 <input id="amsGw" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>体积 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>体积 <span class="src-tag wh">仓库</span></label>
                 <input id="amsCbm" />
               </div>
               <div class="filing-item" style="grid-column:1/-1">
-                <label><i class="star">*</i>品名（英文） <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>品名（英文） <span class="src-tag wh">仓库</span></label>
                 <textarea id="amsGoods" rows="3" placeholder="不可含中文或特殊符号，≤2000 字符"></textarea>
-                <div class="filing-note">由双通道主品名转英文；多票运单按分票行拼接。</div>
+                <div class="filing-note">关务按仓库数据表转英文后填入；多票运单按分票行拼接。可改，不回写仓库。</div>
               </div>
             </div>
           </div>
@@ -2229,7 +2196,7 @@
             <h4>ISF基本信息</h4>
             <div class="filing-grid fg-4">
               <div class="filing-item">
-                <label><i class="star">*</i>进口商类型 <span class="src-tag imp">进口商绑定</span></label>
+                <label><i class="star">*</i>进口商类型 <span class="src-tag imp">进口商</span></label>
                 <select id="isfImpType">
                   <option>Importer of Record</option>
                   <option>Consignee</option>
@@ -2243,18 +2210,18 @@
                 </div>
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>提单类型 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>提单类型 <span class="src-tag fleet">车队/代理</span></label>
                 <div class="radio-row">
                   <label><input type="radio" name="isfBlType" value="House" checked /> House bill</label>
                   <label><input type="radio" name="isfBlType" value="Ocean" /> Ocean bill</label>
                 </div>
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>进口商 ID <span class="src-tag imp">进口商绑定</span></label>
+                <label><i class="star">*</i>进口商 ID <span class="src-tag imp">进口商</span></label>
                 <input id="isfImpId" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>Bond Holder Type <span class="src-tag imp">进口商绑定</span></label>
+                <label><i class="star">*</i>Bond Holder Type <span class="src-tag imp">进口商</span></label>
                 <select id="isfBondType">
                   <option value="Consignee">Consignee</option>
                   <option value="Principal">Principal</option>
@@ -2262,32 +2229,32 @@
                 </select>
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>Bond Holder ID <span class="src-tag imp">进口商绑定</span></label>
+                <label><i class="star">*</i>Bond Holder ID <span class="src-tag imp">进口商</span></label>
                 <input id="isfBondId" />
               </div>
               <div class="filing-item">
-                <label>收货人类型 <span class="src-tag imp">进口商绑定</span></label>
+                <label>收货人类型 <span class="src-tag imp">进口商</span></label>
                 <select id="isfCneeType">
                   <option>Consignee</option>
                   <option>Importer of Record</option>
                 </select>
               </div>
               <div class="filing-item">
-                <label>HSCODE <span class="src-tag ch2">双通道</span></label>
+                <label>HSCODE <span class="src-tag wh">仓库</span></label>
                 <input id="isfHs" />
               </div>
               <div class="filing-item">
-                <label>AMS B/L NO <span class="src-tag ch2">双通道</span></label>
+                <label>AMS B/L NO <span class="src-tag fleet">车队/代理</span></label>
                 <input id="isfAmsBl" />
               </div>
               <div class="filing-item">
-                <label>收货人 ID <span class="src-tag imp">进口商绑定</span></label>
+                <label>收货人 ID <span class="src-tag imp">进口商</span></label>
                 <input id="isfCneeId" />
               </div>
             </div>
           </div>
           <div class="filing-sec">
-            <h4>出口方信息 <span class="src-tag ch2">双通道</span></h4>
+            <h4>出口方信息 <span class="src-tag load">装柜表</span></h4>
             <div class="isf-row">
               <div class="filing-item"><label>卖方公司</label><input id="isfSeller" /></div>
               <div class="filing-item"><label>Address</label><input id="isfSellerAddr" /></div>
@@ -2314,7 +2281,7 @@
             </div>
           </div>
           <div class="filing-sec">
-            <h4>进口方信息 <span class="src-tag imp">进口商绑定</span></h4>
+            <h4>进口方信息 <span class="src-tag imp">进口商</span></h4>
             <div class="isf-row">
               <div class="filing-item"><label>实货收货人</label><input id="isfShipTo" /></div>
               <div class="filing-item"><label>Address</label><input id="isfShipToAddr" /></div>
@@ -2336,11 +2303,11 @@
             <h4>基本信息</h4>
             <div class="filing-grid fg-4">
               <div class="filing-item">
-                <label><i class="star">*</i>主提单号 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>主提单号 <span class="src-tag bl">提单管理</span></label>
                 <input id="mfMbl" />
               </div>
               <div class="filing-item">
-                <label><i class="star">*</i>船公司 <span class="src-tag ch2">双通道</span></label>
+                <label><i class="star">*</i>船公司 <span class="src-tag bl">提单管理</span></label>
                 <input id="mfCarrier" />
               </div>
               <div class="filing-item">
@@ -2352,11 +2319,11 @@
                 </select>
               </div>
               <div class="filing-item">
-                <label>船名 <span class="src-tag ch2">双通道</span></label>
+                <label>船名 <span class="src-tag bl">提单管理</span></label>
                 <input id="mfVessel" />
               </div>
               <div class="filing-item">
-                <label>航次 <span class="src-tag ch2">双通道</span></label>
+                <label>航次 <span class="src-tag bl">提单管理</span></label>
                 <input id="mfVoy" />
               </div>
               <div class="filing-item">
@@ -2364,15 +2331,15 @@
                 <input id="mfCopies" value="3" />
               </div>
               <div class="filing-item">
-                <label>装货港 <span class="src-tag ch2">双通道</span></label>
+                <label>装货港 <span class="src-tag bl">提单管理</span></label>
                 <input id="mfPol" />
               </div>
               <div class="filing-item">
-                <label>卸货港 <span class="src-tag ch2">双通道</span></label>
+                <label>卸货港 <span class="src-tag bl">提单管理</span></label>
                 <input id="mfPod" />
               </div>
               <div class="filing-item">
-                <label>目的地 <span class="src-tag ch2">双通道</span></label>
+                <label>目的地 <span class="src-tag bl">提单管理</span></label>
                 <input id="mfDest" />
               </div>
               <div class="filing-item">
@@ -2387,16 +2354,16 @@
                 <input id="mfAgent" />
               </div>
               <div class="filing-item">
-                <label>委托书号 <span class="src-tag ch2">双通道</span></label>
+                <label>委托书号 <span class="src-tag stow">终配舱</span></label>
                 <input id="mfBooking" />
               </div>
             </div>
           </div>
           <div class="filing-sec">
             <h4>收发通信息</h4>
-            <div class="hb-alert warn">请准确填写收发通，否则舱单退单、罚款等由使用人承担。</div>
+            <div class="hb-alert warn">请准确填写收发通，否则舱单退单、罚款等由使用人承担。收货人 / 发货人 / 通知人均从进口商档案带出（通知人默认跟随收货人）。</div>
             <div class="party-block">
-              <div class="party-hd">收货人 <span class="src-tag imp">进口商绑定</span></div>
+              <div class="party-hd">收货人 <span class="src-tag imp">进口商</span></div>
               <div class="filing-grid fg-3">
                 <div class="filing-item"><label>名称</label><input id="mfCneeName" /></div>
                 <div class="filing-item"><label>地址</label><textarea id="mfCneeAddr" rows="2"></textarea></div>
@@ -2404,7 +2371,7 @@
               </div>
             </div>
             <div class="party-block">
-              <div class="party-hd">发货人 <span class="src-tag ch2">双通道</span></div>
+              <div class="party-hd">发货人 <span class="src-tag imp">进口商</span></div>
               <div class="filing-grid fg-3">
                 <div class="filing-item"><label>名称</label><input id="mfShipperName" /></div>
                 <div class="filing-item"><label>地址</label><textarea id="mfShipperAddr" rows="2"></textarea></div>
@@ -2412,7 +2379,7 @@
               </div>
             </div>
             <div class="party-block">
-              <div class="party-hd">通知人 <span class="src-tag imp">进口商绑定</span></div>
+              <div class="party-hd">通知人 <span class="src-tag imp">进口商</span></div>
               <div class="filing-grid fg-3">
                 <div class="filing-item"><label>名称</label><input id="mfNotifyName" /></div>
                 <div class="filing-item"><label>地址</label><textarea id="mfNotifyAddr" rows="2"></textarea></div>
@@ -2421,8 +2388,8 @@
             </div>
           </div>
           <div class="filing-sec">
-            <h4>货物数据 <span class="src-tag ch2">双通道</span></h4>
-            <div class="filing-note" style="margin-bottom:6px">按双通道分票行带出箱号/封号/英文品名/件毛体；唛头默认 N/M。</div>
+            <h4>货物数据 <span class="src-tag stow">终配舱</span> <span class="src-tag bl">提单管理</span></h4>
+            <div class="filing-note" style="margin-bottom:6px">件毛体、英文品名从终配舱带出；箱号/封号从提单管理带出；唛头默认 N/M。可改，不回写来源页。</div>
             <div class="filing-table-wrap">
               <table class="hb-table" id="mfCargoTable">
                 <thead>
@@ -2438,11 +2405,45 @@
         </div>
       </div>
       <div class="hb-modal-ft">
-        <span class="filing-note" style="margin-right:auto">保存后只在本页打 AMS/ISF/舱单标，不回写提单管理，不连报文网关（示意）。</span>
+        <span class="filing-note" style="margin-right:auto">系统发送成功后<strong>自动打「舱单」标</strong>。推代理请用「下载舱单」；发给代理后可「标记已发代理」，系统直发代理则自动标记。</span>
         <button type="button" class="tool-btn outline" id="filingCancel">关闭</button>
         <button type="button" class="tool-btn outline" id="filingSave">保存</button>
         <button type="button" class="tool-btn outline" id="filingSubmit" hidden>提交</button>
         <button type="button" class="tool-btn pre" id="filingSaveSend">保存并报关</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下载舱单给代理 -->
+  <div class="hb-mask" id="agentMfMask" aria-hidden="true">
+    <div class="hb-modal" role="dialog" aria-labelledby="agentMfTitle" style="width:min(720px,96vw)">
+      <div class="hb-modal-hd">
+        <h3 id="agentMfTitle">下载舱单 · 发给代理 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="agentMfClose">关闭</button>
+      </div>
+      <div class="hb-modal-bd">
+        <div class="hb-alert warn" id="agentMfWarn" hidden></div>
+        <p style="margin:0 0 8px;font-size:12px;line-height:1.7;color:var(--sub)">
+          <strong>推代理 = 下载表格</strong>发给代理（车队/船代）。<strong>推海管家 = 发舱单直推</strong>，发送成功系统自动打「舱单」标。
+          下载本身不打标；发给代理后点「标记已发代理」。若走系统发送给代理，则<strong>自动标记</strong>。同船名航次可批量。
+        </p>
+        <div style="overflow:auto">
+          <table class="hb-table">
+            <thead>
+              <tr>
+                <th>提单号</th><th>柜号</th><th>铅封</th><th>船名航次</th><th>件数</th><th>毛重</th><th>方数</th><th>标记</th>
+              </tr>
+            </thead>
+            <tbody id="agentMfBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="hb-modal-ft">
+        <span class="filing-note" style="margin-right:auto">表格给代理核对进港；与海管家/报关行应同一份数据。</span>
+        <button type="button" class="tool-btn outline" id="agentMfCancel">关闭</button>
+        <button type="button" class="tool-btn outline" id="agentMfMark">仅标记已发代理</button>
+        <button type="button" class="tool-btn outline" id="agentMfSys">系统发送给代理</button>
+        <button type="button" class="tool-btn pre" id="agentMfDl">下载表格</button>
       </div>
     </div>
   </div>
@@ -2460,21 +2461,18 @@
         <div class="hb-alert danger" id="hbPushTip" hidden></div>
         <div class="hb-actions">
           <button type="button" class="tool-btn" id="hbRegen">按规则重算</button>
-          <button type="button" class="tool-btn outline" id="hbAddGoods">模拟：新增一票货物 <span class="badge-chg">改</span></button>
-          <button type="button" class="tool-btn outline" id="hbRemoveGoods">模拟：删除末票</button>
-          <button type="button" class="tool-btn outline" id="hbMoveGoods">模拟：对调 1↔2 序</button>
           <a class="tool-btn outline" href="../产品部门/各组sop/关务组-分单号规则表.html" target="_blank" rel="noopener">打开规则表</a>
         </div>
         <p style="margin:0 0 8px;font-size:12px;color:var(--sub)">
-          硬约束：分票顺序可错，但分单号必须与舱单一致；货物增删/改序后<strong>整组重算</strong>。
-          若已推送报关行，分单号变更后标记「待重推」，走 #03 再次推送（含最新分单号）。
+          <strong>终配舱落成后</strong>按船司×港口规则生成。硬约束：分票顺序可错，但分单号必须与舱单一致；货物/配舱调整后<strong>整组重算</strong>。
+          分单号只给舱单；报关行接口按<strong>客户单号</strong>推送，重算不走 #03。
         </p>
         <div style="overflow:auto">
           <table class="hb-table">
             <thead>
               <tr>
                 <th>序</th><th>客户单号</th><th>品名</th><th>件数</th>
-                <th>生成分单号</th><th>上次推送分单号</th><th>同步</th><th>规则/告警</th>
+                <th>生成分单号</th><th>上次生成</th><th>状态</th><th>规则/告警</th>
               </tr>
             </thead>
             <tbody id="hbBody"></tbody>
@@ -2484,8 +2482,8 @@
       <div class="hb-modal-ft">
         <span id="hbFtHint" style="margin-right:auto;font-size:12px;color:var(--sub)"></span>
         <button type="button" class="tool-btn outline" id="hbClose2">取消</button>
-        <button type="button" class="tool-btn" id="hbApply">写入列表（未推送）</button>
-        <button type="button" class="tool-btn warn" id="hbRepush" hidden>重推报关行 #03</button>
+        <button type="button" class="tool-btn" id="hbApply">写入列表</button>
+        <button type="button" class="tool-btn warn" id="hbRepush" hidden>确认重算结果</button>
       </div>
     </div>
   </div>
@@ -2493,33 +2491,29 @@
   <script src="customs-broker-prototype-nav.js"></script>
   <script src="分单号自动生成.js"></script>
   <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="报关管理-列表-MVP-PRD.html">
-    <span class="ess-prd-chip">PRD · 预录单整合进报关管理列表</span>
+    <span class="ess-prd-chip">PRD · 报关执行列表（申报/放行）</span>
   </div>
   <script src="../二期/ess-prototype-prd.js"></script>
   <script>
     (function () {
       var TAB_LABELS = {
-        "pre-all": "全部",
-        unbound: "未绑分单号",
-        push: "待推送",
-        broker: "报关行处理中",
-        review: "预录待复审",
         all: "全部",
         wait: "待放行",
         check: "报关查验",
         cleared: "报关放行",
         released: "查验放行"
       };
-      var PRE_TABS = ["unbound", "push", "broker", "review"];
-      var activeTab = "review";
+      var PRE_TABS = ["unbound", "push", "broker", "review", "pre-all"];
+      var activeTab = "wait";
 
       function isPreTab(tab) {
-        return tab === "pre-all" || PRE_TABS.indexOf(tab) >= 0;
+        return PRE_TABS.indexOf(tab) >= 0;
       }
 
       function rowVisible(tr, tab) {
+        /* 预录阶段已迁预录工作台，本页不展示 */
+        if (tr.getAttribute("data-phase") === "pre") return false;
         if (tab === "all") return true;
-        if (tab === "pre-all") return tr.getAttribute("data-phase") === "pre";
         var tabs = (tr.getAttribute("data-tab") || "").split(/\s+/);
         return tabs.indexOf(tab) >= 0;
       }
@@ -2544,42 +2538,25 @@
           "共 " + n + " 条（" + (TAB_LABELS[tab] || tab) + "）";
       }
 
-      function syncPhaseUi(tab) {
-        var pre = isPreTab(tab);
-        document.getElementById("groupPre").classList.toggle("is-active", pre);
-        document.getElementById("groupDeclare").classList.toggle("is-active", !pre);
+      function syncPhaseUi() {
+        var g = document.getElementById("groupDeclare");
+        if (g) g.classList.add("is-active");
       }
 
       function syncToolbar(tab) {
-        var pre = isPreTab(tab);
         var onCheck = tab === "check";
-        var showPush = pre && (tab === "push" || tab === "unbound" || tab === "pre-all");
-        var showReview = pre && (tab === "review" || tab === "pre-all");
-        var declare = !pre;
-        var onBroker = tab === "broker";
-
-        document.querySelectorAll("[data-pre-push]").forEach(function (el) {
-          if (el.id === "btnHouseRule") return;
-          el.style.display = showPush ? "" : "none";
-        });
-        document.querySelectorAll("[data-pre-review]").forEach(function (el) {
-          if (el.id === "btnHouseRule") return;
-          el.style.display = showReview ? "" : "none";
-        });
-        var houseRule = document.getElementById("btnHouseRule");
-        if (houseRule) houseRule.style.display = (pre && !onBroker) ? "" : "none";
 
         document.querySelectorAll("[data-legacy]").forEach(function (el) {
-          el.disabled = pre;
-          el.classList.toggle("is-disabled", pre);
-          el.title = pre ? "预录阶段不可用，请切到申报/放行页签" : "";
+          el.disabled = false;
+          el.classList.remove("is-disabled");
+          el.title = "";
           var focusTabs = (el.getAttribute("data-tab-focus") || "").split(/\s+/).filter(Boolean);
-          if (!pre && focusTabs.length) {
+          if (focusTabs.length) {
             var hit = focusTabs.indexOf(tab) >= 0 || tab === "all";
             el.style.outline = hit ? "2px solid rgba(82,196,26,.55)" : "";
             el.style.outlineOffset = hit ? "1px" : "";
             el.style.opacity = hit ? "1" : "0.55";
-          } else if (!pre) {
+          } else {
             el.style.outline = "";
             el.style.opacity = "1";
           }
@@ -2590,37 +2567,25 @@
         if (ntBtn) ntBtn.style.display = onCheck ? "" : "none";
         if (dispBtn) dispBtn.style.display = onCheck ? "" : "none";
 
-        var focusG = "common";
+        var focusG = "declare";
         if (onCheck) focusG = "check";
-        else if (pre) focusG = "pre";
-        else if (tab === "wait" || tab === "cleared" || tab === "released") focusG = "declare";
-        else if (declare) focusG = "merge";
+        else if (tab === "wait" || tab === "cleared" || tab === "released" || tab === "all") focusG = "declare";
+        else focusG = "merge";
 
         document.querySelectorAll("#toolbar .tool-group").forEach(function (g) {
           var show = g.getAttribute("data-show") || "always";
           var gName = g.getAttribute("data-g");
           var visible = true;
-          if (show === "pre") visible = pre;
+          if (show === "pre") visible = false;
           else if (show === "check") visible = onCheck;
-          else if (show === "declare") visible = declare;
+          else if (show === "declare") visible = true;
           g.classList.toggle("is-hidden", !visible);
           g.classList.toggle("is-focus", visible && gName === focusG);
-          g.classList.toggle("is-dim", visible && pre && gName === "pre" && onBroker);
+          g.classList.remove("is-dim");
         });
 
         var cur = document.getElementById("toolbarCurTab");
         if (cur) cur.textContent = "当前：" + (TAB_LABELS[tab] || tab);
-      }
-
-      var params = new URLSearchParams(location.search);
-      if (params.get("tab") === "push" || params.get("tab") === "unbound") {
-        activeTab = params.get("tab");
-        document.querySelectorAll(".status-tab").forEach(function (t) {
-          t.classList.toggle("active", t.getAttribute("data-tab") === activeTab);
-        });
-        syncToolbar(activeTab);
-        syncPhaseUi(activeTab);
-        filterRows(activeTab);
       }
 
       document.getElementById("statusBar").addEventListener("click", function (e) {
@@ -2631,7 +2596,7 @@
           t.classList.toggle("active", t === tab);
         });
         syncToolbar(activeTab);
-        syncPhaseUi(activeTab);
+        syncPhaseUi();
         filterRows(activeTab);
       });
 
@@ -2658,14 +2623,18 @@
         exp.classList.toggle("hidden", !open);
       });
 
-      document.getElementById("btnUploadToggle").addEventListener("click", function () {
-        document.getElementById("uploadDd").classList.toggle("open");
-      });
-      document.addEventListener("click", function (e) {
-        if (!e.target.closest("#uploadDd")) {
-          document.getElementById("uploadDd").classList.remove("open");
-        }
-      });
+      var btnUploadToggle = document.getElementById("btnUploadToggle");
+      if (btnUploadToggle) {
+        btnUploadToggle.addEventListener("click", function () {
+          document.getElementById("uploadDd").classList.toggle("open");
+        });
+        document.addEventListener("click", function (e) {
+          if (!e.target.closest("#uploadDd")) {
+            var dd = document.getElementById("uploadDd");
+            if (dd) dd.classList.remove("open");
+          }
+        });
+      }
 
       function getAuthScanRows() {
         var checked = selectedDataRows();
@@ -2676,17 +2645,12 @@
         );
       }
 
-      document.getElementById("btnPushBroker").addEventListener("click", function () {
-        if (hbState && hbState.needRepush) {
-          if (!confirm("分单号已因货物调整变更，尚未同步报关行。是否按最新分单号重推（#03）？")) return;
-          hbState = window.HouseBillEngine.markPushed(hbState);
-          renderHb();
-          syncListFromState();
-          alert("已重推报关行（#03 · 示意），分单号已同步");
-          return;
-        }
-        alert("已对勾选记录推送报关行（示意 · #01，含分单号）");
-      });
+      var btnPushBroker = document.getElementById("btnPushBroker");
+      if (btnPushBroker) {
+        btnPushBroker.addEventListener("click", function () {
+          alert("已对勾选记录按报关编号推送报关行（示意 · #01，附件 + 报关编号）");
+        });
+      }
 
       var btnAllowCustoms = document.getElementById("btnAllowCustoms");
       if (btnAllowCustoms) {
@@ -2709,14 +2673,14 @@
         if (!raw.pushedToBroker) {
           hbState.dirty = false;
           hbState.needRepush = false;
-          hbState.goods.forEach(function (g) { g.sync = "未推送"; });
+          hbState.goods.forEach(function (g) { g.sync = "未生成"; });
         } else {
           hbState.pushedToBroker = true;
           hbState.goods.forEach(function (g) {
             g.pushedHouseNo = g.pushedHouseNo || g.houseNo;
-            g.sync = g.houseNo === g.pushedHouseNo ? "已同步" : "待重推";
+            g.sync = g.houseNo === g.pushedHouseNo ? "已生成" : "待重算";
           });
-          hbState.needRepush = hbState.goods.some(function (g) { return g.sync === "待重推"; });
+          hbState.needRepush = hbState.goods.some(function (g) { return g.sync === "待重算"; });
           hbState.dirty = hbState.needRepush;
         }
         renderHb();
@@ -2737,31 +2701,31 @@
           '<div class="cell"><div class="k">提单号</div><div class="v">' + hbState.bl + '</div></div>' +
           '<div class="cell"><div class="k">船司 × 港口</div><div class="v">' + c + ' · ' + p + '</div></div>' +
           '<div class="cell"><div class="k">报关行</div><div class="v">' + (hbState.broker || "—") + '</div></div>' +
-          '<div class="cell"><div class="k">推送状态</div><div class="v">' +
-          (hbState.pushedToBroker ? ("已推送 " + (hbState.lastPushAt || "")) : "未推送") +
-          (hbState.needRepush ? ' <span class="hb-sync-dirty">· 待重推</span>' : "") +
+          '<div class="cell"><div class="k">生成状态</div><div class="v">' +
+          (hbState.pushedToBroker ? ("已生成 " + (hbState.lastPushAt || "")) : "终配舱后待生成") +
+          (hbState.needRepush ? ' <span class="hb-sync-dirty">· 待重算</span>' : "") +
           '</div></div>';
 
-        var tip = "命中规则：" + c + " / " + p + "。生成后写入子表分单号；推送 #01 时传给报关行。";
+        var tip = "命中规则：" + c + " / " + p + "。终配舱后生成并写入子表分单号，供舱单使用；报关行 #01 按报关编号推送。";
         if (c === "以星" && p === "上海") tip = "以星·上海需人工申请，系统不自动生成，请手填或从申请池选用。";
         document.getElementById("hbRuleTip").textContent = tip;
 
         var pushTip = document.getElementById("hbPushTip");
         if (hbState.needRepush) {
           pushTip.hidden = false;
-          pushTip.textContent = "货物已调整，分单号已重算，与报关行侧不一致。请先「重推报关行 #03」，再继续预录/正式件，避免改运抵。";
+          pushTip.textContent = "货物或配舱已调整，分单号已重算。请确认写入后用于舱单；报关行侧仍按报关编号，不必因此重推。";
         } else {
           pushTip.hidden = true;
         }
 
         document.getElementById("hbRepush").hidden = !hbState.needRepush;
         document.getElementById("hbFtHint").textContent = hbState.needRepush
-          ? "变更未同步报关行 · 禁止直接收正式件（建议）"
-          : (hbState.pushedToBroker ? "已与报关行同步" : "写入列表后，在工具栏「推送报关行」执行 #01");
+          ? "分单号已重算，待确认写入 · 发舱单前须与舱单一致"
+          : (hbState.pushedToBroker ? "已写入列表，可供舱单" : "终配舱后写入列表分单号；推送报关行走客户单号 #01");
 
         document.getElementById("hbBody").innerHTML = hbState.goods.map(function (g, i) {
-          var syncCls = g.sync === "已同步" ? "hb-sync-ok" : g.sync === "待重推" ? "hb-sync-dirty" : "hb-sync-wait";
-          var rowCls = g.genWarn ? "warn-cell" : (g.sync === "待重推" ? "dirty-cell" : "");
+          var syncCls = g.sync === "已生成" ? "hb-sync-ok" : g.sync === "待重算" ? "hb-sync-dirty" : "hb-sync-wait";
+          var rowCls = g.genWarn ? "warn-cell" : (g.sync === "待重算" ? "dirty-cell" : "");
           return '<tr class="' + rowCls + '">' +
             '<td>' + (i + 1) + '</td>' +
             '<td>' + g.custNo + '</td>' +
@@ -2782,9 +2746,9 @@
         hbState.goods.forEach(function (g, i) {
           if (codes[i]) codes[i].textContent = g.houseNo || "待生成";
           if (syncs[i]) {
-            syncs[i].textContent = g.sync || "未推送";
+            syncs[i].textContent = g.sync || "未生成";
             syncs[i].className = "js-hb-sync " + (
-              g.sync === "已同步" ? "hb-sync-ok" : g.sync === "待重推" ? "hb-sync-dirty" : "hb-sync-wait"
+              g.sync === "已生成" ? "hb-sync-ok" : g.sync === "待重算" ? "hb-sync-dirty" : "hb-sync-wait"
             );
           }
         });
@@ -2803,20 +2767,6 @@
         hbState = Eng.afterGoodsChange(hbState, { type: "replace", goods: hbState.goods });
         renderHb();
       };
-      document.getElementById("hbAddGoods").onclick = function () {
-        hbState = Eng.afterGoodsChange(hbState, { type: "add" });
-        renderHb();
-      };
-      document.getElementById("hbRemoveGoods").onclick = function () {
-        if (hbState.goods.length <= 1) { alert("至少保留一票"); return; }
-        hbState = Eng.afterGoodsChange(hbState, { type: "remove", index: hbState.goods.length - 1 });
-        renderHb();
-      };
-      document.getElementById("hbMoveGoods").onclick = function () {
-        if (hbState.goods.length < 2) return;
-        hbState = Eng.afterGoodsChange(hbState, { type: "move", from: 0, to: 1 });
-        renderHb();
-      };
       document.getElementById("hbBody").addEventListener("change", function (e) {
         var inp = e.target.closest(".js-hb-edit");
         if (!inp || !hbState) return;
@@ -2824,8 +2774,8 @@
         hbState.goods[i].houseNo = inp.value.trim();
         if (hbState.pushedToBroker) {
           hbState.goods[i].sync =
-            hbState.goods[i].houseNo === hbState.goods[i].pushedHouseNo ? "已同步" : "待重推";
-          hbState.needRepush = hbState.goods.some(function (g) { return g.sync === "待重推"; });
+            hbState.goods[i].houseNo === hbState.goods[i].pushedHouseNo ? "已生成" : "待重算";
+          hbState.needRepush = hbState.goods.some(function (g) { return g.sync === "待重算"; });
           hbState.dirty = hbState.needRepush;
         }
         renderHb();
@@ -2834,26 +2784,24 @@
       document.getElementById("hbApply").onclick = function () {
         syncListFromState();
         closeHouseModal();
-        alert("已写入列表分单号（尚未推送报关行）");
+        alert("已写入列表分单号（供舱单使用；报关行仍按报关编号）");
       };
       document.getElementById("hbRepush").onclick = function () {
         hbState = Eng.markPushed(hbState);
         syncListFromState();
         renderHb();
         closeHouseModal();
-        alert("已按最新分单号重推报关行（#03）");
+        alert("已确认重算后的分单号并写入列表（舱单用，未重推报关行）");
       };
 
-      document.getElementById("btnReceiveFormal").addEventListener("click", function () {
-        if (hbState && hbState.needRepush) {
-          alert("分单号待重推报关行（#03），请先同步后再收取正式件，避免报关行侧单号与舱单不一致。");
-          openHouseModal(hbState.bl && hbState.bl.indexOf("EGLV") === 0 ? "emc" : "cosco");
-          return;
-        }
-        if (window.confirm("确认抓取报关行最新预录单信息并保存为正式件？完成后将进入「待放行」。（示意 · #08）")) {
-          alert("已抓取并保存报关正式件，记录将进入待放行页签（示意）");
-        }
-      });
+      var btnReceiveFormal = document.getElementById("btnReceiveFormal");
+      if (btnReceiveFormal) {
+        btnReceiveFormal.addEventListener("click", function () {
+          if (window.confirm("确认抓取报关行最新预录单信息并保存为正式件？完成后将进入「待放行」。（示意 · #08）")) {
+            alert("已抓取并保存报关正式件，记录将进入待放行页签（示意）");
+          }
+        });
+      }
       document.getElementById("btnFetch").addEventListener("click", function () {
         var checked = document.querySelectorAll("#tableBody tr.data-row:not(.hidden) input[type=checkbox]:checked");
         var label = checked.length ? "勾选 " + checked.length + " 条记录" : "当前页签可见记录";
@@ -2889,9 +2837,9 @@
           var cells = tr.querySelectorAll("td");
           var bl = (cells[4] && cells[4].textContent.trim()) || "—";
           var cntr = (cells[5] && cells[5].textContent.trim()) || "—";
-          var broker = (cells[11] && cells[11].textContent.trim()) || "—";
-          var voy = (cells[20] && cells[20].textContent.trim()) || "—";
-          var remark = (cells[23] && cells[23].textContent.trim()) || "海关布控查验";
+          var broker = (cells[10] && cells[10].textContent.trim()) || "—";
+          var voy = (cells[19] && cells[19].textContent.trim()) || "—";
+          var remark = (tr.querySelector(".cell-remark") && tr.querySelector(".cell-remark").textContent.trim()) || "海关布控查验";
           lines.push((i + 1) + ". 提单 " + bl + "　柜号 " + cntr);
           lines.push("   船名航次 " + voy);
           lines.push("   报关行 " + broker + "　说明 " + remark);
@@ -3033,7 +2981,7 @@
           sailChip.textContent = "开船前一天提醒：" + sailRemind;
           sailChip.className = "check-chip js-sail-remind " + (sailRemind === "已提醒" ? "ok" : "warn");
         }
-        var remarkTd = tr.cells[23];
+        var remarkTd = tr.querySelector(".cell-remark") || tr.cells[22];
         if (remarkTd && remark) {
           var base = remarkTd.textContent.trim();
           if (base.indexOf("【处置】") >= 0) base = base.replace(/【处置】[^\n]*/g, "").trim();
@@ -3087,8 +3035,8 @@
       }
 
       function getBrokerFromDataRow(dataRow) {
-        if (!dataRow || !dataRow.cells[11]) return "";
-        return dataRow.cells[11].textContent.trim();
+        if (!dataRow || !dataRow.cells[10]) return "";
+        return dataRow.cells[10].textContent.trim();
       }
 
       function findParentDataRow(node) {
@@ -3214,7 +3162,7 @@
         document.getElementById("attContent").value = ct;
         document.getElementById("attRemark").value = "";
         document.getElementById("attFile").value = "";
-        setAttQueryResult(["填写客户名称与报关行后，点「执行 #12 查询」返回委托状态。"], false);
+        setAttQueryResult(["对接行由报关行匹配电子委托并随报关单/放行单回传。此处仅核对回传结果，不按分票号查询。"], false);
 
         title.innerHTML = (mode === "query"
           ? "委托查询 <span class=\"rv rv-new\">12</span>"
@@ -3283,10 +3231,12 @@
         return hit;
       }
 
-      document.getElementById("btnAttQuery").addEventListener("click", function () {
+      var btnAttQuery = document.getElementById("btnAttQuery");
+      if (btnAttQuery) btnAttQuery.addEventListener("click", function () {
         openAttModal("query", null);
       });
-      document.getElementById("btnAttMark").addEventListener("click", function () {
+      var btnAttMark = document.getElementById("btnAttMark");
+      if (btnAttMark) btnAttMark.addEventListener("click", function () {
         openAttModal("mark", null);
       });
       document.getElementById("attClose").onclick = closeAttModal;
@@ -3445,16 +3395,18 @@
       var BIZ_SEND = {
         ams: { cls: "biz-ams", text: "AMS", title: "AMS 已发" },
         isf: { cls: "biz-isf", text: "ISF", title: "ISF 已发" },
-        mf: { cls: "biz-mf", text: "舱单", title: "舱单已发" }
+        mf: { cls: "biz-mf", text: "舱单", title: "舱单已发 · 系统直推海管家" },
+        agent: { cls: "biz-agent", text: "已发代理", title: "舱单已发给代理" }
       };
-      function markSend(kind, rows, toastMsg) {
+      function markSend(kind, rows, toastMsg, src) {
         var list = rows && rows.length ? rows : selectedDataRows();
         if (!list.length) {
           attToast("请先勾选提单");
-          return;
+          return false;
         }
         var m = BIZ_SEND[kind];
-        if (!m) return;
+        if (!m) return false;
+        var srcLabel = src === "sys" ? " · 系统" : src === "manual" ? " · 手工" : "";
         list.forEach(function (tr) {
           var cell = tr.querySelector(".cell-biz");
           if (!cell) return;
@@ -3463,8 +3415,9 @@
           if (cell.querySelector("." + m.cls)) return;
           var span = document.createElement("span");
           span.className = "biz-tag " + m.cls;
-          span.title = m.title;
+          span.title = m.title + srcLabel;
           span.textContent = m.text;
+          if (src) span.setAttribute("data-src", src);
           if (cell.lastChild && cell.lastChild.nodeType === 3) {
             cell.appendChild(span);
           } else {
@@ -3472,7 +3425,8 @@
             cell.appendChild(span);
           }
         });
-        attToast(toastMsg || ("已打业务标记：" + m.text + "（本页展示，不回写提单管理）"));
+        attToast(toastMsg || ("已打业务标记：" + m.text + srcLabel + "（本页展示，不回写提单管理）"));
+        return true;
       }
 
       var GOODS_EN = { "帽子": "HATS", "服装": "WEARING APPAREL", "女装连衣裙": "LADIES DRESSES", "合金制品": "METAL PRODUCTS", "机械配件": "MACHINERY PARTS", "硅胶模具": "SILICONE MOLDS", "旅行包": "TRAVEL BAGS", "收纳盒": "STORAGE BOXES", "窗帘": "CURTAINS", "五金件": "HARDWARE", "充电器": "CHARGERS", "置物架": "SHELVES", "包装纸": "PACKING PAPER" };
@@ -3483,14 +3437,28 @@
           ein: "98-7654321", bondType: "Consignee", bondId: "846",
           addr: "1200 Figueroa St, Los Angeles, CA 90015",
           phone: "+1 310-555-0188", country: "US", city: "Los Angeles",
-          notifySame: true
+          notifySame: true,
+          shipper: {
+            name: "Pacific Trade Logistics LLC (Shipper)",
+            addr: "Rm 1208, Nanshan, Shenzhen, Guangdong, China",
+            contact: "+86 755-8888-0188",
+            country: "CN",
+            city: "Shenzhen"
+          }
         },
         east: {
           code: "IMP-US-2023-006", name: "East Coast Import Co.",
           ein: "13-9876543", bondType: "Principal", bondId: "856",
           addr: "221B Virtual Ave, Suite 800, New York, NY 10001",
           phone: "+1 212-555-2200", country: "US", city: "New York",
-          notifySame: true
+          notifySame: true,
+          shipper: {
+            name: "East Coast Import Co. (Shipper)",
+            addr: "Tianhe, Guangzhou, Guangdong, China",
+            contact: "+86 20-6666-2200",
+            country: "CN",
+            city: "Guangzhou"
+          }
         }
       };
       var filingCtx = { kind: "ams", rows: [] };
@@ -3566,8 +3534,8 @@
       function collectFiling(tr) {
         var bl = cellTxt(tr, 4);
         var booking = cellTxt(tr, 3);
-        var carrier = cellTxt(tr, 19);
-        var voyRaw = cellTxt(tr, 20);
+        var carrier = cellTxt(tr, 18);
+        var voyRaw = cellTxt(tr, 19);
         var voy = parseVoy(voyRaw);
         var pol = mapPol(booking);
         var imp = pickImporter(bl);
@@ -3602,15 +3570,15 @@
           status: cellTxt(tr, 2),
           booking: booking,
           cntr: cellTxt(tr, 5),
-          ctype: mapCtype(cellTxt(tr, 18)),
+          ctype: mapCtype(cellTxt(tr, 17)),
           carrier: carrier,
           scac: mapScac(carrier, bl),
           vessel: voy.vessel || carrier,
           voy: voy.voy,
-          seal: cellTxt(tr, 21),
-          pcs: cellTxt(tr, 27),
-          gw: cellTxt(tr, 28),
-          cbm: cellTxt(tr, 31),
+          seal: cellTxt(tr, 20),
+          pcs: cellTxt(tr, 26),
+          gw: cellTxt(tr, 27),
+          cbm: cellTxt(tr, 30),
           pol: pol,
           pod: pod,
           hbl: hbl,
@@ -3704,7 +3672,7 @@
         setVal("mfAgent", d.scac + d.pol.code.replace(/^CN/, ""));
         setVal("mfBooking", d.booking);
         fillParty("mfCnee", { name: d.imp.name, addr: d.imp.addr, contact: d.imp.phone });
-        fillParty("mfShipper", d.shipper);
+        fillParty("mfShipper", d.imp.shipper);
         fillParty("mfNotify", { name: d.imp.name, addr: d.imp.addr, contact: d.imp.phone });
         var tb = document.getElementById("mfCargoBody");
         tb.innerHTML = "";
@@ -3743,7 +3711,11 @@
         document.getElementById("filingAmsPanel").hidden = kind !== "ams";
         document.getElementById("filingIsfPanel").hidden = kind !== "isf";
         document.getElementById("filingMfPanel").hidden = kind !== "mf";
-        document.getElementById("filingReviewWarn").hidden = d.status.indexOf("预录待复审") < 0;
+        var reviewEl = document.getElementById("filingReviewWarn");
+        reviewEl.hidden = d.status.indexOf("预录待复审") < 0;
+        reviewEl.innerHTML = kind === "mf"
+          ? "本票仍为<strong>预录待复审</strong>。舱单按提单管理 + 进口商 + 终配舱预填核对；正式连报文网关需核准后。本期保存只打业务标记，不回写来源主档。"
+          : "本票仍为<strong>预录待复审</strong>。AMS/ISF 按装柜表+进口商、车队或代理、仓库数据表预填核对；正式连报文网关需核准后。本期保存只打业务标记，不回写来源主档。";
         document.getElementById("filingSubmit").hidden = kind === "ams";
         document.getElementById("filingSaveSend").textContent =
           kind === "ams" ? "保存并报关" : kind === "isf" ? "保存并配合" : "保存并发送";
@@ -3756,14 +3728,17 @@
       function saveFiling(mode) {
         var kind = filingCtx.kind;
         var labels = { ams: "AMS", isf: "ISF", mf: "舱单" };
-        var msg = mode === "draft"
-          ? "已保存" + labels[kind] + "草稿并打标（示意，不回写提单管理）"
-          : "已保存并标记" + labels[kind] + "已发（示意，不连报文网关、不回写提单管理）";
-        markSend(kind, filingCtx.rows, msg);
+        if (mode === "draft") {
+          attToast("已保存" + labels[kind] + "草稿（未发送，不打已发标）");
+          closeFiling();
+          return;
+        }
+        var msg = kind === "mf"
+          ? "系统已发送舱单（海管家直推）并自动打「舱单」标"
+          : "已保存并标记" + labels[kind] + "已发（系统自动标记）";
+        markSend(kind, filingCtx.rows, msg, "sys");
         closeFiling();
       }
-      document.getElementById("btnAms").addEventListener("click", function () { openFiling("ams"); });
-      document.getElementById("btnIsf").addEventListener("click", function () { openFiling("isf"); });
       document.getElementById("btnManifest").addEventListener("click", function () { openFiling("mf"); });
       document.getElementById("filingClose").onclick = closeFiling;
       document.getElementById("filingCancel").onclick = closeFiling;
@@ -3774,15 +3749,19 @@
       document.getElementById("filingSubmit").onclick = function () { saveFiling("send"); };
       document.getElementById("filingSaveSend").onclick = function () { saveFiling("send"); };
       document.getElementById("filingTplSave").onclick = function () {
-        attToast("已保存为模板（示意）。本期优先用双通道+进口商绑定带出。");
+        attToast(filingCtx.kind === "mf"
+          ? "已保存为模板（示意）。舱单优先用提单管理 + 进口商 + 终配舱带出。"
+          : "已保存为模板（示意）。AMS/ISF 优先用装柜表+进口商、车队或代理、仓库数据表带出。");
       };
       document.getElementById("filingTpl").addEventListener("change", function () {
         if (!this.value) return;
-        attToast("模板示意。打开弹窗时已按双通道核准资料 + 进口商绑定预填，模板仅作覆盖参考。");
+        attToast(filingCtx.kind === "mf"
+          ? "模板示意。打开弹窗时已按提单管理 + 进口商 + 终配舱预填，模板仅作覆盖参考。"
+          : "模板示意。打开弹窗时已按装柜表+进口商、车队或代理、仓库数据表预填，模板仅作覆盖参考。");
         this.value = "";
       });
       document.getElementById("amsAddBox").onclick = function () {
-        attToast("示意：可继续加箱。本期从双通道带出本柜箱封号。");
+        attToast("示意：可继续加箱。本期从车队或代理带出本柜箱封号。");
       };
 
       function expandForRow(tr) {
@@ -3822,6 +3801,93 @@
         el.classList.remove("open");
         el.setAttribute("aria-hidden", "true");
       }
+
+      var agentMfCtx = { rows: [] };
+      function agentMfTagText(tr) {
+        var cell = tr.querySelector(".cell-biz");
+        if (!cell) return "未发";
+        var tags = [];
+        if (cell.querySelector(".biz-mf")) tags.push("舱单");
+        if (cell.querySelector(".biz-agent")) tags.push("已发代理");
+        return tags.length ? tags.join(" / ") : "未发";
+      }
+      function openAgentMf() {
+        var rows = selectedDataRows();
+        if (!rows.length) {
+          attToast("请先勾选提单");
+          return;
+        }
+        agentMfCtx.rows = rows;
+        var tb = document.getElementById("agentMfBody");
+        tb.innerHTML = "";
+        var voyages = {};
+        rows.forEach(function (tr) {
+          var voy = cellTxt(tr, 19);
+          if (voy) voyages[voy] = true;
+          var r = document.createElement("tr");
+          [4, 5, 20, 19, 26, 27, 30].forEach(function (idx) {
+            var td = document.createElement("td");
+            td.textContent = cellTxt(tr, idx);
+            r.appendChild(td);
+          });
+          var tdTag = document.createElement("td");
+          tdTag.textContent = agentMfTagText(tr);
+          r.appendChild(tdTag);
+          tb.appendChild(r);
+        });
+        var voyKeys = Object.keys(voyages);
+        var warn = document.getElementById("agentMfWarn");
+        if (voyKeys.length > 1) {
+          warn.hidden = false;
+          warn.textContent = "勾选了 " + voyKeys.length + " 个船名航次。同船名船次可批量发给代理；混船仍可下载，建议拆批。";
+        } else {
+          warn.hidden = true;
+          warn.textContent = "";
+        }
+        openMask("agentMfMask");
+      }
+      function closeAgentMf() { closeMask("agentMfMask"); }
+      function csvCell(v) {
+        v = v == null ? "" : String(v);
+        if (/[",\n\r]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+        return v;
+      }
+      function downloadManifestCsv(rows) {
+        var headers = ["终配舱单号", "提单号", "柜号", "报关供应商", "柜型", "船公司", "船名航次", "铅封号", "配舱件数", "出货重", "出货方数"];
+        var idxs = [3, 4, 5, 10, 17, 18, 19, 20, 26, 27, 30];
+        var lines = [headers.map(csvCell).join(",")];
+        rows.forEach(function (tr) {
+          lines.push(idxs.map(function (i) { return csvCell(cellTxt(tr, i)); }).join(","));
+        });
+        var blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "舱单-发给代理.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 800);
+      }
+      document.getElementById("btnDlManifest").addEventListener("click", openAgentMf);
+      document.getElementById("btnMarkAgent").addEventListener("click", function () {
+        markSend("agent", null, "已手工标记「已发代理」（线下发给代理）", "manual");
+      });
+      document.getElementById("agentMfClose").onclick = closeAgentMf;
+      document.getElementById("agentMfCancel").onclick = closeAgentMf;
+      document.getElementById("agentMfMask").addEventListener("click", function (e) {
+        if (e.target === document.getElementById("agentMfMask")) closeAgentMf();
+      });
+      document.getElementById("agentMfDl").onclick = function () {
+        if (!agentMfCtx.rows.length) return;
+        downloadManifestCsv(agentMfCtx.rows);
+        attToast("已下载舱单表格。发给代理后请点「标记已发代理」；走系统发送则自动标记。");
+      };
+      document.getElementById("agentMfMark").onclick = function () {
+        if (markSend("agent", agentMfCtx.rows, "已手工标记「已发代理」（线下发给代理）", "manual")) closeAgentMf();
+      };
+      document.getElementById("agentMfSys").onclick = function () {
+        if (markSend("agent", agentMfCtx.rows, "系统已发送舱单给代理并自动打「已发代理」标", "sys")) closeAgentMf();
+      };
 
       function refreshMgPreview() {
         var gid = document.getElementById("mgGroupId").value || "（自动）";
@@ -3975,7 +4041,7 @@
       }
 
       function remarkTd(tr) {
-        return tr.querySelector(".cell-remark") || tr.cells[23];
+        return tr.querySelector(".cell-remark") || tr.cells[22];
       }
 
       function shipAmdHtml(scene, done) {
@@ -3989,8 +4055,22 @@
         if (!tr) return;
         tr.setAttribute("data-ship-amd", String(scene || ""));
         tr.setAttribute("data-ship-amd-st", done ? "done" : "pending");
-        var cell = tr.querySelector(".cell-ship-amd");
-        if (cell) cell.innerHTML = shipAmdHtml(scene, done);
+        var cell = tr.querySelector(".cell-biz");
+        if (!cell) return;
+        var html = scene ? shipAmdHtml(scene, done) : "";
+        var old = cell.querySelector(".ship-amd");
+        if (old) {
+          if (html) old.outerHTML = html;
+          else old.remove();
+        } else if (html) {
+          var empty = cell.querySelector(".biz-empty");
+          if (empty) empty.remove();
+          if (cell.querySelector(".biz-tag")) cell.insertAdjacentHTML("beforeend", " " + html);
+          else cell.innerHTML = html;
+        }
+        if (!cell.querySelector(".biz-tag, .ship-amd")) {
+          cell.innerHTML = '<span class="biz-empty">—</span>';
+        }
       }
 
       function readSwapFromRow(tr) {
@@ -4328,12 +4408,21 @@
 
       function applyBizFilter() {
         var v = (document.getElementById("qBizMark") || {}).value || "";
-        var clsMap = { ams: "biz-ams", isf: "biz-isf", mf: "biz-mf", amend: "biz-amend", splitcab: "biz-splitcab" };
+        var clsMap = { ams: "biz-ams", isf: "biz-isf", mf: "biz-mf", agent: "biz-agent", amend: "biz-amend", splitcab: "biz-splitcab" };
         document.querySelectorAll("#tableBody tr.data-row").forEach(function (tr) {
           var cell = tr.querySelector(".cell-biz");
+          var scene = tr.getAttribute("data-ship-amd") || "";
+          var st = tr.getAttribute("data-ship-amd-st") || "";
           var ok = !v;
-          if (v === "none") ok = !cell || !cell.querySelector(".biz-tag");
-          else if (clsMap[v]) ok = !!(cell && cell.querySelector("." + clsMap[v]));
+          if (v === "none") {
+            ok = !(cell && (cell.querySelector(".biz-tag") || cell.querySelector(".ship-amd")));
+          } else if (v === "s1" || v === "s2" || v === "s3") {
+            ok = scene === v.slice(1);
+          } else if (v === "ship-pending") {
+            ok = st === "pending";
+          } else if (clsMap[v]) {
+            ok = !!(cell && cell.querySelector("." + clsMap[v]));
+          }
           var exp = expandForRow(tr);
           if (v) {
             tr.style.opacity = ok ? "" : "0.35";
@@ -4345,27 +4434,6 @@
         });
       }
       document.getElementById("qBizMark").addEventListener("change", applyBizFilter);
-
-      function applyShipAmdFilter() {
-        var v = (document.getElementById("qShipAmd") || {}).value || "";
-        document.querySelectorAll("#tableBody tr.data-row").forEach(function (tr) {
-          var scene = tr.getAttribute("data-ship-amd") || "";
-          var st = tr.getAttribute("data-ship-amd-st") || "";
-          var ok = !v;
-          if (v === "none") ok = !scene;
-          else if (v === "pending") ok = st === "pending";
-          else ok = scene === v;
-          var exp = expandForRow(tr);
-          if (v) {
-            tr.style.opacity = ok ? "" : "0.35";
-            if (exp) exp.style.opacity = ok ? "" : "0.35";
-          } else {
-            tr.style.opacity = "";
-            if (exp) exp.style.opacity = "";
-          }
-        });
-      }
-      document.getElementById("qShipAmd").addEventListener("change", applyShipAmdFilter);
       document.getElementById("tableBody").addEventListener("click", function (e) {
         var tag = e.target.closest(".ship-amd.pending");
         if (!tag) return;
@@ -4379,8 +4447,129 @@
         openRebook();
       });
 
+      /* —— 运单明细：预录单状态 + 预录已确认（执行侧不再跳预录工作台） —— */
+      function findDeclNoCol(table) {
+        var ths = table.querySelectorAll("thead th");
+        for (var i = 0; i < ths.length; i++) {
+          var t = (ths[i].textContent || "").replace(/\s+/g, "");
+          if (t.indexOf("报关编号") === 0) return i;
+        }
+        return -1;
+      }
+      function parentTabOfExp(exp) {
+        var key = (exp.getAttribute("data-parent") || "").replace(/^exp-/, "");
+        var toggle = document.querySelector('.exp-toggle[data-exp="' + key + '"]');
+        var row = toggle && toggle.closest("tr.data-row");
+        return (row && row.getAttribute("data-tab")) || "";
+      }
+      function preentryMeta(tab, expId, rowIdx) {
+        var tabs = (tab || "").split(/\s+/);
+        var locked = tabs.indexOf("cleared") >= 0 || tabs.indexOf("released") >= 0;
+        var confirmed = locked || tabs.indexOf("wait") >= 0 || tabs.indexOf("check") >= 0;
+        var st = "未出";
+        if (tabs.indexOf("broker") >= 0) st = "处理中";
+        else if (tabs.indexOf("review") >= 0 || confirmed || locked) st = "已出";
+        if (expId === "exp-r1" && rowIdx === 1) confirmed = true;
+        if (expId === "exp-r1" && rowIdx === 0) confirmed = false;
+        return { st: st, confirmed: confirmed, locked: locked };
+      }
+      function preStTag(st) {
+        var cls = st === "已出" ? "ok" : (st === "处理中" ? "warn" : (st === "已撤销" ? "bad" : "gray"));
+        return '<span class="att-tag ' + cls + '">' + st + "</span>";
+      }
+      function confirmHtml(meta) {
+        var can = meta.st === "已出" && !meta.locked;
+        return (
+          '<span class="confirm-cell' + (meta.locked ? " locked" : "") + '">' +
+            '<label title="' + (meta.locked ? "放行后锁定，不可取消" : (can ? "手动勾选，允许取消" : "尚未出有效预录单，不能确认")) + '">' +
+              '<input type="checkbox" data-pre-confirm' +
+                (meta.confirmed ? " checked" : "") +
+                (can ? "" : " disabled") + " />" +
+              (meta.confirmed ? "已确认" : "未确认") +
+            "</label>" +
+          "</span>"
+        );
+      }
+      function enrichWaybillPreentry() {
+        document.querySelectorAll("#tableBody tr.expand-row").forEach(function (exp) {
+          var table = exp.querySelector(".sub-table");
+          if (!table || table.querySelector("th.col-pre-st")) return;
+          var idx = findDeclNoCol(table);
+          if (idx < 0) return;
+          var ths = table.querySelectorAll("thead th");
+          var thSt = document.createElement("th");
+          thSt.className = "col-pre-st";
+          thSt.innerHTML = '预录单状态 <span class="badge-new">NEW</span>';
+          var thCf = document.createElement("th");
+          thCf.className = "col-pre-cf";
+          thCf.innerHTML = '预录单已确认 <span class="badge-new">NEW</span>';
+          ths[idx].insertAdjacentElement("afterend", thCf);
+          ths[idx].insertAdjacentElement("afterend", thSt);
+          var tab = parentTabOfExp(exp);
+          table.querySelectorAll("tbody tr").forEach(function (row, ri) {
+            var meta = preentryMeta(tab, exp.id, ri);
+            var tdSt = document.createElement("td");
+            tdSt.className = "pre-st-cell";
+            tdSt.setAttribute("data-pre-st", meta.st);
+            tdSt.innerHTML = preStTag(meta.st);
+            var tdCf = document.createElement("td");
+            tdCf.className = "pre-cf-cell";
+            tdCf.setAttribute("data-pre-cf", meta.confirmed ? "1" : "0");
+            tdCf.innerHTML = confirmHtml(meta);
+            var cell = row.children[idx];
+            if (!cell) return;
+            cell.insertAdjacentElement("afterend", tdCf);
+            cell.insertAdjacentElement("afterend", tdSt);
+          });
+        });
+      }
+      function applyPreCfFilter() {
+        var sel = document.getElementById("qPreCf");
+        var v = sel ? sel.value : "";
+        document.querySelectorAll("#tableBody .expand-row").forEach(function (sub) {
+          var cells = sub.querySelectorAll(".pre-cf-cell");
+          if (!cells.length) {
+            sub.style.opacity = v ? "0.35" : "";
+            return;
+          }
+          var hit = !v;
+          cells.forEach(function (c) {
+            if (!v || c.getAttribute("data-pre-cf") === v) hit = true;
+            c.style.outline = (v && c.getAttribute("data-pre-cf") === v) ? "2px solid #52c41a" : "";
+          });
+          sub.style.opacity = hit ? "" : "0.35";
+        });
+      }
+      enrichWaybillPreentry();
+      var qPreCf = document.getElementById("qPreCf");
+      if (qPreCf) qPreCf.addEventListener("change", applyPreCfFilter);
+      document.getElementById("tableBody").addEventListener("change", function (e) {
+        var inp = e.target.closest("input[data-pre-confirm]");
+        if (!inp) return;
+        var cell = inp.closest(".pre-cf-cell");
+        var stCell = cell && cell.parentNode && cell.parentNode.querySelector(".pre-st-cell");
+        var st = stCell ? (stCell.getAttribute("data-pre-st") || "") : "";
+        if (st !== "已出") {
+          inp.checked = false;
+          attToast("尚未出有效预录单，不能确认");
+          return;
+        }
+        var on = !!inp.checked;
+        cell.setAttribute("data-pre-cf", on ? "1" : "0");
+        var lab = inp.closest("label");
+        var lastTxt = null;
+        lab.childNodes.forEach(function (n) {
+          if (n.nodeType === 3 && n.textContent.trim()) lastTxt = n;
+        });
+        if (lastTxt) lastTxt.textContent = on ? "已确认" : "未确认";
+        else lab.appendChild(document.createTextNode(on ? "已确认" : "未确认"));
+        attToast(on ? "已勾选预录确认（可再取消）" : "已取消预录确认");
+        applyPreCfFilter();
+      });
+
       var params = new URLSearchParams(window.location.search || "");
-      var initTab = params.get("tab") || "review";
+      var initTab = params.get("tab") || "wait";
+      if (isPreTab(initTab)) initTab = "wait";
       var initBtn = document.querySelector('.status-tab[data-tab="' + initTab + '"]');
       if (initBtn) {
         activeTab = initTab;
@@ -4389,7 +4578,7 @@
         });
       }
       syncToolbar(activeTab);
-      syncPhaseUi(activeTab);
+      syncPhaseUi();
       filterRows(activeTab);
     })();
   </script>

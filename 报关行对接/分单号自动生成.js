@@ -1,6 +1,7 @@
 /**
- * 分单号规则引擎（船司 × 港口）+ 货物调整重算 + 推送报关行脏标记
- * 规则口径对齐：产品部门/各组sop/关务组-分单号规则表.html
+ * 分单号规则引擎（船司 × 港口）+ 终配舱后生成 + 货物/配舱调整整组重算
+ * 分单号只给舱单用；报关行推送主键是报关编号，重算不触发 #03。
+ * 规则口径对齐：产品部门/关务组/关务组-分单号规则表.html
  */
 (function (global) {
   var LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -148,8 +149,8 @@
   }
 
   /**
-   * 货物调整后重算：增删改序 → 整组按新序重算
-   * 已推送报关行时打 dirty，需 #03 重推
+   * 货物/配舱调整后重算：增删改序 → 整组按新序重算
+   * 已生成过分单号时打 dirty（待重算写入舱单），不触发报关行 #03
    */
   function afterGoodsChange(state, action) {
     var goods = state.goods.slice();
@@ -201,10 +202,10 @@
       g.pushedHouseNo = pushedMap[g.custNo] || g.pushedHouseNo || "";
       g.sync =
         !state.pushedToBroker
-          ? "未推送"
+          ? "未生成"
           : g.houseNo && g.pushedHouseNo && g.houseNo === g.pushedHouseNo
-            ? "已同步"
-            : "待重推";
+            ? "已生成"
+            : "待重算";
     });
 
     return Object.assign({}, state, {
@@ -219,7 +220,7 @@
     var goods = state.goods.map(function (g) {
       return Object.assign({}, g, {
         pushedHouseNo: g.houseNo,
-        sync: "已同步",
+        sync: "已生成",
       });
     });
     return Object.assign({}, state, {

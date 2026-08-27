@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>关务 · 预录工作台 · 按报关单号选运单</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --orange: #fa8c16; --green: #52c41a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      font-size: 12px; color: var(--text); background: #eef1f6;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; font-size: 14px; white-space: nowrap; }
+    .topbar .nav { display: flex; gap: 2px; overflow-x: auto; flex: 1; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.72); padding: 0 10px; height: 40px;
+      display: inline-flex; align-items: center; white-space: nowrap; font-size: 12px;
+    }
+    .topbar .nav a.on { color: #fff; font-weight: 600; background: var(--orange); }
+    .topbar .right { margin-left: auto; color: rgba(255,255,255,.65); white-space: nowrap; }
+    .layout { display: flex; min-height: calc(100vh - 40px); }
+    .sider {
+      width: 168px; background: #001529; color: rgba(255,255,255,.75);
+      padding: 8px 0; flex: none;
+    }
+    .sider .g { padding: 8px 16px 4px; font-size: 11px; color: rgba(255,255,255,.45); }
+    .sider a {
+      display: block; padding: 8px 16px; color: rgba(255,255,255,.75); font-size: 12px;
+    }
+    .sider a.on { background: #1890ff; color: #fff; }
+    .main { flex: 1; min-width: 0; padding: 10px 12px 72px; overflow: auto; }
+    .page-hd {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px;
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .page-hd h1 { margin: 0; font-size: 16px; }
+    .badge {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; line-height: 16px; vertical-align: middle; margin-left: 4px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .mode-bar {
+      display: flex; gap: 0; margin-bottom: 8px; border: 1px solid var(--line);
+      border-radius: 2px; overflow: hidden; background: #fff;
+    }
+    .mode-tab {
+      flex: 1; display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; background: #fafafa; color: var(--sub);
+      border-right: 1px solid var(--line); text-decoration: none;
+    }
+    .mode-tab:last-child { border-right: none; }
+    .mode-tab.active {
+      background: #fff; color: var(--text); box-shadow: inset 0 -2px 0 #1890ff;
+    }
+    .mode-tab b { font-size: 13px; }
+    .mode-tab span { font-size: 11px; color: var(--sub); }
+    .filters {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+      gap: 8px 10px; padding: 10px 12px; align-items: end; border-bottom: 1px solid var(--line);
+    }
+    .fi label {
+      display: block; color: var(--sub); margin-bottom: 2px; font-size: 11px;
+    }
+    .fi input, .fi select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font: inherit;
+    }
+    .filter-side { display: flex; flex-direction: column; gap: 6px; }
+    .filter-side .btn { width: 110px; }
+    .acts {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+      border-bottom: 1px solid var(--line); align-items: center;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; background: #fff;
+      border-radius: 2px; font: inherit; cursor: pointer; white-space: nowrap;
+    }
+    .btn.primary, .btn.ok { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .hint {
+      margin: 0; padding: 8px 12px; font-size: 12px; color: #134e4a;
+      background: #f0fdfa; border-bottom: 1px solid #99f6e4; line-height: 1.6;
+    }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 320px); }
+    table.data {
+      width: 100%; border-collapse: collapse; min-width: 1280px; font-size: 11px;
+    }
+    table.data th, table.data td {
+      border: 1px solid #f0f0f0; padding: 5px 6px; white-space: nowrap;
+      text-align: left; vertical-align: middle; line-height: 20px; height: 32px;
+    }
+    table.data th {
+      background: #fafafa; position: sticky; top: 0; z-index: 2; font-weight: 600; color: var(--sub);
+    }
+    table.data tr.parent-row:hover td { background: #e6f7ff; }
+    table.data tr.parent-row.picked td { background: #f6ffed; }
+    tr.expand-row td { background: #fafafa; padding: 0; white-space: normal; vertical-align: top; }
+    .sub-table-wrap { overflow-x: auto; padding: 8px 10px 10px; }
+    .sub-hd {
+      font-size: 11px; color: var(--sub); margin-bottom: 6px;
+    }
+    .sub-table { width: 100%; border-collapse: collapse; min-width: 980px; font-size: 11px; }
+    .sub-table th, .sub-table td {
+      border: 1px solid #f0f0f0; padding: 4px 6px; white-space: nowrap; text-align: left;
+    }
+    .sub-table th { background: #f5f5f5; color: var(--sub); }
+    .sub-table tr.ck td { background: #f6ffed; }
+    .exp-toggle {
+      border: none; background: none; cursor: pointer;
+      color: var(--sub); font-size: 14px; padding: 0 4px; line-height: 1;
+    }
+    .exp-toggle.open { transform: rotate(90deg); color: var(--blue); }
+    .tag {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      border: 1px solid; line-height: 16px; height: 18px; vertical-align: middle;
+    }
+    .tag.yes { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.no { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .tag.wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.push { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.proc { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.review { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .tag.merge { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+    .tag.split { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.decl { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.skip { color: #8c8c8c; background: #f5f5f5; border-color: #d9d9d9; }
+    .tag.new { color: #cf1322; background: #fff1f0; border-color: #ffa39e; font-weight: 700; }
+    .decl-no { font-family: Consolas, "Courier New", monospace; color: #0958d9; }
+    .pick-bar {
+      position: fixed; left: 168px; right: 0; bottom: 0; z-index: 20;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 16px; background: #001529; color: #fff;
+      box-shadow: 0 -4px 16px rgba(0,0,0,.18);
+    }
+    .pick-bar .sum { font-size: 13px; }
+    .pick-bar .sum b { color: #95de64; }
+    .pick-bar .btn { height: 30px; }
+    .toast {
+      position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+      background: #111827; color: #fff; padding: 10px 16px; border-radius: 6px;
+      font-size: 12px; display: none; z-index: 99;
+    }
+    .toast.show { display: block; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">ESS · 关务</div>
+    <nav class="nav">
+      <a href="关务组-签入即预报资料-MVP.html">预录工作台</a>
+      <a class="on" href="#">按报关单号选运单</a>
+      <a href="../../报关行对接/报关管理-列表-MVP.html">报关执行</a>
+      <a href="关务组-导航.html">组导航</a>
+    </nav>
+    <div class="right">业务勾选 · 报关单号母子表</div>
+  </header>
+
+  <div class="layout">
+    <aside class="sider">
+      <div class="g">关务作业</div>
+      <a href="关务组-签入即预报资料-MVP.html">预录工作台</a>
+      <a class="on" href="#">按报关单号选运单</a>
+      <a href="../../报关行对接/报关管理-列表-MVP.html">报关执行列表</a>
+      <a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">做资料分票核准</a>
+      <div class="g">关联</div>
+      <a href="关务组-导航.html">组导航</a>
+    </aside>
+    <main class="main">
+      <div class="page-hd">
+        <h1>预录工作台 · 按报关单号选运单 <span class="badge">NEW</span></h1>
+      </div>
+      <section class="panel">
+        <div class="filters">
+          <div class="fi"><label>报关编号</label><input id="qDecl" placeholder="WY260820006-1(12) · 即报关单号" /></div>
+          <div class="fi"><label>运单号</label><input id="qNo" placeholder="子表运单" /></div>
+          <div class="fi"><label>客户</label><input id="qCustomer" placeholder="客户简称" /></div>
+          <div class="fi">
+            <label>所属业务员</label>
+            <select id="qSales">
+              <option value="">全部</option>
+              <option>陈伟</option>
+              <option>刘芳</option>
+              <option>周杰</option>
+            </select>
+          </div>
+          <div class="fi">
+            <label>报关行</label>
+            <select id="qBroker">
+              <option value="">全部</option>
+              <option>鸿程捷运</option>
+              <option>通航顺</option>
+              <option>聚航</option>
+              <option>欣扬</option>
+              <option>盛世通</option>
+            </select>
+          </div>
+          <div class="filter-side">
+            <button type="button" class="btn" id="btnSearch">查询数据</button>
+            <button type="button" class="btn" id="btnReset">数据重置</button>
+          </div>
+        </div>
+        <p class="hint">
+          母行按<strong>报关编号</strong>分组（合并报关同一编号一行）。<strong>报关单号即报关编号</strong>，本页只展示一列，不再另出海关回传号 / 「未出报关单」。
+          展开子表为<strong>运单维度</strong>。勾选母行即选中其下全部运单，也可只勾部分运单。确认后带回预录工作台。
+        </p>
+        <div class="acts">
+          <button type="button" class="btn" id="btnExpandAll">全部展开</button>
+          <button type="button" class="btn" id="btnCollapseAll">全部收起</button>
+          <button type="button" class="btn" id="btnSelVisible">全选当前</button>
+          <span style="margin-left:auto;color:var(--sub)" id="listCnt">0 个报关编号</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="ckAll" title="全选当前列表" /></th>
+                <th style="width:28px"></th>
+                <th>报关编号</th>
+                <th>报关标记</th>
+                <th>运单数</th>
+                <th>件数合计</th>
+                <th>报关行</th>
+                <th>报关客服</th>
+                <th>报关状态</th>
+                <th>所属业务员</th>
+                <th>客户（摘要）</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="pick-bar">
+    <div class="sum" id="pickSum">未选运单</div>
+    <button type="button" class="btn" id="btnClear">清空勾选</button>
+    <button type="button" class="btn primary" id="btnPick">确认选择</button>
+    <a class="btn" href="关务组-签入即预报资料-MVP.html">返回运单列表</a>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="关务组-签入即预报资料-MVP-PRD.html" data-prd-anchor="m8">
+    <span class="ess-prd-chip">PRD · 报关单号母子表</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var CS = ["王敏", "李华", "张婷"];
+      var seed = [
+        { id: "WY260820001", custNo: "HD20260820001", customer: "华东贸易", sales: "陈伟", svc: "赵雪", wh: "上海仓", broker: "欣扬", checkinAt: "2026-08-20 09:12", uploaded: true, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "未委托", pcs: 8, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
+        { id: "WY260820002", custNo: "SZ20260820002", customer: "深圳迅达", sales: "刘芳", svc: "孙丽", wh: "盐田港", broker: "盛世通", checkinAt: "2026-08-20 09:28", uploaded: false, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "无标记", pcs: 5, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
+        { id: "WY260820004", custNo: "NB20260820004", customer: "宁波海运", sales: "周杰", svc: "吴倩", wh: "宁波仓", broker: "欣扬", checkinAt: "2026-08-20 10:40", uploaded: true, cabin: "wait", forecasted: true, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 10, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
+        { id: "WY260820006", custNo: "QD20260820006", customer: "青岛嘉运", sales: "陈伟", svc: "赵雪", wh: "青岛港", broker: "鸿程捷运", checkinAt: "2026-08-20 11:18", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 5, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
+        { id: "WY260820010", custNo: "YT20260820010", customer: "烟台海达", sales: "刘芳", svc: "孙丽", wh: "青岛港", broker: "鸿程捷运", checkinAt: "2026-08-20 11:20", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 4, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
+        { id: "WY260820011", custNo: "WH20260820011", customer: "威海联运", sales: "周杰", svc: "吴倩", wh: "青岛港", broker: "鸿程捷运", checkinAt: "2026-08-20 11:22", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 3, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
+        { id: "WY260820007", custNo: "GZ20260820007", customer: "广州联创", sales: "陈伟", svc: "赵雪", wh: "盐田港", broker: "盛世通", checkinAt: "2026-08-20 11:40", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: true, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 6, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
+        { id: "WY260820008", custNo: "XM20260820008", customer: "厦门海嘉", sales: "刘芳", svc: "孙丽", wh: "厦门港", broker: "通航顺", checkinAt: "2026-08-19 16:02", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: true, released: true, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 12, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
+        { id: "WY260820009", custNo: "TJ20260820009", customer: "天津远洋", sales: "周杰", svc: "吴倩", wh: "天津港", broker: "聚航", checkinAt: "2026-08-19 14:22", uploaded: true, cabin: "final", forecasted: true, preIssued: false, preConfirmed: false, released: false, amendState: "revoked", declMark: "拆分报关", attStatus: "无标记", pcs: 5, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: [{ seq: 1, pcs: 3 }, { seq: 2, pcs: 2 }] }
+      ];
+      var rows = seed;
+      var picked = {};
+      var openKeys = { "g:MG-0820-01": true };
+      var toastEl = document.getElementById("toast");
+      var toastTimer;
+
+      function hashStr(s) {
+        var h = 2166136261;
+        s = String(s || "");
+        for (var i = 0; i < s.length; i++) {
+          h ^= s.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+      }
+      function derive(r) {
+        if (!r.uploaded) return "blocked";
+        if (r.released) return "locked";
+        if (r.amendState === "revoked") return "revoked";
+        if (r.preConfirmed) return "confirmed";
+        if (r.preIssued) return "issued";
+        if (r.forecasted) return "processing";
+        return "ready";
+      }
+      function statusLabel(s) {
+        return {
+          blocked: "待上传资料", ready: "待推送", processing: "报关行处理中",
+          issued: "预录待复审", confirmed: "待放行",
+          revoked: "改单已撤销", locked: "已放行"
+        }[s] || s;
+      }
+      function statusTag(s) {
+        var cls = {
+          blocked: "no", ready: "push", processing: "proc",
+          issued: "review", confirmed: "wait", revoked: "proc", locked: "yes"
+        }[s] || "skip";
+        return '<span class="tag ' + cls + '">' + statusLabel(s) + "</span>";
+      }
+      function groupOf(r) {
+        if (r.declMark === "合并报关" && r.mergeGroup) {
+          return rows.filter(function (x) { return x.mergeGroup === r.mergeGroup; });
+        }
+        return [r];
+      }
+      function groupPcs(g) {
+        return g.reduce(function (s, x) { return s + (Number(x.pcs) || 0); }, 0);
+      }
+      function declNo(r) {
+        if (r.declMark === "合并报关" && r.mergeGroup) {
+          var g = groupOf(r);
+          var lead = r.mergeLead || (g[0] && g[0].id) || r.id;
+          return lead + "-1(" + groupPcs(g) + ")";
+        }
+        if (r.declMark === "拆分报关" && r.splitParts && r.splitParts.length) {
+          return r.splitParts.map(function (p) {
+            return r.id + "-" + p.seq + "(" + p.pcs + ")";
+          }).join(" ");
+        }
+        return r.id + "-" + (r.declSeq || 1) + "(" + (r.pcs || 0) + ")";
+      }
+      function declKey(r) {
+        return (declNo(r) || r.id || "").split(/\s+/)[0];
+      }
+      function customsCs(r) {
+        return CS[hashStr(declKey(r)) % CS.length];
+      }
+      function unitKey(r) {
+        return (r.declMark === "合并报关" && r.mergeGroup) ? "g:" + r.mergeGroup : "id:" + r.id;
+      }
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2400);
+      }
+      function markTag(r) {
+        var m = r.declMark || "报关";
+        var cls = m === "合并报关" ? "merge" : (m === "拆分报关" ? "split" : "decl");
+        return '<span class="tag ' + cls + '">' + m + "</span>";
+      }
+      function attTag(r) {
+        var st = r.attStatus || "无标记";
+        var cls = st === "已委托" ? "yes" : (st === "未委托" ? "no" : "skip");
+        return '<span class="tag ' + cls + '">' + st + "</span>";
+      }
+      function units() {
+        var qDecl = (document.getElementById("qDecl").value || "").trim();
+        var qNo = (document.getElementById("qNo").value || "").trim();
+        var qCust = (document.getElementById("qCustomer").value || "").trim();
+        var qSales = document.getElementById("qSales").value;
+        var qBroker = document.getElementById("qBroker").value;
+        var map = {};
+        var order = [];
+        rows.forEach(function (r) {
+          if (qNo && r.id.indexOf(qNo) === -1) return;
+          if (qCust && r.customer.indexOf(qCust) === -1) return;
+          if (qSales && r.sales !== qSales) return;
+          if (qBroker && r.broker !== qBroker) return;
+          var k = unitKey(r);
+          if (!map[k]) {
+            map[k] = { key: k, rows: [] };
+            order.push(k);
+          }
+          map[k].rows.push(r);
+        });
+        return order.map(function (k) {
+          var g = map[k].rows;
+          var lead = g[0];
+          var dn = declNo(lead);
+          if (qDecl && dn.indexOf(qDecl) === -1) return null;
+          var sales = [];
+          var custs = [];
+          g.forEach(function (x) {
+            if (sales.indexOf(x.sales) < 0) sales.push(x.sales);
+            if (custs.indexOf(x.customer) < 0) custs.push(x.customer);
+          });
+          return {
+            key: k,
+            declNo: dn,
+            mark: lead.declMark || "报关",
+            broker: lead.broker,
+            cs: customsCs(lead),
+            status: derive(lead),
+            sales: sales,
+            customers: custs,
+            rows: g,
+            pcs: groupPcs(g)
+          };
+        }).filter(Boolean);
+      }
+      function allIdsOf(u) {
+        return u.rows.map(function (x) { return x.id; });
+      }
+      function parentChecked(u) {
+        var ids = allIdsOf(u);
+        return ids.length && ids.every(function (id) { return picked[id]; });
+      }
+      function parentPartial(u) {
+        var ids = allIdsOf(u);
+        var n = ids.filter(function (id) { return picked[id]; }).length;
+        return n > 0 && n < ids.length;
+      }
+      function render() {
+        var list = units();
+        document.getElementById("listCnt").textContent = list.length + " 个报关编号";
+        var html = "";
+        list.forEach(function (u) {
+          var open = !!openKeys[u.key];
+          var ck = parentChecked(u);
+          html +=
+            '<tr class="parent-row' + (ck ? " picked" : "") + '" data-key="' + u.key + '">' +
+              '<td><input type="checkbox" class="p-ck" data-key="' + u.key + '"' + (ck ? " checked" : "") + (parentPartial(u) ? ' data-partial="1"' : "") + " /></td>" +
+              '<td><button type="button" class="exp-toggle' + (open ? " open" : "") + '" data-exp="' + u.key + '" aria-label="展开">›</button></td>' +
+              '<td><span class="decl-no">' + u.declNo + "</span></td>" +
+              "<td>" + markTag(u.rows[0]) + "</td>" +
+              "<td>" + u.rows.length + "</td>" +
+              "<td>" + u.pcs + "</td>" +
+              "<td>" + (u.broker || "—") + "</td>" +
+              "<td>" + u.cs + "</td>" +
+              "<td>" + statusTag(u.status) + "</td>" +
+              "<td>" + u.sales.join("、") + "</td>" +
+              "<td title=\"" + u.customers.join("、") + "\">" + u.customers.slice(0, 2).join("、") + (u.customers.length > 2 ? "…" : "") + "</td>" +
+            "</tr>";
+          html +=
+            '<tr class="expand-row' + (open ? "" : " hidden") + '" data-parent="' + u.key + '">' +
+              '<td colspan="11"><div class="sub-table-wrap">' +
+                '<div class="sub-hd">运单明细 · 报关编号 ' + u.declNo + " · " + u.rows.length + " 票</div>" +
+                '<table class="sub-table"><thead><tr>' +
+                  "<th></th><th>运单号</th><th>客户单号</th><th>客户</th><th>所属业务员</th><th>客服</th>" +
+                  "<th>件数</th><th>委托标记</th><th>预录单</th><th>预录已确认</th><th>签入时间</th>" +
+                "</tr></thead><tbody>" +
+                u.rows.map(function (r) {
+                  var on = !!picked[r.id];
+                  return (
+                    '<tr class="' + (on ? "ck" : "") + '">' +
+                      '<td><input type="checkbox" class="c-ck" data-id="' + r.id + '"' + (on ? " checked" : "") + " /></td>" +
+                      "<td>" + r.id + "</td>" +
+                      "<td>" + (r.custNo || "—") + "</td>" +
+                      "<td>" + r.customer + "</td>" +
+                      "<td>" + r.sales + "</td>" +
+                      "<td>" + r.svc + "</td>" +
+                      "<td>" + r.pcs + "</td>" +
+                      "<td>" + attTag(r) + "</td>" +
+                      "<td>" + (r.preIssued ? '<span class="tag yes">已出</span>' : '<span class="tag no">未出</span>') + "</td>" +
+                      "<td>" + (r.preConfirmed ? '<span class="tag yes">已确认</span>' : '<span class="tag skip">未确认</span>') + "</td>" +
+                      "<td>" + r.checkinAt + "</td>" +
+                    "</tr>"
+                  );
+                }).join("") +
+                "</tbody></table></div></td></tr>";
+        });
+        document.getElementById("tbody").innerHTML = html ||
+          '<tr><td colspan="11" style="text-align:center;color:#8c8c8c;padding:24px">无匹配报关编号</td></tr>';
+        Array.prototype.forEach.call(document.querySelectorAll(".p-ck[data-partial]"), function (el) {
+          el.indeterminate = true;
+        });
+        var visIds = [];
+        list.forEach(function (u) { allIdsOf(u).forEach(function (id) { visIds.push(id); }); });
+        var allEl = document.getElementById("ckAll");
+        allEl.checked = visIds.length > 0 && visIds.every(function (id) { return picked[id]; });
+        allEl.indeterminate = visIds.some(function (id) { return picked[id]; }) && !allEl.checked;
+        updatePick();
+      }
+      function updatePick() {
+        var ids = Object.keys(picked).filter(function (k) { return picked[k]; });
+        var decls = {};
+        rows.forEach(function (r) {
+          if (!picked[r.id]) return;
+          decls[declKey(r)] = true;
+        });
+        document.getElementById("pickSum").innerHTML =
+          ids.length
+            ? "已选 <b>" + ids.length + "</b> 票运单 · <b>" + Object.keys(decls).length + "</b> 个报关编号"
+            : "未选运单";
+      }
+      function setUnit(key, on) {
+        units().forEach(function (u) {
+          if (u.key !== key) return;
+          u.rows.forEach(function (r) { picked[r.id] = on; });
+        });
+      }
+      document.getElementById("tbody").addEventListener("click", function (e) {
+        var exp = e.target.closest(".exp-toggle");
+        if (exp) {
+          var k = exp.getAttribute("data-exp");
+          openKeys[k] = !openKeys[k];
+          render();
+          return;
+        }
+      });
+      document.getElementById("tbody").addEventListener("change", function (e) {
+        var p = e.target.closest(".p-ck");
+        if (p) {
+          setUnit(p.getAttribute("data-key"), p.checked);
+          var k = p.getAttribute("data-key");
+          if (p.checked) openKeys[k] = true;
+          render();
+          return;
+        }
+        var c = e.target.closest(".c-ck");
+        if (c) {
+          picked[c.getAttribute("data-id")] = c.checked;
+          render();
+        }
+      });
+      document.getElementById("ckAll").addEventListener("change", function () {
+        var on = this.checked;
+        units().forEach(function (u) {
+          u.rows.forEach(function (r) { picked[r.id] = on; });
+        });
+        render();
+      });
+      document.getElementById("btnSearch").onclick = render;
+      document.getElementById("btnReset").onclick = function () {
+        ["qDecl", "qNo", "qCustomer"].forEach(function (id) {
+          document.getElementById(id).value = "";
+        });
+        document.getElementById("qSales").value = "";
+        document.getElementById("qBroker").value = "";
+        render();
+      };
+      document.getElementById("btnExpandAll").onclick = function () {
+        units().forEach(function (u) { openKeys[u.key] = true; });
+        render();
+      };
+      document.getElementById("btnCollapseAll").onclick = function () {
+        openKeys = {};
+        render();
+      };
+      document.getElementById("btnSelVisible").onclick = function () {
+        units().forEach(function (u) {
+          u.rows.forEach(function (r) { picked[r.id] = true; });
+        });
+        render();
+      };
+      document.getElementById("btnClear").onclick = function () {
+        picked = {};
+        render();
+      };
+      document.getElementById("btnPick").onclick = function () {
+        var ids = Object.keys(picked).filter(function (k) { return picked[k]; });
+        if (!ids.length) {
+          toast("请先勾选运单");
+          return;
+        }
+        var decls = [];
+        rows.forEach(function (r) {
+          if (!picked[r.id]) return;
+          var dn = declKey(r);
+          if (decls.indexOf(dn) < 0) decls.push(dn);
+        });
+        try {
+          sessionStorage.setItem("preentryPick", JSON.stringify({
+            waybillIds: ids, declNos: decls
+          }));
+        } catch (e) {}
+        location.href = "关务组-签入即预报资料-MVP.html?from=pick";
+      };
+      ["qDecl", "qNo", "qCustomer"].forEach(function (id) {
+        document.getElementById(id).addEventListener("keydown", function (e) {
+          if (e.key === "Enter") render();
+        });
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>

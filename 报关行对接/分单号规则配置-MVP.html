@@ -209,14 +209,6 @@
           </select>
         </div>
         <div class="filter-item">
-          <label>生成方式</label>
-          <select id="qMode">
-            <option value="">全部</option>
-            <option value="auto">可自动</option>
-            <option value="manual">需申请/人工</option>
-          </select>
-        </div>
-        <div class="filter-item">
           <label>状态</label>
           <select id="qStatus">
             <option value="">全部</option>
@@ -248,7 +240,6 @@
                 <th style="width:36px"></th>
                 <th>船司</th>
                 <th>港口</th>
-                <th>方式</th>
                 <th>模板</th>
                 <th>规则说明</th>
                 <th>伪公式 / 示例</th>
@@ -289,7 +280,7 @@
       </div>
       <div class="modal-bd">
         <div class="alert">
-          修改启用规则后，列表按「分单号规则」立即命中新配置；已推送票若重算导致号变，需走 #03 重推。
+          修改启用规则后，列表按「分单号规则」立即命中新配置；终配舱后生成，调整则整组重算。分单号不进报关行 #01（报关编号推送）。
         </div>
         <div class="form-grid">
           <div class="form-item">
@@ -305,13 +296,6 @@
             <select id="fPort">
               <option>上海</option><option>宁波</option><option>厦门</option>
               <option>青岛</option><option>通用</option><option>华南口岸</option>
-            </select>
-          </div>
-          <div class="form-item">
-            <label>生成方式</label>
-            <select id="fMode">
-              <option value="auto">可自动</option>
-              <option value="manual">需申请/人工</option>
             </select>
           </div>
           <div class="form-item">
@@ -441,11 +425,6 @@
     setTimeout(function () { el.classList.remove("show"); }, 2200);
   }
 
-  function modeBadge(mode) {
-    if (mode === "manual") return '<span class="badge manual">需申请</span>';
-    return '<span class="badge auto">可自动</span>';
-  }
-
   function statusBadge(st) {
     return st === "on"
       ? '<span class="badge on">启用</span>'
@@ -460,13 +439,11 @@
   function filtered() {
     var c = document.getElementById("qCarrier").value;
     var p = document.getElementById("qPort").value;
-    var m = document.getElementById("qMode").value;
     var s = document.getElementById("qStatus").value;
     var kw = (document.getElementById("qKw").value || "").trim().toLowerCase();
     return RULES.filter(function (r) {
       if (c && r.carrier !== c) return false;
       if (p && r.port !== p) return false;
-      if (m && r.mode !== m) return false;
       if (s && r.status !== s) return false;
       if (kw) {
         var blob = (r.tpl + " " + r.desc + " " + r.formula + " " + r.carrier + " " + r.port).toLowerCase();
@@ -485,13 +462,12 @@
         '<td><input type="radio" name="rulePick" ' + (r.id === selectedId ? "checked" : "") + ' /></td>' +
         "<td><strong>" + r.carrier + "</strong></td>" +
         "<td>" + r.port + "</td>" +
-        "<td>" + modeBadge(r.mode) + "</td>" +
         '<td><span class="tpl-code">' + r.tpl + "</span><div style=\"color:#8c8c8c;font-size:11px;margin-top:2px\">" + tplName(r.tpl) + "</div></td>" +
         "<td>" + r.desc + "</td>" +
         '<td class="mono">' + r.formula.replace(/\\n/g, "<br/>") + "</td>" +
         "<td>" + statusBadge(r.status) + "</td>" +
         "</tr>";
-    }).join("") || '<tr><td colspan="8" style="text-align:center;color:#8c8c8c;padding:24px">无匹配规则</td></tr>';
+    }).join("") || '<tr><td colspan="7" style="text-align:center;color:#8c8c8c;padding:24px">无匹配规则</td></tr>';
   }
 
   function renderTpls() {
@@ -518,7 +494,7 @@
     if (rule.status === "off") {
       return { warn: true, lines: ["规则已停用，不会被自动生成命中。"] };
     }
-    if (tpl === "T0" || rule.mode === "manual") {
+    if (tpl === "T0") {
       return { warn: true, lines: ["需申请/手填：无自动公式。\\n请走申请池或「绑定分单号」。"] };
     }
     if (tpl === "T7") {
@@ -582,7 +558,6 @@
     document.getElementById("editTitle").textContent = isNew ? "新增规则" : ("编辑规则 · " + rule.carrier + " / " + rule.port);
     document.getElementById("fCarrier").value = rule.carrier;
     document.getElementById("fPort").value = rule.port;
-    document.getElementById("fMode").value = rule.mode;
     document.getElementById("fTpl").value = rule.tpl;
     document.getElementById("fDesc").value = rule.desc;
     document.getElementById("fFormula").value = rule.formula.replace(/\\n/g, "\n");
@@ -606,7 +581,7 @@
   });
 
   document.getElementById("btnSearch").onclick = renderTable;
-  ["qCarrier", "qPort", "qMode", "qStatus"].forEach(function (id) {
+  ["qCarrier", "qPort", "qStatus"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", renderTable);
   });
   document.getElementById("qKw").addEventListener("keydown", function (e) {
@@ -654,7 +629,6 @@
     var payload = {
       carrier: document.getElementById("fCarrier").value,
       port: document.getElementById("fPort").value,
-      mode: document.getElementById("fMode").value,
       tpl: document.getElementById("fTpl").value,
       desc: document.getElementById("fDesc").value.trim(),
       formula: document.getElementById("fFormula").value.trim().replace(/\n/g, "\\n"),

@@ -173,6 +173,49 @@
     .timeline-mini strong { color: var(--text); }
 
     .hidden { display: none !important; }
+
+    .demo-acts {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      padding: 8px 12px; margin-bottom: 10px;
+      background: #fffbe6; border: 1px solid #ffe58f; border-radius: 2px;
+      font-size: 12px; color: #ad6800;
+    }
+    .demo-acts .lab { margin-right: 4px; }
+    .btn.on { border-color: var(--blue); color: var(--blue); background: #e6f7ff; }
+    .tag.mute { color: #8c8c8c; background: #f5f5f5; border-color: #d9d9d9; }
+    .tag.warn { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+
+    .empty-state {
+      padding: 40px 24px 48px; text-align: center; color: var(--sub);
+    }
+    .empty-ico {
+      width: 64px; height: 64px; margin: 0 auto 12px;
+      border-radius: 50%; background: #f5f5f5; color: #bfbfbf;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; line-height: 1;
+    }
+    .empty-title { font-size: 14px; color: var(--text); font-weight: 600; margin-bottom: 6px; }
+    .empty-desc {
+      font-size: 12px; line-height: 1.7; max-width: 440px; margin: 0 auto 14px;
+    }
+    .empty-acts { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+
+    .chat-panel.is-offline .chat-thread,
+    .chat-panel.is-offline .chat-compose,
+    .chat-panel.is-offline .timeline-mini { display: none; }
+    .chat-offline {
+      padding: 28px 16px 20px; text-align: center; background: #fafafa;
+    }
+    .chat-offline .empty-ico { background: #fff; border: 1px dashed #d9d9d9; }
+    .chat-offline .contact {
+      text-align: left; font-size: 12px; line-height: 1.7; color: var(--text);
+      background: #fff; border: 1px solid var(--line); border-radius: 2px;
+      padding: 8px 10px; margin: 0 0 12px;
+    }
+    .chat-offline .contact span { color: var(--sub); }
+    .chat-compose.is-locked {
+      opacity: .55; pointer-events: none;
+    }
   </style>
   <link rel="stylesheet" href="customs-broker-review.css" />
   <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
@@ -182,7 +225,6 @@
   <div class="page">
     <div class="crumb">
       <a href="../产品部门/关务组/关务组-导航.html">关务组导航</a>
-      · <a href="../产品部门/关务组/关务组-签入即预报资料-MVP.html">预录工作台</a>
       · <a href="报关管理-列表-MVP.html">报关管理</a>
       / 审核详情 · COSU6502971850
       · <a href="报关管理-预录审核详情-兼容-MVP.html?tab=customs">提单详情 · 清报关</a>
@@ -191,7 +233,7 @@
     <section class="hero">
       <div class="hero-top">
         <div>
-          <h1>预录单审核 · 107179404 <span class="tag review">待复审</span></h1>
+          <h1>预录单审核 · 107179404 <span class="tag review">待复审</span> <span class="tag warn hidden" id="tagNoStruct">无结构化</span> <span class="tag mute hidden" id="tagNoMsg">无消息接口</span></h1>
           <div class="meta-grid">
             <span>终配舱单号 <strong>260609-青岛T25-1</strong></span>
             <span>柜号 <strong>OOCU9737915</strong></span>
@@ -204,12 +246,19 @@
         <div class="toolbar">
           <button type="button" class="btn btn-ok" id="btnApprove">复审通过 · 允许报关</button>
           <button type="button" class="btn btn-danger" id="btnReject">退回修改</button>
-          <button type="button" class="btn btn-warn">标记需沟通</button>
+          <button type="button" class="btn btn-warn" id="btnNeedChat">标记需沟通</button>
           <button type="button" class="btn">打开报关行系统</button>
-          <button type="button" class="btn">导出对比报告</button>
+          <button type="button" class="btn" id="btnExport">导出对比报告</button>
         </div>
       </div>
     </section>
+
+    <div class="demo-acts">
+      <span class="lab">演示空态</span>
+      <button type="button" class="btn" id="btnDemoStruct" title="报关行只回传附件、无字段级结构化">无结构信息返回</button>
+      <button type="button" class="btn" id="btnDemoMsg" title="该报关行未开通线上沟通接口">无消息对接接口</button>
+      <span style="margin-left:auto;color:#8c8c8c">默认有结构 + 有沟通；点按钮切换本单能力</span>
+    </div>
 
     <div class="workspace">
       <div class="main-col">
@@ -224,7 +273,17 @@
             </div>
           </div>
           <div id="viewCompare">
-            <div class="form-grid">
+            <div class="compare-banner hidden" id="structBanner">报关行未回传结构化字段（#05）· 本页无法做系统对比 · 请审「预录单全文」附件</div>
+            <div class="empty-state hidden" id="structEmpty">
+              <div class="empty-ico">∅</div>
+              <div class="empty-title">无结构信息返回</div>
+              <div class="empty-desc">报关行只回传了预录单附件，没有字段级结构化数据。系统不能做品名 / HS / 件毛体等自动对比。请打开预录单全文审附件，或对照客户原始资料后线下确认。</div>
+              <div class="empty-acts">
+                <button type="button" class="btn btn-primary" id="btnOpenPre">打开预录单全文</button>
+                <button type="button" class="btn" id="btnOpenCust">打开客户原始资料</button>
+              </div>
+            </div>
+            <div class="form-grid" id="structGrid">
               <div class="field">
                 <label>提运单号</label>
                 <div class="val">COSU6502971850</div>
@@ -289,7 +348,15 @@
           </div>
 
           <div id="viewGoods" class="hidden">
-            <div class="goods-table-wrap">
+            <div class="empty-state hidden" id="goodsEmpty">
+              <div class="empty-ico">∅</div>
+              <div class="empty-title">无商品结构化明细</div>
+              <div class="empty-desc">商品项随预录结构化回传。当前报关行未返回结构信息，明细不可用。请在预录单全文中核对项号、品名与数量。</div>
+              <div class="empty-acts">
+                <button type="button" class="btn btn-primary" id="btnOpenPre2">打开预录单全文</button>
+              </div>
+            </div>
+            <div class="goods-table-wrap" id="goodsTable">
               <table>
                 <thead>
                   <tr>
@@ -349,7 +416,18 @@
 
       <aside class="side-col">
         <section class="panel chat-panel" id="chatPanel">
-          <div class="chat-hd">沟通记录 · 青岛港兴报关行</div>
+          <div class="chat-hd" id="chatHd">沟通记录 · 青岛港兴报关行</div>
+          <div class="chat-offline hidden" id="chatOffline">
+            <div class="empty-ico">⊘</div>
+            <div class="empty-title">无消息对接接口</div>
+            <div class="empty-desc">该报关行未开通线上沟通通道，本页不收发消息、不保留会话。差异与改单请电话、微信或打开报关行系统线下联系。</div>
+            <div class="contact">
+              <div><span>报关行</span>　青岛港兴报关行</div>
+              <div><span>报关客服</span>　王丽（我方）· 请其转线下联系报关行张客服</div>
+              <div><span>可用动作</span>　打开报关行系统 · 审预录附件 · 退回修改（线下同步）</div>
+            </div>
+            <button type="button" class="btn" disabled>发送不可用</button>
+          </div>
           <div class="chat-thread" id="chatThread">
             <div class="msg sys">
               <div class="who">系统 <span class="time">2026-06-08 09:12</span></div>
@@ -406,18 +484,79 @@
         customer: document.getElementById("viewCustomer"),
         preentry: document.getElementById("viewPreentry")
       };
+      var qs = new URLSearchParams(location.search);
+      var noStruct = qs.get("struct") === "0";
+      var noMsg = qs.get("msg") === "0";
+
+      function showView(v) {
+        tabs.forEach(function (t) { t.classList.toggle("active", t.getAttribute("data-view") === v); });
+        Object.keys(views).forEach(function (k) {
+          views[k].classList.toggle("hidden", k !== v);
+        });
+      }
 
       tabs.forEach(function (tab) {
         tab.addEventListener("click", function () {
-          var v = tab.getAttribute("data-view");
-          tabs.forEach(function (t) { t.classList.toggle("active", t === tab); });
-          Object.keys(views).forEach(function (k) {
-            views[k].classList.toggle("hidden", k !== v);
-          });
+          showView(tab.getAttribute("data-view"));
         });
       });
 
+      function applyCaps() {
+        document.getElementById("structEmpty").classList.toggle("hidden", !noStruct);
+        document.getElementById("structBanner").classList.toggle("hidden", !noStruct);
+        document.getElementById("structGrid").classList.toggle("hidden", noStruct);
+        document.getElementById("goodsEmpty").classList.toggle("hidden", !noStruct);
+        document.getElementById("goodsTable").classList.toggle("hidden", noStruct);
+        document.getElementById("tagNoStruct").classList.toggle("hidden", !noStruct);
+        document.getElementById("btnDemoStruct").classList.toggle("on", noStruct);
+        document.getElementById("btnExport").disabled = noStruct;
+        document.getElementById("btnExport").title = noStruct ? "无结构化字段，无法导出对比报告" : "";
+
+        document.getElementById("chatPanel").classList.toggle("is-offline", noMsg);
+        document.getElementById("chatOffline").classList.toggle("hidden", !noMsg);
+        document.getElementById("tagNoMsg").classList.toggle("hidden", !noMsg);
+        document.getElementById("btnDemoMsg").classList.toggle("on", noMsg);
+        document.getElementById("chatHd").textContent = noMsg
+          ? "沟通 · 未对接消息接口"
+          : "沟通记录 · 青岛港兴报关行";
+        document.getElementById("btnNeedChat").disabled = noMsg;
+        document.getElementById("btnNeedChat").title = noMsg ? "该报关行无消息接口，请线下联系" : "";
+        document.getElementById("btnSend").disabled = noMsg;
+      }
+
+      function persist() {
+        var p = new URLSearchParams(location.search);
+        if (noStruct) p.set("struct", "0"); else p.delete("struct");
+        if (noMsg) p.set("msg", "0"); else p.delete("msg");
+        var q = p.toString();
+        history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + location.hash);
+      }
+
+      document.getElementById("btnDemoStruct").addEventListener("click", function () {
+        noStruct = !noStruct;
+        persist();
+        applyCaps();
+      });
+      document.getElementById("btnDemoMsg").addEventListener("click", function () {
+        noMsg = !noMsg;
+        persist();
+        applyCaps();
+      });
+
+      function openTab(v) {
+        showView(v);
+      }
+      document.getElementById("btnOpenPre").addEventListener("click", function () { openTab("preentry"); });
+      document.getElementById("btnOpenPre2").addEventListener("click", function () { openTab("preentry"); });
+      document.getElementById("btnOpenCust").addEventListener("click", function () { openTab("customer"); });
+
+      document.getElementById("btnNeedChat").addEventListener("click", function () {
+        if (noMsg) return;
+        highlightChat();
+      });
+
       document.getElementById("btnSend").addEventListener("click", function () {
+        if (noMsg) return;
         var text = document.getElementById("msgInput").value.trim();
         if (!text) return;
         var thread = document.getElementById("chatThread");
@@ -444,9 +583,11 @@
         el.classList.toggle("hl", on);
         if (!on) return;
         el.scrollIntoView({ block: "start" });
+        if (noMsg) return;
         var box = document.getElementById("msgInput");
         if (box) box.focus();
       }
+      applyCaps();
       highlightChat();
       window.addEventListener("hashchange", highlightChat);
       setTimeout(highlightChat, 0);
