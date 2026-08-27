@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>海外仓 · 预估费用规则 · 旁支</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #102a43; --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --branch: #531dab;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; font-size: 14px; }
+    .topbar .nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.72); padding: 0 10px; height: 40px;
+      display: inline-flex; align-items: center; white-space: nowrap; font-size: 12px;
+    }
+    .topbar .nav a.on { color: #fff; font-weight: 600; background: var(--header); }
+    .topbar .right { margin-left: auto; font-size: 11px; color: rgba(255,255,255,.6); }
+
+    .main { padding: 10px 12px 48px; max-width: 1400px; margin: 0 auto; }
+    .badge {
+      display: inline-block; padding: 0 6px; height: 18px; line-height: 16px;
+      border-radius: 2px; font-size: 10px; font-weight: 700; border: 1px solid; vertical-align: middle;
+    }
+    .badge.branch { color: var(--branch); background: #f9f0ff; border-color: #d3adf7; }
+    .badge.src { color: var(--sub); background: #fafafa; border-color: #d9d9d9; font-weight: 400; }
+
+    .page-hd {
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); line-height: 1.55; font-size: 12px; }
+
+    .rule-box {
+      background: #f9f0ff; border: 1px solid #d3adf7; border-radius: 2px;
+      padding: 10px 12px; margin-bottom: 8px; font-size: 12px; line-height: 1.65;
+    }
+    .rule-box ol { margin: 0; padding-left: 18px; }
+    .rule-box li { margin-bottom: 4px; }
+
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 0; margin-bottom: 8px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+    }
+    .tab {
+      padding: 9px 14px; border: none; background: #fafafa; cursor: pointer;
+      font-size: 13px; color: var(--sub); border-right: 1px solid var(--line);
+    }
+    .tab.on { background: #fff; color: var(--branch); font-weight: 600; box-shadow: inset 0 -2px 0 var(--branch); }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px; margin-bottom: 8px;
+    }
+    .panel-hd {
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .panel-hd h2 { margin: 0; font-size: 14px; flex: 1; }
+    .panel-hd .sub { font-size: 11px; color: var(--sub); }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+    }
+    .toolbar input, .toolbar select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; min-width: 140px;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; cursor: pointer;
+    }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    .table-wrap { overflow: auto; max-height: 520px; padding: 0 12px 12px; }
+    table.data { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 640px; }
+    table.data th, table.data td {
+      border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top;
+    }
+    table.data th {
+      position: sticky; top: 0; z-index: 1; background: #fafafa; color: var(--sub); font-weight: 600;
+    }
+    table.data tr:hover td { background: #f5f9ff; }
+    table.data .num { text-align: right; font-family: Consolas, monospace; white-space: nowrap; }
+    table.data .code { font-family: Consolas, monospace; font-weight: 600; color: #08979c; }
+    table.data .empty { color: #bfbfbf; text-align: center; }
+    table.data .note { white-space: pre-wrap; max-width: 220px; font-size: 11px; line-height: 1.45; color: #595959; }
+
+    .calc-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px;
+    }
+    @media (max-width: 900px) { .calc-grid { grid-template-columns: 1fr; } }
+    .calc-form .fg { margin-bottom: 10px; }
+    .calc-form label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .calc-form input, .calc-form select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .calc-out {
+      border: 1px solid #b7eb8f; background: #f6ffed; border-radius: 4px; padding: 12px;
+      min-height: 200px;
+    }
+    .calc-out h3 { margin: 0 0 8px; font-size: 14px; }
+    .calc-out .big { font-size: 22px; font-weight: 700; color: var(--ok); margin: 8px 0; }
+    .calc-out .formula { font-size: 11px; color: var(--sub); line-height: 1.55; white-space: pre-wrap; }
+    .calc-out .line { padding: 4px 0; border-bottom: 1px dashed #d9f7be; font-size: 12px; }
+    .hidden { display: none !important; }
+    .foot-note { padding: 8px 12px; font-size: 11px; color: var(--sub); border-top: 1px solid var(--line); }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">ESS · 船务</div>
+    <nav class="nav">
+      <a href="船务组-导航.html">开发测试导航</a>
+      <a class="on" href="#">海外仓预估费用</a>
+      <a href="../产品部门-导航.html#s-branch">旁支导航</a>
+    </nav>
+    <div class="right">旁支 · 09/10–11 · 示意</div>
+  </header>
+
+  <div class="main">
+    <div class="page-hd">
+      <h1>海外仓 · 预估费用规则 <span class="badge branch">旁支</span></h1>
+      <p>
+        数据源自 <span class="badge src">海外仓2026-06.xlsx</span>
+        + <span class="badge src">计费规则.xlsx</span>。
+        含组合价、散板价、亚马逊卡派直送及代理附加费口径；仅供旁支评审与开发对照，<strong>不进主干 08/31 验收</strong>。
+      </p>
+    </div>
+
+    <div class="rule-box" id="ruleBox"></div>
+
+    <div class="tabs" id="tabs">
+      <button type="button" class="tab on" data-tab="combo">组合价</button>
+      <button type="button" class="tab" data-tab="pallet">散板价</button>
+      <button type="button" class="tab" data-tab="amz">亚马逊卡派直送</button>
+      <button type="button" class="tab" data-tab="detail">代理明细 · 附加费</button>
+      <button type="button" class="tab" data-tab="calc">预估试算</button>
+    </div>
+
+    <section class="panel" id="panelCombo">
+      <div class="panel-hd">
+        <h2>组合价 · FBA 仓点 × 海外仓</h2>
+        <span class="sub" id="comboCnt">—</span>
+      </div>
+      <div class="toolbar">
+        <label>仓点 <input id="comboQ" placeholder="ONT8 / ABE3" /></label>
+        <label>海外仓
+          <select id="comboProv"><option value="">全部列</option></select>
+        </label>
+        <button type="button" class="btn" id="comboReset">重置</button>
+      </div>
+      <div class="table-wrap"><table class="data" id="comboTable"></table></div>
+      <div class="foot-note">组合价计费：方数/柜子总方数 ×（组合价 − 全包价）；VMI ×0.88；美库按重量/方数占比（见规则说明）。</div>
+    </section>
+
+    <section class="panel hidden" id="panelPallet">
+      <div class="panel-hd">
+        <h2>散板价 · 每托 USD</h2>
+        <span class="sub" id="palletCnt">—</span>
+      </div>
+      <div class="toolbar">
+        <label>地址/仓点 <input id="palletQ" placeholder="ABE4 / ONT8" /></label>
+        <label>海外仓 <select id="palletProv"><option value="">全部列</option></select></label>
+      </div>
+      <div class="table-wrap"><table class="data" id="palletTable"></table></div>
+      <div class="foot-note">亚马逊仓点无组合价时，按每托散板价计费；部分代理按 1–5 托 / 6 托及以上分档（表内为示意单价）。</div>
+    </section>
+
+    <section class="panel hidden" id="panelAmz">
+      <div class="panel-hd">
+        <h2>亚马逊 · 整柜卡派直送</h2>
+        <span class="sub" id="amzCnt">—</span>
+      </div>
+      <div class="toolbar">
+        <label>仓点 <input id="amzQ" placeholder="ONT8" /></label>
+        <label>海外仓 <select id="amzProv"><option value="">全部列</option></select></label>
+      </div>
+      <div class="table-wrap"><table class="data" id="amzTable"></table></div>
+      <div class="foot-note">整柜直送亚马逊 FBA：按价格表收取，无其他费用（计费规则 §1）。</div>
+    </section>
+
+    <section class="panel hidden" id="panelDetail">
+      <div class="panel-hd">
+        <h2>代理明细 · 全包/附加费口径</h2>
+        <span class="sub">摘自计费规则 · 全美表(带明细)</span>
+      </div>
+      <div class="table-wrap" style="max-height:none"><table class="data" id="detailTable"></table></div>
+      <div class="panel-hd" style="border-top:1px solid var(--line)"><h2>私人地址 · 直送参考</h2></div>
+      <div class="table-wrap"><table class="data" id="privateTable"></table></div>
+    </section>
+
+    <section class="panel hidden" id="panelCalc">
+      <div class="panel-hd"><h2>预估试算 · 示意</h2></div>
+      <div class="calc-grid">
+        <div class="calc-form">
+          <div class="fg">
+            <label>计费类型</label>
+            <select id="calcType">
+              <option value="amz">亚马逊卡派直送（整柜）</option>
+              <option value="combo">组合价（差额分摊）</option>
+              <option value="pallet">散板价（按托）</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>仓点 / 地址</label>
+            <input id="calcWh" list="whList" placeholder="如 ONT8、ABE4" />
+            <datalist id="whList"></datalist>
+          </div>
+          <div class="fg">
+            <label>海外仓 / 代理</label>
+            <select id="calcProv"></select>
+          </div>
+          <div class="fg" id="fgPallets">
+            <label>托数</label>
+            <input id="calcPallets" type="number" min="1" value="10" />
+          </div>
+          <div class="fg hidden" id="fgCombo">
+            <label>本票方数</label>
+            <input id="calcVol" type="number" min="0" step="0.1" value="12" />
+          </div>
+          <div class="fg hidden" id="fgCombo2">
+            <label>柜子总方数</label>
+            <input id="calcVolTotal" type="number" min="1" value="68" />
+          </div>
+          <div class="fg hidden" id="fgCombo3">
+            <label>全包价（USD/柜）</label>
+            <input id="calcFull" type="number" min="0" value="1575" />
+          </div>
+          <button type="button" class="btn primary" id="btnCalc">试算</button>
+        </div>
+        <div class="calc-out" id="calcOut">
+          <h3>试算结果</h3>
+          <p class="formula">选择类型、仓点、海外仓后点「试算」。</p>
+        </div>
+      </div>
+      <div class="foot-note">试算为原型示意：组合价按规则 §3 差额分摊；实际以系统配置 + 业务确认口径为准。</div>
+    </section>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true">
+    <span class="ess-prd-chip">旁支 · 海外仓预估费用</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script src="海外仓预估费用-data.js"></script>
+  <script>
+  (function () {
+    var D = window.OVERSEAS_WH_FEE;
+    if (!D) {
+      document.body.innerHTML = "<p style='padding:24px'>数据加载失败，请先运行 _gen_overseas_wh_fee_data.py</p>";
+      return;
+    }
+
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function fmtPrice(v) {
+      if (v == null || v === "") return '<td class="empty">—</td>';
+      return '<td class="num">$' + esc(v) + '</td>';
+    }
+
+    function fillProvSelect(sel, providers) {
+      sel.innerHTML = '<option value="">全部列</option>' +
+        providers.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join("");
+    }
+
+    function renderPriceTable(cfg, qId, provId, tableId, cntId) {
+      var q = document.getElementById(qId).value.trim().toUpperCase();
+      var prov = document.getElementById(provId).value;
+      var providers = prov ? [prov] : (cfg.providers || []);
+      var rows = (cfg.warehouses || []).filter(function (w) {
+        return !q || String(w.code).toUpperCase().indexOf(q) >= 0;
+      });
+      document.getElementById(cntId).textContent =
+        "显示 " + rows.length + " / " + (cfg.warehouses || []).length + " 行";
+      var thead = "<thead><tr><th>仓点</th>" +
+        providers.map(function (p) { return "<th>" + esc(p) + "</th>"; }).join("") + "</tr></thead>";
+      var tbody = rows.map(function (w) {
+        return "<tr><td class='code'>" + esc(w.code) + "</td>" +
+          providers.map(function (p) { return fmtPrice(w.prices[p]); }).join("") + "</tr>";
+      }).join("");
+      document.getElementById(tableId).innerHTML = thead + "<tbody>" +
+        (tbody || "<tr><td colspan='20' class='empty'>无匹配</td></tr>") + "</tbody>";
+    }
+
+    function renderDetail() {
+      var cols = ["核算方式", "地址", "代理", "系统名字", "40尺提拆打（带车架）", "45尺 提拆打 （带车架）",
+        "自提费/托", "快递出库费/托", "超地址费", "仓储费"];
+      var thead = "<thead><tr>" + cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead>";
+      var tbody = (D.providerDetailSample || []).map(function (r) {
+        return "<tr>" + cols.map(function (c) {
+          var v = r[c];
+          if (typeof v === "number") return "<td class='num'>$" + v + "</td>";
+          return "<td class='note'>" + esc(v || "—") + "</td>";
+        }).join("") + "</tr>";
+      }).join("");
+      document.getElementById("detailTable").innerHTML = thead + "<tbody>" + tbody + "</tbody>";
+
+      var pcols = ["核算方式", "地址", "代理", "预提费", "仓储费", "车架费", "等时费"];
+      var pt = "<thead><tr>" + pcols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead>";
+      var pb = (D.privateDirectSample || []).map(function (r) {
+        return "<tr>" + pcols.map(function (c) {
+          var v = r[c];
+          if (typeof v === "number") return "<td class='num'>$" + v + "</td>";
+          return "<td>" + esc(v || "—") + "</td>";
+        }).join("") + "</tr>";
+      }).join("");
+      document.getElementById("privateTable").innerHTML = pt + "<tbody>" + pb + "</tbody>";
+    }
+
+    function allWarehouseCodes() {
+      var set = {};
+      ["comboPrice", "palletPrice", "amzDirect"].forEach(function (k) {
+        (D[k].warehouses || []).forEach(function (w) { set[w.code] = true; });
+      });
+      return Object.keys(set).sort();
+    }
+
+    function lookupPrice(cfg, code, prov) {
+      var hit = (cfg.warehouses || []).find(function (w) {
+        return String(w.code).toUpperCase() === String(code).toUpperCase();
+      });
+      if (!hit) return null;
+      return hit.prices[prov];
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll(".tab").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-tab") === tab);
+      });
+      ["Combo", "Pallet", "Amz", "Detail", "Calc"].forEach(function (s) {
+        document.getElementById("panel" + s).classList.add("hidden");
+      });
+      var map = { combo: "Combo", pallet: "Pallet", amz: "Amz", detail: "Detail", calc: "Calc" };
+      document.getElementById("panel" + map[tab]).classList.remove("hidden");
+    }
+
+    function updateCalcForm() {
+      var t = document.getElementById("calcType").value;
+      document.getElementById("fgPallets").classList.toggle("hidden", t !== "pallet");
+      document.getElementById("fgCombo").classList.toggle("hidden", t !== "combo");
+      document.getElementById("fgCombo2").classList.toggle("hidden", t !== "combo");
+      document.getElementById("fgCombo3").classList.toggle("hidden", t !== "combo");
+      var provSel = document.getElementById("calcProv");
+      var provs = t === "amz" ? D.amzDirect.providers :
+        t === "pallet" ? D.palletPrice.providers : D.comboPrice.providers;
+      provSel.innerHTML = provs.map(function (p) { return "<option>" + esc(p) + "</option>"; }).join("");
+    }
+
+    function runCalc() {
+      var type = document.getElementById("calcType").value;
+      var wh = document.getElementById("calcWh").value.trim();
+      var prov = document.getElementById("calcProv").value;
+      var out = document.getElementById("calcOut");
+      if (!wh || !prov) {
+        out.innerHTML = "<h3>试算结果</h3><p class='formula'>请填写仓点并选择海外仓。</p>";
+        return;
+      }
+      var lines = [];
+      var total = 0;
+      var formula = "";
+
+      if (type === "amz") {
+        var p = lookupPrice(D.amzDirect, wh, prov);
+        if (p == null) {
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到 " + esc(wh) + " × " + esc(prov) + " 卡派直送价。</p>";
+          return;
+        }
+        total = p;
+        lines.push("亚马逊卡派直送（整柜）：$" + p);
+        formula = "规则：按价格表收取，无其他费用。";
+      } else if (type === "pallet") {
+        var pp = lookupPrice(D.palletPrice, wh, prov);
+        var n = parseInt(document.getElementById("calcPallets").value, 10) || 0;
+        if (pp == null || n <= 0) {
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到散板单价或托数无效。</p>";
+          return;
+        }
+        total = pp * n;
+        lines.push("散板单价：$" + pp + " / 托");
+        lines.push("托数：" + n);
+        formula = "规则：无组合价时按每托散板价 × 托数。";
+      } else {
+        var cp = lookupPrice(D.comboPrice, wh, prov);
+        var vol = parseFloat(document.getElementById("calcVol").value) || 0;
+        var volT = parseFloat(document.getElementById("calcVolTotal").value) || 1;
+        var full = parseFloat(document.getElementById("calcFull").value) || 0;
+        if (cp == null || vol <= 0 || volT <= 0) {
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到组合价或方数无效。</p>";
+          return;
+        }
+        var diff = cp - full;
+        var share = (vol / volT) * diff;
+        total = Math.round(share * 100) / 100;
+        lines.push("组合价（表）：$" + cp);
+        lines.push("全包价（输入）：$" + full);
+        lines.push("差额：$" + diff);
+        lines.push("方数占比：" + vol + " / " + volT);
+        formula = "公式：方数/柜子总方数 ×（组合价 − 全包价）\nVMI ×0.88、美库重量占比等特殊情况见规则说明。";
+      }
+
+      out.innerHTML =
+        "<h3>试算结果 · " + esc(wh) + " · " + esc(prov) + "</h3>" +
+        lines.map(function (l) { return "<div class='line'>" + esc(l) + "</div>"; }).join("") +
+        "<div class='big'>≈ $" + total + "</div>" +
+        "<div class='formula'>" + esc(formula) + "</div>";
+    }
+
+    // init rules
+    var rules = D.calcRules || [];
+    document.getElementById("ruleBox").innerHTML =
+      "<strong>计费规则摘要</strong>（计费规则.xlsx）<ol>" +
+      rules.slice(1).map(function (r) {
+        return "<li>" + esc(String(r).replace(/\n/g, " ")) + "</li>";
+      }).join("") + "</ol>";
+
+    fillProvSelect(document.getElementById("comboProv"), D.comboPrice.providers || []);
+    fillProvSelect(document.getElementById("palletProv"), D.palletPrice.providers || []);
+    fillProvSelect(document.getElementById("amzProv"), D.amzDirect.providers || []);
+
+    document.getElementById("whList").innerHTML = allWarehouseCodes()
+      .map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("");
+
+    function bindTable(qId, provId, tableId, cntId, cfgKey) {
+      function go() { renderPriceTable(D[cfgKey], qId, provId, tableId, cntId); }
+      document.getElementById(qId).oninput = go;
+      document.getElementById(provId).onchange = go;
+      go();
+    }
+    bindTable("comboQ", "comboProv", "comboTable", "comboCnt", "comboPrice");
+    bindTable("palletQ", "palletProv", "palletTable", "palletCnt", "palletPrice");
+    bindTable("amzQ", "amzProv", "amzTable", "amzCnt", "amzDirect");
+    renderDetail();
+
+    document.getElementById("comboReset").onclick = function () {
+      document.getElementById("comboQ").value = "";
+      document.getElementById("comboProv").value = "";
+      renderPriceTable(D.comboPrice, "comboQ", "comboProv", "comboTable", "comboCnt");
+    };
+
+    document.querySelectorAll(".tab").forEach(function (btn) {
+      btn.onclick = function () { switchTab(btn.getAttribute("data-tab")); };
+    });
+
+    document.getElementById("calcType").onchange = updateCalcForm;
+    document.getElementById("btnCalc").onclick = runCalc;
+    updateCalcForm();
+  })();
+  </script>
+</body>
+</html>

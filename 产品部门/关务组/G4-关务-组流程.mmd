@@ -1,10 +1,24 @@
-%% 关务组 · 组流程图 · 全流程按组拆分
-%% 覆盖：S4 报关四切片 · S5 查验 · 目的港清关（关务分支）
-%% 交接：起点：客户已上传报关资料 · H7←报关行预录（核准时）· H5↔船务 · H3←船务 · H4→海外
+%% 关务组 · 组流程图 · 2026-08-27 更新
+%% 覆盖：资料岗预录工作台 · S4 报关四切片 · S5 查验 · 目的港清关
+%% 交接：H7←报关行预录 · H5↔船务 · H3←船务 · H4→海外
 %% draw.io：排列 → 插入 → 高级 → Mermaid…
 
 flowchart TB
+  SIGN["签入"] --> POOL{"报关件 / 整柜代理？"}
+  POOL -->|否| SKIP["不进预录工作台"]
+  POOL -->|是| PRE0["预录工作台 · 资料岗"]
+
+  PRE0 --> PRE1["待上传资料 → 待推送"]
+  PRE1 --> PRE2["推送报关行 #01 · 预录回传/上传"]
+  PRE2 --> PRE3["预录待复审 · 手勾确认"]
+  PRE3 --> GATE_LCL{"散货 · 终配舱？"}
+  GATE_LCL -->|是 · 卡控①| LCL_HOLD["不重推报关行 · 件毛体同步"]
+  GATE_LCL -->|整柜无此卡控| PRE4
+  LCL_HOLD --> PRE4["待放行 · 出池②"]
+  PRE4 --> EXEC["报关执行列表 · 待放行/查验/放行"]
+
   UP["客户已上传报关资料"] --> A["有资料即按报关编号推 / 到仓出单"]
+  PRE0 -.-> A
   A --> BIND{"已绑定提单？"}
   BIND -->|否| WAITB["等绑提单<br/>船务绑主单"]
   WAITB --> BIND
@@ -21,8 +35,9 @@ flowchart TB
   R3 --> C
   D -->|是| JOIN["P2 汇合 · 门禁打开"]
   RISK -.->|查货完结 · 已可执行| JOIN
-  JOIN --> P3A["∥ P3 同岗直发舱单 / AMS / ISF"]
-  JOIN --> P3B["∥ P3 报关申报 · 放行查验"]
+  JOIN --> P3A["∥ P3 发舱单 / 下载舱单"]
+  JOIN --> P3B["∥ P3 报关申报 · 放行抓取"]
+  P3B --> EXEC
   H5{{"H5 · 船务只读订阅<br/>砍跨组对单"}}
   P3A --> H5
   FIX["To-Be：核准后关务闭环直发，不等船务"]
@@ -54,8 +69,10 @@ flowchart TB
   classDef para fill:#E3F2FD,stroke:#1976D2,color:#0D47A1,stroke-dasharray: 5 3
   classDef fix fill:#F6FFED,stroke:#52C41A,color:#135200
   classDef endn fill:#ECEFF1,stroke:#78909C,color:#37474F
+  classDef pre fill:#E6FFFB,stroke:#08979C,color:#006D75,stroke-width:2px
+  class SIGN,SKIP,PRE0,PRE1,PRE2,PRE3,LCL_HOLD,PRE4,EXEC pre
   class UP,A,B,C,JOIN,INSP,SC,CLR,OK,AMD1,AMD2,AMD3,WAIT step
-  class GATE,D,AMD,WHERE,GAI dec
+  class POOL,GATE_LCL,GATE,D,AMD,WHERE,GAI dec
   class H7,H5,H5B,H3,H4 cross
   class RISK,P3A,P3B para
   class R3 back

@@ -44,15 +44,6 @@ CHAPTERS = [
         "booklet": "../../报关行对接/报关管理-预录单审核详情-MVP-PRD.html",
     },
     {
-        "id": "ch-blc",
-        "prefix": "blc-",
-        "file": BROKER / "报关管理-预录审核详情-兼容-MVP-PRD.html",
-        "title": "第 4 章 · 提单详情 · 清报关",
-        "hint": "清报关 Tab：数据 / 做资料分票核准 / 清报关附件（#04）。",
-        "proto": [("../../报关行对接/报关管理-预录审核详情-兼容-MVP.html?tab=customs", "清报关")],
-        "booklet": "../../报关行对接/报关管理-预录审核详情-兼容-MVP-PRD.html",
-    },
-    {
         "id": "ch-split",
         "prefix": "split-",
         "file": BROKER / "报关管理-做资料分票核准-MVP-PRD.html",
@@ -78,33 +69,6 @@ CHAPTERS = [
         "hint": "适配器、字段映射、本期能力。推送/回调主键=报关编号。不按分票号查委托。",
         "proto": [("../../报关行对接/报关行API配置-MVP.html", "API 配置")],
         "booklet": "../../报关行对接/报关行API配置-MVP-PRD.html",
-    },
-    {
-        "id": "ch-vendor",
-        "prefix": "vendor-",
-        "file": BROKER / "报关管理-供应商上传审核-MVP-PRD.html",
-        "title": "第 8 章 · 供应商上传审核",
-        "hint": "未对接 API 的线下通道。确认后等同 #04 / #08。",
-        "proto": [("../../报关行对接/报关管理-供应商上传审核-MVP.html", "上传审核")],
-        "booklet": "../../报关行对接/报关管理-供应商上传审核-MVP-PRD.html",
-    },
-    {
-        "id": "ch-vtask",
-        "prefix": "vtask-",
-        "file": BROKER / "报关供应商-上传任务列表-MVP-PRD.html",
-        "title": "第 9 章 · 供应商上传任务",
-        "hint": "协作链接任务列表。API 启用后停发链、旧链失效。",
-        "proto": [("../../报关行对接/报关供应商-上传任务列表-MVP.html", "任务列表")],
-        "booklet": "../../报关行对接/报关供应商-上传任务列表-MVP-PRD.html",
-    },
-    {
-        "id": "ch-vup",
-        "prefix": "vup-",
-        "file": BROKER / "报关供应商-资料上传-MVP-PRD.html",
-        "title": "第 10 章 · 供应商资料上传",
-        "hint": "报关行侧上传页。等同 #04 线下通道。",
-        "proto": [("../../报关行对接/报关供应商-资料上传-MVP.html", "资料上传")],
-        "booklet": "../../报关行对接/报关供应商-资料上传-MVP-PRD.html",
     },
 ]
 
@@ -234,13 +198,9 @@ COVER = r'''    <section class="hero">
       <a href="#ch-pre">1 预录工作台</a>
       <a href="#ch-exec">2 报关执行</a>
       <a href="#ch-review">3 预录审核</a>
-      <a href="#ch-blc">4 清报关</a>
       <a href="#ch-split">5 做资料分票</a>
       <a href="#ch-house">6 分单号</a>
       <a href="#ch-api">7 API 配置</a>
-      <a href="#ch-vendor">8 上传审核</a>
-      <a href="#ch-vtask">9 上传任务</a>
-      <a href="#ch-vup">10 资料上传</a>
       <a href="#m8">配置数</a>
       <a href="#m9">二期 / 待定</a>
     </nav>
@@ -254,13 +214,10 @@ COVER = r'''    <section class="hero">
           <tr><td>预录工作台</td><td>只看报关件。委托三值。报关编号=报关单号。按报关编号选运单</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">工作台</a> · <a href="关务组-预录工作台-报关单号母子表-MVP.html">母子表</a></td><td class="proto"><a href="#ch-pre">第 1 章</a></td></tr>
           <tr><td>报关执行列表</td><td>待放行/查验/放行。发舱单、下载舱单。无预录页签。已核准不在本页</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">打开</a></td><td class="proto"><a href="#ch-exec">第 2 章</a></td></tr>
           <tr><td>预录单审核详情</td><td>结构化 + 沟通；#04 附件</td><td class="proto"><a href="../../报关行对接/报关管理-预录单审核详情-MVP.html">打开</a></td><td class="proto"><a href="#ch-review">第 3 章</a></td></tr>
-          <tr><td>提单详情 · 清报关</td><td>清报关数据 / 做资料入口 / 附件</td><td class="proto"><a href="../../报关行对接/报关管理-预录审核详情-兼容-MVP.html?tab=customs">打开</a></td><td class="proto"><a href="#ch-blc">第 4 章</a></td></tr>
           <tr><td>做资料分票核准</td><td>买单轧差。点行比对。「已核准」本页写入</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">打开</a></td><td class="proto"><a href="#ch-split">第 5 章</a></td></tr>
           <tr><td>分单号规则</td><td>船司×港口模板。绑提单之后生成</td><td class="proto"><a href="../../报关行对接/分单号规则配置-MVP.html">打开</a></td><td class="proto"><a href="#ch-house">第 6 章</a></td></tr>
           <tr><td>报关行 API</td><td>#01 #04 #08 #09 #10 #12。主键报关编号</td><td class="proto"><a href="../../报关行对接/报关行API配置-MVP.html">打开</a></td><td class="proto"><a href="#ch-api">第 7 章</a></td></tr>
-          <tr><td>供应商上传（未对接）</td><td>审核 / 任务 / 上传，等同 #04 #08</td><td class="proto"><a href="../../报关行对接/报关管理-供应商上传审核-MVP.html">审核</a></td><td class="proto"><a href="#ch-vendor">第 8 章</a></td></tr>
-          <tr><td>清关管理</td><td>取消IT只读展示。查验通知 FYI，不发邮件</td><td class="proto"><a href="../../清关管理-MVP.html">打开</a></td><td class="proto">见第 2 章查验口径</td></tr>
-          <tr><td>查验报表</td><td>国内/国外周分析（示意）</td><td class="proto"><a href="关务组-查验报表-提单运单维度-MVP.html">打开</a></td><td class="proto">—</td></tr>
+          <tr><td>清关管理</td><td>取消IT只读展示。查验通知发给业务员/客服，不发邮件</td><td class="proto"><a href="../../清关管理-MVP.html">打开</a></td><td class="proto">见第 2 章查验口径</td></tr>
         </tbody>
       </table>
     </section>
@@ -270,6 +227,9 @@ COVER = r'''    <section class="hero">
       <table>
         <thead><tr><th>项</th><th>口径</th><th class="proto">原型（仅对照，不验收）</th></tr></thead>
         <tbody>
+          <tr><td>提单详情 · 清报关</td><td>本期不做、不验收。清报关页 / 附件入口不下本期。做资料仍走做资料分票页</td><td class="proto"><a href="../../报关行对接/报关管理-预录审核详情-兼容-MVP.html?tab=customs">打开（对照）</a></td></tr>
+          <tr><td>供应商上传（未对接）</td><td>本期不做、不验收。审核 / 任务 / 上传整段不下本期</td><td class="proto"><a href="../../报关行对接/报关管理-供应商上传审核-MVP.html">审核（对照）</a></td></tr>
+          <tr><td>查验报表</td><td>本期不做、不验收。国内/国外周分析不下本期</td><td class="proto"><a href="关务组-查验报表-提单运单维度-MVP.html">打开（对照）</a></td></tr>
           <tr><td>提前报关</td><td>整段不做、不验收、不回页面</td><td class="proto">—</td></tr>
           <tr><td>报关执行预录阶段页签</td><td>待上传 / 待推送 / 报关行处理中 / 预录待复审只在预录工作台。本页不挂预录工作台入口</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">报关执行</a></td></tr>
           <tr><td>发 AMS / 发 ISF</td><td>改由船务提单管理装柜前发送。报关执行只读展示已发标</td><td class="proto"><a href="../船务/船务组-提单管理-按周分组与分配-MVP.html">船务提单管理</a></td></tr>
@@ -277,7 +237,7 @@ COVER = r'''    <section class="hero">
           <tr><td>待放行及之后改报关行</td><td>待放行、已放行不可改。改单已撤销后可改再重发</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
           <tr><td>清关查验通知邮件 / 站内待办</td><td>发给业务员/客服。文案只同步查验进度，不强调是否转发客户。不做邮件、不建客户待办</td><td class="proto"><a href="../../清关管理-MVP.html">清关管理</a></td></tr>
           <tr><td>已核准作为报关执行状态</td><td>「已核准」只在做资料分票页内标记。执行侧仅入口</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">做资料分票</a></td></tr>
-          <tr><td>做资料「比对」操作列 / 差异处置 / 打开预录附件 #04 / 页头进数来源卡</td><td>已从原型去掉，规则在分册。点行看比对。#04 走通道①列表或清报关附件</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">做资料分票</a></td></tr>
+          <tr><td>做资料「比对」操作列 / 差异处置 / 打开预录附件 #04 / 页头进数来源卡</td><td>已从原型去掉，规则在分册。点行看比对。#04 走本页通道①列表</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">做资料分票</a></td></tr>
           <tr><td>预录工作台催办态</td><td>委托标记仅 无标记 / 未委托 / 已委托。不做已催办、已标记·催客户</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
           <tr><td>#02 #05 #11</td><td>本期不对接。查验（#11）模块保留，手动维护</td><td class="proto"><a href="../../报关行对接/报关行API配置-MVP.html">API 配置</a></td></tr>
         </tbody>
@@ -308,13 +268,9 @@ COVER = r'''    <section class="hero">
           <tr><td>预录工作台</td><td><a href="#ch-pre">第 1 章</a> · <a href="关务组-签入即预报资料-MVP-PRD.html">分册</a></td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">工作台</a> · <a href="关务组-预录工作台-报关单号母子表-MVP.html">母子表</a></td></tr>
           <tr><td>报关执行列表</td><td><a href="#ch-exec">第 2 章</a> · <a href="../../报关行对接/报关管理-列表-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">打开</a></td></tr>
           <tr><td>预录单审核详情</td><td><a href="#ch-review">第 3 章</a> · <a href="../../报关行对接/报关管理-预录单审核详情-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关管理-预录单审核详情-MVP.html">打开</a></td></tr>
-          <tr><td>提单详情 · 清报关</td><td><a href="#ch-blc">第 4 章</a> · <a href="../../报关行对接/报关管理-预录审核详情-兼容-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关管理-预录审核详情-兼容-MVP.html?tab=customs">打开</a></td></tr>
           <tr><td>做资料分票核准</td><td><a href="#ch-split">第 5 章</a> · <a href="../../报关行对接/报关管理-做资料分票核准-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">打开</a></td></tr>
           <tr><td>分单号规则</td><td><a href="#ch-house">第 6 章</a> · <a href="../../报关行对接/分单号规则配置-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/分单号规则配置-MVP.html">打开</a></td></tr>
           <tr><td>报关行 API</td><td><a href="#ch-api">第 7 章</a> · <a href="../../报关行对接/报关行API配置-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关行API配置-MVP.html">打开</a></td></tr>
-          <tr><td>供应商上传审核</td><td><a href="#ch-vendor">第 8 章</a> · <a href="../../报关行对接/报关管理-供应商上传审核-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关管理-供应商上传审核-MVP.html">打开</a></td></tr>
-          <tr><td>供应商上传任务</td><td><a href="#ch-vtask">第 9 章</a> · <a href="../../报关行对接/报关供应商-上传任务列表-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关供应商-上传任务列表-MVP.html">打开</a></td></tr>
-          <tr><td>供应商资料上传</td><td><a href="#ch-vup">第 10 章</a> · <a href="../../报关行对接/报关供应商-资料上传-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关供应商-资料上传-MVP.html">打开</a></td></tr>
           <tr><td>清关管理</td><td><a href="#m-skip">查验通知本期口径</a></td><td class="proto"><a href="../../清关管理-MVP.html">打开</a></td></tr>
           <tr><td>组流程</td><td>—</td><td class="proto"><a href="G4-关务-组流程图.html">G4</a></td></tr>
         </tbody>
@@ -372,6 +328,9 @@ TAIL = r'''    <section class="card" id="m8">
       <table>
         <thead><tr><th>标记</th><th>项</th><th>说明</th><th class="proto">原型</th></tr></thead>
         <tbody>
+          <tr><td>二期</td><td>提单详情 · 清报关</td><td>清报关页 / 附件入口本期不做。做资料仍走做资料分票页</td><td class="proto"><a href="../../报关行对接/报关管理-预录审核详情-兼容-MVP.html?tab=customs">对照</a></td></tr>
+          <tr><td>二期</td><td>供应商上传（未对接）</td><td>审核 / 任务 / 上传整段本期不做</td><td class="proto"><a href="../../报关行对接/报关管理-供应商上传审核-MVP.html">对照</a></td></tr>
+          <tr><td>二期</td><td>查验报表</td><td>国内/国外周分析本期不做</td><td class="proto"><a href="关务组-查验报表-提单运单维度-MVP.html">对照</a></td></tr>
           <tr><td>范围外</td><td>提前报关</td><td>不开发、不验收、不回页面</td><td class="proto">—</td></tr>
           <tr><td>范围外</td><td>正式连报文网关拍板前的直连细节</td><td>本期发舱单/AMS/ISF 打业务标记。预录待复审可预填核对，正式连网关需核准后</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">发舱单</a></td></tr>
           <tr><td>二期</td><td>删除舱单作业台</td><td>报关行材料校验→海管家删单留痕</td><td class="proto">—</td></tr>

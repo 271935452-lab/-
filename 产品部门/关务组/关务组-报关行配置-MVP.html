@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>关务 · 报关行配置</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0a6b6b; --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --bad: #cf1322; --teal: #08979c;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; font-size: 14px; white-space: nowrap; }
+    .topbar .nav { display: flex; gap: 2px; overflow-x: auto; flex: 1; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.72); padding: 0 10px; height: 40px;
+      display: inline-flex; align-items: center; white-space: nowrap; font-size: 12px;
+    }
+    .topbar .nav a.on { color: #fff; font-weight: 600; background: var(--header); }
+    .topbar .right { margin-left: auto; color: rgba(255,255,255,.65); font-size: 12px; white-space: nowrap; }
+
+    .main { padding: 10px 12px 48px; max-width: 1280px; margin: 0 auto; }
+    .crumb { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+    .badge {
+      display: inline-block; padding: 0 6px; height: 18px; line-height: 16px;
+      border-radius: 2px; font-size: 10px; font-weight: 700; border: 1px solid; vertical-align: middle;
+    }
+    .badge.new { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .badge.on { color: var(--ok); background: #f6ffed; border-color: #b7eb8f; }
+    .badge.warn { color: var(--warn); background: #fff7e6; border-color: #ffd591; }
+    .badge.teal { color: var(--teal); background: #e6fffb; border-color: #87e8de; }
+
+    .page-hd {
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); line-height: 1.55; font-size: 12px; }
+
+    .type-tabs {
+      display: flex; gap: 0; margin-bottom: 8px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+    }
+    .type-tab {
+      flex: 1; padding: 10px 16px; border: none; background: #fafafa;
+      cursor: pointer; font-size: 14px; font-weight: 600; color: var(--sub);
+      border-right: 1px solid var(--line);
+    }
+    .type-tab:last-child { border-right: none; }
+    .type-tab.on { background: #fff; color: var(--teal); box-shadow: inset 0 -2px 0 var(--teal); }
+    .type-tab small { display: block; font-weight: 400; font-size: 11px; margin-top: 2px; color: var(--sub); }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px; margin-bottom: 8px;
+    }
+    .panel-hd {
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .panel-hd h2 { margin: 0; font-size: 14px; flex: 1; }
+    .panel-hd .sub { font-size: 11px; color: var(--sub); }
+
+    .btn {
+      height: 28px; padding: 0 12px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; cursor: pointer; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { color: #fff; filter: brightness(1.05); }
+    .btn.teal { background: #e6fffb; border-color: #36cfc9; color: var(--teal); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+
+    .layout { max-width: 100%; }
+    .lcl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: 420px; }
+    @media (max-width: 800px) { .lcl-grid { grid-template-columns: 1fr; } }
+    .lcl-col { border-right: 1px solid var(--line); padding: 10px 12px; }
+    .lcl-col:last-child { border-right: none; }
+    .lcl-col h3 { margin: 0 0 8px; font-size: 13px; }
+    .lcl-col .hint { margin: 0 0 8px; font-size: 11px; color: var(--sub); line-height: 1.5; }
+
+    .search-box { margin-bottom: 8px; }
+    .search-box input {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .prod-list {
+      max-height: 340px; overflow: auto; border: 1px solid var(--line); border-radius: 2px;
+      background: #fafafa;
+    }
+    .prod-item {
+      display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px;
+      border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 12px;
+    }
+    .prod-item:hover { background: #f5faff; }
+    .prod-item.on { background: #e6f7ff; }
+    .prod-item input { margin-top: 2px; flex-shrink: 0; }
+    .prod-item .code { font-family: Consolas,monospace; color: var(--teal); font-size: 11px; }
+    .prod-item .name { color: var(--text); line-height: 1.4; }
+    .prod-item.disabled { opacity: .45; cursor: not-allowed; }
+
+    .chk-list {
+      max-height: 160px; overflow: auto; border: 1px solid var(--line); border-radius: 2px;
+      background: #fafafa; padding: 4px 0;
+    }
+    .chk-item {
+      display: flex; align-items: center; gap: 8px; padding: 5px 8px;
+      border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 12px;
+    }
+    .chk-item:hover { background: #f5faff; }
+    .chk-item.on { background: #e6f7ff; }
+
+    .sel-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 24px; }
+    .sel-tag {
+      padding: 2px 8px; background: #e6f7ff; border: 1px solid #91d5ff;
+      border-radius: 2px; font-size: 11px;
+    }
+
+    table.data { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.data th, table.data td {
+      border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle;
+    }
+    table.data th { background: #fafafa; color: var(--sub); font-weight: 600; }
+    table.data tr:hover td { background: #f5f9ff; }
+    table.data select { width: 100%; min-width: 120px; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; }
+
+    .foot-note { padding: 8px 12px; font-size: 11px; color: var(--sub); border-top: 1px solid var(--line); }
+    .lcl-form-hd {
+      padding: 8px 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+      background: #fafafa; font-size: 13px; font-weight: 600;
+    }
+    .branch-map { font-size: 11px; line-height: 1.65; color: var(--text); }
+    .branch-map span { display: inline-block; margin: 0 6px 2px 0; white-space: nowrap; }
+    .branch-map .br { color: var(--sub); }
+    td .sel-tag { margin: 2px 2px 2px 0; display: inline-block; }
+
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none;
+      align-items: center; justify-content: center; z-index: 100; padding: 16px;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      width: min(560px, 96vw); background: #fff; border-radius: 4px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.2);
+    }
+    .modal-hd, .modal-ft {
+      display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .modal-ft { border-bottom: none; border-top: 1px solid var(--line); justify-content: flex-end; }
+    .modal-hd h3 { margin: 0; font-size: 15px; flex: 1; }
+    .modal-bd { padding: 14px; }
+    .form-item { margin-bottom: 10px; }
+    .form-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .form-item input, .form-item select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #001529; color: #fff; padding: 10px 16px; border-radius: 4px;
+      font-size: 12px; display: none; z-index: 120; max-width: 80%;
+    }
+    .toast.show { display: block; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">ESS · 关务</div>
+    <nav class="nav">
+      <a href="关务组-签入即预报资料-MVP.html">预录工作台</a>
+      <a class="on" href="#">报关行配置</a>
+      <a href="../../报关行对接/报关行API配置-MVP.html">API 配置</a>
+      <a href="关务组-导航.html">开发测试导航</a>
+    </nav>
+    <div class="right">散货 / 整柜 → 报关行</div>
+  </header>
+
+  <div class="main">
+    <div class="crumb">关务配置 / 报关行分配</div>
+
+    <div class="page-hd">
+      <h1>报关行配置 <span class="badge new">NEW</span></h1>
+      <p>
+        第一级选<strong>散货</strong>或<strong>整柜</strong>。
+        散货：多选销售产品（<strong>销售产品表 · 已启用</strong>）→ 多选到货分公司 → 配报关行。
+        整柜：多选<strong>配送方式 + 港口</strong>配报关行。
+        预录签入时自动命中默认报关行，与 <a href="../../报关行对接/报关行API配置-MVP.html">API 配置</a> 联动。
+      </p>
+    </div>
+
+    <div class="type-tabs">
+      <button type="button" class="type-tab on" data-type="lcl">
+        散货
+        <small>销售产品 × 到货分公司</small>
+      </button>
+      <button type="button" class="type-tab" data-type="fcl">
+        整柜
+        <small>配送方式 × 港口</small>
+      </button>
+    </div>
+
+    <div class="layout">
+      <div>
+        <!-- 散货 -->
+        <section class="panel" id="panelLcl">
+          <div class="panel-hd">
+            <h2>散货 · 报关行配置</h2>
+            <span class="sub" id="lclListCnt">—</span>
+          </div>
+          <div class="toolbar">
+            <button type="button" class="btn primary" id="btnLclAdd">+ 新增规则</button>
+          </div>
+          <div style="overflow:auto;padding:0 12px 12px">
+            <table class="data" style="min-width:720px">
+              <thead>
+                <tr>
+                  <th style="width:48px">#</th>
+                  <th>销售产品</th>
+                  <th>到货分公司 → 报关行</th>
+                  <th style="width:100px">操作</th>
+                </tr>
+              </thead>
+              <tbody id="lclListBody"></tbody>
+            </table>
+          </div>
+
+          <div class="lcl-form-hd" id="lclFormTitle">新增散货规则</div>
+          <div class="lcl-grid" id="lclFormPanel">
+            <div class="lcl-col">
+              <h3>① 多选销售产品</h3>
+              <p class="hint">数据源 = <strong>销售产品表 · 已启用</strong>。支持按编号 / 名称搜索，多个关键词空格分隔，在结果中多选。</p>
+              <div class="search-box">
+                <input id="lclProdSearch" placeholder="搜产品编号 / 名称，多个关键词空格分隔" />
+              </div>
+              <div class="toolbar" style="padding:0 0 8px;border:none">
+                <button type="button" class="btn" id="btnLclAll">全选当前</button>
+                <button type="button" class="btn" id="btnLclClear">清空</button>
+              </div>
+              <div class="prod-list" id="lclProdList"></div>
+            </div>
+            <div class="lcl-col">
+              <h3>② 到货分公司 → 报关行</h3>
+              <p class="hint">勾选到货分公司，为每个分公司指定报关行（可多选分公司）。</p>
+              <div class="sel-tags" id="lclSelTags"></div>
+              <table class="data" id="lclBranchTable">
+                <thead>
+                  <tr>
+                    <th style="width:36px">选</th>
+                    <th>到货分公司</th>
+                    <th>报关行</th>
+                  </tr>
+                </thead>
+                <tbody id="lclBranchBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="toolbar">
+            <button type="button" class="btn primary" id="btnLclSave">保存规则</button>
+            <button type="button" class="btn" id="btnLclCancel">取消</button>
+            <span class="sub" id="lclProdCnt" style="margin-left:8px">—</span>
+          </div>
+          <div class="foot-note">保存后写入上方列表。同一销售产品不可重复出现在多条规则中。签入时按产品 + 到货分公司命中报关行；未命中须手工改。</div>
+        </section>
+
+        <!-- 整柜 -->
+        <section class="panel hidden" id="panelFcl">
+          <div class="panel-hd">
+            <h2>整柜 · 报关行配置</h2>
+            <span class="sub" id="fclCnt">—</span>
+          </div>
+          <div class="toolbar">
+            <button type="button" class="btn primary" id="btnFclAdd">+ 新增规则</button>
+          </div>
+          <div style="overflow:auto;padding:0 12px 12px">
+            <table class="data" style="min-width:560px">
+              <thead>
+                <tr>
+                  <th>配送方式</th>
+                  <th>港口</th>
+                  <th>报关行</th>
+                  <th>API</th>
+                  <th style="width:100px">操作</th>
+                </tr>
+              </thead>
+              <tbody id="fclBody"></tbody>
+            </table>
+          </div>
+          <div class="foot-note">命中逻辑：整柜运单<strong>配送方式 ∈ 规则内已选方式 且 港口 ∈ 规则内已选港口</strong> → 带出报关行；无匹配则留空须手工改。一条规则内配送方式、港口均支持多选。</div>
+        </section>
+    </div>
+  </div>
+
+  <div class="mask" id="fclMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3 id="fclModalTitle">新增整柜规则</h3>
+        <button type="button" class="btn" id="fclClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="form-item">
+          <label>配送方式（可多选）</label>
+          <div class="chk-list" id="fDeliveryList"></div>
+        </div>
+        <div class="form-item">
+          <label>港口（可多选）</label>
+          <div class="chk-list" id="fPortList"></div>
+        </div>
+        <div class="form-item">
+          <label>报关行</label>
+          <select id="fBroker"></select>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="fclCancel">取消</button>
+        <button type="button" class="btn primary" id="fclSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="关务组-签入即预报资料-MVP-PRD.html" data-prd-anchor="m-broker">
+    <span class="ess-prd-chip">PRD · 报关行配置</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script src="关务组-报关行配置-data.js"></script>
+  <script>
+  (function () {
+    var cfg = window.BROKER_CFG;
+    if (!cfg) { document.body.innerHTML = "<p style='padding:24px'>数据加载失败</p>"; return; }
+
+    // 示意：销售产品表已停用项（开发取 enabled=true 的产品）
+    (cfg.products || []).forEach(function (p) {
+      if (["T16快船（不包税）", "纽约普船（不包税）"].indexOf(p.code) >= 0) p.enabled = false;
+    });
+
+    var BROKER_NAMES = cfg.brokers.map(function (b) { return b.name; });
+    var API_MAP = {};
+    cfg.brokers.forEach(function (b) { API_MAP[b.name] = !!b.api; });
+
+    var lclProducts = cfg.products.filter(function (p) {
+      if (p.enabled === false) return false;
+      return !/整柜|FBA整柜/.test(p.name) && p.code !== "PK2499";
+    });
+    var lclRulesList = initLclRulesList(cfg);
+    var lclSelected = [];
+    var branchBrokers = [];
+    var lclEditIdx = -1;
+    var fclRules = (cfg.fclRules || []).map(normalizeFclRule);
+    var branches = cfg.branches || [];
+    var deliveryModes = cfg.deliveryModes || [];
+    var ports = cfg.ports || [];
+    var fclEditIdx = -1;
+    var toastEl = document.getElementById("toast");
+    var toastTimer;
+
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2600);
+    }
+
+    function normalizeLclRule(r) {
+      return {
+        productCodes: (r.productCodes || []).slice(),
+        branchBrokers: (r.branchBrokers || []).map(function (x) { return Object.assign({}, x); })
+      };
+    }
+
+    function initLclRulesList(cfg) {
+      if (cfg.lclRulesList && cfg.lclRulesList.length) {
+        return cfg.lclRulesList.map(normalizeLclRule);
+      }
+      if (cfg.lclRules && (cfg.lclRules.productCodes || []).length) {
+        return [normalizeLclRule(cfg.lclRules)];
+      }
+      return [];
+    }
+
+    function normalizeFclRule(r) {
+      if (r.deliveryModes && r.ports) {
+        return {
+          deliveryModes: r.deliveryModes.slice(),
+          ports: r.ports.slice(),
+          broker: r.broker
+        };
+      }
+      return {
+        deliveryModes: r.deliveryMode ? [r.deliveryMode] : [],
+        ports: r.port ? [r.port] : [],
+        broker: r.broker
+      };
+    }
+
+    function parseSearchTokens(q) {
+      return String(q || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+    }
+
+    function matchProductSearch(p, tokens) {
+      if (!tokens.length) return true;
+      var hay = (p.code + " " + p.name).toLowerCase();
+      return tokens.every(function (t) { return hay.indexOf(t) >= 0; });
+    }
+
+    function fclPairs(rule) {
+      var pairs = [];
+      (rule.deliveryModes || []).forEach(function (m) {
+        (rule.ports || []).forEach(function (pt) {
+          pairs.push(m + "\0" + pt);
+        });
+      });
+      return pairs;
+    }
+
+    function fmtTags(arr) {
+      return (arr || []).map(function (s) {
+        return "<span class='sel-tag'>" + s + "</span>";
+      }).join(" ");
+    }
+
+    function renderCheckList(elId, items, selected, nameAttr) {
+      document.getElementById(elId).innerHTML = items.map(function (item) {
+        var on = selected.indexOf(item) >= 0;
+        return (
+          "<label class='chk-item" + (on ? " on" : "") + "'>" +
+            "<input type='checkbox' data-" + nameAttr + "='" + item + "'" + (on ? " checked" : "") + " />" +
+            "<span>" + item + "</span>" +
+          "</label>"
+        );
+      }).join("");
+    }
+
+    function readCheckList(containerId, attr) {
+      var out = [];
+      document.getElementById(containerId).querySelectorAll("[data-" + attr + "]").forEach(function (el) {
+        if (el.checked) out.push(el.getAttribute("data-" + attr));
+      });
+      return out;
+    }
+
+    function apiBadge(name) {
+      return API_MAP[name]
+        ? '<span class="badge on">已对接</span>'
+        : '<span class="badge warn">未对接</span>';
+    }
+
+    function brokerOpts(selected) {
+      return BROKER_NAMES.map(function (b) {
+        return "<option" + (b === selected ? " selected" : "") + ">" + b + "</option>";
+      }).join("");
+    }
+
+    function isBranchOn(branch) {
+      return branchBrokers.some(function (x) { return x.branch === branch; });
+    }
+
+    function getBranchBroker(branch) {
+      var hit = branchBrokers.find(function (x) { return x.branch === branch; });
+      return hit ? hit.broker : BROKER_NAMES[0];
+    }
+
+    function fmtBranchMap(arr) {
+      return (arr || []).map(function (x) {
+        return "<span><span class='br'>" + x.branch + "</span> → " + x.broker + "</span>";
+      }).join("");
+    }
+
+    function usedProductCodes(excludeIdx) {
+      var used = {};
+      lclRulesList.forEach(function (r, i) {
+        if (i === excludeIdx) return;
+        (r.productCodes || []).forEach(function (c) { used[c] = true; });
+      });
+      return used;
+    }
+
+    function resetLclForm() {
+      lclEditIdx = -1;
+      lclSelected = [];
+      branchBrokers = [];
+      document.getElementById("lclFormTitle").textContent = "新增散货规则";
+      document.getElementById("lclProdSearch").value = "";
+      renderLclProducts();
+      renderLclBranches();
+    }
+
+    function loadLclForm(rule) {
+      lclSelected = (rule.productCodes || []).slice();
+      branchBrokers = (rule.branchBrokers || []).map(function (x) { return Object.assign({}, x); });
+      document.getElementById("lclProdSearch").value = "";
+      renderLclProducts();
+      renderLclBranches();
+    }
+
+    function renderLclList() {
+      document.getElementById("lclListCnt").textContent = "共 " + lclRulesList.length + " 条规则";
+      document.getElementById("lclListBody").innerHTML = lclRulesList.map(function (r, i) {
+        return (
+          "<tr>" +
+            "<td>" + (i + 1) + "</td>" +
+            "<td>" + fmtTags(r.productCodes) + "</td>" +
+            "<td><div class='branch-map'>" + fmtBranchMap(r.branchBrokers) + "</div></td>" +
+            "<td><button type='button' class='btn' data-lcl-edit='" + i + "'>编辑</button> " +
+            "<button type='button' class='btn' data-lcl-del='" + i + "'>删除</button></td>" +
+          "</tr>"
+        );
+      }).join("") || "<tr><td colspan='4' style='text-align:center;color:#8c8c8c;padding:16px'>暂无规则，点「新增规则」</td></tr>";
+    }
+
+    function renderLclProducts() {
+      var tokens = parseSearchTokens(document.getElementById("lclProdSearch").value);
+      var used = usedProductCodes(lclEditIdx);
+      var list = lclProducts.filter(function (p) { return matchProductSearch(p, tokens); });
+      document.getElementById("lclProdCnt").textContent =
+        "表单已选 " + lclSelected.length + " 个产品";
+      document.getElementById("lclProdList").innerHTML = list.map(function (p) {
+        var on = lclSelected.indexOf(p.code) >= 0;
+        var taken = !on && used[p.code];
+        return (
+          "<label class='prod-item" + (on ? " on" : "") + (taken ? " disabled" : "") + "'>" +
+            "<input type='checkbox' data-code='" + p.code + "'" + (on ? " checked" : "") +
+            (taken ? " disabled title='已在其他规则中'" : "") + " />" +
+            "<span><span class='code'>" + p.code + "</span><br><span class='name'>" + p.name +
+            (taken ? " <span style='color:#d46b08'>(已占用)</span>" : "") + "</span></span>" +
+          "</label>"
+        );
+      }).join("") || "<div style='padding:12px;color:#8c8c8c;text-align:center'>无匹配产品</div>";
+
+      document.getElementById("lclSelTags").innerHTML = lclSelected.length
+        ? lclSelected.slice(0, 8).map(function (c) { return "<span class='sel-tag'>" + c + "</span>"; }).join("") +
+          (lclSelected.length > 8 ? "<span class='sel-tag'>+" + (lclSelected.length - 8) + "</span>" : "")
+        : "<span style='font-size:11px;color:#8c8c8c'>尚未选择销售产品</span>";
+    }
+
+    function renderLclBranches() {
+      document.getElementById("lclBranchBody").innerHTML = branches.map(function (br) {
+        var on = isBranchOn(br);
+        return (
+          "<tr>" +
+            "<td><input type='checkbox' class='br-chk' data-branch='" + br + "'" + (on ? " checked" : "") + " /></td>" +
+            "<td>" + br + "</td>" +
+            "<td><select class='br-broker' data-branch='" + br + "'" + (on ? "" : " disabled") + ">" +
+              brokerOpts(getBranchBroker(br)) + "</select></td>" +
+          "</tr>"
+        );
+      }).join("");
+    }
+
+    function renderFcl() {
+      document.getElementById("fclCnt").textContent = "共 " + fclRules.length + " 条规则";
+      document.getElementById("fclBody").innerHTML = fclRules.map(function (r, i) {
+        return (
+          "<tr>" +
+            "<td>" + fmtTags(r.deliveryModes) + "</td>" +
+            "<td>" + fmtTags(r.ports) + "</td>" +
+            "<td>" + r.broker + "</td>" +
+            "<td>" + apiBadge(r.broker) + "</td>" +
+            "<td><button type='button' class='btn' data-fcl-edit='" + i + "'>编辑</button> " +
+            "<button type='button' class='btn' data-fcl-del='" + i + "'>删除</button></td>" +
+          "</tr>"
+        );
+      }).join("") || "<tr><td colspan='5' style='text-align:center;color:#8c8c8c;padding:16px'>暂无规则，点「新增规则」</td></tr>";
+    }
+
+    function switchType(type) {
+      document.querySelectorAll(".type-tab").forEach(function (btn) {
+        btn.classList.toggle("on", btn.getAttribute("data-type") === type);
+      });
+      document.getElementById("panelLcl").classList.toggle("hidden", type !== "lcl");
+      document.getElementById("panelFcl").classList.toggle("hidden", type !== "fcl");
+    }
+
+    function openFclModal(rule) {
+      renderCheckList("fDeliveryList", deliveryModes, rule ? rule.deliveryModes : [], "mode");
+      renderCheckList("fPortList", ports, rule ? rule.ports : [], "port");
+      document.getElementById("fBroker").innerHTML = brokerOpts(rule ? rule.broker : BROKER_NAMES[0]);
+      document.getElementById("fclMask").classList.add("open");
+    }
+
+    document.querySelectorAll(".type-tab").forEach(function (btn) {
+      btn.onclick = function () { switchType(btn.getAttribute("data-type")); };
+    });
+
+    document.getElementById("lclProdList").addEventListener("change", function (e) {
+      var cb = e.target.closest("[data-code]");
+      if (!cb || cb.type !== "checkbox") return;
+      var code = cb.getAttribute("data-code");
+      var idx = lclSelected.indexOf(code);
+      if (cb.checked && idx < 0) lclSelected.push(code);
+      if (!cb.checked && idx >= 0) lclSelected.splice(idx, 1);
+      renderLclProducts();
+    });
+
+    document.getElementById("lclProdSearch").oninput = renderLclProducts;
+
+    document.getElementById("btnLclAll").onclick = function () {
+      var tokens = parseSearchTokens(document.getElementById("lclProdSearch").value);
+      var used = usedProductCodes(lclEditIdx);
+      lclProducts.forEach(function (p) {
+        if (!matchProductSearch(p, tokens) || used[p.code]) return;
+        if (lclSelected.indexOf(p.code) < 0) lclSelected.push(p.code);
+      });
+      renderLclProducts();
+      toast("已全选当前可用搜索结果");
+    };
+
+    document.getElementById("btnLclClear").onclick = function () {
+      lclSelected = [];
+      renderLclProducts();
+      toast("已清空产品选择");
+    };
+
+    document.getElementById("lclBranchBody").addEventListener("change", function (e) {
+      if (e.target.classList.contains("br-chk")) {
+        var br = e.target.getAttribute("data-branch");
+        if (e.target.checked) {
+          if (!isBranchOn(br)) branchBrokers.push({ branch: br, broker: BROKER_NAMES[0] });
+        } else {
+          branchBrokers = branchBrokers.filter(function (x) { return x.branch !== br; });
+        }
+        renderLclBranches();
+        return;
+      }
+      if (e.target.classList.contains("br-broker")) {
+        var br2 = e.target.getAttribute("data-branch");
+        var hit = branchBrokers.find(function (x) { return x.branch === br2; });
+        if (hit) hit.broker = e.target.value;
+      }
+    });
+
+    document.getElementById("btnLclAdd").onclick = function () {
+      resetLclForm();
+      document.getElementById("lclFormPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    document.getElementById("btnLclCancel").onclick = resetLclForm;
+
+    document.getElementById("lclListBody").addEventListener("click", function (e) {
+      var edit = e.target.closest("[data-lcl-edit]");
+      var del = e.target.closest("[data-lcl-del]");
+      if (edit) {
+        lclEditIdx = parseInt(edit.getAttribute("data-lcl-edit"), 10);
+        document.getElementById("lclFormTitle").textContent = "编辑散货规则 #" + (lclEditIdx + 1);
+        loadLclForm(lclRulesList[lclEditIdx]);
+        document.getElementById("lclFormPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (del) {
+        var delIdx = parseInt(del.getAttribute("data-lcl-del"), 10);
+        lclRulesList.splice(delIdx, 1);
+        if (lclEditIdx === delIdx) resetLclForm();
+        else if (lclEditIdx > delIdx) lclEditIdx -= 1;
+        renderLclList();
+        renderLclProducts();
+        toast("已删除散货规则");
+      }
+    });
+
+    document.getElementById("btnLclSave").onclick = function () {
+      if (!lclSelected.length) { toast("请至少选择一个销售产品"); return; }
+      if (!branchBrokers.length) { toast("请至少选择一个到货分公司"); return; }
+      var used = usedProductCodes(lclEditIdx);
+      var dup = lclSelected.find(function (c) { return used[c]; });
+      if (dup) { toast("产品 " + dup + " 已在其他规则中，不可重复"); return; }
+      var row = {
+        productCodes: lclSelected.slice(),
+        branchBrokers: branchBrokers.map(function (x) { return Object.assign({}, x); })
+      };
+      if (lclEditIdx >= 0) lclRulesList[lclEditIdx] = row;
+      else lclRulesList.push(row);
+      renderLclList();
+      resetLclForm();
+      toast("散货规则已保存（" + row.productCodes.length + " 产品 · " + row.branchBrokers.length + " 分公司）");
+    };
+
+    document.getElementById("btnFclAdd").onclick = function () {
+      fclEditIdx = -1;
+      document.getElementById("fclModalTitle").textContent = "新增整柜规则";
+      openFclModal(null);
+    };
+
+    document.getElementById("fclBody").addEventListener("click", function (e) {
+      var edit = e.target.closest("[data-fcl-edit]");
+      var del = e.target.closest("[data-fcl-del]");
+      if (edit) {
+        fclEditIdx = parseInt(edit.getAttribute("data-fcl-edit"), 10);
+        document.getElementById("fclModalTitle").textContent = "编辑整柜规则";
+        openFclModal(fclRules[fclEditIdx]);
+      }
+      if (del) {
+        fclRules.splice(parseInt(del.getAttribute("data-fcl-del"), 10), 1);
+        renderFcl();
+        toast("已删除");
+      }
+    });
+
+    ["fDeliveryList", "fPortList"].forEach(function (id) {
+      document.getElementById(id).addEventListener("change", function (e) {
+        var row = e.target.closest(".chk-item");
+        if (row) row.classList.toggle("on", e.target.checked);
+      });
+    });
+
+    document.getElementById("fclClose").onclick =
+    document.getElementById("fclCancel").onclick = function () {
+      document.getElementById("fclMask").classList.remove("open");
+    };
+
+    document.getElementById("fclSave").onclick = function () {
+      var row = {
+        deliveryModes: readCheckList("fDeliveryList", "mode"),
+        ports: readCheckList("fPortList", "port"),
+        broker: document.getElementById("fBroker").value
+      };
+      if (!row.deliveryModes.length) { toast("请至少选择一个配送方式"); return; }
+      if (!row.ports.length) { toast("请至少选择一个港口"); return; }
+      var newPairs = fclPairs(row);
+      var dup = fclRules.some(function (r, i) {
+        if (i === fclEditIdx) return false;
+        var exist = fclPairs(r);
+        return newPairs.some(function (p) { return exist.indexOf(p) >= 0; });
+      });
+      if (dup) { toast("配送方式 × 港口组合与已有规则重复"); return; }
+      if (fclEditIdx >= 0) fclRules[fclEditIdx] = row;
+      else fclRules.push(row);
+      document.getElementById("fclMask").classList.remove("open");
+      renderFcl();
+      toast("整柜规则已保存");
+    };
+
+    renderLclList();
+    resetLclForm();
+    renderFcl();
+  })();
+  </script>
+</body>
+</html>

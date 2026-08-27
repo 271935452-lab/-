@@ -76,7 +76,7 @@
       color: #389e0d; background: #f6ffed; border-color: #b7eb8f;
     }
     .mark-hint { margin: 6px 0 0; font-size: 11px; color: var(--sub); line-height: 1.45; }
-    body.is-ro .btn.ok, body.is-ro .btn.warn, body.is-ro .btn.primary,
+    body.is-ro .btn.ok, body.is-ro .btn.primary,
     body.is-ro .btn.new, body.is-ro .btn.ch1, body.is-ro .btn.ch2,
     body.is-ro #btnAddDecl, body.is-ro #btnMoveUp, body.is-ro #btnMoveDown,
     body.is-ro #btnDel {
@@ -251,7 +251,7 @@
         <p class="mark-hint" id="markHint">资料岗在本页点「核准通过」写入。报关执行不设此状态。</p>
       </div>
     </div>
-    <div class="ro-banner" id="roBanner">报关执行仅入口：核准标记在本页。「已核准」后分票锁定，不可再改。</div>
+    <div class="ro-banner" id="roBanner">报关执行仅入口：核准标记在本页。「已核准」后分票锁定；需改资料时点「退回修改」解除锁定。</div>
     <div class="bind-strip">
       <div><span class="k">进口商</span><span class="v">Pacific Trade Logistics LLC · IMP-US-2024-018</span></div>
       <div><span class="k">清关行</span><span class="v">精准</span></div>
@@ -262,7 +262,6 @@
       <div class="bar">
         <div>分票数据表 · COSU6502971850 · 终配 260609-青岛T25-1</div>
         <div class="acts">
-          <button type="button" class="btn ghost" id="btnHouse">分单号自动生成</button>
           <button type="button" class="btn warn" id="btnReject">退回修改</button>
           <button type="button" class="btn ok" id="btnApprove">核准通过</button>
         </div>
@@ -649,10 +648,13 @@
   document.getElementById("btnReOcr").onclick = function () {
     toast("已触发附件识别（通道① · 示意）");
   };
-  document.getElementById("btnHouse").onclick = function () {
-    location.href = "报关管理-列表-MVP.html?tab=push";
-  };
   document.getElementById("btnReject").onclick = function () {
+    if (window.__splitLocked) {
+      if (!confirm("已核准状态将解除锁定，可再编辑分票。确认退回修改？")) return;
+      clearApproved();
+      toast("已退回修改，分票可编辑");
+      return;
+    }
     toast("已退回：请客户改资料或报关行改预录（示意）");
   };
   document.getElementById("btnApprove").onclick = function () {
@@ -675,17 +677,37 @@
 
   function setApproved() {
     window.__splitLocked = true;
+    document.body.classList.add("is-ro");
     document.getElementById("approveStatus").textContent = "已核准";
     var st = document.getElementById("stField");
     st.value = "已核准";
     st.classList.add("marked");
     var hint = document.getElementById("markHint");
-    if (hint) hint.textContent = "本页已标记已核准，分票锁定。报关执行不另设核准状态。";
+    if (hint) hint.textContent = "本页已标记已核准，分票锁定。需改资料请点「退回修改」解除锁定。";
     var card = document.getElementById("stCard");
     if (card) {
       card.classList.remove("orange");
       card.classList.add("ok");
     }
+  }
+
+  function clearApproved() {
+    window.__splitLocked = false;
+    document.body.classList.remove("is-ro");
+    document.getElementById("approveStatus").textContent = "未标记";
+    var st = document.getElementById("stField");
+    st.value = "未标记";
+    st.classList.remove("marked");
+    var hint = document.getElementById("markHint");
+    if (hint) hint.textContent = "资料岗在本页点「核准通过」写入。报关执行不设此状态。";
+    var card = document.getElementById("stCard");
+    if (card) {
+      card.classList.remove("ok");
+      card.classList.add("orange");
+    }
+    document.getElementById("roBanner").style.display = "none";
+    pushLog("退回修改 · 解除已核准锁定");
+    render();
   }
 
   (function applyRo() {

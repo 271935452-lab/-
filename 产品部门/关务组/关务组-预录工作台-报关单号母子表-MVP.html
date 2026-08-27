@@ -182,7 +182,7 @@
       </div>
       <section class="panel">
         <div class="filters">
-          <div class="fi"><label>报关编号</label><input id="qDecl" placeholder="WY260820006-1(12) · 即报关单号" /></div>
+          <div class="fi"><label>报关编号</label><input id="qDecl" placeholder="报关编号 / 运单报关编号" /></div>
           <div class="fi"><label>运单号</label><input id="qNo" placeholder="子表运单" /></div>
           <div class="fi"><label>客户</label><input id="qCustomer" placeholder="客户简称" /></div>
           <div class="fi">
@@ -211,8 +211,8 @@
           </div>
         </div>
         <p class="hint">
-          母行按<strong>报关编号</strong>分组（合并报关同一编号一行）。<strong>报关单号即报关编号</strong>，本页只展示一列，不再另出海关回传号 / 「未出报关单」。
-          展开子表为<strong>运单维度</strong>。勾选母行即选中其下全部运单，也可只勾部分运单。确认后带回预录工作台。
+          只做<strong>两级</strong>：母行 = <strong>报关编号</strong>（关务作业号 / 报关单号），展开 = 运单（含<strong>运单报关编号</strong>，运单侧原号，关务调整不改）。不做第三级。
+          关务拆票后同一运单报关编号可出现在多份报关编号下（例 ICBU00001-1(10) 对应 -2/-3/-4）。勾选母行即选中其下运单。确认后带回预录工作台。
         </p>
         <div class="acts">
           <button type="button" class="btn" id="btnExpandAll">全部展开</button>
@@ -227,6 +227,7 @@
                 <th style="width:36px"><input type="checkbox" id="ckAll" title="全选当前列表" /></th>
                 <th style="width:28px"></th>
                 <th>报关编号</th>
+                <th>推送状态</th>
                 <th>报关标记</th>
                 <th>运单数</th>
                 <th>件数合计</th>
@@ -262,17 +263,21 @@
       var seed = [
         { id: "WY260820001", custNo: "HD20260820001", customer: "华东贸易", sales: "陈伟", svc: "赵雪", wh: "上海仓", broker: "欣扬", checkinAt: "2026-08-20 09:12", uploaded: true, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "未委托", pcs: 8, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
         { id: "WY260820002", custNo: "SZ20260820002", customer: "深圳迅达", sales: "刘芳", svc: "孙丽", wh: "盐田港", broker: "盛世通", checkinAt: "2026-08-20 09:28", uploaded: false, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "无标记", pcs: 5, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
+        { id: "WY260820003", custNo: "SH20260820003", customer: "华东贸易", sales: "陈伟", svc: "赵雪", wh: "上海仓", broker: "欣扬", checkinAt: "2026-08-20 10:05", uploaded: true, cabin: "wait", forecasted: false, pushSt: "fail", pushFailReason: "报关行接口超时", preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 7, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
         { id: "WY260820004", custNo: "NB20260820004", customer: "宁波海运", sales: "周杰", svc: "吴倩", wh: "宁波仓", broker: "欣扬", checkinAt: "2026-08-20 10:40", uploaded: true, cabin: "wait", forecasted: true, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 10, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
         { id: "WY260820006", custNo: "QD20260820006", customer: "青岛嘉运", sales: "陈伟", svc: "赵雪", wh: "青岛港", broker: "鸿程捷运", checkinAt: "2026-08-20 11:18", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 5, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
-        { id: "WY260820010", custNo: "YT20260820010", customer: "烟台海达", sales: "刘芳", svc: "孙丽", wh: "青岛港", broker: "鸿程捷运", checkinAt: "2026-08-20 11:20", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 4, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
-        { id: "WY260820011", custNo: "WH20260820011", customer: "威海联运", sales: "周杰", svc: "吴倩", wh: "青岛港", broker: "鸿程捷运", checkinAt: "2026-08-20 11:22", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 3, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
+        { id: "WY260820010", custNo: "QD20260820010", customer: "青岛嘉运", sales: "陈伟", svc: "赵雪", wh: "青岛港", broker: "鸿程捷运", checkinAt: "2026-08-20 11:20", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 4, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
+        { id: "WY260820011", custNo: "QD20260820011", customer: "青岛嘉运", sales: "陈伟", svc: "赵雪", wh: "青岛港", broker: "鸿程捷运", checkinAt: "2026-08-20 11:22", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: false, released: false, amendState: "", declMark: "合并报关", attStatus: "已委托", pcs: 3, declSeq: 1, mergeGroup: "MG-0820-01", mergeLead: "WY260820006", splitParts: null },
         { id: "WY260820007", custNo: "GZ20260820007", customer: "广州联创", sales: "陈伟", svc: "赵雪", wh: "盐田港", broker: "盛世通", checkinAt: "2026-08-20 11:40", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: true, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 6, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
         { id: "WY260820008", custNo: "XM20260820008", customer: "厦门海嘉", sales: "刘芳", svc: "孙丽", wh: "厦门港", broker: "通航顺", checkinAt: "2026-08-19 16:02", uploaded: true, cabin: "final", forecasted: true, preIssued: true, preConfirmed: true, released: true, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 12, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: null },
-        { id: "WY260820009", custNo: "TJ20260820009", customer: "天津远洋", sales: "周杰", svc: "吴倩", wh: "天津港", broker: "聚航", checkinAt: "2026-08-19 14:22", uploaded: true, cabin: "final", forecasted: true, preIssued: false, preConfirmed: false, released: false, amendState: "revoked", declMark: "拆分报关", attStatus: "无标记", pcs: 5, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: [{ seq: 1, pcs: 3 }, { seq: 2, pcs: 2 }] }
+        { id: "WY260820009", custNo: "TJ20260820009", customer: "天津远洋", sales: "周杰", svc: "吴倩", wh: "天津港", broker: "聚航", checkinAt: "2026-08-19 14:22", uploaded: true, cabin: "final", forecasted: true, preIssued: false, preConfirmed: false, released: false, amendState: "revoked", declMark: "拆分报关", attStatus: "无标记", pcs: 5, declSeq: 1, mergeGroup: "", mergeLead: "", splitParts: [{ seq: 1, pcs: 3 }, { seq: 2, pcs: 2 }] },
+        { id: "WY260827101", custNo: "ICBU00001", customer: "义乌嘉成", sales: "陈伟", svc: "赵雪", wh: "上海仓", broker: "欣扬", checkinAt: "2026-08-27 10:12", uploaded: true, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 3, declSeq: 2, mergeGroup: "", mergeLead: "", splitParts: null, wbDecl: "ICBU00001-1(10)", customsDecl: "ICBU00001-2(3)" },
+        { id: "WY260827102", custNo: "ICBU00001", customer: "义乌嘉成", sales: "陈伟", svc: "赵雪", wh: "上海仓", broker: "欣扬", checkinAt: "2026-08-27 10:12", uploaded: true, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 3, declSeq: 3, mergeGroup: "", mergeLead: "", splitParts: null, wbDecl: "ICBU00001-1(10)", customsDecl: "ICBU00001-3(3)" },
+        { id: "WY260827103", custNo: "ICBU00001", customer: "义乌嘉成", sales: "陈伟", svc: "赵雪", wh: "上海仓", broker: "欣扬", checkinAt: "2026-08-27 10:14", uploaded: true, cabin: "wait", forecasted: false, preIssued: false, preConfirmed: false, released: false, amendState: "", declMark: "报关", attStatus: "已委托", pcs: 4, declSeq: 4, mergeGroup: "", mergeLead: "", splitParts: null, wbDecl: "ICBU00001-1(10)", customsDecl: "ICBU00001-4(4)" }
       ];
       var rows = seed;
       var picked = {};
-      var openKeys = { "g:MG-0820-01": true };
+      var openKeys = { "g:MG-0820-01": true, "split:WY260820009:1": true };
       var toastEl = document.getElementById("toast");
       var toastTimer;
 
@@ -308,6 +313,17 @@
         }[s] || "skip";
         return '<span class="tag ' + cls + '">' + statusLabel(s) + "</span>";
       }
+      function pushSt(r) {
+        if (r.pushSt === "fail") return "fail";
+        if (r.forecasted) return "ok";
+        return "none";
+      }
+      function pushStTag(r) {
+        var st = pushSt(r);
+        var cls = st === "ok" ? "yes" : (st === "fail" ? "no" : "skip");
+        var label = { none: "未推送", ok: "推送成功", fail: "推送失败" }[st];
+        return '<span class="tag ' + cls + '">' + label + "</span>";
+      }
       function groupOf(r) {
         if (r.declMark === "合并报关" && r.mergeGroup) {
           return rows.filter(function (x) { return x.mergeGroup === r.mergeGroup; });
@@ -317,18 +333,22 @@
       function groupPcs(g) {
         return g.reduce(function (s, x) { return s + (Number(x.pcs) || 0); }, 0);
       }
+      function wbDeclNo(r) {
+        return r.wbDecl || (r.id + "-1(1)");
+      }
       function declNo(r) {
+        if (r.customsDecl) return r.customsDecl;
         if (r.declMark === "合并报关" && r.mergeGroup) {
           var g = groupOf(r);
           var lead = r.mergeLead || (g[0] && g[0].id) || r.id;
-          return lead + "-1(" + groupPcs(g) + ")";
+          return lead + "-1(" + g.length + ")";
         }
         if (r.declMark === "拆分报关" && r.splitParts && r.splitParts.length) {
           return r.splitParts.map(function (p) {
-            return r.id + "-" + p.seq + "(" + p.pcs + ")";
+            return r.id + "-" + p.seq + "(1)";
           }).join(" ");
         }
-        return r.id + "-" + (r.declSeq || 1) + "(" + (r.pcs || 0) + ")";
+        return wbDeclNo(r);
       }
       function declKey(r) {
         return (declNo(r) || r.id || "").split(/\s+/)[0];
@@ -368,6 +388,16 @@
           if (qCust && r.customer.indexOf(qCust) === -1) return;
           if (qSales && r.sales !== qSales) return;
           if (qBroker && r.broker !== qBroker) return;
+          if (r.declMark === "拆分报关" && r.splitParts && r.splitParts.length) {
+            r.splitParts.forEach(function (p) {
+              var sk = "split:" + r.id + ":" + p.seq;
+              if (!map[sk]) {
+                map[sk] = { key: sk, rows: [r], splitPart: p };
+                order.push(sk);
+              }
+            });
+            return;
+          }
           var k = unitKey(r);
           if (!map[k]) {
             map[k] = { key: k, rows: [] };
@@ -376,16 +406,17 @@
           map[k].rows.push(r);
         });
         return order.map(function (k) {
-          var g = map[k].rows;
-          var lead = g[0];
-          var dn = declNo(lead);
-          if (qDecl && dn.indexOf(qDecl) === -1) return null;
-          var sales = [];
-          var custs = [];
-          g.forEach(function (x) {
-            if (sales.indexOf(x.sales) < 0) sales.push(x.sales);
-            if (custs.indexOf(x.customer) < 0) custs.push(x.customer);
-          });
+          var g = map[k];
+          var lead = g.rows[0];
+          var dn = g.splitPart
+            ? lead.id + "-" + g.splitPart.seq + "(1)"
+            : declNo(lead);
+          if (qDecl) {
+            var hitDecl = dn.indexOf(qDecl) !== -1;
+            var hitWb = g.rows.some(function (x) { return wbDeclNo(x).indexOf(qDecl) !== -1; });
+            if (!hitDecl && !hitWb) return null;
+          }
+          var owner = g.rows.filter(function (x) { return x.id === lead.mergeLead; })[0] || lead;
           return {
             key: k,
             declNo: dn,
@@ -393,10 +424,10 @@
             broker: lead.broker,
             cs: customsCs(lead),
             status: derive(lead),
-            sales: sales,
-            customers: custs,
-            rows: g,
-            pcs: groupPcs(g)
+            sales: owner.sales || "—",
+            customer: owner.customer || "—",
+            rows: g.rows,
+            pcs: g.splitPart ? g.splitPart.pcs : groupPcs(g.rows)
           };
         }).filter(Boolean);
       }
@@ -424,21 +455,22 @@
               '<td><input type="checkbox" class="p-ck" data-key="' + u.key + '"' + (ck ? " checked" : "") + (parentPartial(u) ? ' data-partial="1"' : "") + " /></td>" +
               '<td><button type="button" class="exp-toggle' + (open ? " open" : "") + '" data-exp="' + u.key + '" aria-label="展开">›</button></td>' +
               '<td><span class="decl-no">' + u.declNo + "</span></td>" +
+              "<td>" + pushStTag(u.rows[0]) + "</td>" +
               "<td>" + markTag(u.rows[0]) + "</td>" +
               "<td>" + u.rows.length + "</td>" +
               "<td>" + u.pcs + "</td>" +
               "<td>" + (u.broker || "—") + "</td>" +
               "<td>" + u.cs + "</td>" +
               "<td>" + statusTag(u.status) + "</td>" +
-              "<td>" + u.sales.join("、") + "</td>" +
-              "<td title=\"" + u.customers.join("、") + "\">" + u.customers.slice(0, 2).join("、") + (u.customers.length > 2 ? "…" : "") + "</td>" +
+              "<td>" + u.sales + "</td>" +
+              "<td>" + u.customer + "</td>" +
             "</tr>";
           html +=
             '<tr class="expand-row' + (open ? "" : " hidden") + '" data-parent="' + u.key + '">' +
-              '<td colspan="11"><div class="sub-table-wrap">' +
+              '<td colspan="12"><div class="sub-table-wrap">' +
                 '<div class="sub-hd">运单明细 · 报关编号 ' + u.declNo + " · " + u.rows.length + " 票</div>" +
                 '<table class="sub-table"><thead><tr>' +
-                  "<th></th><th>运单号</th><th>客户单号</th><th>客户</th><th>所属业务员</th><th>客服</th>" +
+                  "<th></th><th>运单号</th><th>运单报关编号</th><th>客户单号</th><th>客户</th><th>所属业务员</th><th>客服</th>" +
                   "<th>件数</th><th>委托标记</th><th>预录单</th><th>预录已确认</th><th>签入时间</th>" +
                 "</tr></thead><tbody>" +
                 u.rows.map(function (r) {
@@ -447,6 +479,7 @@
                     '<tr class="' + (on ? "ck" : "") + '">' +
                       '<td><input type="checkbox" class="c-ck" data-id="' + r.id + '"' + (on ? " checked" : "") + " /></td>" +
                       "<td>" + r.id + "</td>" +
+                      "<td>" + wbDeclNo(r) + "</td>" +
                       "<td>" + (r.custNo || "—") + "</td>" +
                       "<td>" + r.customer + "</td>" +
                       "<td>" + r.sales + "</td>" +
@@ -462,7 +495,7 @@
                 "</tbody></table></div></td></tr>";
         });
         document.getElementById("tbody").innerHTML = html ||
-          '<tr><td colspan="11" style="text-align:center;color:#8c8c8c;padding:24px">无匹配报关编号</td></tr>';
+          '<tr><td colspan="12" style="text-align:center;color:#8c8c8c;padding:24px">无匹配报关编号</td></tr>';
         Array.prototype.forEach.call(document.querySelectorAll(".p-ck[data-partial]"), function (el) {
           el.indeterminate = true;
         });
