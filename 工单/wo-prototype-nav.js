@@ -29,6 +29,7 @@
     {
       label: "返回",
       links: [
+        { file: "../产品部门/产品部门-导航.html#s-branch", label: "← 旁支导航" },
         { file: "../index.html", label: "项目导航首页" },
         { file: "../index.html#s-commission", label: "提成管理" },
       ],
