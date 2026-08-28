@@ -70,6 +70,7 @@
     [
       { file: "整柜流程V2.0-原型导航.html", label: "整柜流程V2.0 · 主链路" },
       { file: "整柜原型导航.html", label: "整柜模块 · 全部入口" },
+      { file: "../产品部门/各组sop/海外对接组-导航.html", label: "海外对接组 · 原型导航" },
       { file: "../index.html", label: "项目导航首页" },
     ].forEach(function (item) {
       var a = document.createElement("a");
