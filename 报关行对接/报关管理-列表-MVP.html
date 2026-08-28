@@ -458,6 +458,7 @@
     .biz-mf { color: #08979c; background: #e6fffb; border-color: #87e8de; }
     .biz-amend { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
     .biz-splitcab { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .biz-cut { color: #ad6800; background: #fffbe6; border-color: #ffe58f; }
     .biz-empty { color: #bfbfbf; }
     .ship-amd {
       display: inline-block; padding: 0 6px; height: 18px; line-height: 16px;
@@ -798,6 +799,7 @@
               <label>业务标记 <span class="badge-new">NEW</span></label>
               <select id="qBizMark">
                 <option value="">全部</option>
+                <option value="cut">截单预警（提前24h）</option>
                 <option value="isf">ISF</option>
                 <option value="mf">舱单已发送</option>
                 <option value="amend">改单</option>
@@ -895,7 +897,7 @@
                 <th>终配舱单号</th>
                 <th>提单号</th>
                 <th>柜号</th>
-                <th title="ISF / AMS / 舱单已发送 / 改单 / 合并分柜 / 客户合并 / 再分票 / 分单号；船务改单 ①甩柜 ②换单 ③换柜">业务标记</th>
+                <th title="截单预警 / ISF / 舱单已发送 / 改单 / 合并分柜 / 客户合并 / 再分票 / 分单号；船务改单 ①甩柜 ②换单 ③换柜">业务标记</th>
                 <th><span class="th-rv-wrap">报关单号<span class="rv rv-new" title="#09 报关行回传">09</span></span></th>
                 <th class="col-declare"><span class="th-rv-wrap">放行资料<span class="rv rv-yes" title="#10 接收+抓取报关资料">10</span></span></th>
                 <th class="col-declare">最近抓取</th>
@@ -927,7 +929,7 @@
             </thead>
             <tbody id="tableBody">
               <!-- 预录待复审 -->
-              <tr class="data-row row-unread" data-tab="review" data-phase="pre"
+              <tr class="data-row row-unread" data-tab="review" data-phase="pre" data-cut-demo="later"
                   data-swap="1" data-ship-amd="3" data-ship-amd-st="pending"
                   data-swap-scene="3" data-swap-scene-name="③ 查验换柜换船"
                   data-swap-old-bl="COSU6502971850" data-swap-new-bl="COSU6502971999"
@@ -1148,7 +1150,7 @@
                 </td>
               </tr>
 
-              <tr class="data-row" data-tab="wait all" data-house-demo="emc">
+              <tr class="data-row" data-tab="wait all" data-house-demo="emc" data-cut-demo="near">
                 <td><input type="checkbox" /></td>
                 <td><button type="button" class="exp-toggle" data-exp="r4">›</button></td>
                 <td><span class="tag wait">待放行</span></td>
@@ -1289,7 +1291,7 @@
               </tr>
 
               <!-- 申报/放行（原列表）· 合并报关样例：客户合并1组（示意10票）→ 再分票3 -->
-              <tr class="data-row" data-tab="wait all" data-phase="legacy" data-merge="MG-20260609-01" data-merge-status="resplit"
+              <tr class="data-row" data-tab="wait all" data-phase="legacy" data-merge="MG-20260609-01" data-merge-status="resplit" data-cut-demo="soon"
                   data-swap="1" data-ship-amd="3" data-ship-amd-st="pending"
                   data-swap-scene="3" data-swap-scene-name="③ 查验换柜换船"
                   data-swap-old-bl="HLCUSZX2608BDCK3" data-swap-new-bl="HLCUSZX2608BDCK9"
@@ -1486,7 +1488,7 @@
                 </td>
               </tr>
 
-              <tr class="data-row" data-tab="check all" data-phase="legacy" data-notify="未通知" data-check-start="2026-06-06" data-check-dispose="处理中" data-sail-remind="待提醒"
+              <tr class="data-row" data-tab="check all" data-phase="legacy" data-notify="未通知" data-check-start="2026-06-06" data-check-dispose="处理中" data-sail-remind="待提醒" data-cut-demo="near"
                   data-swap="1" data-ship-amd="2" data-ship-amd-st="pending"
                   data-swap-scene="2" data-swap-scene-name="② 查验换船"
                   data-swap-old-bl="HLCU1234567890" data-swap-new-bl="HLCU1234567999"
@@ -1563,7 +1565,7 @@
                 </td>
               </tr>
 
-              <tr class="data-row" data-tab="cleared all" data-phase="legacy"
+              <tr class="data-row" data-tab="cleared all" data-phase="legacy" data-cut-demo="passed"
                   data-ship-amd="1" data-ship-amd-st="done" data-swap-scene="1">
                 <td><input type="checkbox" /></td>
                 <td><button type="button" class="exp-toggle" data-exp="r9">›</button></td>
@@ -4273,9 +4275,72 @@
       }
       document.getElementById("qMergeStatus").addEventListener("change", applyMergeFilter);
 
+      /* 截单预警：同船务提单管理。距截单 ≤24h 且尚未到点。截单时间订阅提单管理。 */
+      var NEAR_CUT_HOURS = 24;
+      function pad2(n) { return (n < 10 ? "0" : "") + n; }
+      function fmtCutoff(d) {
+        return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) +
+          " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+      }
+      function parseDateTime(str) {
+        if (!str) return null;
+        var m = String(str).match(/(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+        if (!m) return null;
+        return new Date(
+          Number(m[1]), Number(m[2]) - 1, Number(m[3]),
+          m[4] != null ? Number(m[4]) : 0,
+          m[5] != null ? Number(m[5]) : 0,
+          m[6] != null ? Number(m[6]) : 0
+        );
+      }
+      function demoCutoffDate(kind) {
+        var n = new Date();
+        if (kind === "near") n.setHours(n.getHours() + 8);
+        else if (kind === "soon") n.setHours(n.getHours() + 20);
+        else if (kind === "passed") n.setHours(n.getHours() - 3);
+        else if (kind === "later") n.setDate(n.getDate() + 3);
+        else return null;
+        n.setSeconds(0, 0);
+        return n;
+      }
+      function isNearCut(cutOff) {
+        var cut = parseDateTime(cutOff);
+        if (!cut) return false;
+        var hoursToCut = (cut.getTime() - Date.now()) / 3600000;
+        return hoursToCut >= 0 && hoursToCut <= NEAR_CUT_HOURS;
+      }
+      function applyCutWarnTags() {
+        document.querySelectorAll("#tableBody tr.data-row").forEach(function (tr) {
+          var demo = tr.getAttribute("data-cut-demo");
+          if (demo) {
+            var d = demoCutoffDate(demo);
+            if (d) tr.setAttribute("data-cutoff", fmtCutoff(d));
+          }
+          var cutStr = tr.getAttribute("data-cutoff") || "";
+          var cell = tr.querySelector(".cell-biz");
+          if (!cell) return;
+          var old = cell.querySelector(".biz-cut");
+          if (old) old.remove();
+          if (!isNearCut(cutStr)) {
+            restoreBizEmpty(cell);
+            return;
+          }
+          stripBizEmpty(cell);
+          var span = document.createElement("span");
+          span.className = "biz-tag biz-cut";
+          var hoursToCut = (parseDateTime(cutStr).getTime() - Date.now()) / 3600000;
+          var remain = hoursToCut < 1
+            ? Math.max(1, Math.round(hoursToCut * 60)) + " 分钟"
+            : Math.round(hoursToCut) + " 小时";
+          span.title = "截单预警 · 距截单 ≤24h 且尚未到点（同船务）· 截单 " + cutStr + " · 剩余约 " + remain;
+          span.textContent = "截单预警";
+          cell.insertBefore(span, cell.firstChild);
+        });
+      }
+
       function applyBizFilter() {
         var v = (document.getElementById("qBizMark") || {}).value || "";
-        var clsMap = { isf: "biz-isf", mf: "biz-mf", agent: "biz-agent", amend: "biz-amend", splitcab: "biz-splitcab" };
+        var clsMap = { cut: "biz-cut", isf: "biz-isf", mf: "biz-mf", agent: "biz-agent", amend: "biz-amend", splitcab: "biz-splitcab" };
         document.querySelectorAll("#tableBody tr.data-row").forEach(function (tr) {
           var cell = tr.querySelector(".cell-biz");
           var scene = tr.getAttribute("data-ship-amd") || "";
@@ -4307,6 +4372,7 @@
         });
       }
       document.getElementById("qBizMark").addEventListener("change", applyBizFilter);
+      applyCutWarnTags();
 
       /* —— 运单明细：预录单状态 + 预录已确认（执行侧不再跳预录工作台） —— */
       function findDeclNoCol(table) {

@@ -212,7 +212,7 @@ COVER = r'''    <section class="hero">
         <thead><tr><th>页</th><th>本期要点</th><th class="proto">原型</th><th class="proto">本章</th></tr></thead>
         <tbody>
           <tr><td>预录工作台</td><td>只看报关件。委托三值。报关编号=报关单号。按报关编号选运单</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">工作台</a> · <a href="关务组-预录工作台-报关单号母子表-MVP.html">母子表</a></td><td class="proto"><a href="#ch-pre">第 1 章</a></td></tr>
-          <tr><td>报关执行列表</td><td>待放行/查验/放行。发舱单、下载舱单。无预录页签。已核准不在本页</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">打开</a></td><td class="proto"><a href="#ch-exec">第 2 章</a></td></tr>
+          <tr><td>报关执行列表</td><td>待放行/查验/放行。发舱单、下载舱单。业务标记含截单预警（同船务，提前24h）。无预录页签。已核准不在本页</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">打开</a></td><td class="proto"><a href="#ch-exec">第 2 章</a></td></tr>
           <tr><td>预录单审核详情</td><td>结构化 + 沟通；#04 附件</td><td class="proto"><a href="../../报关行对接/报关管理-预录单审核详情-MVP.html">打开</a></td><td class="proto"><a href="#ch-review">第 3 章</a></td></tr>
           <tr><td>做资料分票核准</td><td>买单轧差。点行比对。「已核准」本页写入</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">打开</a></td><td class="proto"><a href="#ch-split">第 5 章</a></td></tr>
           <tr><td>分单号规则</td><td>船司×港口模板。绑提单之后生成</td><td class="proto"><a href="../../报关行对接/分单号规则配置-MVP.html">打开</a></td><td class="proto"><a href="#ch-house">第 6 章</a></td></tr>
@@ -303,6 +303,7 @@ COVER = r'''    <section class="hero">
           <tr><td>电子委托 #12</td><td>不按分票号查。已对接自行匹配回传；未对接三值标记+截图</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
           <tr><td>改报关行</td><td>待放行及之后不可改（含已放行）。改单已撤销仍可改再重发</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
           <tr><td>海放 / 码放</td><td>订阅回写船务业务标记。关务仍用清关放行粗状态</td><td class="proto"><a href="../船务/船务组-提单管理-按周分组与分配-MVP.html">船务列表</a></td></tr>
+          <tr><td>截单预警</td><td>只读订阅提单截单时间。规则同船务临近截单：距截单 ≤24h 且尚未到点。本页业务标记打「截单预警」，不另开截单列、不可手消</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">报关执行</a></td></tr>
         </tbody>
       </table>
     </section>
@@ -320,6 +321,7 @@ TAIL = r'''    <section class="card" id="m8">
           <tr><td>改报关行窗口</td><td>待放行之前可改。待放行及之后不可改。改单已撤销可改再重发</td><td class="proto"><a href="关务组-签入即预报资料-MVP.html">预录工作台</a></td></tr>
           <tr><td>舱单预填</td><td>①提单管理 ②进口商收发货人 ③终配舱件毛体。字段可改，不回写来源主档</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">发舱单</a></td></tr>
           <tr><td>ISF 预填（发送在报关执行）</td><td>①装柜表+进口商 ②车队/代理 ③仓库数据表。通道=信号旗，下期对接</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">报关执行</a></td></tr>
+          <tr><td>截单预警窗口</td><td>提前 <strong>24</strong> 小时。距截单 ≤24h 且尚未到点。截单时间取提单管理。业务标记打「截单预警」</td><td class="proto"><a href="../../报关行对接/报关管理-列表-MVP.html">报关执行</a></td></tr>
           <tr><td>AMS 预填（发送在船务）</td><td>①装柜表+进口商 ②车队/代理 ③仓库数据表</td><td class="proto"><a href="../船务/船务组-提单管理-按周分组与分配-MVP.html">船务</a></td></tr>
           <tr><td>本期对接</td><td>#01 推送 · #04 预录附件 · #08 正式件 · #09 报关编号回传 · #10 放行 · #12 委托。#11 查验手登</td><td class="proto"><a href="../../报关行对接/报关行API配置-MVP.html">API</a></td></tr>
           <tr><td>买单轧差</td><td>末票 = 终配合计 − Σ报关件。轧差为负不可核准</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">做资料</a></td></tr>
