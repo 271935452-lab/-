@@ -28,6 +28,21 @@
 
 
 
+  function appDirPrefix() {
+    var path = (location.pathname || "").replace(/\\/g, "/");
+    var parts = path.split("/").filter(Boolean);
+    if (!parts.length) return "";
+    parts.pop();
+    var folder = parts[parts.length - 1] || "";
+    try {
+      folder = decodeURIComponent(folder);
+    } catch (_) {}
+    if (folder === "APP") return "";
+    var rel = "";
+    for (var i = 0; i < parts.length; i++) rel += "../";
+    return rel + "APP/";
+  }
+
   function currentFile() {
 
     var href = location.href.split("#")[0].split("?")[0];
@@ -96,7 +111,7 @@
 
       var a = document.createElement("a");
 
-      a.href = item.file;
+      a.href = appDirPrefix() + item.file;
 
       a.textContent = item.label;
 

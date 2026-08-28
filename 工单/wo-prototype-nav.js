@@ -30,7 +30,7 @@
       label: "返回",
       links: [
         { file: "../index.html", label: "项目导航首页" },
-        { file: "../原型导航-一期二期全量.html", label: "提成管理 · 全量菜单" },
+        { file: "../index.html#s-commission", label: "提成管理" },
       ],
     },
   ];
