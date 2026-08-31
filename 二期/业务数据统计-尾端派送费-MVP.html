@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>业务数据统计 · 尾端派送费 · MVP</title>
+  <link rel="stylesheet" href="ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #e8edf3;
+      --card: #fff;
+      --text: #262626;
+      --sub: #8c8c8c;
+      --line: #e8e8e8;
+      --blue: #1890ff;
+      --red: #ff4d4f;
+      --sidebar: #001529;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .app { display: flex; min-height: 100vh; }
+    .sidenav {
+      width: 160px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.65);
+      padding: 12px 0; font-size: 12px;
+    }
+    .sidenav .brand { color: #fff; padding: 8px 16px 14px; font-weight: 700; font-size: 13px; }
+    .sidenav a {
+      display: block; padding: 8px 16px; color: inherit; text-decoration: none;
+    }
+    .sidenav a.on { color: #fff; background: #1890ff; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      background: #fff; border-bottom: 1px solid var(--line);
+      padding: 8px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .topbar .title { font-weight: 700; font-size: 14px; }
+    .topbar .crumb { color: var(--sub); font-size: 12px; }
+    .role-switch {
+      margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--sub);
+    }
+    .role-switch button {
+      border: 1px solid #91d5ff; background: #e6f7ff; color: #096dd9;
+      padding: 4px 10px; border-radius: 2px; cursor: pointer; font-size: 12px;
+    }
+    .role-switch button.on { background: #1890ff; color: #fff; border-color: #1890ff; }
+    .page { padding: 12px 14px 28px; flex: 1; }
+    .hint {
+      background: #fffbe6; border: 1px solid #ffe58f; border-radius: 2px;
+      padding: 8px 12px; margin-bottom: 10px; font-size: 12px; line-height: 1.65; color: #614700;
+    }
+    .hint strong { color: #ad6800; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+      margin-bottom: 10px;
+    }
+    .filters {
+      padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end;
+    }
+    .f label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .f input, .f select {
+      height: 28px; padding: 0 8px; border: 1px solid #d9d9d9; border-radius: 2px; min-width: 140px;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; cursor: pointer; font-size: 12px;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .toolbar { padding: 8px 12px; border-top: 1px solid var(--line); display: flex; gap: 8px; flex-wrap: wrap; }
+    table.list { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.list th, table.list td {
+      border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; white-space: nowrap;
+    }
+    table.list th { background: #fafafa; color: rgba(0,0,0,.65); font-weight: 600; }
+    table.list a { color: var(--blue); text-decoration: none; cursor: pointer; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; line-height: 18px;
+    }
+    .tag-bind { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag-manual { background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; }
+    .tag-empty { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .tag-ok { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag-priv { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .view { display: none; }
+    .view.on { display: block; }
+    .summary {
+      display: flex; flex-wrap: wrap; gap: 18px 28px; padding: 12px 14px;
+      border-bottom: 1px solid var(--line); font-size: 13px;
+    }
+    .summary .k { color: var(--sub); margin-right: 6px; }
+    .summary .v { font-weight: 600; }
+    .panel-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+    }
+    .panel-hd h3 { margin: 0; font-size: 13px; font-weight: 600; }
+    .panel-hd .amt { color: var(--sub); font-size: 12px; }
+    .empty {
+      padding: 28px; text-align: center; color: var(--sub); font-size: 12px;
+    }
+    .fee-meta {
+      margin: 0; padding: 8px 14px 0; font-size: 12px; color: var(--sub); line-height: 1.6;
+    }
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+      justify-content: flex-end;
+    }
+    .mask.show { display: flex; }
+    .drawer {
+      width: 420px; max-width: 100%; height: 100%; background: #fff;
+      display: flex; flex-direction: column; box-shadow: -4px 0 16px rgba(0,0,0,.12);
+    }
+    .drawer-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+    }
+    .drawer-hd h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .drawer-hd .x {
+      border: none; background: none; font-size: 20px; cursor: pointer; color: var(--sub); line-height: 1;
+    }
+    .drawer-bd { flex: 1; overflow: auto; padding: 14px 16px; }
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .fi { margin-bottom: 14px; }
+    .fi label {
+      display: block; margin-bottom: 6px; font-size: 13px; color: rgba(0,0,0,.85);
+    }
+    .fi label .req { color: var(--red); margin-right: 2px; }
+    .fi label .opt { color: var(--sub); font-weight: 400; font-size: 12px; margin-left: 4px; }
+    .fi input, .fi select, .fi textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 6px 10px; font-size: 13px; font-family: inherit;
+    }
+    .fi input[readonly] { background: #f5f5f5; color: rgba(0,0,0,.65); }
+    .fi textarea { min-height: 72px; resize: vertical; }
+    .fi .help { margin: 6px 0 0; font-size: 12px; color: var(--sub); line-height: 1.55; }
+    .fi.hl {
+      background: #fff1f0; border: 1px solid #ffa39e; border-radius: 2px;
+      padding: 10px; margin-bottom: 14px;
+    }
+    .fi.hl label { color: #cf1322; font-weight: 600; }
+    .toast {
+      position: fixed; top: 72px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 1100; display: none;
+    }
+    .toast.show { display: block; }
+    .plan-box {
+      background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 2px;
+      padding: 10px 12px; margin-top: 10px; font-size: 12px; line-height: 1.65;
+    }
+    .plan-box code { background: #fff; padding: 0 4px; border: 1px solid #d9f7be; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidenav">
+      <div class="brand">腾信物流（示意）</div>
+      <a href="#" class="on" id="navBiz">业务数据统计</a>
+      <a href="#" id="navFin">业务数据统计财务</a>
+      <a href="../index.html">返回导航</a>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <div class="title" id="pageTitle">业务数据统计</div>
+          <div class="crumb">本期：尾端派送费字段 · 新增业务成本 · 柜子计划取数</div>
+        </div>
+        <div class="role-switch">
+          <span>入口</span>
+          <button type="button" class="on" data-role="biz" id="btnRoleBiz">业务数据统计</button>
+          <button type="button" data-role="fin" id="btnRoleFin">业务数据统计财务</button>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="hint">
+          <strong>口径：</strong>私卡组绑运单时，尾端派送费自动写入本字段，柜子计划导出取此值。
+          未绑运单须在「新增业务成本」手工补录；柜子计划仍取本字段。
+          销售产品为<strong>私卡</strong>时必填，非私卡非必填。业务 / 财务两入口字段与校验一致。
+        </div>
+
+        <!-- 列表 -->
+        <div class="view on" id="viewList">
+          <div class="card">
+            <div class="filters">
+              <div class="f">
+                <label>到货时间</label>
+                <input type="text" value="2026-08-01 ~ 2026-08-31" />
+              </div>
+              <div class="f">
+                <label>运单号</label>
+                <input type="text" placeholder="支持批量" />
+              </div>
+              <div class="f">
+                <label>销售产品</label>
+                <select id="qProd">
+                  <option value="">全部</option>
+                  <option>私卡</option>
+                  <option>整柜直送</option>
+                  <option>快递</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-primary">查询</button>
+              <button type="button" class="btn">重置</button>
+            </div>
+            <div class="toolbar">
+              <button type="button" class="btn btn-primary" id="btnOpenDetail">打开费用明细</button>
+              <button type="button" class="btn" id="btnExportPlan">导出柜子计划（示意）</button>
+            </div>
+            <div style="overflow:auto">
+              <table class="list" aria-label="业务数据统计列表">
+                <thead>
+                  <tr>
+                    <th><input type="checkbox" checked /></th>
+                    <th>运单号</th>
+                    <th>销售产品</th>
+                    <th>柜号</th>
+                    <th>尾端派送费 <span class="tag tag-priv">NEW</span></th>
+                    <th>来源</th>
+                    <th>业务员成本</th>
+                    <th>应收</th>
+                  </tr>
+                </thead>
+                <tbody id="listBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="plan-box" id="planPreview" hidden></div>
+        </div>
+
+        <!-- 详情 -->
+        <div class="view" id="viewDetail">
+          <div class="card">
+            <div class="summary">
+              <div><span class="k">单号</span><span class="v" id="dAwb">—</span></div>
+              <div><span class="k">销售产品</span><span class="v" id="dProd">—</span></div>
+              <div><span class="k">应收合计</span><span class="v" id="dRecv">0</span></div>
+              <div><span class="k">业务员成本</span><span class="v" id="dCost">0</span></div>
+              <div><span class="k">尾端派送费</span><span class="v" id="dLastmile">—</span></div>
+              <div style="margin-left:auto">
+                <button type="button" class="btn" id="btnBackList">返回列表</button>
+              </div>
+            </div>
+
+            <div class="panel-hd">
+              <h3>应收费用</h3>
+              <span class="amt" id="recvSum">0 CNY</span>
+            </div>
+            <div class="empty" id="recvEmpty">暂无数据</div>
+            <div style="overflow:auto;display:none" id="recvWrap">
+              <table class="list" id="recvTable">
+                <thead>
+                  <tr>
+                    <th>序号</th><th>费用代码</th><th>费用名称</th><th>金额</th><th>币别</th>
+                    <th>汇率</th><th>人民币金额</th><th>核销状态</th><th>备注</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="panel-hd" style="border-top:1px solid var(--line)">
+              <h3>业务员成本</h3>
+              <div>
+                <span class="amt" id="costSum" style="margin-right:10px">0 CNY</span>
+                <button type="button" class="btn btn-primary" id="btnAddCost">新增业务成本</button>
+              </div>
+            </div>
+            <p class="fee-meta" id="lastmileMeta"></p>
+            <div class="empty" id="costEmpty">暂无数据</div>
+            <div style="overflow:auto;display:none" id="costWrap">
+              <table class="list" id="costTable">
+                <thead>
+                  <tr>
+                    <th>序号</th><th>费用代码</th><th>费用名称</th><th>金额</th><th>币别</th>
+                    <th>汇率</th><th>人民币金额</th><th>核销状态</th>
+                    <th>尾端派送费</th><th>备注</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增业务成本抽屉 -->
+  <div class="mask" id="costMask" role="dialog" aria-modal="true" aria-labelledby="costTitle">
+    <div class="drawer">
+      <div class="drawer-hd">
+        <h2 id="costTitle">新增业务成本</h2>
+        <button type="button" class="x" id="costClose" aria-label="关闭">×</button>
+      </div>
+      <div class="drawer-bd">
+        <div class="fi">
+          <label><span class="req">*</span>单号</label>
+          <input type="text" id="cAwb" readonly />
+        </div>
+        <div class="fi">
+          <label><span class="req">*</span>单号类型</label>
+          <select id="cType"><option>运单</option><option>提单</option><option>柜号</option></select>
+        </div>
+        <div class="fi">
+          <label><span class="req">*</span>单位</label>
+          <select><option>票</option><option>柜</option><option>KG</option></select>
+        </div>
+        <div class="fi">
+          <label><span class="req">*</span>类型</label>
+          <select><option>追加</option><option>冲减</option></select>
+        </div>
+        <div class="fi">
+          <label><span class="req">*</span>费用类型</label>
+          <select id="cFeeType">
+            <option value="">请选择费用类型</option>
+            <option>尾端派送成本</option>
+            <option>滞港费</option>
+            <option>滞箱费</option>
+            <option>其他</option>
+          </select>
+        </div>
+        <div class="fi">
+          <label><span class="req">*</span>费用金额</label>
+          <input type="text" id="cAmt" placeholder="请输入费用金额" />
+        </div>
+        <div class="fi">
+          <label><span class="req">*</span>币别</label>
+          <select id="cCcy"><option>人民币</option><option>美元</option></select>
+        </div>
+        <div class="fi">
+          <label><span class="req">*</span>汇率</label>
+          <input type="text" id="cRate" value="1" />
+        </div>
+        <div class="fi hl" id="lastmileFi">
+          <label id="lastmileLabel"><span class="req" id="lastmileReq">*</span>尾端派送费</label>
+          <input type="text" id="cLastmile" placeholder="请输入尾端派送费（USD，取整）" />
+          <p class="help" id="lastmileHelp">销售产品为私卡时必填；非私卡非必填。柜子计划导出取本字段。</p>
+        </div>
+        <div class="fi">
+          <label>付款备注</label>
+          <textarea id="cNote" placeholder="选填"></textarea>
+        </div>
+      </div>
+      <div class="drawer-ft">
+        <button type="button" class="btn btn-primary" id="costSave">确定</button>
+        <button type="button" class="btn" id="costCancel">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="业务数据统计-尾端派送费-MVP-PRD.html" data-prd-anchor="s-logic">
+    <span class="ess-prd-chip">PRD · 尾端派送费</span>
+  </div>
+  <script src="ess-prototype-prd.js"></script>
+  <script>
+(function () {
+  var role = "biz";
+  var curId = null;
+  var ROWS = [
+    {
+      id: 1, awb: "TXZG00000001781", prod: "私卡", cntr: "FFAU2425199",
+      lastmile: "", source: "empty", cost: 0, recv: 0, costs: []
+    },
+    {
+      id: 2, awb: "ICBU88291001", prod: "私卡", cntr: "CSNU7788102",
+      lastmile: "186", source: "bind", cost: 1280, recv: 3200,
+      costs: [
+        { code: "LM01", name: "尾端派送成本", amt: 186, ccy: "USD", rate: 7.2, rmb: 1339.2, st: "未核销", lm: "186", note: "私卡绑单同步 · 柜子计划可导出" }
+      ]
+    },
+    {
+      id: 3, awb: "ICBU88291088", prod: "整柜直送", cntr: "WHSU5725801",
+      lastmile: "95", source: "manual", cost: 680, recv: 2100,
+      costs: [
+        { code: "LM01", name: "尾端派送成本", amt: 95, ccy: "USD", rate: 7.2, rmb: 684, st: "未核销", lm: "95", note: "无绑单 · 手工补录" }
+      ]
+    },
+    {
+      id: 4, awb: "ICBU88300112", prod: "快递", cntr: "NYKU4455788",
+      lastmile: "", source: "empty", cost: 0, recv: 880, costs: []
+    }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg) {
+    var el = $("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+  function rowById(id) {
+    return ROWS.filter(function (r) { return r.id === id; })[0];
+  }
+  function sourceTag(s) {
+    if (s === "bind") return '<span class="tag tag-bind">绑单同步</span>';
+    if (s === "manual") return '<span class="tag tag-manual">手工补录</span>';
+    return '<span class="tag tag-empty">待补录</span>';
+  }
+  function isPrivate(prod) { return prod === "私卡"; }
+
+  function setRole(r) {
+    role = r;
+    var fin = r === "fin";
+    $("pageTitle").textContent = fin ? "业务数据统计财务" : "业务数据统计";
+    $("btnRoleBiz").classList.toggle("on", !fin);
+    $("btnRoleFin").classList.toggle("on", fin);
+    $("navBiz").classList.toggle("on", !fin);
+    $("navFin").classList.toggle("on", fin);
+  }
+
+  function renderList() {
+    $("listBody").innerHTML = ROWS.map(function (r) {
+      var lm = r.lastmile ? ("USD " + r.lastmile) : "—";
+      return "<tr>" +
+        "<td><input type=\"checkbox\" class=\"row-chk\" data-id=\"" + r.id + "\" " + (r.id === 1 ? "checked" : "") + " /></td>" +
+        "<td><a data-open=\"" + r.id + "\">" + r.awb + "</a></td>" +
+        "<td>" + (isPrivate(r.prod) ? '<span class="tag tag-priv">' + r.prod + "</span>" : r.prod) + "</td>" +
+        "<td>" + r.cntr + "</td>" +
+        "<td>" + lm + "</td>" +
+        "<td>" + sourceTag(r.source) + "</td>" +
+        "<td>" + r.cost + "</td>" +
+        "<td>" + r.recv + "</td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function showView(name) {
+    $("viewList").classList.toggle("on", name === "list");
+    $("viewDetail").classList.toggle("on", name === "detail");
+  }
+
+  function renderDetail(id) {
+    var r = rowById(id);
+    if (!r) return;
+    curId = id;
+    $("dAwb").textContent = r.awb;
+    $("dProd").innerHTML = isPrivate(r.prod)
+      ? '<span class="tag tag-priv">' + r.prod + "</span>"
+      : r.prod;
+    $("dRecv").textContent = r.recv;
+    $("dCost").textContent = r.cost;
+    $("dLastmile").textContent = r.lastmile ? ("USD " + r.lastmile) : "—";
+    $("recvSum").textContent = r.recv + " CNY";
+    $("costSum").textContent = r.cost + " CNY";
+
+    var meta = "";
+    if (r.source === "bind") meta = "来源：私卡组绑运单同步 · 柜子计划导出取 USD " + r.lastmile;
+    else if (r.source === "manual") meta = "来源：业务数据统计手工补录 · 柜子计划导出取 USD " + r.lastmile;
+    else if (isPrivate(r.prod)) meta = "私卡未绑运单 / 未补录 → 须在「新增业务成本」填写尾端派送费，否则柜子计划导出为空";
+    else meta = "非私卡：尾端派送费非必填；若有值，柜子计划仍取本字段";
+    $("lastmileMeta").textContent = meta;
+
+    if (!r.costs.length) {
+      $("costEmpty").style.display = "block";
+      $("costWrap").style.display = "none";
+    } else {
+      $("costEmpty").style.display = "none";
+      $("costWrap").style.display = "block";
+      $("costTable").tBodies[0].innerHTML = r.costs.map(function (c, i) {
+        return "<tr><td>" + (i + 1) + "</td><td>" + c.code + "</td><td>" + c.name + "</td>" +
+          "<td>" + c.amt + "</td><td>" + c.ccy + "</td><td>" + c.rate + "</td><td>" + c.rmb + "</td>" +
+          "<td>" + c.st + "</td><td>" + (c.lm ? ("USD " + c.lm) : "—") + "</td><td>" + (c.note || "") + "</td></tr>";
+      }).join("");
+    }
+    showView("detail");
+  }
+
+  function syncLastmileRule(prod) {
+    var priv = isPrivate(prod);
+    $("lastmileReq").style.display = priv ? "inline" : "none";
+    $("lastmileLabel").innerHTML = (priv ? '<span class="req" id="lastmileReq">*</span>' : "") +
+      "尾端派送费" + (priv ? "" : '<span class="opt">（非必填）</span>');
+    $("lastmileHelp").textContent = priv
+      ? "销售产品为私卡：必填。优先取绑单挂接值；无绑单须手工录入。柜子计划导出取本字段。"
+      : "销售产品非私卡：非必填。若填写，柜子计划导出仍取本字段。";
+    $("lastmileFi").classList.toggle("hl", priv);
+  }
+
+  function openCost() {
+    var r = rowById(curId);
+    if (!r) return;
+    $("cAwb").value = r.awb;
+    $("cAmt").value = "";
+    $("cLastmile").value = r.lastmile || "";
+    $("cNote").value = "";
+    $("cFeeType").value = "";
+    $("cRate").value = "1";
+    syncLastmileRule(r.prod);
+    $("costMask").classList.add("show");
+  }
+
+  function closeCost() { $("costMask").classList.remove("show"); }
+
+  $("listBody").onclick = function (e) {
+    var a = e.target.closest("[data-open]");
+    if (!a) return;
+    renderDetail(Number(a.getAttribute("data-open")));
+  };
+
+  $("btnOpenDetail").onclick = function () {
+    var chk = document.querySelector(".row-chk:checked");
+    renderDetail(chk ? Number(chk.getAttribute("data-id")) : 1);
+  };
+  $("btnBackList").onclick = function () { showView("list"); $("planPreview").hidden = true; };
+
+  $("btnAddCost").onclick = openCost;
+  $("costClose").onclick = $("costCancel").onclick = closeCost;
+  $("costMask").onclick = function (e) { if (e.target === $("costMask")) closeCost(); };
+
+  $("costSave").onclick = function () {
+    var r = rowById(curId);
+    if (!r) return;
+    var fee = $("cFeeType").value;
+    var amt = ($("cAmt").value || "").trim();
+    var lm = ($("cLastmile").value || "").trim();
+    if (!fee) { toast("请选择费用类型"); return; }
+    if (!amt) { toast("请输入费用金额"); return; }
+    if (isPrivate(r.prod) && !lm) {
+      toast("销售产品为私卡，尾端派送费必填");
+      return;
+    }
+    var rate = Number($("cRate").value) || 1;
+    var ccy = $("cCcy").value === "美元" ? "USD" : "CNY";
+    var num = Number(amt) || 0;
+    var rmb = ccy === "USD" ? +(num * (rate === 1 ? 7.2 : rate)).toFixed(2) : num;
+    r.costs.push({
+      code: "NEW",
+      name: fee,
+      amt: num,
+      ccy: ccy,
+      rate: ccy === "USD" ? (rate === 1 ? 7.2 : rate) : 1,
+      rmb: rmb,
+      st: "未核销",
+      lm: lm || "",
+      note: ($("cNote").value || "").trim() || (r.source === "empty" ? "手工补录" : "")
+    });
+    if (lm) {
+      r.lastmile = lm.replace(/[^\d.]/g, "") || lm;
+      if (r.source === "empty" || r.source === "manual") r.source = "manual";
+    }
+    r.cost = r.costs.reduce(function (s, c) { return s + (Number(c.rmb) || 0); }, 0);
+    closeCost();
+    renderList();
+    renderDetail(curId);
+    toast("已保存 · 尾端派送费" + (lm ? (" USD " + r.lastmile) : "（未填）") + " · 柜子计划取本字段");
+  };
+
+  $("btnExportPlan").onclick = function () {
+    var ids = Array.prototype.map.call(document.querySelectorAll(".row-chk:checked"), function (el) {
+      return Number(el.getAttribute("data-id"));
+    });
+    if (!ids.length) { toast("请先勾选运单"); return; }
+    var lines = ids.map(function (id) {
+      var r = rowById(id);
+      var warn = isPrivate(r.prod) && !r.lastmile ? " ⚠ 私卡缺尾端派送费" : "";
+      return r.cntr + " / " + r.awb + " · 尾端派送费=" + (r.lastmile ? ("USD " + r.lastmile) : "空") +
+        " · 来源=" + ({ bind: "绑单同步", manual: "手工补录", empty: "无" }[r.source] || r.source) + warn;
+    });
+    var box = $("planPreview");
+    box.hidden = false;
+    box.innerHTML = "<strong>柜子计划导出预览（示意）</strong><br/>柜子计划取业务数据统计「尾端派送费」字段（绑单同步或手工补录同一字段）。<br/><code>" +
+      lines.join("</code><br/><code>") + "</code>";
+    toast("已生成柜子计划导出预览");
+  };
+
+  $("btnRoleBiz").onclick = function () { setRole("biz"); };
+  $("btnRoleFin").onclick = function () { setRole("fin"); };
+  $("navBiz").onclick = function (e) { e.preventDefault(); setRole("biz"); showView("list"); };
+  $("navFin").onclick = function (e) { e.preventDefault(); setRole("fin"); showView("list"); };
+
+  renderList();
+  if (location.hash === "#cost" || location.hash === "#detail") {
+    renderDetail(1);
+    if (location.hash === "#cost") openCost();
+  }
+})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>提单主单预估费用 · 海外对接组 · MVP</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --header-tab: #132d52; --sidebar: #001529;
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --red: #cf1322; --green: #389e0d; --warn: #d46b08;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; flex: 1; overflow-x: auto; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .nav-tab .badge-new {
+      display: inline-block; padding: 0 4px; height: 16px; line-height: 16px;
+      font-size: 10px; font-weight: 700; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .header-right {
+      display: flex; align-items: center; gap: 10px; padding: 0 14px;
+      font-size: 12px; color: rgba(255,255,255,.65);
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 56px; background: var(--sidebar); color: rgba(255,255,255,.65);
+      display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px;
+    }
+    .side-ico {
+      width: 48px; padding: 8px 0 6px; text-align: center; font-size: 10px;
+      line-height: 1.2; border-radius: 2px;
+    }
+    .side-ico b { display: block; font-size: 16px; margin-bottom: 2px; font-weight: 400; }
+    .side-ico.on { background: rgba(24,144,255,.28); color: #fff; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .proto-bar {
+      padding: 6px 12px; font-size: 12px; color: var(--sub); background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .proto-bar a { margin-right: 10px; }
+
+    .page-hd {
+      background: #fff; border-bottom: 1px solid var(--line); padding: 10px 12px;
+    }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); font-size: 12px; line-height: 1.55; }
+
+    .rule-strip {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+      background: #fff7e6; border-bottom: 1px solid #ffe58f; font-size: 12px; color: #874d00;
+    }
+    .rule-strip span {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; background: #fff; border: 1px solid #ffd591; border-radius: 3px;
+    }
+    .rule-strip b { color: #d46b08; }
+
+    .tabs {
+      display: flex; gap: 0; background: #fff; border-bottom: 1px solid var(--line);
+      padding: 0 12px; overflow-x: auto;
+    }
+    .tab {
+      padding: 10px 14px; border: none; background: transparent; cursor: pointer;
+      color: var(--sub); border-bottom: 2px solid transparent; white-space: nowrap;
+    }
+    .tab.on { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+    .panel { display: none; flex: 1; flex-direction: column; min-height: 0; }
+    .panel.on { display: flex; }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 12px; background: #fff; border-bottom: 1px solid var(--line);
+    }
+    .field { display: flex; align-items: center; gap: 6px; }
+    .field label { color: var(--sub); white-space: nowrap; font-size: 12px; }
+    .field input, .field select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; min-width: 110px;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer;
+    }
+    .btn:hover { color: var(--blue); border-color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { background: #40a9ff; }
+    .btn.warn { background: #fff7e6; border-color: #ffd591; color: #d46b08; }
+    .btn.danger { color: var(--red); border-color: #ffa39e; background: #fff1f0; }
+
+    .kpi {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px;
+      padding: 10px 12px; background: #fff; border-bottom: 1px solid var(--line);
+    }
+    @media (max-width: 1200px) { .kpi { grid-template-columns: repeat(3, 1fr); } }
+    .kpi-card {
+      border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; background: #fafafa;
+    }
+    .kpi-card .k { font-size: 11px; color: var(--sub); }
+    .kpi-card .v { margin-top: 4px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .kpi-card.warn .v { color: var(--warn); }
+    .kpi-card.bad .v { color: var(--red); }
+    .kpi-card.ok .v { color: var(--green); }
+
+    .table-wrap { flex: 1; overflow: auto; background: #fff; margin: 0 12px 12px; border: 1px solid var(--line); border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; min-width: 1280px; }
+    th, td {
+      border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left;
+      white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    th {
+      position: sticky; top: 0; z-index: 2;
+      background: #fafafa; color: var(--sub); font-weight: 600; font-size: 12px;
+    }
+    tr:hover td { background: #f5f9ff; }
+    tr.sel td { background: #e6f7ff; }
+    .num { text-align: right; font-family: Consolas, Monaco, monospace; }
+    .muted { color: var(--sub); }
+    .mono { font-family: Consolas, Monaco, monospace; font-size: 12px; }
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 20px;
+      border-radius: 2px; font-size: 11px; border: 1px solid transparent;
+    }
+    .tag.ok { background: #f6ffed; border-color: #b7eb8f; color: var(--green); }
+    .tag.warn { background: #fff7e6; border-color: #ffd591; color: var(--warn); }
+    .tag.bad { background: #fff1f0; border-color: #ffa39e; color: var(--red); }
+    .tag.info { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .tag.gray { background: #f5f5f5; border-color: #d9d9d9; color: #595959; }
+    .diff-pos { color: var(--red); font-weight: 600; }
+    .diff-zero { color: var(--green); }
+    .linkish { color: var(--blue); cursor: pointer; }
+    .linkish:hover { text-decoration: underline; }
+
+    .split {
+      display: grid; grid-template-columns: 1.15fr .85fr; gap: 12px;
+      padding: 0 12px 12px; flex: 1; min-height: 0;
+    }
+    @media (max-width: 1100px) { .split { grid-template-columns: 1fr; } }
+    .card {
+      background: #fff; border: 1px solid var(--line); border-radius: 4px;
+      display: flex; flex-direction: column; min-height: 360px; overflow: hidden;
+    }
+    .card-hd {
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .card-hd h3 { margin: 0; font-size: 14px; }
+    .card-bd { flex: 1; overflow: auto; padding: 12px; }
+    .hint {
+      margin: 0 0 10px; padding: 8px 10px; background: #f6ffed; border: 1px solid #b7eb8f;
+      border-radius: 4px; color: #389e0d; font-size: 12px; line-height: 1.5;
+    }
+    .hint.warn { background: #fff7e6; border-color: #ffd591; color: #874d00; }
+    .hint.bad { background: #fff1f0; border-color: #ffa39e; color: #a8071a; }
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    .fg { display: flex; flex-direction: column; gap: 4px; }
+    .fg label { font-size: 12px; color: var(--sub); }
+    .fg input, .fg select, .fg textarea {
+      height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .fg textarea { height: 64px; padding: 6px 8px; resize: vertical; }
+    .fg .row2 { display: flex; gap: 6px; }
+    .fg .row2 > * { flex: 1; }
+
+    .fee-rows { display: flex; flex-direction: column; gap: 6px; }
+    .fee-row {
+      display: grid; grid-template-columns: 110px 1fr 90px 70px; gap: 8px; align-items: center;
+      padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: #fafafa;
+    }
+    .fee-row .name { font-weight: 600; }
+    .fee-row .src { font-size: 11px; color: var(--sub); }
+    .fee-row .amt { text-align: right; font-family: Consolas, Monaco, monospace; font-weight: 700; }
+    .fee-row.off { opacity: .45; text-decoration: line-through; }
+    .fee-row.auto { border-color: #91d5ff; background: #e6f7ff; }
+    .fee-row.manual { border-color: #ffd591; background: #fff7e6; }
+    .sum-bar {
+      margin-top: 10px; padding: 10px 12px; background: #001529; color: #fff; border-radius: 4px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sum-bar .big { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .drawer-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40;
+      display: none; align-items: stretch; justify-content: flex-end;
+    }
+    .drawer-mask.show { display: flex; }
+    .drawer {
+      width: min(560px, 100%); background: #fff; display: flex; flex-direction: column;
+      box-shadow: -4px 0 24px rgba(0,0,0,.12);
+    }
+    .drawer-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .drawer-hd h2 { margin: 0; font-size: 15px; }
+    .drawer-bd { flex: 1; overflow: auto; padding: 14px 16px; }
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+
+    .toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      background: #001529; color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 99; display: none;
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">TMS</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-尾单单票跟踪-MVP.html'">尾单单票跟踪</button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-卡派跟进新-MVP.html'">卡派跟进(新)</button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-主单跟进-MVP.html'">主单跟进</button>
+        <button type="button" class="nav-tab active">提单主单预估 <span class="badge-new">NEW</span></button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-尾程预估费用表-MVP.html'">尾程预估费用表</button>
+      </div>
+      <div class="header-right">海外对接组 · 提单预估</div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-ico"><b>☰</b>菜单</div>
+        <div class="side-ico on"><b>＄</b>预估</div>
+        <div class="side-ico"><b>📋</b>主单</div>
+      </aside>
+
+      <div class="main">
+        <div class="proto-bar">
+          原型导航：
+          <a href="海外对接组-导航.html">返回海外对接组导航</a>
+          <a href="../产品部门-导航.html">产品导航</a>
+          <a href="海外对接组-主单跟进-MVP.html">主单跟进</a>
+          <a href="海外对接组-尾程预估费用表-MVP.html">尾程预估</a>
+          <span class="muted">口径：卢慧恒 8/7 · 仓位人员不手工估，系统按规则算 · 不含 IT 操作费</span>
+        </div>
+
+        <div class="page-hd">
+          <h1>提单主单预估费用</h1>
+          <p>
+            头程预估由价表自动带出，仓位表人员<strong>不手工预估</strong>。
+            头程四维：<strong>代理 × 船司 × 始发港 × 柜型</strong>；拖车按堆场/省市区/工厂地址；改拖车行则重算。
+            含装柜/卸柜、报关、EDI、买单件、查验、税金、关税。取消 IT 操作费。
+          </p>
+        </div>
+
+        <div class="rule-strip">
+          <span><b>头程</b> 代理+船司+始发港+柜型</span>
+          <span><b>固定费</b> 标准项 / 差异项分开维护</span>
+          <span><b>拖车</b> 堆场分类 · 省市区 · 有地址即有预估</span>
+          <span><b>船司拖车</b> 可按代理+船司固定预分配</span>
+          <span><b>取消</b> IT操作费</span>
+          <span><b>待确认</b> 查验费是否进预估</span>
+        </div>
+
+        <div class="tabs">
+          <button type="button" class="tab on" data-tab="list">主单预估清单</button>
+          <button type="button" class="tab" data-tab="head">头程价表维护</button>
+          <button type="button" class="tab" data-tab="fixed">固定费标准</button>
+          <button type="button" class="tab" data-tab="truck">拖车价表</button>
+          <button type="button" class="tab" data-tab="customs">报关·查验·关税</button>
+          <button type="button" class="tab" data-tab="diff">实际差额</button>
+        </div>
+
+        <!-- 主单预估清单 -->
+        <section class="panel on" id="panel-list">
+          <div class="kpi">
+            <div class="kpi-card"><div class="k">本周主单</div><div class="v" id="k-total">—</div></div>
+            <div class="kpi-card ok"><div class="k">已自动预估</div><div class="v" id="k-auto">—</div></div>
+            <div class="kpi-card warn"><div class="k">缺价表/缺地址</div><div class="v" id="k-miss">—</div></div>
+            <div class="kpi-card"><div class="k">预估合计 CNY</div><div class="v" id="k-est">—</div></div>
+            <div class="kpi-card"><div class="k">实际合计 CNY</div><div class="v" id="k-act">—</div></div>
+            <div class="kpi-card bad"><div class="k">差额（代理错账）</div><div class="v" id="k-diff">—</div></div>
+          </div>
+          <div class="toolbar">
+            <div class="field"><label>主单号</label><input id="f-bl" placeholder="MBL / HBL" /></div>
+            <div class="field">
+              <label>代理</label>
+              <select id="f-agent"><option value="">全部</option><option>华运</option><option>中联</option><option>海程</option></select>
+            </div>
+            <div class="field">
+              <label>船司</label>
+              <select id="f-carrier"><option value="">全部</option><option>COSCO</option><option>MSC</option><option>OOCL</option><option>EMC</option></select>
+            </div>
+            <div class="field">
+              <label>状态</label>
+              <select id="f-st">
+                <option value="">全部</option>
+                <option>已预估</option>
+                <option>缺规则</option>
+                <option>已对账</option>
+                <option>差额待查</option>
+              </select>
+            </div>
+            <button type="button" class="btn" onclick="renderList()">查询</button>
+            <button type="button" class="btn primary" onclick="toast('已按价表批量重算预估（演示）')">批量重算预估</button>
+            <button type="button" class="btn warn" onclick="toast('已导出预估明细（演示）')">导出</button>
+            <span class="muted" style="margin-left:auto">仓位人员只维护资料；费用由价表自动生成</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>主单号</th>
+                  <th>代理</th>
+                  <th>船司</th>
+                  <th>始发港</th>
+                  <th>柜型</th>
+                  <th>拖车行</th>
+                  <th>工厂地址</th>
+                  <th class="num">头程</th>
+                  <th class="num">拖车</th>
+                  <th class="num">装/卸柜</th>
+                  <th class="num">报关·EDI</th>
+                  <th class="num">查验</th>
+                  <th class="num">关税税金</th>
+                  <th class="num">预估合计</th>
+                  <th class="num">实际</th>
+                  <th class="num">差额</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="list-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 头程价表 -->
+        <section class="panel" id="panel-head">
+          <div class="toolbar">
+            <span class="muted">四维唯一键：代理 + 船司 + 始发港 + 柜型。仓位侧不可改金额。</span>
+            <button type="button" class="btn primary" style="margin-left:auto" onclick="openHeadForm()">+ 新增价表</button>
+            <button type="button" class="btn" onclick="toast('已导入头程价表（演示）')">批量导入</button>
+          </div>
+          <div class="split">
+            <div class="card">
+              <div class="card-hd"><h3>头程价表</h3><span class="tag info">系统预估唯一来源</span></div>
+              <div class="card-bd" style="padding:0">
+                <div class="table-wrap" style="margin:0;border:none;border-radius:0">
+                  <table style="min-width:0">
+                    <thead>
+                      <tr>
+                        <th>代理</th><th>船司</th><th>始发港</th><th>柜型</th>
+                        <th class="num">头程固定 CNY</th><th>有效期</th><th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="head-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-hd"><h3>编辑 / 新增</h3><button type="button" class="btn" onclick="resetHeadForm()">清空</button></div>
+              <div class="card-bd">
+                <div class="hint">人员在仓位表预估不了 → 全部靠本价表。匹配失败则主单标「缺规则」。</div>
+                <div class="form-grid" id="head-form">
+                  <div class="fg"><label>代理 *</label><select id="h-agent"><option>华运</option><option>中联</option><option>海程</option></select></div>
+                  <div class="fg"><label>船司 *</label><select id="h-carrier"><option>COSCO</option><option>MSC</option><option>OOCL</option><option>EMC</option></select></div>
+                  <div class="fg"><label>始发港 *</label><select id="h-pol"><option>YTN</option><option>SHA</option><option>NGB</option><option>XMN</option></select></div>
+                  <div class="fg"><label>柜型 *</label><select id="h-ctype"><option>40HQ</option><option>40GP</option><option>20GP</option><option>45HQ</option></select></div>
+                  <div class="fg"><label>头程金额 CNY *</label><input id="h-amt" type="number" value="2800" /></div>
+                  <div class="fg"><label>币种</label><select id="h-cur"><option>CNY</option><option>USD</option></select></div>
+                  <div class="fg"><label>有效期起</label><input id="h-from" type="date" value="2026-08-01" /></div>
+                  <div class="fg"><label>有效期止</label><input id="h-to" type="date" value="2026-12-31" /></div>
+                  <div class="fg full"><label>备注</label><textarea id="h-note" placeholder="与合约/代理报价对齐说明"></textarea></div>
+                  <div class="full" style="display:flex;gap:8px;justify-content:flex-end">
+                    <button type="button" class="btn primary" onclick="saveHead()">保存价表</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 固定费 -->
+        <section class="panel" id="panel-fixed">
+          <div class="toolbar">
+            <span class="muted">标准固定费一套；与标准不一样的单独维护差异项。交互：左侧标准、右侧差异覆盖。</span>
+            <button type="button" class="btn primary" style="margin-left:auto" onclick="addFixedDiff()">+ 差异项</button>
+          </div>
+          <div class="split">
+            <div class="card">
+              <div class="card-hd"><h3>标准固定费</h3><span class="tag ok">默认套用</span></div>
+              <div class="card-bd">
+                <div class="fee-rows" id="fixed-std"></div>
+                <div class="hint" style="margin-top:12px">已取消：IT操作费（不再出现在标准项与预估合计）。</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-hd"><h3>差异固定费（覆盖标准）</h3><span class="tag warn">按代理/船司/航线例外</span></div>
+              <div class="card-bd" style="padding:0">
+                <div class="table-wrap" style="margin:0;border:none">
+                  <table style="min-width:0">
+                    <thead>
+                      <tr><th>适用范围</th><th>费项</th><th class="num">金额</th><th>相对标准</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="fixed-diff-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 拖车 -->
+        <section class="panel" id="panel-truck">
+          <div class="toolbar">
+            <span class="muted">堆场分类定价 · 省市区预估 · 有工厂地址即出拖车预估 · 船司拖车可按代理+船司固定 · 改拖车行重算</span>
+            <button type="button" class="btn primary" style="margin-left:auto" onclick="openTruckForm()">+ 堆场价格</button>
+            <button type="button" class="btn" onclick="toast('已按船司+港口预分配拖车行（演示）')">按船司港口分配</button>
+          </div>
+          <div class="split">
+            <div class="card">
+              <div class="card-hd">
+                <h3>拖车价表（堆场 / 省市区）</h3>
+                <div style="display:flex;gap:6px">
+                  <button type="button" class="btn" id="trk-mode-yard" onclick="setTruckMode('yard')">按堆场</button>
+                  <button type="button" class="btn primary" id="trk-mode-region" onclick="setTruckMode('region')">按省市区</button>
+                </div>
+              </div>
+              <div class="card-bd" style="padding:0">
+                <div class="table-wrap" style="margin:0;border:none">
+                  <table style="min-width:0">
+                    <thead id="truck-thead"></thead>
+                    <tbody id="truck-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-hd"><h3>船司拖车固定分配 + 试算</h3></div>
+              <div class="card-bd">
+                <div class="hint">船司拖车可固定：维度 = 代理 + 船司（+港口可选）。改拖车行后，本主单及同条件预估同步调整。</div>
+                <div class="form-grid">
+                  <div class="fg"><label>代理</label><select id="t-agent"><option>华运</option><option>中联</option></select></div>
+                  <div class="fg"><label>船司</label><select id="t-carrier"><option>COSCO</option><option>MSC</option><option>OOCL</option></select></div>
+                  <div class="fg"><label>港口</label><select id="t-port"><option>YTN</option><option>SHA</option><option>NGB</option></select></div>
+                  <div class="fg"><label>默认拖车行</label><select id="t-trucker"><option>粤港拖车</option><option>深港联运</option><option>中联拖车</option></select></div>
+                  <div class="fg full"><label>工厂地址（有地址 → 必出预估）</label>
+                    <input id="t-addr" value="广东省深圳市宝安区福永街道某某工业园A栋" />
+                  </div>
+                  <div class="fg"><label>省</label><select id="t-prov"><option>广东省</option><option>浙江省</option><option>上海市</option></select></div>
+                  <div class="fg"><label>市</label><select id="t-city"><option>深圳市</option><option>东莞市</option><option>宁波市</option></select></div>
+                  <div class="fg"><label>区</label><select id="t-dist"><option>宝安区</option><option>龙岗区</option><option>北仑区</option></select></div>
+                  <div class="fg"><label>堆场分类</label><select id="t-yard"><option>盐田堆场A</option><option>蛇口堆场B</option><option>外高桥堆场</option></select></div>
+                  <div class="full" style="display:flex;gap:8px;align-items:center">
+                    <button type="button" class="btn primary" onclick="calcTruck()">试算拖车预估</button>
+                    <button type="button" class="btn" onclick="saveTruckAssign()">保存船司固定分配</button>
+                    <strong id="truck-result" class="muted">—</strong>
+                  </div>
+                </div>
+                <div class="hint warn" style="margin-top:12px">交互：改拖车行 → 弹出「是否重算本主单预估」→ 确认后刷新拖车+装柜/卸柜关联项。</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 报关查验关税 -->
+        <section class="panel" id="panel-customs">
+          <div class="toolbar">
+            <span class="muted">报关（改合票数据略差）· EDI（舱单计件约 ¥10）· 买单件 · 查验登记 · 税金单 · 关税</span>
+            <label style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px">
+              <input type="checkbox" id="insp-in-est" checked onchange="toggleInspEst()" />
+              查验费进预估（待业务确认，可开关）
+            </label>
+          </div>
+          <div class="split">
+            <div class="card">
+              <div class="card-hd"><h3>报关 / EDI / 买单件规则</h3></div>
+              <div class="card-bd">
+                <div class="fee-rows">
+                  <div class="fee-row auto">
+                    <div class="name">报关费</div>
+                    <div class="src">标准票；改合票允许差额 ±X（数据会差一点）</div>
+                    <div class="amt">¥180</div>
+                    <span class="tag info">标准</span>
+                  </div>
+                  <div class="fee-row auto">
+                    <div class="name">EDI</div>
+                    <div class="src">按舱单份数计费 · 约 ¥10 / 份</div>
+                    <div class="amt">¥10×N</div>
+                    <span class="tag info">计件</span>
+                  </div>
+                  <div class="fee-row auto">
+                    <div class="name">买单件</div>
+                    <div class="src">勿漏登；缺件标红提醒</div>
+                    <div class="amt">¥50</div>
+                    <span class="tag warn">易漏</span>
+                  </div>
+                  <div class="fee-row auto">
+                    <div class="name">装柜费</div>
+                    <div class="src">进预估（与拖车/工厂关联）</div>
+                    <div class="amt">¥200</div>
+                    <span class="tag ok">进预估</span>
+                  </div>
+                  <div class="fee-row auto">
+                    <div class="name">卸柜费</div>
+                    <div class="src">进预估</div>
+                    <div class="amt">¥150</div>
+                    <span class="tag ok">进预估</span>
+                  </div>
+                </div>
+                <div class="form-grid" style="margin-top:14px">
+                  <div class="fg"><label>本票舱单份数（EDI）</label><input id="edi-n" type="number" value="3" min="1" oninput="recalcEdi()" /></div>
+                  <div class="fg"><label>EDI 预估</label><input id="edi-amt" readonly value="¥30" /></div>
+                  <div class="fg"><label>是否改合票</label>
+                    <select id="merge-flag"><option value="0">否</option><option value="1">是（允许差额）</option></select>
+                  </div>
+                  <div class="fg"><label>买单件已登记</label>
+                    <select id="buy-doc"><option value="1">是</option><option value="0">否（漏登）</option></select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-hd"><h3>查验费登记 · 税金单 · 关税</h3><button type="button" class="btn primary" onclick="openInsp()">+ 登记查验</button></div>
+              <div class="card-bd">
+                <div class="hint warn" id="insp-hint">查验费用：可登记；当前开关为「进预估」。业务确认后可改为仅登记不预估。</div>
+                <div class="table-wrap" style="margin:0 0 12px;border:1px solid var(--line)">
+                  <table style="min-width:0">
+                    <thead>
+                      <tr><th>主单</th><th>类型</th><th class="num">金额</th><th>进预估</th><th>税金单</th><th>登记人</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="insp-body"></tbody>
+                  </table>
+                </div>
+                <div class="form-grid">
+                  <div class="fg"><label>关税（预估）CNY</label><input id="duty-est" type="number" value="0" /></div>
+                  <div class="fg"><label>税金单号</label><input id="tax-no" placeholder="清关税金单号" /></div>
+                  <div class="fg full"><label>税金单附件</label><input type="file" /></div>
+                  <div class="full" style="display:flex;gap:8px;justify-content:flex-end">
+                    <button type="button" class="btn primary" onclick="toast('税金单/关税已保存（演示）')">保存清关税金</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 实际差额 -->
+        <section class="panel" id="panel-diff">
+          <div class="toolbar">
+            <span class="muted">此处差额指头程/代理账单。海外实际费用按运单改 → </span>
+            <a href="海外对接组-尾程预估费用表-MVP.html">尾程预估 · 实际费用修改</a>
+            <button type="button" class="btn warn" style="margin-left:auto" onclick="toast('已通知代理核对账单（演示）')">催代理核对</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>主单号</th><th>代理</th><th class="num">预估</th><th class="num">账单实际</th>
+                  <th class="num">差额</th><th>差额原因</th><th>处理</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="diff-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 明细抽屉 -->
+  <div class="drawer-mask" id="detail-mask" onclick="if(event.target===this)closeDetail()">
+    <div class="drawer">
+      <div class="drawer-hd">
+        <h2 id="d-title">主单预估明细</h2>
+        <button type="button" class="btn" onclick="closeDetail()">关闭</button>
+      </div>
+      <div class="drawer-bd">
+        <div class="hint" id="d-hint">费用均由价表自动带出；仓位不可改价，仅可改资料触发重算。</div>
+        <div class="fee-rows" id="d-fees"></div>
+        <div class="sum-bar">
+          <span>预估合计（不含 IT 操作费）</span>
+          <span class="big" id="d-sum">¥0</span>
+        </div>
+        <div style="margin-top:14px" class="form-grid">
+          <div class="fg"><label>拖车行（改则重算）</label>
+            <select id="d-trucker" onchange="onTruckerChange()">
+              <option>粤港拖车</option><option>深港联运</option><option>中联拖车</option>
+            </select>
+          </div>
+          <div class="fg"><label>实际账单</label><input id="d-actual" type="number" /></div>
+          <div class="fg full"><label>差额说明（代理出错等）</label><textarea id="d-reason"></textarea></div>
+        </div>
+      </div>
+      <div class="drawer-ft">
+        <button type="button" class="btn" onclick="closeDetail()">取消</button>
+        <button type="button" class="btn primary" onclick="toast('已保存并重算（演示）');closeDetail()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const money = n => '¥' + Number(n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+    const toast = (msg) => {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2200);
+    };
+
+    /* —— 演示数据 —— */
+    let bills = [
+      { id:'MBL26080701', agent:'华运', carrier:'COSCO', pol:'YTN', ctype:'40HQ', trucker:'粤港拖车',
+        addr:'广东深圳宝安福永…', prov:'广东', city:'深圳', dist:'宝安',
+        head:2800, truck:1200, load:200, unload:150, customs:180, edi:30, buy:50, insp:0, duty:0,
+        actual:4610, st:'已预估', merge:false, buyOk:true },
+      { id:'MBL26080702', agent:'中联', carrier:'MSC', pol:'SHA', ctype:'40HQ', trucker:'深港联运',
+        addr:'上海嘉定工业园…', prov:'上海', city:'上海', dist:'嘉定',
+        head:3100, truck:980, load:200, unload:150, customs:180, edi:20, buy:0, insp:800, duty:1200,
+        actual:0, st:'缺规则', merge:true, buyOk:false, miss:'买单件未登' },
+      { id:'MBL26080703', agent:'华运', carrier:'OOCL', pol:'NGB', ctype:'40GP', trucker:'粤港拖车',
+        addr:'浙江宁波北仑…', prov:'浙江', city:'宁波', dist:'北仑',
+        head:2650, truck:1100, load:200, unload:150, customs:180, edi:40, buy:50, insp:0, duty:0,
+        actual:5200, st:'差额待查', merge:false, buyOk:true, diffReason:'代理账单多收码头杂费' },
+      { id:'MBL26080704', agent:'海程', carrier:'EMC', pol:'YTN', ctype:'45HQ', trucker:'中联拖车',
+        addr:'', prov:'广东', city:'深圳', dist:'盐田',
+        head:0, truck:0, load:0, unload:0, customs:180, edi:10, buy:50, insp:0, duty:0,
+        actual:0, st:'缺规则', merge:false, buyOk:true, miss:'无工厂地址·头程价表未维护' },
+    ];
+
+    let headRates = [
+      { agent:'华运', carrier:'COSCO', pol:'YTN', ctype:'40HQ', amt:2800, from:'2026-08-01', to:'2026-12-31' },
+      { agent:'华运', carrier:'OOCL', pol:'NGB', ctype:'40GP', amt:2650, from:'2026-08-01', to:'2026-12-31' },
+      { agent:'中联', carrier:'MSC', pol:'SHA', ctype:'40HQ', amt:3100, from:'2026-07-01', to:'2026-10-31' },
+    ];
+
+    const fixedStd = [
+      { name:'文件费', amt:150, note:'标准' },
+      { name:'电放/SEAWAY', amt:50, note:'标准' },
+      { name:'码头操作(THC相关固定)', amt:600, note:'标准·可被差异覆盖' },
+      { name:'IT操作费', amt:0, note:'已取消', cancelled:true },
+    ];
+
+    let fixedDiff = [
+      { scope:'华运 × COSCO × YTN', name:'码头操作', amt:550, vs:'标准少 ¥50' },
+      { scope:'中联 × MSC', name:'文件费', amt:180, vs:'标准多 ¥30' },
+    ];
+
+    let truckMode = 'region';
+    const truckYard = [
+      { yard:'盐田堆场A', carrier:'COSCO', amt:1100, trucker:'粤港拖车' },
+      { yard:'蛇口堆场B', carrier:'MSC', amt:1050, trucker:'深港联运' },
+      { yard:'外高桥堆场', carrier:'MSC', amt:980, trucker:'深港联运' },
+    ];
+    const truckRegion = [
+      { prov:'广东', city:'深圳', dist:'宝安', yard:'盐田堆场A', amt:1200 },
+      { prov:'广东', city:'深圳', dist:'龙岗', yard:'盐田堆场A', amt:1250 },
+      { prov:'上海', city:'上海', dist:'嘉定', yard:'外高桥堆场', amt:980 },
+      { prov:'浙江', city:'宁波', dist:'北仑', yard:'北仑堆场', amt:1100 },
+    ];
+
+    let inspections = [
+      { bl:'MBL26080702', type:'海关查验', amt:800, inEst:true, taxNo:'TAX-2608-021', by:'港后客服A' },
+    ];
+
+    function estSum(b) {
+      const insp = document.getElementById('insp-in-est')?.checked ? (b.insp || 0) : 0;
+      return (b.head||0)+(b.truck||0)+(b.load||0)+(b.unload||0)+(b.customs||0)+(b.edi||0)+(b.buy||0)+insp+(b.duty||0);
+    }
+
+    function stTag(st) {
+      if (st === '已预估' || st === '已对账') return 'ok';
+      if (st === '缺规则') return 'warn';
+      if (st === '差额待查') return 'bad';
+      return 'gray';
+    }
+
+    function renderList() {
+      const bl = (document.getElementById('f-bl').value || '').trim().toUpperCase();
+      const agent = document.getElementById('f-agent').value;
+      const carrier = document.getElementById('f-carrier').value;
+      const st = document.getElementById('f-st').value;
+      const rows = bills.filter(b => {
+        if (bl && !b.id.includes(bl)) return false;
+        if (agent && b.agent !== agent) return false;
+        if (carrier && b.carrier !== carrier) return false;
+        if (st && b.st !== st) return false;
+        return true;
+      });
+
+      document.getElementById('list-body').innerHTML = rows.map(b => {
+        const est = estSum(b);
+        const diff = b.actual ? (b.actual - est) : null;
+        const addr = b.addr ? b.addr : '<span class="tag bad">无地址</span>';
+        return `<tr>
+          <td class="mono linkish" onclick="openDetail('${b.id}')">${b.id}</td>
+          <td>${b.agent}</td>
+          <td>${b.carrier}</td>
+          <td>${b.pol}</td>
+          <td>${b.ctype}</td>
+          <td>${b.trucker || '—'}</td>
+          <td title="${b.addr||''}">${addr}${b.prov?`<div class="muted" style="font-size:11px">${b.prov}/${b.city}/${b.dist}</div>`:''}</td>
+          <td class="num">${b.head?money(b.head):'<span class="tag warn">缺</span>'}</td>
+          <td class="num">${b.truck?money(b.truck):(b.addr?'—':money(0))}</td>
+          <td class="num">${money((b.load||0)+(b.unload||0))}</td>
+          <td class="num">${money((b.customs||0)+(b.edi||0)+(b.buy||0))}${b.buyOk===false?' <span class="tag bad">漏买单件</span>':''}${b.merge?' <span class="tag warn">改合</span>':''}</td>
+          <td class="num">${b.insp?money(b.insp):'—'}</td>
+          <td class="num">${b.duty?money(b.duty):'—'}</td>
+          <td class="num"><strong>${money(est)}</strong></td>
+          <td class="num">${b.actual?money(b.actual):'—'}</td>
+          <td class="num">${diff===null?'—':`<span class="${diff===0?'diff-zero':'diff-pos'}">${diff>0?'+':''}${money(diff).replace('¥','')}</span>`}</td>
+          <td><span class="tag ${stTag(b.st)}">${b.st}</span>${b.miss?`<div class="muted" style="font-size:11px">${b.miss}</div>`:''}</td>
+          <td>
+            <span class="linkish" onclick="openDetail('${b.id}')">明细</span>
+            · <span class="linkish" onclick="toast('已重算 ${b.id}')">重算</span>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="18" class="muted">无数据</td></tr>`;
+
+      const auto = bills.filter(b => b.st === '已预估' || b.st === '已对账').length;
+      const miss = bills.filter(b => b.st === '缺规则').length;
+      const estAll = bills.reduce((s,b)=>s+estSum(b),0);
+      const actAll = bills.reduce((s,b)=>s+(b.actual||0),0);
+      const diffAll = bills.filter(b=>b.actual).reduce((s,b)=>s+((b.actual||0)-estSum(b)),0);
+      document.getElementById('k-total').textContent = bills.length;
+      document.getElementById('k-auto').textContent = auto;
+      document.getElementById('k-miss').textContent = miss;
+      document.getElementById('k-est').textContent = money(estAll);
+      document.getElementById('k-act').textContent = money(actAll);
+      document.getElementById('k-diff').textContent = (diffAll>=0?'+':'') + money(diffAll).replace('¥','¥');
+    }
+
+    function openDetail(id) {
+      const b = bills.find(x => x.id === id);
+      if (!b) return;
+      document.getElementById('d-title').textContent = id + ' · 预估明细';
+      document.getElementById('d-hint').textContent = b.miss
+        ? ('待补：' + b.miss)
+        : '匹配键：' + [b.agent,b.carrier,b.pol,b.ctype].join(' × ') + '；拖车 ' + b.trucker;
+      document.getElementById('d-trucker').value = b.trucker || '粤港拖车';
+      document.getElementById('d-actual').value = b.actual || '';
+      document.getElementById('d-reason').value = b.diffReason || '';
+      const inspOn = document.getElementById('insp-in-est').checked;
+      const items = [
+        { name:'头程', src:'价表 代理×船司×始发港×柜型', amt:b.head, cls:'auto' },
+        { name:'拖车', src:(b.addr?'地址/省市区/堆场':'无工厂地址'), amt:b.truck, cls:b.addr?'auto':'manual' },
+        { name:'装柜', src:'进预估', amt:b.load, cls:'auto' },
+        { name:'卸柜', src:'进预估', amt:b.unload, cls:'auto' },
+        { name:'报关', src:b.merge?'改合票·允许微差':'标准票', amt:b.customs, cls:'auto' },
+        { name:'EDI', src:'舱单×¥10', amt:b.edi, cls:'auto' },
+        { name:'买单件', src:b.buyOk?'已登记':'漏登', amt:b.buy, cls:b.buyOk?'auto':'manual' },
+        { name:'查验', src:inspOn?'进预估':'仅登记不预估', amt:b.insp, cls:inspOn?'manual':'off' },
+        { name:'关税/税金', src:'清关税金单', amt:b.duty, cls:'auto' },
+        { name:'IT操作费', src:'已取消', amt:0, cls:'off' },
+      ];
+      document.getElementById('d-fees').innerHTML = items.map(it => `
+        <div class="fee-row ${it.cls}">
+          <div class="name">${it.name}</div>
+          <div class="src">${it.src}</div>
+          <div class="amt">${money(it.amt)}</div>
+          <span class="tag ${it.cls==='off'?'gray':it.cls==='manual'?'warn':'info'}">${it.cls==='off'?'取消':it.cls==='manual'?'关注':'自动'}</span>
+        </div>`).join('');
+      document.getElementById('d-sum').textContent = money(estSum(b));
+      document.getElementById('detail-mask').classList.add('show');
+      window._detailId = id;
+    }
+    function closeDetail(){ document.getElementById('detail-mask').classList.remove('show'); }
+    function onTruckerChange(){
+      const id = window._detailId;
+      const b = bills.find(x => x.id === id);
+      if (!b) return;
+      const neu = document.getElementById('d-trucker').value;
+      if (neu === b.trucker) return;
+      if (confirm('拖车行变更为「'+neu+'」，是否同步重算本主单拖车预估？')) {
+        b.trucker = neu;
+        b.truck = neu === '粤港拖车' ? 1200 : neu === '深港联运' ? 980 : 1050;
+        toast('已按新拖车行重算拖车预估');
+        openDetail(id);
+        renderList();
+      } else {
+        document.getElementById('d-trucker').value = b.trucker;
+      }
+    }
+
+    function renderHead(){
+      document.getElementById('head-body').innerHTML = headRates.map((r,i)=>`
+        <tr>
+          <td>${r.agent}</td><td>${r.carrier}</td><td>${r.pol}</td><td>${r.ctype}</td>
+          <td class="num">${money(r.amt)}</td>
+          <td class="muted">${r.from} ~ ${r.to}</td>
+          <td><span class="linkish" onclick="editHead(${i})">编辑</span></td>
+        </tr>`).join('');
+    }
+    function openHeadForm(){ resetHeadForm(); document.querySelector('[data-tab="head"]').click(); }
+    function resetHeadForm(){
+      document.getElementById('h-amt').value = 2800;
+      document.getElementById('h-note').value = '';
+    }
+    function editHead(i){
+      const r = headRates[i];
+      document.getElementById('h-agent').value = r.agent;
+      document.getElementById('h-carrier').value = r.carrier;
+      document.getElementById('h-pol').value = r.pol;
+      document.getElementById('h-ctype').value = r.ctype;
+      document.getElementById('h-amt').value = r.amt;
+      document.getElementById('h-from').value = r.from;
+      document.getElementById('h-to').value = r.to;
+    }
+    function saveHead(){
+      headRates.unshift({
+        agent: document.getElementById('h-agent').value,
+        carrier: document.getElementById('h-carrier').value,
+        pol: document.getElementById('h-pol').value,
+        ctype: document.getElementById('h-ctype').value,
+        amt: Number(document.getElementById('h-amt').value)||0,
+        from: document.getElementById('h-from').value,
+        to: document.getElementById('h-to').value,
+      });
+      renderHead();
+      toast('头程价表已保存（演示）');
+    }
+
+    function renderFixed(){
+      document.getElementById('fixed-std').innerHTML = fixedStd.map(f=>`
+        <div class="fee-row ${f.cancelled?'off':'auto'}">
+          <div class="name">${f.name}</div>
+          <div class="src">${f.note}</div>
+          <div class="amt">${f.cancelled?'—':money(f.amt)}</div>
+          <span class="tag ${f.cancelled?'gray':'ok'}">${f.cancelled?'已取消':'标准'}</span>
+        </div>`).join('');
+      document.getElementById('fixed-diff-body').innerHTML = fixedDiff.map((d,i)=>`
+        <tr>
+          <td>${d.scope}</td><td>${d.name}</td><td class="num">${money(d.amt)}</td>
+          <td class="muted">${d.vs}</td>
+          <td><span class="linkish" onclick="fixedDiff.splice(${i},1);renderFixed();toast('已删除差异项')">删除</span></td>
+        </tr>`).join('') || `<tr><td colspan="5" class="muted">暂无差异项</td></tr>`;
+    }
+    function addFixedDiff(){
+      const scope = prompt('适用范围（如：华运 × COSCO × YTN）','华运 × EMC');
+      if (!scope) return;
+      const name = prompt('费项名','文件费') || '文件费';
+      const amt = Number(prompt('金额 CNY','200')) || 0;
+      fixedDiff.push({ scope, name, amt, vs:'相对标准差异' });
+      renderFixed();
+      toast('已添加差异固定费');
+    }
+
+    function setTruckMode(m){
+      truckMode = m;
+      document.getElementById('trk-mode-yard').className = 'btn' + (m==='yard'?' primary':'');
+      document.getElementById('trk-mode-region').className = 'btn' + (m==='region'?' primary':'');
+      renderTruck();
+    }
+    function renderTruck(){
+      if (truckMode === 'yard') {
+        document.getElementById('truck-thead').innerHTML = `<tr><th>堆场分类</th><th>关联船司</th><th>默认拖车行</th><th class="num">价格</th><th>操作</th></tr>`;
+        document.getElementById('truck-body').innerHTML = truckYard.map(t=>`
+          <tr><td>${t.yard}</td><td>${t.carrier}</td><td>${t.trucker}</td><td class="num">${money(t.amt)}</td>
+          <td><span class="linkish" onclick="toast('编辑堆场价（演示）')">编辑</span></td></tr>`).join('');
+      } else {
+        document.getElementById('truck-thead').innerHTML = `<tr><th>省</th><th>市</th><th>区</th><th>堆场</th><th class="num">预估拖车</th><th>操作</th></tr>`;
+        document.getElementById('truck-body').innerHTML = truckRegion.map(t=>`
+          <tr><td>${t.prov}</td><td>${t.city}</td><td>${t.dist}</td><td>${t.yard}</td><td class="num">${money(t.amt)}</td>
+          <td><span class="linkish" onclick="toast('编辑省市区价（演示）')">编辑</span></td></tr>`).join('');
+      }
+    }
+    function openTruckForm(){ toast('打开堆场/省市区价维护（演示）'); }
+    function calcTruck(){
+      const addr = document.getElementById('t-addr').value.trim();
+      if (!addr) {
+        document.getElementById('truck-result').textContent = '无工厂地址 → 无法预估拖车';
+        document.getElementById('truck-result').style.color = '#cf1322';
+        return;
+      }
+      const dist = document.getElementById('t-dist').value;
+      const hit = truckRegion.find(t => dist.includes(t.dist.replace('区','')) || t.dist === dist) || truckRegion[0];
+      document.getElementById('truck-result').textContent = '预估拖车 ' + money(hit.amt) + '（' + hit.prov + hit.city + hit.dist + ' / ' + hit.yard + '）';
+      document.getElementById('truck-result').style.color = '#389e0d';
+    }
+    function saveTruckAssign(){
+      toast('已保存：' + document.getElementById('t-agent').value + ' × ' + document.getElementById('t-carrier').value + ' → ' + document.getElementById('t-trucker').value);
+    }
+
+    function recalcEdi(){
+      const n = Number(document.getElementById('edi-n').value) || 0;
+      document.getElementById('edi-amt').value = money(n * 10);
+    }
+    function toggleInspEst(){
+      const on = document.getElementById('insp-in-est').checked;
+      document.getElementById('insp-hint').textContent = on
+        ? '查验费用：可登记；当前开关为「进预估」。业务确认后可改为仅登记不预估。'
+        : '查验费用：仅登记，不进入预估合计（待业务最终确认）。';
+      renderInsp();
+      renderList();
+    }
+    function renderInsp(){
+      const on = document.getElementById('insp-in-est').checked;
+      document.getElementById('insp-body').innerHTML = inspections.map(r=>`
+        <tr>
+          <td class="mono">${r.bl}</td><td>${r.type}</td><td class="num">${money(r.amt)}</td>
+          <td>${on && r.inEst ? '<span class="tag ok">是</span>' : '<span class="tag gray">否</span>'}</td>
+          <td class="mono">${r.taxNo||'—'}</td><td>${r.by}</td>
+          <td><span class="linkish" onclick="toast('查看查验附件')">附件</span></td>
+        </tr>`).join('') || `<tr><td colspan="7" class="muted">暂无查验登记</td></tr>`;
+    }
+    function openInsp(){
+      const bl = prompt('主单号','MBL26080701');
+      if (!bl) return;
+      const amt = Number(prompt('查验金额 CNY','600')) || 0;
+      inspections.unshift({ bl, type:'海关查验', amt, inEst:true, taxNo:'', by:'当前用户' });
+      const b = bills.find(x => x.id === bl);
+      if (b) { b.insp = (b.insp||0) + amt; }
+      renderInsp(); renderList();
+      toast('查验费已登记' + (document.getElementById('insp-in-est').checked ? '并计入预估' : '（未进预估）'));
+    }
+
+    function renderDiff(){
+      const rows = bills.filter(b => b.actual && Math.abs(b.actual - estSum(b)) > 1);
+      document.getElementById('diff-body').innerHTML = rows.map(b => {
+        const est = estSum(b);
+        const d = b.actual - est;
+        return `<tr>
+          <td class="mono linkish" onclick="openDetail('${b.id}')">${b.id}</td>
+          <td>${b.agent}</td>
+          <td class="num">${money(est)}</td>
+          <td class="num">${money(b.actual)}</td>
+          <td class="num diff-pos">${d>0?'+':''}${money(d).replace('¥','')}</td>
+          <td>${b.diffReason || '<span class="tag bad">疑似代理账单出错</span>'}</td>
+          <td><span class="tag warn">待代理确认</span></td>
+          <td>
+            <span class="linkish" onclick="toast('已标记：代理差错')">确认代理错</span>
+            · <span class="linkish" onclick="toast('已调整预估口径')">调整预估</span>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="8" class="muted">暂无差额</td></tr>`;
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+        tab.classList.add('on');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('on');
+        if (tab.dataset.tab === 'diff') renderDiff();
+      });
+    });
+
+    renderList();
+    renderHead();
+    renderFixed();
+    renderTruck();
+    renderInsp();
+  </script>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="海外对接组-提单主单预估费用表-PRD.html">
+    <span class="ess-prd-chip">PRD · 提单主单预估</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+</body>
+</html>

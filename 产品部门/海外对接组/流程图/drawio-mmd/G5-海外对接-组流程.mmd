@@ -1,0 +1,72 @@
+%% 海外对接组 · 组流程图 · 全流程按组拆分 + 页面功能对照
+%% 覆盖：S6 接进港 · S7 预估/尾单 · S8 工单边界
+%% 交接：H4←船务/关务清关放行 · H6→工单 · 尾端费←私卡
+%% 节点标注：第二行「页」= 原型页面 · 功能详见 G5 HTML 对照表
+%% draw.io：排列 → 插入 → 高级 → Mermaid…
+
+flowchart TB
+  H4{{"H4 ← 船务进港<br/>+ 关务清关放行订阅"}} --> A["到港<br/>页 · 主单跟进"]
+  NOTE["清关 = 关务分支<br/>本组不负责清关作业"]
+  H4 -.-> NOTE
+  A --> B["柜子计划 / 主单预估<br/>页 · 主单跟进 · 主单预估旁支"]
+  FEE{{"交叉 ← 私卡<br/>尾端费快照"}} --> B
+  B --> C["DO / AN 上传推仓<br/>页 · 主单跟进 · 导出资料"]
+  C --> HD{"目的港码头 HOLD<br/>状态能否抓取？"}
+  HD -->|能抓| D{"是否 HOLD？"}
+  HD -->|抓不到| HDM["标红预警 · 人工盯 HOLD<br/>页 · 主单跟进 · 异常柜"]
+  HDM --> D
+  D -->|是 HOLD| HP{"HOLD 能否处理掉？"}
+  HP -->|处理不掉| MARK["必须标记异常 HOLD<br/>回退 · 港前任务重开"]
+  MARK --> C
+  HP -->|已解除| REL
+  D -->|否 无HOLD| REL{"已标放行？"}
+  REL -->|否| WAIT["放行处理靠后<br/>暂不预约入仓"]
+  WAIT --> C
+  REL -->|是| PU{"码头可提状态<br/>能否抓取？"}
+  PU -->|能抓且可提| E["预约入仓 / 提拆柜<br/>页 · 主单跟进 · 提柜拆柜时效"]
+  PU -->|抓不到| WARN["标红预警<br/>人工确认可提后再进"]
+  WARN --> E
+  PU -->|能抓但未可提| WAIT2["等码头可提"]
+  WAIT2 --> PU
+  E --> F["收货 · 分配代理<br/>页 · 主单跟进"]
+  F --> MOD{"散货 / 整柜？"}
+  MOD -->|散货 · 卡车| S1["拆柜"] --> P1["∥ 卡车派送<br/>页 · 卡派跟进"]
+  MOD -->|散货 · 快递| S2["拆柜"] --> P2["∥ 快递派送<br/>页 · 尾程快递件"]
+  MOD -->|散货 · 自提| S3["拆柜"] --> P3["∥ 客户自提<br/>页 · 自提件"]
+  MOD -->|散货 · 一件代发| S4["拆柜"] --> P4["∥ 一件代发<br/>页 · 一件代发工作台"]
+  MOD -->|整柜 · 到港自提| F1["到港自提 PK2553<br/>页 · 整柜尾端派送"]
+  MOD -->|整柜 · 海外仓自提| F2["海外仓自提 PK2554<br/>页 · 整柜尾端派送"]
+  MOD -->|整柜 · 直送| F3["整柜直送 PK2551<br/>页 · 整柜尾端派送"]
+  MOD -->|整柜 · 拆送| FSTRIP["拆柜"] --> F4["整柜拆送 PK2552<br/>页 · 整柜尾端派送"]
+  MOD -->|整柜 · 仅清关| F0["仅清关 PK2548<br/>页 · 整柜尾端 · 已完结"]
+  P1 --> H1["卡派跟进 · 轨迹<br/>页 · 卡派跟进"]
+  P2 --> H2["快递跟进 · 轨迹<br/>页 · 尾程快递件 · 尾单跟踪"]
+  P3 --> H3["自提闭环<br/>页 · 自提件"]
+  P4 --> Hdrop["一件代发 · 轨迹清单<br/>页 · 一件代发"]
+  F1 --> I
+  F2 --> H1
+  F3 --> H1
+  F4 --> H1
+  F0 --> END
+  H1 --> I{"异常 / 改派送？"}
+  H2 --> I
+  H3 --> I
+  Hdrop --> I
+  I -->|是| H6{{"H6 → 工单<br/>页 · 工单模块组外"}}
+  I -->|否| END(["结束 · 派送闭环<br/>页 · 时效表"])
+  H6 --> END
+
+  classDef step fill:#FFEBEE,stroke:#C62828,color:#B71C1C
+  classDef dec fill:#FFFDE7,stroke:#F9A825,color:#F57F17
+  classDef cross fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C
+  classDef back fill:#FFEBEE,stroke:#C62828,color:#B71C1C,stroke-dasharray: 5 4
+  classDef para fill:#E3F2FD,stroke:#1976D2,color:#0D47A1,stroke-dasharray: 5 3
+  classDef tip fill:#FAFAFA,stroke:#9E9E9E,stroke-dasharray: 5 3,color:#616161
+  classDef endn fill:#ECEFF1,stroke:#78909C,color:#37474F
+  class A,B,C,E,F,H1,H2,H3,Hdrop,WARN,HDM,F0,F1,F2,F3,F4,FSTRIP,S1,S2,S3,S4 step
+  class HD,D,HP,REL,PU,I,MOD dec
+  class H4,FEE,H6 cross
+  class P1,P2,P3,P4 para
+  class MARK,WAIT,WAIT2 back
+  class NOTE tip
+  class END endn

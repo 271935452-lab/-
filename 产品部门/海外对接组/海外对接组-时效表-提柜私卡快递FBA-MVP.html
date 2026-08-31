@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>时效表 · 提柜 / 卡派 / 快递派 / FBA派 · 周统计 MVP</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --green: #52c41a; --red: #ff4d4f; --orange: #fa8c16; --purple: #722ed1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .topbar {
+      height: 48px; background: #001529; color: #fff;
+      display: flex; align-items: center; padding: 0 16px; gap: 24px;
+    }
+    .topbar .logo { font-weight: 700; }
+    .topbar .nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.75); padding: 6px 10px; border-radius: 2px; font-size: 12px; text-decoration: none;
+    }
+    .topbar .nav a.on, .topbar .nav a:hover { color: #fff; background: rgba(255,255,255,.12); }
+    .topbar .right { color: rgba(255,255,255,.55); font-size: 12px; }
+    .layout { max-width: 1520px; margin: 0 auto; padding: 16px; }
+    body.ess-prd-page:not(.ess-prd-collapsed) .layout { max-width: none; }
+
+    .page-hd { margin-bottom: 12px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .page-hd h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .page-hd .sub { margin: 4px 0 0; color: var(--sub); font-size: 12px; line-height: 1.55; max-width: 960px; }
+    .page-hd .links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .page-hd .links a {
+      color: var(--blue); font-size: 12px; padding: 4px 8px;
+      border: 1px solid #91d5ff; border-radius: 2px; background: #e6f7ff; text-decoration: none;
+    }
+    .badge {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; line-height: 18px; vertical-align: middle; margin-left: 4px;
+    }
+    .badge.new { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 2px; margin-bottom: 12px; }
+    .filter-bd { padding: 14px 16px 10px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 16px; }
+    @media (max-width: 1100px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .filter-actions { padding: 0 16px 14px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+    .btn {
+      height: 32px; padding: 0 14px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; font: inherit; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-ok { background: var(--green); border-color: var(--green); color: #fff; }
+
+    .tab-note {
+      margin: 0; padding: 10px 16px; font-size: 12px; line-height: 1.75;
+      background: #fffbe6; border-bottom: 1px solid #ffe58f; color: #613400;
+    }
+    .tab-note strong { color: #ad4e00; }
+    .tab-note .lines { margin-top: 4px; }
+    .tab-note .lines div { margin: 0; }
+
+    .dim-tabs {
+      display: flex; border-bottom: 1px solid var(--line); background: #fafafa; padding: 0 12px; flex-wrap: wrap;
+    }
+    .dim-tab {
+      padding: 12px 14px; border: none; background: none; font: inherit; font-size: 13px;
+      color: var(--sub); cursor: pointer; position: relative;
+    }
+    .dim-tab.active { color: var(--blue); font-weight: 600; }
+    .dim-tab.active::after {
+      content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 2px; background: var(--blue);
+    }
+    .dim-tab .cnt {
+      display: inline-block; margin-left: 4px; padding: 0 6px; height: 18px; line-height: 18px;
+      border-radius: 9px; background: #f0f0f0; font-size: 11px; font-weight: 600;
+    }
+    .dim-tab.active .cnt { background: #e6f7ff; color: var(--blue); }
+
+    .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; padding: 16px; }
+    @media (max-width: 1200px) { .kpi-row { grid-template-columns: repeat(3, 1fr); } }
+    .kpi { border: 1px solid var(--line); border-radius: 2px; padding: 12px 14px; background: #fafafa; }
+    .kpi-label { font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .kpi-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .kpi-value.ok { color: var(--green); }
+    .kpi-value.warn { color: var(--orange); }
+    .kpi-value.bad { color: var(--red); }
+    .kpi-value.purple { color: var(--purple); }
+    .kpi-sub { font-size: 11px; color: var(--sub); margin-top: 4px; }
+
+    .sec-hd {
+      padding: 10px 16px; border-bottom: 1px solid var(--line); font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .sec-hd .sec-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .sec-hd .hint { font-weight: 400; font-size: 12px; color: var(--sub); }
+    .sec-hd .btn-ok { flex-shrink: 0; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1200px; font-size: 12px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; text-align: left; white-space: nowrap; }
+    th { background: #fafafa; color: var(--sub); font-weight: 600; }
+    tr:hover td { background: #fafafa; }
+    tr.over td { background: #fffbe6; }
+    tr.over:hover td { background: #fff7e6; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .tag {
+      display: inline-block; padding: 1px 8px; border-radius: 2px; font-size: 11px;
+      font-weight: 600; border: 1px solid;
+    }
+    .tag-ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag-over { color: #d48806; background: #fffbe6; border-color: #ffe58f; }
+    .tag-pk { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag-ex { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .tag-fba { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
+    .tag-pick { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .muted { color: var(--sub); }
+    .ref-box {
+      margin: 12px 16px 16px; padding: 12px; border: 1px dashed #ffd591; border-radius: 2px;
+      background: #fffbe6; font-size: 12px;
+    }
+    .ref-box:empty { display: none; }
+    .ref-box h5 { margin: 0 0 6px; font-size: 13px; }
+    .ref-box table { min-width: 0; width: auto; }
+    .ref-box th, .ref-box td { padding: 4px 10px; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(80px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 10px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 2000; opacity: 0; transition: .25s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">腾信物流</div>
+    <div class="nav">
+      <a href="海外对接组-港后-尾单单票跟踪-原型.html">尾单单票跟踪</a>
+      <a class="on" href="#">时效表</a>
+      <a href="海外对接组-0804-港前港后整柜价格-大致方案.html">0804 方案</a>
+      <a href="海外对接组-导航.html">返回海外对接组导航</a>
+      <a href="../产品部门-导航.html">产品导航</a>
+    </div>
+    <div class="right">海外对接组 · 周时效统计</div>
+  </div>
+
+  <div class="layout">
+    <div class="page-hd">
+      <div>
+        <h1>时效表 <span class="badge new">NEW</span></h1>
+        <p class="sub">
+          每周统计，数据来自海外对接组汇总。明细页签按运单绑定<strong>销售产品 · 派送方式</strong>分：
+          <strong>FBA派</strong>·<strong>卡派</strong>·<strong>快递派</strong>；另加跨派送的<strong>提柜时效</strong>（付雪）。
+          柜 → 柜下明细（按仓库/客户单号）。对齐现网周报 Excel + 0804 时效公式。
+        </p>
+      </div>
+      <div class="links">
+        <a href="海外对接组-提柜拆柜时效-MVP.html">提柜拆柜时效</a>
+        <a href="海外对接组-港后-尾单单票跟踪-原型.html">← 尾单跟踪</a>
+        <a href="海外对接组-0804-港前港后整柜价格-大致方案.html">0804 方案</a>
+        <a href="海外对接组-导航.html">返回海外对接组导航</a>
+        <a href="../产品部门-导航.html">产品导航</a>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="filter-bd">
+        <div class="filter-grid">
+          <div class="filter-item">
+            <label>统计周 <span class="badge new">NEW</span></label>
+            <select id="qWeek">
+              <option value="2026-W31">第31周 · 7/26-8/1（签收归属）</option>
+              <option value="2026-W30">第30周 · 7/19-7/25</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>派送方式 <span class="badge new">销售产品</span></label>
+            <select id="qCh" title="取运单销售产品上的派送方式">
+              <option value="">全部</option>
+              <option>卡派</option>
+              <option>快递派</option>
+              <option>FBA派</option>
+              <option>自提</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>海外仓</label>
+            <select id="qWh">
+              <option value="">全部</option>
+              <option>4DS</option>
+              <option>美库</option>
+              <option>VMI</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>是否超时</label>
+            <select id="qOver">
+              <option value="">全部</option>
+              <option value="1">仅超时</option>
+              <option value="0">未超时</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>柜号</label>
+            <input id="qCntr" placeholder="例 OOCU8957474" />
+          </div>
+          <div class="filter-item">
+            <label>关键字</label>
+            <input id="qKw" placeholder="客户单号 / FBA / 目的站 / 仓库" />
+          </div>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button type="button" class="btn" id="btnReset">重置</button>
+        <button type="button" class="btn" id="btnTpl">下载模版</button>
+        <button type="button" class="btn-ok btn" id="btnExport" title="仅导出当前页签明细（含当前筛选）">导出本页签</button>
+        <button type="button" class="btn-primary btn" id="btnSearch">查询</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="kpi-row" id="kpiRow"></div>
+    </section>
+
+    <section class="panel">
+      <div class="dim-tabs">
+        <button type="button" class="dim-tab active" data-dim="fba">FBA派 / 入仓时效 <span class="cnt" id="cntFba">0</span></button>
+        <button type="button" class="dim-tab" data-dim="pk">卡派时效 <span class="cnt" id="cntPk">0</span></button>
+        <button type="button" class="dim-tab" data-dim="ex">快递派时效 <span class="cnt" id="cntEx">0</span></button>
+        <button type="button" class="dim-tab" data-dim="pick">提柜时效 <span class="cnt" id="cntPick">0</span> <span class="badge new">付雪</span></button>
+        <button type="button" class="dim-tab" data-dim="sum">周汇总</button>
+      </div>
+      <div class="tab-note" id="tabNote">页签按<strong>销售产品 · 派送方式</strong>分流（FBA派 / 卡派 / 快递派）；提柜时效跨派送方式、按柜统计。</div>
+      <div class="sec-hd">
+        <div class="sec-left">
+          <span id="secTitle">FBA派 / 入仓时效明细</span>
+          <span class="hint" id="secHint">派送方式=FBA派 · 柜号 → 客户单号 → 目的站 · 提柜到签收 · 对照仓库要求判超时</span>
+        </div>
+        <button type="button" class="btn-ok btn" id="btnExportTab" title="仅导出当前页签明细（含当前筛选）">导出本页签</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="ref-box" id="refBox"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="海外对接组-时效表-提柜私卡快递FBA-MVP-PRD.html" data-prd-anchor="s-logic">
+    <span class="ess-prd-chip">PRD · 时效表</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+(function () {
+  var dim = "fba";
+
+  /* 亚马逊入仓时效要求（天） */
+  var FBA_SLA = {
+    ABE8: 7, AVP1: 7, CLT2: 7, CLT3: 7, ORF2: 7, ACY2: 7, BOS7: 7, BWI4: 7,
+    HGR6: 7, HIA1: 7, IUST: 7, MDT4: 7, RDU2: 7, RMN3: 7
+  };
+
+  function parseD(s) {
+    if (!s) return null;
+    var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    return new Date(+m[1], +m[2] - 1, +m[3]);
+  }
+  function days(a, b) {
+    var da = parseD(a), db = parseD(b);
+    if (!da || !db) return null;
+    return Math.round((db - da) / 86400000);
+  }
+  function addDays(s, n) {
+    var d = parseD(s);
+    if (!d) return null;
+    d.setDate(d.getDate() + n);
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+  }
+  function shortD(s) {
+    if (!s) return "—";
+    var m = s.match(/-(\d{2})-(\d{2})/);
+    return m ? (+m[1] + "月" + (+m[2]) + "日") : s;
+  }
+
+  /*
+   * ch = 销售产品·派送方式：卡派 | 快递派 | FBA派 | 自提
+   * pickAt 提柜 · stripAt 拆柜 · outAt 出库 · signAt 签收
+   * sailAt 开船 · scanAt 最早扫描
+   */
+  var ROWS = [
+    /* FBA派 · 对齐截图柜 OOCU8957474 */
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "DQ2605280068233", dest: "ABE8", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-28", signAt: "2026-07-31",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "DQ2605280068234", dest: "ABE8", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-28", signAt: "2026-07-31",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "FBA19F4M4CCY", dest: "ACY2", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-27", signAt: "2026-07-30",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "NBCC202605260002", dest: "AVP1", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-28", signAt: "2026-07-31",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "FBA19F5K2AABB", dest: "BOS7", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-29", signAt: "2026-08-01",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "FBA19F5K2AACC", dest: "BWI4", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-28", signAt: "2026-07-31",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "DQ2605280069001", dest: "CLT3", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-27", signAt: "2026-07-30",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "FBA19F6XX001", dest: "HGR6", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-29", signAt: "2026-08-01",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "FBA19F6XX002", dest: "HIA1", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-28", signAt: "2026-07-31",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "IUST202607001", dest: "IUST", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-27", signAt: "2026-07-30",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "MDT4-202607-01", dest: "MDT4", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-28", signAt: "2026-07-31",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "RDU2-202607-08", dest: "RDU2", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-29", signAt: "2026-08-01",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+    { week: "2026-W31", ch: "FBA派", cntr: "OOCU8957474", ref: "RMN3-202607-02", dest: "RMN3", wh: "4DS",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-27", signAt: "2026-07-30",
+      sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
+
+    /* 卡派（原私卡） */
+    { week: "2026-W31", ch: "卡派", cntr: "CSNU6688456", ref: "PK-20260728-001", dest: "私人地址·NJ", wh: "美库",
+      pickAt: "2026-07-25", stripAt: "2026-07-26", outAt: "2026-07-30", signAt: "2026-08-01",
+      sailAt: "2026-07-12", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", cntr: "CSNU6688456", ref: "PK-20260728-002", dest: "私人地址·PA", wh: "美库",
+      pickAt: "2026-07-25", stripAt: "2026-07-26", outAt: "2026-07-31", signAt: "2026-08-03",
+      sailAt: "2026-07-12", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", cntr: "HLCU9900112", ref: "PK-20260722-018", dest: "私人地址·CA", wh: "VMI",
+      pickAt: "2026-07-20", stripAt: "2026-07-21", outAt: "2026-07-24", signAt: "2026-07-27",
+      sailAt: "2026-07-05", scanAt: "", owner: "港后卡派" },
+
+    /* 快递派 */
+    { week: "2026-W31", ch: "快递派", cntr: "MSCU3344667", ref: "1Z999AA10123456784", dest: "快递派送", wh: "4DS",
+      pickAt: "2026-07-22", stripAt: "2026-07-23", outAt: "2026-07-24", signAt: "2026-07-28",
+      sailAt: "2026-07-08", scanAt: "2026-07-25", owner: "港后快递" },
+    { week: "2026-W31", ch: "快递派", cntr: "MSCU3344667", ref: "1Z999AA10123456785", dest: "快递派送", wh: "4DS",
+      pickAt: "2026-07-22", stripAt: "2026-07-23", outAt: "2026-07-24", signAt: "2026-07-29",
+      sailAt: "2026-07-08", scanAt: "2026-07-26", owner: "港后快递" },
+    { week: "2026-W31", ch: "快递派", cntr: "NYKU4455667", ref: "9261290300123456789012", dest: "快递派送", wh: "美库",
+      pickAt: "2026-07-18", stripAt: "2026-07-19", outAt: "2026-07-20", signAt: "2026-07-24",
+      sailAt: "2026-07-01", scanAt: "2026-07-21", owner: "港后快递" },
+
+    /* 提柜样例（W30） */
+    { week: "2026-W30", ch: "FBA派", cntr: "TGHU5566778", ref: "FBA19E9TEST01", dest: "ABE8", wh: "4DS",
+      pickAt: "2026-07-16", stripAt: "2026-07-17", outAt: "2026-07-20", signAt: "2026-07-22",
+      sailAt: "2026-07-02", scanAt: "", owner: "付雪" },
+    { week: "2026-W30", ch: "卡派", cntr: "TGHU5566889", ref: "PK-20260715-009", dest: "私人地址·TX", wh: "VMI",
+      pickAt: "2026-07-14", stripAt: "2026-07-15", outAt: "2026-07-18", signAt: "2026-07-21",
+      sailAt: "2026-06-28", scanAt: "", owner: "港后卡派" }
+  ];
+
+  function metrics(r) {
+    var pickToOut = days(r.pickAt, r.outAt);
+    var stripToOut = r.stripAt && r.outAt ? days(r.stripAt, r.outAt) + 1 : null;
+    var outToSign = days(r.outAt, r.signAt);
+    var pickToSign = days(r.pickAt, r.signAt);
+    var stripToSign = r.stripAt && r.signAt ? days(r.stripAt, r.signAt) + 1 : null;
+    var sailPlus1 = r.sailAt ? addDays(r.sailAt, 1) : null;
+    var exAge = r.scanAt && sailPlus1 ? days(sailPlus1, r.scanAt) : null;
+    var actualSign = r.scanAt && r.stripAt ? days(r.stripAt, r.scanAt) : null;
+    var pickAge = r.pickAt && r.sailAt ? days(r.sailAt, r.pickAt) + 1 : null;
+    var sla = FBA_SLA[r.dest] != null ? FBA_SLA[r.dest] : 7;
+    var overFba = pickToSign != null && pickToSign > sla;
+    var overPk = stripToSign != null && stripToSign > 15;
+    var overEx = exAge != null && exAge > 20;
+    var overPick = pickAge != null && pickAge > 25;
+    return {
+      pickToOut: pickToOut, stripToOut: stripToOut, outToSign: outToSign, pickToSign: pickToSign, stripToSign: stripToSign,
+      exAge: exAge, actualSign: actualSign, pickAge: pickAge, sla: sla,
+      overFba: overFba, overPk: overPk, overEx: overEx, overPick: overPick
+    };
+  }
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg) {
+    var el = $("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+  function chTag(ch) {
+    if (ch === "卡派") return '<span class="tag tag-pk">卡派</span>';
+    if (ch === "快递派") return '<span class="tag tag-ex">快递派</span>';
+    if (ch === "FBA派") return '<span class="tag tag-fba">FBA派</span>';
+    if (ch === "自提") return '<span class="tag">自提</span>';
+    return '<span class="tag">' + ch + "</span>";
+  }
+  function overTag(yes) {
+    return yes ? '<span class="tag tag-over">超时</span>' : '<span class="tag tag-ok">正常</span>';
+  }
+  function empty(n) {
+    return "<tr><td colspan='" + n + "' style='text-align:center;color:#999;padding:28px'>无匹配数据</td></tr>";
+  }
+
+  function filtered() {
+    var week = $("qWeek").value;
+    var ch = $("qCh").value;
+    var wh = $("qWh").value;
+    var over = $("qOver").value;
+    var cntr = ($("qCntr").value || "").trim().toLowerCase();
+    var kw = ($("qKw").value || "").trim().toLowerCase();
+    return ROWS.filter(function (r) {
+      if (week && r.week !== week) return false;
+      if (ch && r.ch !== ch) return false;
+      if (wh && r.wh !== wh) return false;
+      if (cntr && r.cntr.toLowerCase().indexOf(cntr) < 0) return false;
+      if (kw) {
+        var blob = [r.ref, r.dest, r.cntr, r.wh, r.ch].join(" ").toLowerCase();
+        if (blob.indexOf(kw) < 0) return false;
+      }
+      var m = metrics(r);
+      if (over === "1") {
+        if (dim === "fba" && !m.overFba) return false;
+        if (dim === "pk" && !m.overPk) return false;
+        if (dim === "ex" && !m.overEx) return false;
+        if (dim === "pick" && !m.overPick) return false;
+        if (dim === "sum" && !(m.overFba || m.overPk || m.overEx || m.overPick)) return false;
+      }
+      if (over === "0") {
+        if (dim === "fba" && m.overFba) return false;
+        if (dim === "pk" && m.overPk) return false;
+        if (dim === "ex" && m.overEx) return false;
+        if (dim === "pick" && m.overPick) return false;
+      }
+      return true;
+    });
+  }
+
+  function byDim(list) {
+    if (dim === "fba") return list.filter(function (r) { return r.ch === "FBA派"; });
+    if (dim === "pk") return list.filter(function (r) { return r.ch === "卡派"; });
+    if (dim === "ex") return list.filter(function (r) { return r.ch === "快递派"; });
+    return list;
+  }
+
+  function renderKpi() {
+    var all = filtered();
+    var fba = all.filter(function (r) { return r.ch === "FBA派"; });
+    var pk = all.filter(function (r) { return r.ch === "卡派"; });
+    var ex = all.filter(function (r) { return r.ch === "快递派"; });
+    var fbaOver = fba.filter(function (r) { return metrics(r).overFba; }).length;
+    var avgFba = fba.length
+      ? (fba.reduce(function (s, r) { return s + (metrics(r).pickToSign || 0); }, 0) / fba.length).toFixed(1)
+      : "—";
+    var avgPk = pk.length
+      ? (pk.reduce(function (s, r) { return s + (metrics(r).stripToSign || 0); }, 0) / pk.length).toFixed(1)
+      : "—";
+    var avgEx = ex.length
+      ? (ex.reduce(function (s, r) { return s + (metrics(r).exAge || 0); }, 0) / ex.length).toFixed(1)
+      : "—";
+    var avgPick = all.length
+      ? (all.reduce(function (s, r) { return s + (metrics(r).pickAge || 0); }, 0) / all.length).toFixed(1)
+      : "—";
+    var cntrs = {};
+    all.forEach(function (r) { cntrs[r.cntr] = true; });
+    $("kpiRow").innerHTML =
+      kpi("本周明细", all.length, "", Object.keys(cntrs).length + " 柜") +
+      kpi("FBA派入仓", fba.length, "purple", "超时 " + fbaOver) +
+      kpi("FBA派均时效", avgFba === "—" ? "—" : avgFba + "天", avgFba > 7 ? "warn" : "ok", "提柜→签收") +
+      kpi("卡派均时效", avgPk === "—" ? "—" : avgPk + "天", avgPk > 10 ? "warn" : "ok", "拆柜+1→签收") +
+      kpi("快递派均时效", avgEx === "—" ? "—" : avgEx + "天", "", "开船+1→扫描") +
+      kpi("提柜均时效", avgPick === "—" ? "—" : avgPick + "天", "warn", "开船→提柜+1 · 付雪");
+    $("cntFba").textContent = fba.length;
+    $("cntPk").textContent = pk.length;
+    $("cntEx").textContent = ex.length;
+    $("cntPick").textContent = Object.keys(cntrs).length;
+  }
+  function kpi(label, val, cls, sub) {
+    return '<div class="kpi"><div class="kpi-label">' + label + '</div>' +
+      '<div class="kpi-value ' + (cls || "") + '">' + val + '</div>' +
+      (sub ? '<div class="kpi-sub">' + sub + '</div>' : "") + "</div>";
+  }
+
+  function renderFba(list) {
+    $("secTitle").textContent = "FBA派 / 入仓时效明细";
+    $("secHint").textContent = "派送方式=FBA派 · 提柜→签收 · 对照仓库要求（默认7天）· 超时黄底";
+    $("thead").innerHTML = "<tr>" +
+      "<th>柜号</th><th>提柜时间</th><th>客户单号</th><th>目的站</th>" +
+      "<th>签收时间</th><th class='num'>派送时效/天</th><th>处理海外仓</th><th>是否超时</th>" +
+      "<th class='num'>要求(天)</th><th>拆柜</th><th>出库</th></tr>";
+    var rows = byDim(list).slice().sort(function (a, b) {
+      return a.cntr === b.cntr ? a.dest.localeCompare(b.dest) : a.cntr.localeCompare(b.cntr);
+    });
+    $("tbody").innerHTML = rows.map(function (r) {
+      var m = metrics(r);
+      return "<tr class='" + (m.overFba ? "over" : "") + "'>" +
+        "<td><b>" + r.cntr + "</b></td>" +
+        "<td>" + shortD(r.pickAt) + "</td>" +
+        "<td>" + r.ref + "</td>" +
+        "<td>" + r.dest + "</td>" +
+        "<td>" + shortD(r.signAt) + "</td>" +
+        "<td class='num'><b>" + (m.pickToSign != null ? m.pickToSign : "—") + "</b></td>" +
+        "<td>" + r.wh + "</td>" +
+        "<td>" + (m.overFba ? overTag(true) : "") + "</td>" +
+        "<td class='num'>" + m.sla + "</td>" +
+        "<td>" + shortD(r.stripAt) + "</td>" +
+        "<td>" + shortD(r.outAt) + "</td></tr>";
+    }).join("") || empty(11);
+    $("tabNote").innerHTML =
+      "<strong>公式口径（本页签 · 系统自动算）</strong>" +
+      '<div class="lines">' +
+      "<div>分流依据：运单绑定<strong>销售产品 · 派送方式 = FBA派</strong></div>" +
+      "<div>提柜→签收 = 签收时间 − 提柜时间</div>" +
+      "<div>对照仓库时效要求（默认 7 天）判超时；&gt; 要求天数 → 黄底超时</div>" +
+      "</div>";
+    $("refBox").innerHTML =
+      "<h5>亚马逊入仓时效要求（示意）</h5>" +
+      '<table><thead><tr><th>仓库</th><th class="num">要求(天)</th></tr></thead><tbody>' +
+      Object.keys(FBA_SLA).slice(0, 8).map(function (k) {
+        return "<tr><td>" + k + "</td><td class='num'>" + FBA_SLA[k] + "</td></tr>";
+      }).join("") +
+      "<tr><td>…</td><td class='num'>7</td></tr></tbody></table>" +
+      '<div class="muted" style="margin-top:6px">要求天数按目的站对照上表；未配置仓库默认 7 天</div>';
+  }
+
+  function renderPk(list) {
+    $("secTitle").textContent = "卡派时效明细";
+    $("secHint").textContent = "派送方式=卡派 · 五项公式：提柜/拆柜+1 → 出库/签收，另加出库→签收";
+    $("thead").innerHTML = "<tr>" +
+      "<th>柜号</th><th>客户单号</th><th>目的</th><th>海外仓</th>" +
+      "<th>提柜</th><th>拆柜</th><th>出库</th><th>签收</th>" +
+      "<th class='num'>提柜→出库</th><th class='num'>拆柜+1→出库</th>" +
+      "<th class='num'>出库→签收</th>" +
+      "<th class='num'>提柜→签收</th><th class='num'>拆柜+1→签收</th><th>超时(签收&gt;15)</th></tr>";
+    var rows = byDim(list);
+    $("tbody").innerHTML = rows.map(function (r) {
+      var m = metrics(r);
+      return "<tr class='" + (m.overPk ? "over" : "") + "'>" +
+        "<td><b>" + r.cntr + "</b></td><td>" + r.ref + "</td><td>" + r.dest + "</td><td>" + r.wh + "</td>" +
+        "<td>" + shortD(r.pickAt) + "</td><td>" + shortD(r.stripAt) + "</td>" +
+        "<td>" + shortD(r.outAt) + "</td><td>" + shortD(r.signAt) + "</td>" +
+        "<td class='num'>" + (m.pickToOut != null ? m.pickToOut : "—") + "</td>" +
+        "<td class='num'>" + (m.stripToOut != null ? m.stripToOut : "—") + "</td>" +
+        "<td class='num'><b>" + (m.outToSign != null ? m.outToSign : "—") + "</b></td>" +
+        "<td class='num'>" + (m.pickToSign != null ? m.pickToSign : "—") + "</td>" +
+        "<td class='num'>" + (m.stripToSign != null ? m.stripToSign : "—") + "</td>" +
+        "<td>" + overTag(m.overPk) + "</td></tr>";
+    }).join("") || empty(14);
+    $("tabNote").innerHTML =
+      "<strong>公式口径（本页签 · 系统自动算）</strong>" +
+      '<div class="lines">' +
+      "<div>分流依据：运单绑定<strong>销售产品 · 派送方式 = 卡派</strong>（原「私卡」口径）</div>" +
+      "<div>提柜→出库 = 出库时间 − 提柜时间</div>" +
+      "<div>拆柜第二天→出库 = 出库时间 − 拆柜时间 + 1</div>" +
+      "<div>出库→签收 = 签收时间 − 出库时间</div>" +
+      "<div>提柜→签收 = 签收时间 − 提柜时间</div>" +
+      "<div>拆柜第二天→签收 = 签收时间 − 拆柜时间 + 1（与尾单「派送时效」一致）</div>" +
+      "</div>";
+    $("refBox").innerHTML = "";
+  }
+
+  function renderEx(list) {
+    $("secTitle").textContent = "快递派时效明细";
+    $("secHint").textContent = "派送方式=快递派 · 开船第二天 → 最早扫描；实际签收时效 = 最早扫描 − 拆柜";
+    $("thead").innerHTML = "<tr>" +
+      "<th>柜号</th><th>运单/客户单号</th><th>海外仓</th>" +
+      "<th>开船</th><th>开船+1(起算)</th><th>拆柜</th><th>最早扫描</th><th>签收</th>" +
+      "<th class='num'>快递时效</th><th class='num'>实际签收时效</th><th>是否偏长</th></tr>";
+    var rows = byDim(list);
+    $("tbody").innerHTML = rows.map(function (r) {
+      var m = metrics(r);
+      var start = r.sailAt ? addDays(r.sailAt, 1) : "";
+      return "<tr class='" + (m.overEx ? "over" : "") + "'>" +
+        "<td><b>" + r.cntr + "</b></td><td>" + r.ref + "</td><td>" + r.wh + "</td>" +
+        "<td>" + shortD(r.sailAt) + "</td><td>" + shortD(start) + "</td>" +
+        "<td>" + shortD(r.stripAt) + "</td><td>" + shortD(r.scanAt) + "</td><td>" + shortD(r.signAt) + "</td>" +
+        "<td class='num'><b>" + (m.exAge != null ? m.exAge : "—") + "</b></td>" +
+        "<td class='num'>" + (m.actualSign != null ? m.actualSign : "—") + "</td>" +
+        "<td>" + overTag(m.overEx) + "</td></tr>";
+    }).join("") || empty(11);
+    $("tabNote").innerHTML =
+      "<strong>公式口径（本页签 · 系统自动算）</strong>" +
+      '<div class="lines">' +
+      "<div>分流依据：运单绑定<strong>销售产品 · 派送方式 = 快递派</strong></div>" +
+      "<div>快递时效 = 最早扫描时间 −（开船日 + 1）　← 开船第二天起算</div>" +
+      "<div>实际签收时效 = 最早扫描时间 − 拆柜时间</div>" +
+      "</div>";
+    $("refBox").innerHTML = "";
+  }
+
+  function renderPick(list) {
+    $("secTitle").textContent = "提柜时效（付雪）";
+    $("secHint").textContent = "跨派送方式 · 提柜时效 = 实际提柜 − 开船 + 1 · 按柜去重 · 看派送方式";
+    $("thead").innerHTML = "<tr>" +
+      "<th>柜号</th><th>派送方式</th><th>开船</th><th>提柜</th>" +
+      "<th class='num'>提柜时效/天</th><th>海外仓</th><th>是否偏长(&gt;25)</th>" +
+      "<th class='num'>柜下票数</th></tr>";
+    var map = {};
+    list.forEach(function (r) {
+      if (!map[r.cntr]) {
+        map[r.cntr] = { r: r, n: 0, chs: {} };
+      }
+      map[r.cntr].n++;
+      map[r.cntr].chs[r.ch] = true;
+    });
+    var rows = Object.keys(map).map(function (k) { return map[k]; });
+    $("tbody").innerHTML = rows.map(function (g) {
+      var r = g.r;
+      var m = metrics(r);
+      var chs = Object.keys(g.chs).map(chTag).join(" ");
+      return "<tr class='" + (m.overPick ? "over" : "") + "'>" +
+        "<td><b>" + r.cntr + "</b></td><td>" + chs + "</td>" +
+        "<td>" + shortD(r.sailAt) + "</td><td>" + shortD(r.pickAt) + "</td>" +
+        "<td class='num'><b>" + (m.pickAge != null ? m.pickAge : "—") + "</b></td>" +
+        "<td>" + r.wh + "</td>" +
+        "<td>" + overTag(m.overPick) + "</td>" +
+        "<td class='num'>" + g.n + "</td></tr>";
+    }).join("") || empty(8);
+    $("tabNote").innerHTML =
+      "<strong>公式口径（本页签 · 系统自动算）</strong>" +
+      '<div class="lines">' +
+      "<div>提柜时效 = 实际提柜时间 − 开船日期 + 1</div>" +
+      "<div>按柜去重；柜下票的派送方式取销售产品字段展示。主单跟进可按提柜时间范围筛选导出。</div>" +
+      "</div>";
+    $("refBox").innerHTML = "";
+  }
+
+  function renderSum(list) {
+    $("secTitle").textContent = "周汇总 · 派送方式 × 超时";
+    $("secHint").textContent = "本周各派送方式票数 / 平均时效 / 超时数（按销售产品·派送方式）";
+    var groups = { "FBA派": [], "卡派": [], "快递派": [] };
+    list.forEach(function (r) {
+      if (groups[r.ch]) groups[r.ch].push(r);
+    });
+    $("thead").innerHTML = "<tr>" +
+      "<th>派送方式</th><th class='num'>票数</th><th class='num'>柜数</th>" +
+      "<th class='num'>主时效均值</th><th>主口径</th><th class='num'>超时数</th><th>超时阈值</th></tr>";
+    $("tbody").innerHTML = ["FBA派", "卡派", "快递派"].map(function (ch) {
+      var arr = groups[ch];
+      var cntrs = {};
+      arr.forEach(function (r) { cntrs[r.cntr] = true; });
+      var avg = "—", over = 0, rule = "", thr = "";
+      if (ch === "FBA派") {
+        rule = "提柜→签收"; thr = "仓库要求(默认7)";
+        if (arr.length) avg = (arr.reduce(function (s, r) { return s + (metrics(r).pickToSign || 0); }, 0) / arr.length).toFixed(1);
+        over = arr.filter(function (r) { return metrics(r).overFba; }).length;
+      } else if (ch === "卡派") {
+        rule = "拆柜+1→签收"; thr = ">15 天";
+        if (arr.length) avg = (arr.reduce(function (s, r) { return s + (metrics(r).stripToSign || 0); }, 0) / arr.length).toFixed(1);
+        over = arr.filter(function (r) { return metrics(r).overPk; }).length;
+      } else {
+        rule = "开船+1→最早扫描"; thr = ">20 天";
+        if (arr.length) avg = (arr.reduce(function (s, r) { return s + (metrics(r).exAge || 0); }, 0) / arr.length).toFixed(1);
+        over = arr.filter(function (r) { return metrics(r).overEx; }).length;
+      }
+      return "<tr><td>" + chTag(ch) + "</td>" +
+        "<td class='num'>" + arr.length + "</td>" +
+        "<td class='num'>" + Object.keys(cntrs).length + "</td>" +
+        "<td class='num'><b>" + (avg === "—" ? "—" : avg + " 天") + "</b></td>" +
+        "<td class='muted'>" + rule + "</td>" +
+        "<td class='num'>" + (over ? "<b style='color:#d48806'>" + over + "</b>" : "0") + "</td>" +
+        "<td class='muted'>" + thr + "</td></tr>";
+    }).join("");
+    $("tabNote").innerHTML =
+      "<strong>本页签说明</strong>" +
+      '<div class="lines">' +
+      "<div>按<strong>销售产品 · 派送方式</strong>汇总。各方式公式口径点对应页签查看。本表只汇总票数 / 均值 / 超时数。</div>" +
+      "<div>每周由海外对接组汇总节点时间后自动出表；可与尾单单票跟踪联动导出。</div>" +
+      "</div>";
+    $("refBox").innerHTML = "";
+  }
+
+  function render() {
+    document.querySelectorAll(".dim-tab").forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-dim") === dim);
+    });
+    renderKpi();
+    var list = filtered();
+    if (dim === "fba") renderFba(list);
+    else if (dim === "pk") renderPk(list);
+    else if (dim === "ex") renderEx(list);
+    else if (dim === "pick") renderPick(list);
+    else renderSum(list);
+    syncExportBtns();
+  }
+
+  var DIM_LABEL = { fba: "FBA派入仓", pk: "卡派时效", ex: "快递派时效", pick: "提柜时效", sum: "周汇总" };
+
+  function syncExportBtns() {
+    var t = "导出 · " + DIM_LABEL[dim];
+    $("btnExport").textContent = t;
+    $("btnExportTab").textContent = t;
+  }
+
+  function doExportTab() {
+    var week = $("qWeek").selectedOptions[0].text;
+    var n = document.querySelectorAll("#tbody tr").length;
+    toast("演示：已单独导出「" + DIM_LABEL[dim] + "」· " + week + " · " + n + " 行（仅本页签，不含其他页签）");
+  }
+
+  document.querySelectorAll(".dim-tab").forEach(function (btn) {
+    btn.onclick = function () {
+      dim = btn.getAttribute("data-dim");
+      render();
+    };
+  });
+  $("btnSearch").onclick = render;
+  $("btnReset").onclick = function () {
+    $("qWeek").value = "2026-W31";
+    $("qCh").value = "";
+    $("qWh").value = "";
+    $("qOver").value = "";
+    $("qCntr").value = "";
+    $("qKw").value = "";
+    render();
+  };
+  $("btnTpl").onclick = function () {
+    toast("演示：已下载「" + DIM_LABEL[dim] + "」模版（按当前页签列结构）");
+  };
+  $("btnExport").onclick = doExportTab;
+  $("btnExportTab").onclick = doExportTab;
+
+  render();
+})();
+  </script>
+</body>
+</html>

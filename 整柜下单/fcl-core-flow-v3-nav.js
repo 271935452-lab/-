@@ -8,7 +8,7 @@
   var LINKS = [
     { file: "整柜流程V3.0-原型导航.html", label: "整柜流程V3.0 · 导航首页", icon: "⌂" },
     { file: "整柜询价与报价绑定-MVP.html", label: "询价与报价绑定", icon: "1" },
-    { file: "整柜尾端派送-MVP.html", label: "整柜尾端派送", icon: "2" },
+    { file: "../产品部门/海外对接组/海外对接组-整柜尾端派送-MVP.html", label: "整柜尾端派送", icon: "2" },
     { file: "整柜客户岗位绑定-MVP.html", label: "整柜客户岗位绑定", icon: "3" },
     { file: "员工管理-整柜岗位与客户默认-MVP.html", label: "员工管理 · 整柜岗位", icon: "4" },
     { file: "客户管理-编辑-权限配置-MVP.html", label: "客户管理 · 权限配置", icon: "5" },
@@ -70,7 +70,7 @@
     [
       { file: "整柜流程V2.0-原型导航.html", label: "整柜流程V2.0 · 主链路" },
       { file: "整柜原型导航.html", label: "整柜模块 · 全部入口" },
-      { file: "../产品部门/各组sop/海外对接组-导航.html", label: "海外对接组 · 原型导航" },
+      { file: "../产品部门/海外对接组/海外对接组-导航.html", label: "海外对接组 · 原型导航" },
       { file: "../index.html", label: "项目导航首页" },
     ].forEach(function (item) {
       var a = document.createElement("a");

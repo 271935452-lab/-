@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DW预警自查和修正 · SR智能转仓 · MVP</title>
+  <style>
+    :root {
+      --header: #0b1f3a; --header-tab: #132d52; --sidebar: #001529;
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --orange: #fa541c; --red: #ff4d4f; --green: #52c41a;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; flex: 1; overflow-x: auto; }
+    .nav-tab {
+      padding: 0 14px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .nav-tab .badge-new {
+      padding: 0 4px; height: 16px; line-height: 16px; font-size: 10px; font-weight: 700;
+      border-radius: 2px; background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e;
+    }
+    .header-right {
+      display: flex; align-items: center; gap: 10px; padding: 0 14px;
+      font-size: 12px; color: rgba(255,255,255,.65);
+    }
+
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 56px; background: var(--sidebar); color: rgba(255,255,255,.65);
+      display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px;
+    }
+    .side-ico {
+      width: 48px; padding: 8px 0 6px; text-align: center; font-size: 10px;
+      border-radius: 2px; line-height: 1.2;
+    }
+    .side-ico b { display: block; font-size: 16px; margin-bottom: 2px; font-weight: 400; }
+    .side-ico.on { background: rgba(24,144,255,.28); color: #fff; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .proto-bar {
+      padding: 6px 12px; font-size: 12px; color: var(--sub); background: #fff;
+      border-bottom: 1px solid var(--line); line-height: 1.55;
+    }
+    .proto-bar strong { color: #d46b08; }
+
+    .filter-panel { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 12px 8px; }
+    .filter-grid {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px 12px;
+    }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .fi label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .fi label .new {
+      display: inline-block; margin-left: 4px; padding: 0 4px; font-size: 10px; font-weight: 700;
+      color: #cf1322; background: #fff1f0; border: 1px solid #ffa39e; border-radius: 2px;
+    }
+    .fi input, .fi select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .date-range { display: flex; align-items: center; gap: 4px; }
+    .date-range input { flex: 1; min-width: 0; }
+    .date-range span { color: var(--sub); font-size: 12px; }
+    .filter-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+    .btn {
+      height: 30px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-primary:hover { color: #fff; opacity: .92; }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+    .stats-bar {
+      padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--line);
+      font-size: 12px; line-height: 1.7;
+    }
+    .stats-bar .s { margin-right: 14px; }
+    .stats-bar .s b { font-weight: 600; }
+    .stats-bar .red { color: #cf1322; }
+    .stats-bar .blue { color: #096dd9; }
+
+    .toolbar {
+      padding: 8px 12px; background: var(--card); border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .tool {
+      height: 28px; padding: 0 10px; border: none; border-radius: 2px;
+      background: var(--blue); color: #fff; cursor: pointer; font-size: 12px;
+    }
+    .tool:disabled { opacity: .45; cursor: not-allowed; }
+    .tool.outline { background: #fff; color: var(--blue); border: 1px solid #91d5ff; }
+    .tool.sr {
+      background: linear-gradient(135deg, #722ed1, #9254de); position: relative;
+    }
+    .tool.sr .new {
+      position: absolute; top: -6px; right: -4px; font-size: 9px; padding: 0 3px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; border-radius: 2px;
+    }
+
+    .dim-tabs {
+      display: flex; gap: 0; background: #fff; border-bottom: 1px solid var(--line); padding: 0 8px;
+    }
+    .dim-tab {
+      padding: 10px 12px; border: none; background: none; cursor: pointer;
+      color: var(--sub); font-size: 13px; position: relative;
+    }
+    .dim-tab.on { color: var(--orange); font-weight: 600; }
+    .dim-tab.on::after {
+      content: ""; position: absolute; left: 12px; right: 12px; bottom: 0;
+      height: 2px; background: var(--orange);
+    }
+
+    .poll-bar {
+      display: none; padding: 8px 12px; background: #f9f0ff; border-bottom: 1px solid #d3adf7;
+      font-size: 12px; color: #531dab; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .poll-bar.show { display: flex; }
+    .poll-bar .spin {
+      width: 14px; height: 14px; border: 2px solid #d3adf7; border-top-color: #722ed1;
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .sel-bar {
+      display: none; padding: 6px 12px; background: #e6f7ff; border-bottom: 1px solid #91d5ff;
+      font-size: 12px; color: #0958d9; align-items: center; gap: 10px;
+    }
+    .sel-bar.show { display: flex; }
+
+    .table-wrap { flex: 1; overflow: auto; background: #fff; }
+    table.data {
+      width: 100%; border-collapse: collapse; font-size: 12px; min-width: 2400px;
+    }
+    table.data th, table.data td {
+      border-bottom: 1px solid #f0f0f0; padding: 8px 10px; text-align: left; white-space: nowrap;
+    }
+    table.data th {
+      background: #fafafa; color: var(--sub); font-weight: 600;
+      position: sticky; top: 0; z-index: 2;
+    }
+    table.data tr:hover td { background: #fafafa; }
+    table.data tr.sr-pending td { background: #f9f0ff; }
+    table.data tr.sr-hit td { background: #f6ffed; }
+    .tag {
+      display: inline-block; padding: 1px 8px; border-radius: 2px; font-size: 11px;
+      font-weight: 600; border: 1px solid;
+    }
+    .tag-ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag-wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag-none { color: var(--sub); background: #fafafa; border-color: #d9d9d9; }
+    .tag-poll { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .sr-cell { min-width: 140px; line-height: 1.45; }
+    .sr-cell .wh { font-weight: 600; color: #389e0d; }
+    .sr-cell .tm { font-size: 11px; color: var(--sub); }
+    .track-cell { min-width: 160px; max-width: 220px; white-space: normal; line-height: 1.45; }
+    .track-cell .t-new { color: #722ed1; font-weight: 600; }
+    .muted { color: var(--sub); }
+
+    .pager {
+      padding: 8px 12px; background: #fff; border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12px; color: var(--sub);
+    }
+    .pager .pages { display: flex; gap: 4px; align-items: center; }
+    .pager .pages button {
+      min-width: 28px; height: 26px; border: 1px solid #d9d9d9; background: #fff;
+      border-radius: 2px; cursor: pointer;
+    }
+    .pager .pages button.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(80px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 10px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 2000; opacity: 0; transition: .25s; pointer-events: none;
+      max-width: 90vw; text-align: center; line-height: 1.5;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .modal-mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 1200; align-items: center; justify-content: center;
+    }
+    .modal-mask.open { display: flex; }
+    .modal {
+      width: min(560px, 94vw); background: #fff; border-radius: 4px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.18);
+    }
+    .modal.wide { width: min(920px, 96vw); }
+    .modal-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+    }
+    .modal-hd h2 { margin: 0; font-size: 14px; }
+    .modal-close {
+      border: none; background: none; font-size: 18px; color: var(--sub); cursor: pointer;
+    }
+    .modal-bd { padding: 12px 14px; max-height: 60vh; overflow: auto; }
+    .modal-bd .hint { margin: 0 0 10px; color: var(--sub); font-size: 12px; line-height: 1.55; }
+    .modal-ft {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 10px 14px; border-top: 1px solid var(--line);
+    }
+    .mini-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .mini-table th, .mini-table td {
+      border: 1px solid var(--line); padding: 6px 8px; text-align: left;
+    }
+    .mini-table th { background: #fafafa; color: var(--sub); }
+    .pick-row { cursor: pointer; }
+    .pick-row.on td { background: #f9f0ff; }
+    .steps {
+      margin: 0 0 12px; padding: 0; list-style: none; font-size: 12px;
+    }
+    .steps li { padding: 4px 0; color: var(--sub); }
+    .steps li.done { color: #389e0d; }
+    .steps li.cur { color: #531dab; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">ESS</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab">控制台</button>
+        <button type="button" class="nav-tab">风控规则</button>
+        <button type="button" class="nav-tab">运单管理</button>
+        <button type="button" class="nav-tab active">DW预警自查和修正 <span class="badge-new">SR</span></button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-卡派跟进新-MVP.html'">卡派跟进(新)</button>
+      </div>
+      <div class="header-right">
+        <span>IT(BT0022)</span>
+        <a href="海外对接组-导航.html" style="color:#91d5ff">返回海外对接组导航</a>
+      </div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-ico"><b>⌂</b>控制台</div>
+        <div class="side-ico on"><b>DW</b>预警</div>
+        <div class="side-ico"><b>港</b>港后</div>
+        <div class="side-ico"><b>卡</b>卡派</div>
+      </aside>
+
+      <main class="main">
+        <div class="proto-bar">
+          原型 · 现网 <strong>DW预警自查和修正</strong> + 新增 <strong>SR智能转仓</strong>（@白胜伟 @杨嘉武）·
+          多选 → 生成 CSV 推亚马逊 → 页面轮询 → 有结果展示可转仓库/时间 → 成功取消原 ISA/约仓并重新登记 + 转仓轨迹 ·
+          <a href="海外对接组-导航.html">返回海外对接组导航</a>
+          · <a href="佳成Fist对接-给开发.html">佳成 Fist 对接（给开发）</a>
+        </div>
+
+        <section class="filter-panel">
+          <div class="filter-grid">
+            <div class="fi">
+              <label>创建时间</label>
+              <div class="date-range">
+                <input type="date" id="fCreateFrom" value="2026-07-18" />
+                <span>~</span>
+                <input type="date" id="fCreateTo" value="2026-08-18" />
+              </div>
+            </div>
+            <div class="fi">
+              <label>约仓时间</label>
+              <div class="date-range">
+                <input type="date" />
+                <span>~</span>
+                <input type="date" />
+              </div>
+            </div>
+            <div class="fi">
+              <label>运单号/客户单号</label>
+              <input id="fOrder" placeholder="FBA / ICBU…" />
+            </div>
+            <div class="fi">
+              <label>产品组</label>
+              <select><option>全部</option><option>FBA</option><option>私人地址</option></select>
+            </div>
+            <div class="fi">
+              <label>是否允许卖家修改</label>
+              <select><option>全部</option><option>是</option><option>否</option><option>未知</option></select>
+            </div>
+            <div class="fi">
+              <label>截至修改时间</label>
+              <div class="date-range">
+                <input type="date" />
+                <span>~</span>
+                <input type="date" />
+              </div>
+            </div>
+            <div class="fi">
+              <label>提单号</label>
+              <input placeholder="COSU…" />
+            </div>
+            <div class="fi">
+              <label>海外客服</label>
+              <select><option>全部</option><option>陈客服</option><option>王客服</option></select>
+            </div>
+            <div class="fi">
+              <label>约仓状态</label>
+              <select id="fApptSt"><option value="">全部</option><option>未约仓</option><option>已约仓</option><option>已取消</option></select>
+            </div>
+            <div class="fi">
+              <label>已有轨迹且无约仓时间</label>
+              <select><option>全部</option><option>是</option><option>否</option></select>
+            </div>
+            <div class="fi">
+              <label>ISA号<span class="new">NEW</span></label>
+              <input id="fIsa" placeholder="如 ISA-20260818-001" />
+            </div>
+            <div class="fi">
+              <label>柜号<span class="new">NEW</span></label>
+              <input id="fCntr" placeholder="如 TEMU1234567" />
+            </div>
+            <div class="fi">
+              <label>FBA仓<span class="new">NEW</span></label>
+              <select id="fFbaWh">
+                <option value="">全部</option>
+                <option>ONT8</option><option>LGB8</option><option>SMF3</option>
+                <option>AVP1</option><option>MDW2</option><option>IND9</option>
+              </select>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn" id="btnReset">查询重置</button>
+            <button type="button" class="btn btn-primary" id="btnSearch">更多筛选 ▼</button>
+          </div>
+        </section>
+
+        <div class="stats-bar">
+          <span class="s">当前准确率：<b class="blue">6.91%</b></span>
+          <span class="s">允许卖家修改率：<b class="blue">78.72%</b></span>
+          <span class="s red">临近截止未约仓：<b>0</b></span>
+          <span class="s red">未约仓：<b>12535</b></span>
+          <span class="s red">缺失 DW 数据：<b>13270</b></span>
+          <span class="s red">upsert 推送失败：<b>1684</b></span>
+        </div>
+
+        <div class="toolbar">
+          <button type="button" class="tool" id="btnQuery">查询数据</button>
+          <button type="button" class="tool outline">+ 维护客户预计送仓</button>
+          <button type="button" class="tool outline">DW操作日志</button>
+          <button type="button" class="tool outline">亚马逊推送</button>
+          <button type="button" class="tool sr" id="btnSr" disabled>
+            SR智能转仓<span class="new">NEW</span>
+          </button>
+        </div>
+
+        <div class="dim-tabs">
+          <button type="button" class="dim-tab on" data-dim="all">全部 (13896)</button>
+          <button type="button" class="dim-tab" data-dim="truck">卡派 (12534)</button>
+          <button type="button" class="dim-tab" data-dim="express">快递派 (1362)</button>
+        </div>
+
+        <div class="poll-bar" id="pollBar">
+          <span class="spin" id="pollSpin"></span>
+          <span id="pollText">SR 轮询中… 已提交 0 票，等待亚马逊返回可转仓库</span>
+          <button type="button" class="btn" id="btnStopPoll" style="height:26px;padding:0 8px">停止轮询</button>
+        </div>
+
+        <div class="sel-bar" id="selBar">
+          已选 <b id="selCount">0</b> 票 ·
+          <button type="button" class="btn" style="height:24px;padding:0 8px" id="btnClearSel">清空选择</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="chkAll" title="全选本页" /></th>
+                <th>#</th>
+                <th>约仓状态</th>
+                <th>约仓时间</th>
+                <th>ISA号</th>
+                <th>SR可转仓库/时间<span class="new" style="font-size:10px;color:#cf1322">NEW</span></th>
+                <th>亚马逊最早约仓开始</th>
+                <th>亚马逊最晚约仓结束</th>
+                <th>约仓截止修改时间</th>
+                <th>客户单号</th>
+                <th>提单号</th>
+                <th>柜号</th>
+                <th>FBA单号</th>
+                <th>FBA仓</th>
+                <th>是否允许卖家修改</th>
+                <th>最新轨迹内容</th>
+                <th>所属业务员</th>
+                <th>海外客服</th>
+                <th>track推送</th>
+                <th>upsert推送</th>
+                <th>派送方式</th>
+              </tr>
+            </thead>
+            <tbody id="tbBody"></tbody>
+          </table>
+        </div>
+
+        <div class="pager">
+          <span>合计：<b id="totalCnt">0</b> 条</span>
+          <div class="pages">
+            <button type="button">‹</button>
+            <button type="button" class="on">1</button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <button type="button">›</button>
+            <span style="margin-left:8px">500 条/页</span>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modalSubmit">
+    <div class="modal">
+      <div class="modal-hd">
+        <h2>SR智能转仓 · 提交</h2>
+        <button type="button" class="modal-close" data-close="modalSubmit">×</button>
+      </div>
+      <div class="modal-bd">
+        <ul class="steps" id="submitSteps">
+          <li class="cur">① 勾选订单并确认提交</li>
+          <li>② 生成 CSV 文件推至亚马逊</li>
+          <li>③ 本页轮询 SR 结果</li>
+        </ul>
+        <p class="hint">将以下 <b id="submitCnt">0</b> 票写入 CSV 并推送亚马逊。无结果时列表 SR 列保持「—」；有结果时展示可转仓库与时间，确认后执行取消原约仓 + 重新登记 + 转仓轨迹。</p>
+        <table class="mini-table">
+          <thead><tr><th>客户单号</th><th>FBA仓</th><th>柜号</th><th>当前 ISA</th><th>当前约仓时间</th></tr></thead>
+          <tbody id="submitList"></tbody>
+        </table>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" data-close="modalSubmit">取消</button>
+        <button type="button" class="btn btn-primary" id="btnSubmitOk">确认提交</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modalResult">
+    <div class="modal wide">
+      <div class="modal-hd">
+        <h2>SR 轮询结果 · 选择新约仓</h2>
+        <button type="button" class="modal-close" data-close="modalResult">×</button>
+      </div>
+      <div class="modal-bd">
+        <p class="hint">亚马逊已返回可转方案。确认后将：<strong>取消原 ISA / 约仓时间</strong> → 按所选仓库、时间重新约仓登记 → 写入一条「SR智能转仓」轨迹。</p>
+        <table class="mini-table" id="resultTable">
+          <thead>
+            <tr>
+              <th>客户单号</th><th>原 ISA</th><th>原约仓时间</th>
+              <th>可转仓库</th><th>可约时间</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+        <p class="hint" id="noResultHint" hidden>本轮暂无 SR 返回（演示：第 3 票模拟无结果）。</p>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" data-close="modalResult">稍后处理</button>
+        <button type="button" class="btn btn-primary" id="btnConfirmAll">确认所选并重新约仓</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (function () {
+      var ROWS = [
+        {
+          id: "r1", dim: "truck", apptSt: "已约仓", apptTime: "2026-08-20 14:00",
+          isa: "ISA-20260812-088", amzStart: "2026-08-18 00:00", amzEnd: "2026-08-25 00:00",
+          deadline: "2026-08-17 23:59", custNo: "FBA19M2MB2S5", bl: "COSU6349866",
+          cntr: "TEMU8829101", fbaNo: "FBA19M2MB2S5", fbaWh: "ONT8", allowMod: "未知",
+          track: "仓库已收货完成", sales: "张三", osCs: "陈客服", trackPush: "成功", upsertPush: "成功",
+          delivery: "FBA派", srStatus: "idle", srWh: "", srTime: ""
+        },
+        {
+          id: "r2", dim: "truck", apptSt: "已约仓", apptTime: "2026-08-22 09:30",
+          isa: "ISA-20260814-021", amzStart: "2026-08-19 00:00", amzEnd: "2026-08-26 00:00",
+          deadline: "2026-08-18 23:59", custNo: "FBA19M2MB3K8", bl: "COSU6349866",
+          cntr: "TEMU8829101", fbaNo: "FBA19M2MB3K8", fbaWh: "LGB8", allowMod: "是",
+          track: "已提柜", sales: "李四", osCs: "陈客服", trackPush: "成功", upsertPush: "成功",
+          delivery: "FBA派", srStatus: "idle", srWh: "", srTime: ""
+        },
+        {
+          id: "r3", dim: "truck", apptSt: "未约仓", apptTime: "",
+          isa: "", amzStart: "2026-08-18 00:00", amzEnd: "2026-08-25 00:00",
+          deadline: "2026-08-17 23:59", custNo: "FBA19M2MB4P2", bl: "OOLU7654321",
+          cntr: "MSCU5566778", fbaNo: "FBA19M2MB4P2", fbaWh: "SMF3", allowMod: "否",
+          track: "清关完成", sales: "王五", osCs: "王客服", trackPush: "成功", upsertPush: "失败",
+          delivery: "FBA派", srStatus: "idle", srWh: "", srTime: ""
+        },
+        {
+          id: "r4", dim: "express", apptSt: "已约仓", apptTime: "2026-08-21 16:00",
+          isa: "ISA-20260815-033", amzStart: "2026-08-20 00:00", amzEnd: "2026-08-27 00:00",
+          deadline: "2026-08-19 23:59", custNo: "FBA19M2MB5Q1", bl: "HLCU9988776",
+          cntr: "HLCU3344556", fbaNo: "FBA19M2MB5Q1", fbaWh: "AVP1", allowMod: "未知",
+          track: "已入海外仓", sales: "赵六", osCs: "王客服", trackPush: "成功", upsertPush: "成功",
+          delivery: "快递", srStatus: "idle", srWh: "", srTime: ""
+        },
+        {
+          id: "r5", dim: "truck", apptSt: "已约仓", apptTime: "2026-08-19 11:00",
+          isa: "ISA-20260816-007", amzStart: "2026-08-18 00:00", amzEnd: "2026-08-24 00:00",
+          deadline: "2026-08-17 23:59", custNo: "FBA19M2MB6R9", bl: "COSU6349866",
+          cntr: "TEMU8829101", fbaNo: "FBA19M2MB6R9", fbaWh: "MDW2", allowMod: "是",
+          track: "预约送仓中", sales: "张三", osCs: "陈客服", trackPush: "成功", upsertPush: "成功",
+          delivery: "FBA派", srStatus: "idle", srWh: "", srTime: ""
+        }
+      ];
+
+      var SR_OPTIONS = {
+        r1: [{ wh: "LGB8", time: "2026-08-23 10:00" }, { wh: "ONT8", time: "2026-08-24 08:00" }],
+        r2: [{ wh: "SMF3", time: "2026-08-25 14:00" }],
+        r4: [{ wh: "IND9", time: "2026-08-26 09:00" }],
+        r5: [{ wh: "AVP1", time: "2026-08-22 15:30" }]
+      };
+
+      var dim = "all";
+      var selected = {};
+      var pollTimer = null;
+      var pollTick = 0;
+      var pendingIds = [];
+      var resultPick = {};
+
+      function $(id) { return document.getElementById(id); }
+      function toast(msg) {
+        var t = $("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(toast._tm);
+        toast._tm = setTimeout(function () { t.classList.remove("show"); }, 3200);
+      }
+      function rowById(id) { return ROWS.find(function (r) { return r.id === id; }); }
+
+      function filteredRows() {
+        var isa = ($("fIsa").value || "").trim().toUpperCase();
+        var cntr = ($("fCntr").value || "").trim().toUpperCase();
+        var wh = ($("fFbaWh").value || "").trim();
+        var order = ($("fOrder").value || "").trim().toUpperCase();
+        var appt = ($("fApptSt").value || "").trim();
+        return ROWS.filter(function (r) {
+          if (dim !== "all" && r.dim !== dim) return false;
+          if (isa && (r.isa || "").toUpperCase().indexOf(isa) < 0) return false;
+          if (cntr && r.cntr.toUpperCase().indexOf(cntr) < 0) return false;
+          if (wh && r.fbaWh !== wh) return false;
+          if (order && r.custNo.toUpperCase().indexOf(order) < 0 && r.fbaNo.toUpperCase().indexOf(order) < 0) return false;
+          if (appt && r.apptSt !== appt) return false;
+          return true;
+        });
+      }
+
+      function srCellHtml(r) {
+        if (r.srStatus === "pending") return '<span class="tag tag-poll">轮询中…</span>';
+        if (r.srStatus === "none") return '<span class="tag tag-none">无结果</span>';
+        if (r.srStatus === "hit" && r.srWh) {
+          return '<div class="sr-cell"><div class="wh">' + r.srWh + '</div><div class="tm">' + r.srTime + '</div></div>';
+        }
+        if (r.srStatus === "done") {
+          return '<div class="sr-cell"><div class="wh">' + r.srWh + '</div><div class="tm">' + r.srTime + ' · 已转仓</div></div>';
+        }
+        return '<span class="muted">—</span>';
+      }
+
+      function trackHtml(r) {
+        var parts = (r.track || "").split(" · ");
+        var main = parts[0] || "";
+        var extra = parts.slice(1).map(function (p) {
+          return p.indexOf("SR智能转仓") >= 0 ? '<span class="t-new">' + p + '</span>' : p;
+        }).join(" · ");
+        var html = '<div class="track-cell"><div>' + main + '</div>';
+        if (extra) html += '<div class="t-sub">' + extra + '</div>';
+        html += '</div>';
+        return html;
+      }
+
+      function renderTable() {
+        var list = filteredRows();
+        $("totalCnt").textContent = String(list.length);
+        $("tbBody").innerHTML = list.map(function (r, i) {
+          var cls = r.srStatus === "pending" ? " sr-pending" : (r.srStatus === "hit" || r.srStatus === "done" ? " sr-hit" : "");
+          return '<tr class="' + cls.trim() + '" data-id="' + r.id + '">' +
+            '<td><input type="checkbox" class="row-chk" data-id="' + r.id + '" ' + (selected[r.id] ? "checked" : "") + ' /></td>' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td><span class="tag ' + (r.apptSt === "已约仓" ? "tag-ok" : "tag-wait") + '">' + r.apptSt + '</span></td>' +
+            '<td>' + (r.apptTime || '<span class="muted">—</span>') + '</td>' +
+            '<td>' + (r.isa || '<span class="muted">—</span>') + '</td>' +
+            '<td>' + srCellHtml(r) + '</td>' +
+            '<td>' + r.amzStart + '</td><td>' + r.amzEnd + '</td><td>' + r.deadline + '</td>' +
+            '<td>' + r.custNo + '</td><td>' + r.bl + '</td><td>' + r.cntr + '</td>' +
+            '<td>' + r.fbaNo + '</td><td>' + r.fbaWh + '</td><td>' + r.allowMod + '</td>' +
+            '<td>' + trackHtml(r) + '</td>' +
+            '<td>' + r.sales + '</td><td>' + r.osCs + '</td>' +
+            '<td><span class="tag tag-ok">' + r.trackPush + '</span></td>' +
+            '<td><span class="tag ' + (r.upsertPush === "成功" ? "tag-ok" : "tag-wait") + '">' + r.upsertPush + '</span></td>' +
+            '<td>' + r.delivery + '</td></tr>';
+        }).join("");
+        syncSelUi();
+      }
+
+      function syncSelUi() {
+        var n = Object.keys(selected).length;
+        $("selCount").textContent = String(n);
+        $("selBar").classList.toggle("show", n > 0);
+        $("btnSr").disabled = n === 0;
+        var vis = filteredRows();
+        var allOn = vis.length && vis.every(function (r) { return selected[r.id]; });
+        $("chkAll").checked = !!allOn;
+      }
+
+      function openModal(id) { $(id).classList.add("open"); }
+      function closeModal(id) { $(id).classList.remove("open"); }
+
+      function startPoll(ids) {
+        pendingIds = ids.slice();
+        pollTick = 0;
+        ids.forEach(function (id) {
+          var r = rowById(id);
+          if (r) { r.srStatus = "pending"; r.srWh = ""; r.srTime = ""; }
+        });
+        renderTable();
+        $("pollBar").classList.add("show");
+        $("pollText").textContent = "SR 轮询中… 已提交 " + ids.length + " 票，等待亚马逊返回可转仓库";
+        clearInterval(pollTimer);
+        pollTimer = setInterval(pollStep, 1400);
+      }
+
+      function pollStep() {
+        pollTick++;
+        var done = 0;
+        pendingIds.forEach(function (id) {
+          var r = rowById(id);
+          if (!r || r.srStatus !== "pending") return;
+          if (pollTick >= 2) {
+            if (SR_OPTIONS[id] && SR_OPTIONS[id].length) {
+              r.srStatus = "hit";
+              var opt = SR_OPTIONS[id][0];
+              r.srWh = opt.wh;
+              r.srTime = opt.time;
+              resultPick[id] = 0;
+            } else {
+              r.srStatus = "none";
+            }
+            done++;
+          }
+        });
+        pendingIds = pendingIds.filter(function (id) {
+          var r = rowById(id);
+          return r && r.srStatus === "pending";
+        });
+        renderTable();
+        $("pollText").textContent = pendingIds.length
+          ? "SR 轮询中… 剩余 " + pendingIds.length + " 票等待亚马逊"
+          : "SR 轮询完成 · 有结果 " + ROWS.filter(function (r) { return r.srStatus === "hit"; }).length + " 票 · 无结果 " + ROWS.filter(function (r) { return r.srStatus === "none"; }).length + " 票";
+        if (!pendingIds.length) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          $("pollSpin").style.display = "none";
+          setTimeout(openResultModal, 400);
+        }
+      }
+
+      function openResultModal() {
+        var hits = ROWS.filter(function (r) { return r.srStatus === "hit"; });
+        var none = ROWS.filter(function (r) { return r.srStatus === "none"; });
+        $("noResultHint").hidden = !none.length;
+        $("noResultHint").textContent = "以下票暂无 SR 返回：" + none.map(function (r) { return r.custNo; }).join("、");
+        $("resultBody").innerHTML = hits.map(function (r) {
+          var opts = SR_OPTIONS[r.id] || [];
+          var pick = resultPick[r.id] || 0;
+          var opt = opts[pick] || opts[0];
+          var optHtml = opts.map(function (o, i) {
+            return '<div class="pick-row' + (i === pick ? " on" : "") + '" data-id="' + r.id + '" data-idx="' + i + '" style="padding:4px 0;cursor:pointer">' +
+              o.wh + ' · ' + o.time + '</div>';
+          }).join("");
+          return '<tr><td>' + r.custNo + '</td><td>' + (r.isa || "—") + '</td><td>' + (r.apptTime || "—") + '</td>' +
+            '<td colspan="2">' + optHtml + '</td>' +
+            '<td><button type="button" class="btn btn-primary btn-one" data-id="' + r.id + '" style="height:26px;padding:0 8px">确认本票</button></td></tr>';
+        }).join("");
+        openModal("modalResult");
+      }
+
+      function applyTransfer(id) {
+        var r = rowById(id);
+        if (!r || r.srStatus !== "hit") return;
+        var opts = SR_OPTIONS[id] || [];
+        var pick = resultPick[id] || 0;
+        var opt = opts[pick] || opts[0];
+        if (!opt) return;
+        var oldIsa = r.isa;
+        var oldTime = r.apptTime;
+        r.isa = "";
+        r.apptTime = opt.time;
+        r.apptSt = "已约仓";
+        r.fbaWh = opt.wh;
+        r.srWh = opt.wh;
+        r.srTime = opt.time;
+        r.srStatus = "done";
+        var ts = new Date().toISOString().slice(0, 16).replace("T", " ");
+        var trail = ts + " SR智能转仓：取消 ISA " + (oldIsa || "—") + " / 原约仓 " + (oldTime || "—") + " → 新仓 " + opt.wh + " " + opt.time;
+        r.track = (r.track.split(" · ")[0] || r.track) + " · " + trail;
+        renderTable();
+        toast("已转仓：" + r.custNo + " → " + opt.wh + " " + opt.time);
+      }
+
+      $("btnSearch").addEventListener("click", function () { renderTable(); toast("已按筛选条件查询"); });
+      $("btnQuery").addEventListener("click", function () { renderTable(); toast("查询数据完成"); });
+      $("btnReset").addEventListener("click", function () {
+        ["fIsa", "fCntr", "fOrder"].forEach(function (id) { $(id).value = ""; });
+        $("fFbaWh").value = "";
+        $("fApptSt").value = "";
+        renderTable();
+      });
+      ["fIsa", "fCntr", "fFbaWh", "fOrder", "fApptSt"].forEach(function (id) {
+        $(id).addEventListener("change", renderTable);
+        $(id).addEventListener("input", renderTable);
+      });
+
+      document.querySelectorAll(".dim-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".dim-tab").forEach(function (b) { b.classList.remove("on"); });
+          btn.classList.add("on");
+          dim = btn.getAttribute("data-dim");
+          renderTable();
+        });
+      });
+
+      $("chkAll").addEventListener("change", function () {
+        var on = $("chkAll").checked;
+        filteredRows().forEach(function (r) {
+          if (on) selected[r.id] = true; else delete selected[r.id];
+        });
+        renderTable();
+      });
+
+      $("tbBody").addEventListener("change", function (e) {
+        if (!e.target.classList.contains("row-chk")) return;
+        var id = e.target.getAttribute("data-id");
+        if (e.target.checked) selected[id] = true; else delete selected[id];
+        syncSelUi();
+      });
+
+      $("btnClearSel").addEventListener("click", function () {
+        selected = {};
+        renderTable();
+      });
+
+      $("btnSr").addEventListener("click", function () {
+        var ids = Object.keys(selected);
+        if (!ids.length) return;
+        $("submitCnt").textContent = String(ids.length);
+        $("submitList").innerHTML = ids.map(function (id) {
+          var r = rowById(id);
+          if (!r) return "";
+          return "<tr><td>" + r.custNo + "</td><td>" + r.fbaWh + "</td><td>" + r.cntr + "</td><td>" + (r.isa || "—") + "</td><td>" + (r.apptTime || "—") + "</td></tr>";
+        }).join("");
+        openModal("modalSubmit");
+      });
+
+      $("btnSubmitOk").addEventListener("click", function () {
+        var ids = Object.keys(selected);
+        closeModal("modalSubmit");
+        toast("已生成 CSV 并推送亚马逊（演示）· 共 " + ids.length + " 票");
+        $("pollSpin").style.display = "inline-block";
+        startPoll(ids);
+        selected = {};
+        syncSelUi();
+      });
+
+      $("btnStopPoll").addEventListener("click", function () {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        pendingIds.forEach(function (id) {
+          var r = rowById(id);
+          if (r && r.srStatus === "pending") r.srStatus = "idle";
+        });
+        pendingIds = [];
+        $("pollBar").classList.remove("show");
+        renderTable();
+        toast("已停止轮询");
+      });
+
+      $("resultBody").addEventListener("click", function (e) {
+        var row = e.target.closest(".pick-row");
+        if (row) {
+          var id = row.getAttribute("data-id");
+          resultPick[id] = +row.getAttribute("data-idx");
+          openResultModal();
+          return;
+        }
+        var btn = e.target.closest(".btn-one");
+        if (btn) applyTransfer(btn.getAttribute("data-id"));
+      });
+
+      $("btnConfirmAll").addEventListener("click", function () {
+        ROWS.filter(function (r) { return r.srStatus === "hit"; }).forEach(function (r) {
+          applyTransfer(r.id);
+        });
+        closeModal("modalResult");
+      });
+
+      document.querySelectorAll("[data-close]").forEach(function (btn) {
+        btn.addEventListener("click", function () { closeModal(btn.getAttribute("data-close")); });
+      });
+
+      renderTable();
+    })();
+  </script>
+</body>
+</html>

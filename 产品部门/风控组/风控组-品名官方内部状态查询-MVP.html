@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>品名 · 官方/内部状态查询 · 旁支</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #eef1f6; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --off: #1d39c4; --inn: #d46b08;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .topbar {
+      height: 44px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 14px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; }
+    .topbar a { color: rgba(255,255,255,.75); }
+    .topbar a.on { color: #fff; font-weight: 600; }
+    .topbar .right { margin-left: auto; font-size: 12px; color: rgba(255,255,255,.55); }
+    .branch-bar {
+      padding: 6px 16px; font-size: 12px; background: #fff7e6; color: #ad6800;
+      border-bottom: 1px solid #ffe58f;
+    }
+    .main { padding: 12px 16px 28px; max-width: 1440px; margin: 0 auto; }
+    .page-hd {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+      padding: 12px 14px; margin-bottom: 10px;
+    }
+    .page-hd h1 { margin: 0 0 6px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); line-height: 1.65; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 12px; }
+    .legend i {
+      display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+      margin-right: 4px; vertical-align: -1px;
+    }
+    .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+    @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+    .kpi {
+      background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px;
+    }
+    .kpi b { display: block; font-size: 20px; line-height: 1.2; }
+    .kpi span { color: var(--sub); font-size: 11px; }
+    .kpi.off b { color: var(--off); }
+    .kpi.inn b { color: var(--inn); }
+    .kpi.wait b { color: #cf1322; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 4px; margin-bottom: 10px; }
+    .filters { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto auto; gap: 8px; padding: 12px; align-items: end; }
+    @media (max-width: 1100px) { .filters { grid-template-columns: 1fr 1fr; } }
+    .fi label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 3px; }
+    .fi input, .fi select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .btn {
+      height: 30px; padding: 0 14px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { color: #fff; }
+    .chips-row { padding: 0 12px 10px; }
+    .chips-row .lab { font-size: 11px; color: var(--sub); margin: 0 0 4px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+      border: 1px solid #d9d9d9; border-radius: 12px; background: #fff; cursor: pointer; font-size: 12px;
+    }
+    .chip input { margin: 0; }
+    .chip.off.on { border-color: #2f54eb; background: #f0f5ff; color: var(--off); font-weight: 600; }
+    .chip.inn.on { border-color: #d46b08; background: #fff7e6; color: var(--inn); font-weight: 600; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--line); padding: 0 8px; }
+    .st {
+      padding: 8px 14px; border: none; background: none; cursor: pointer; color: var(--sub);
+      position: relative; white-space: nowrap;
+    }
+    .st b { margin-left: 2px; }
+    .st.on { color: #fa541c; font-weight: 600; }
+    .st.on::after {
+      content: ""; position: absolute; left: 12px; right: 12px; bottom: 0;
+      height: 2px; background: #fa541c;
+    }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 360px); }
+    table.grid { width: 100%; border-collapse: collapse; min-width: 1100px; font-size: 12px; }
+    table.grid th, table.grid td {
+      border: 1px solid #f0f0f0; padding: 8px 10px; text-align: left; vertical-align: top;
+    }
+    table.grid th { background: #fafafa; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+    table.grid tr:hover td { background: #f5faff; }
+    table.grid tr.clickable { cursor: pointer; }
+    th.col-off, td.col-off { background: #f0f5ff; }
+    th.col-inn, td.col-inn { background: #fffbe6; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px;
+      border: 1px solid; line-height: 18px; margin: 1px 3px 1px 0; white-space: nowrap;
+    }
+    .tag.off { color: var(--off); background: #f0f5ff; border-color: #adc6ff; }
+    .tag.inn { color: var(--inn); background: #fff7e6; border-color: #ffd591; }
+    .tag.mute { color: #8c8c8c; background: #fafafa; border-color: #d9d9d9; }
+    .tag.src-ship { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.src-inspect { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .name { font-weight: 600; }
+    .en { color: var(--sub); font-size: 11px; }
+    .pager { padding: 8px 12px; color: var(--sub); font-size: 12px; border-top: 1px solid var(--line); }
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 1100; justify-content: flex-end;
+    }
+    .mask.open { display: flex; }
+    .drawer {
+      width: min(480px, 100vw); background: #fff; height: 100%;
+      display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.12);
+    }
+    .drawer-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .drawer-hd h2 { margin: 0; font-size: 15px; }
+    .drawer-bd { padding: 14px 16px; overflow: auto; flex: 1; }
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px; background: #fafafa;
+    }
+    .close { border: none; background: none; font-size: 18px; color: var(--sub); cursor: pointer; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 14px; }
+    .box { border-radius: 4px; padding: 10px 12px; }
+    .box.off { background: #f0f5ff; border: 1px solid #adc6ff; }
+    .box.inn { background: #fffbe6; border: 1px solid #ffe58f; }
+    .box h3 { margin: 0 0 8px; font-size: 13px; }
+    .box.off h3 { color: var(--off); }
+    .box.inn h3 { color: var(--inn); }
+    .kv { margin: 0 0 6px; font-size: 12px; color: var(--sub); }
+    .kv b { color: var(--text); font-weight: 600; }
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 14px; border-radius: 4px;
+      opacity: 0; transition: .2s; pointer-events: none; z-index: 2000;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body class="ess-prd-page ess-prd-collapsed">
+  <header class="topbar">
+    <div class="logo">ESS</div>
+    <a href="../风控组/风控组-导航.html">风控组导航</a>
+    <a class="on" href="#">品名状态查询</a>
+    <a href="../船务/船务组-产品库-出货要求与收费标准-MVP.html">产品库（维护）</a>
+    <a href="风控组-查货操作-AI识图品名识别-原型.html">查货操作</a>
+    <a href="风控组-导航.html">风控导航</a>
+    <div class="right">只查询 · 不改库</div>
+  </header>
+  <div class="branch-bar">旁支 · 本期不做。按品名查<strong>官方标记</strong>（风控维护）和<strong>内部标记</strong>（查货沉淀）。改库请走产品库。</div>
+
+  <main class="main">
+    <div class="page-hd">
+      <h1>品名 · 官方 / 内部状态查询</h1>
+      <p>输入中文品名、英文或 HS，看这条在产品库里的官方状态和内部状态。官方空着 = 风控还没标；内部来自查货确认（查货新建不写官方）。</p>
+      <div class="legend">
+        <span><i style="background:#2f54eb"></i>官方：0税率 / DOT / FDA / EPA / GCC / CPC / 反倾销</span>
+        <span><i style="background:#d46b08"></i>内部：带电、侵权、迷彩、违禁等</span>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <section class="panel">
+      <div class="filters">
+        <div class="fi">
+          <label>品名 / 英文 / HS</label>
+          <input id="qName" placeholder="如：轮胎、水杯、9503、FDA 相关品名" />
+        </div>
+        <div class="fi">
+          <label>来源</label>
+          <select id="qSrc">
+            <option value="">全部来源</option>
+            <option value="ship">产品库维护</option>
+            <option value="inspect">查货新建</option>
+          </select>
+        </div>
+        <div class="fi">
+          <label>官方</label>
+          <select id="qOffSt">
+            <option value="">不限</option>
+            <option value="has">已有官方标</option>
+            <option value="none">官方未标</option>
+          </select>
+        </div>
+        <div class="fi">
+          <label>内部</label>
+          <select id="qInnSt">
+            <option value="">不限</option>
+            <option value="has">已有内部标</option>
+            <option value="none">无内部标</option>
+          </select>
+        </div>
+        <button type="button" class="btn primary" id="btnQuery">查询</button>
+        <button type="button" class="btn" id="btnReset">重置</button>
+      </div>
+      <div class="chips-row">
+        <p class="lab">官方标记（可多选，命中任一）</p>
+        <div class="chips" id="offChips"></div>
+      </div>
+      <div class="chips-row">
+        <p class="lab">内部标记（可多选，命中任一）</p>
+        <div class="chips" id="innChips"></div>
+      </div>
+      <div class="tabs" id="tabs"></div>
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>中文品名</th>
+              <th>英文 / 材质</th>
+              <th>报关 HS</th>
+              <th>清关 HS</th>
+              <th class="col-off">官方标记</th>
+              <th class="col-inn">内部标记</th>
+              <th>来源</th>
+              <th>状态摘要</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="pager">共 0 条</div>
+    </section>
+  </main>
+
+  <div class="mask" id="mask">
+    <div class="drawer">
+      <div class="drawer-hd">
+        <h2 id="dTitle">品名详情</h2>
+        <button type="button" class="close" id="dClose">×</button>
+      </div>
+      <div class="drawer-bd" id="dBody"></div>
+      <div class="drawer-ft">
+        <a class="btn" href="../船务/船务组-产品库-出货要求与收费标准-MVP.html">去产品库维护</a>
+        <button type="button" class="btn primary" id="dOk">关闭</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <button type="button" class="ess-prd-fab" id="essPrdFab">需求</button>
+  <div class="ess-prd-backdrop" id="essPrdBackdrop"></div>
+  <aside class="ess-prd-side" id="essPrdSide">
+    <button type="button" class="ess-prd-close" id="essPrdClose">收起</button>
+    <h2 style="margin:0 0 8px;font-size:15px;">品名官方/内部状态查询 · PRD</h2>
+    <p>旁支页。给风控 / 船务 / 业务按品名查产品库里的两套标记，不改数据。</p>
+    <h3>官方 vs 内部</h3>
+    <ul>
+      <li><b>官方</b>：0税率、DOT、FDA、EPA、GCC、CPC、反倾销。风控在产品库手改。查货确认<strong>不写官方</strong>。</li>
+      <li><b>内部</b>：带电/磁性、侵权、军用迷彩、违禁品等。查货确认可沉淀；库中无此品时新建行只打内部。</li>
+    </ul>
+    <h3>查询</h3>
+    <ul>
+      <li>关键字：中文品名 / 英文 / HS</li>
+      <li>可按官方/内部「有无」、具体标记 chip、来源筛选</li>
+      <li>页签：全部 / 官方已标 / 内部已标 / 官方未标 / 查货新建</li>
+    </ul>
+    <p>维护入口：<a href="../船务/船务组-产品库-出货要求与收费标准-MVP.html">产品库</a></p>
+  </aside>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+(function () {
+  var OFFICIAL = ["0税率", "DOT", "FDA", "EPA", "GCC", "CPC", "反倾销"];
+  var INNER = ["带电/磁性", "侵权", "军用迷彩", "毛绒玩具", "品牌授权", "UL标识", "违禁品", "瞒报"];
+  var ROWS = [
+    { id: "P001", name: "纸尿裤", en: "Diaper", material: "", hsDecl: "9619.00", hsClear: "9619.00.2100", official: [], inner: [], src: "ship", policy: "可以走，无资质扣货不赔" },
+    { id: "P007", name: "泡泡水", en: "Bubble water", material: "", hsDecl: "9503.00", hsClear: "9503.00.0090", official: ["CPC"], inner: [], src: "ship", policy: "可以走，无资质扣货不赔" },
+    { id: "P009", name: "玩具车（带电）", en: "Toy car", material: "", hsDecl: "9503.00", hsClear: "9503.00.0073", official: ["CPC"], inner: ["带电/磁性"], src: "ship", policy: "资质不齐不接" },
+    { id: "P011", name: "弹弓（带钢珠）", en: "", material: "", hsDecl: "", hsClear: "", official: [], inner: ["违禁品"], src: "ship", policy: "不接" },
+    { id: "P015", name: "平衡车储电", en: "", material: "", hsDecl: "8711.60", hsClear: "8711.60.0050", official: [], inner: ["带电/磁性"], src: "ship", policy: "资质不齐不接" },
+    { id: "P021", name: "数字油画颜料", en: "", material: "", hsDecl: "3213.10", hsClear: "3213.10.0000", official: ["FDA"], inner: [], src: "ship", policy: "可以走，无资质扣货不赔" },
+    { id: "P023", name: "奶油胶", en: "", material: "", hsDecl: "3506.91", hsClear: "3506.91.5000", official: ["FDA"], inner: [], src: "ship", policy: "可以走，无资质扣货不赔" },
+    { id: "P036", name: "塑料望远镜", en: "", material: "", hsDecl: "9005.10", hsClear: "9005.10.0040", official: [], inner: ["军用迷彩"], src: "ship", policy: "军绿迷彩不接" },
+    { id: "P048", name: "机器狗", en: "", material: "", hsDecl: "9503.00", hsClear: "9503.00.0073", official: [], inner: ["带电/磁性"], src: "ship", policy: "有蓝牙标识须授权" },
+    { id: "P061", name: "插电的游乐设施", en: "", material: "", hsDecl: "9508.90", hsClear: "9508.90.0000", official: [], inner: ["UL标识"], src: "ship", policy: "UL无授权不接" },
+    { id: "P064", name: "卡丁车（用油）", en: "", material: "", hsDecl: "", hsClear: "", official: [], inner: ["违禁品"], src: "ship", policy: "不接" },
+    { id: "P080", name: "塑料包装袋", en: "Plastic packaging bag", material: "PE", hsDecl: "3923.21", hsClear: "3923.21", official: ["0税率"], inner: [], src: "ship", policy: "可以走" },
+    { id: "P081", name: "不锈钢水杯", en: "Stainless steel cup", material: "不锈钢", hsDecl: "7323.93", hsClear: "7323.99", official: ["FDA"], inner: [], src: "ship", policy: "可以走" },
+    { id: "P082", name: "轮胎", en: "Tire", material: "橡胶", hsDecl: "4011.10", hsClear: "4011.10", official: ["DOT", "反倾销"], inner: [], src: "ship", policy: "关注反倾销税则" },
+    { id: "P201", name: "发光手环", en: "", material: "", hsDecl: "", hsClear: "", official: [], inner: ["带电/磁性"], src: "inspect", policy: "查货新建 · 官方待风控补" },
+    { id: "P202", name: "空气清新剂", en: "Air freshener", material: "", hsDecl: "3307.49", hsClear: "3307.49", official: ["EPA", "FDA"], inner: [], src: "ship", policy: "气雾剂形态另核" },
+    { id: "P203", name: "毛绒玩具熊", en: "Plush bear", material: "毛绒", hsDecl: "9503.00", hsClear: "9503.00.0045", official: ["CPC"], inner: ["毛绒玩具"], src: "ship", policy: "儿童用品注意 CPC" },
+    { id: "P204", name: "品牌T恤", en: "Brand T-shirt", material: "棉", hsDecl: "6109.10", hsClear: "6109.10", official: [], inner: ["侵权", "品牌授权"], src: "inspect", policy: "查货新建 · 侵权待核" }
+  ];
+
+  var tab = "all";
+  var offSel = {};
+  var innSel = {};
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg) {
+    var el = $("toast"); el.textContent = msg; el.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(function () { el.classList.remove("show"); }, 1800);
+  }
+  function tags(list, cls) {
+    if (!list || !list.length) return '<span class="tag mute">未标</span>';
+    return list.map(function (t) { return '<span class="tag ' + cls + '">' + t + "</span>"; }).join("");
+  }
+  function srcTag(src) {
+    return src === "inspect"
+      ? '<span class="tag src-inspect">查货新建</span>'
+      : '<span class="tag src-ship">产品库维护</span>';
+  }
+  function summary(r) {
+    var o = r.official.length, i = r.inner.length;
+    if (!o && !i) return "两边都空";
+    if (!o && i) return r.src === "inspect" ? "仅内部 · 官方待补" : "仅内部";
+    if (o && !i) return "仅官方";
+    return "官方+内部都有";
+  }
+  function chipHtml(list, cls, store) {
+    return list.map(function (t) {
+      return '<label class="chip ' + cls + (store[t] ? " on" : "") + '"><input type="checkbox" value="' + t + '"' + (store[t] ? " checked" : "") + " /> " + t + "</label>";
+    }).join("");
+  }
+  function selectedChips(store) {
+    return Object.keys(store).filter(function (k) { return store[k]; });
+  }
+  function matchChip(have, want) {
+    if (!want.length) return true;
+    return want.some(function (w) { return have.indexOf(w) !== -1; });
+  }
+  function baseFiltered() {
+    var q = ($("qName").value || "").trim().toLowerCase();
+    var src = $("qSrc").value, offSt = $("qOffSt").value, innSt = $("qInnSt").value;
+    var wantOff = selectedChips(offSel), wantInn = selectedChips(innSel);
+    return ROWS.filter(function (r) {
+      if (q) {
+        var blob = (r.name + " " + r.en + " " + r.hsDecl + " " + r.hsClear + " " + r.official.join(" ") + " " + r.inner.join(" ")).toLowerCase();
+        if (blob.indexOf(q) < 0) return false;
+      }
+      if (src && r.src !== src) return false;
+      if (offSt === "has" && !r.official.length) return false;
+      if (offSt === "none" && r.official.length) return false;
+      if (innSt === "has" && !r.inner.length) return false;
+      if (innSt === "none" && r.inner.length) return false;
+      if (!matchChip(r.official, wantOff)) return false;
+      if (!matchChip(r.inner, wantInn)) return false;
+      return true;
+    });
+  }
+  function filtered() {
+    return baseFiltered().filter(function (r) {
+      if (tab === "off") return r.official.length > 0;
+      if (tab === "inn") return r.inner.length > 0;
+      if (tab === "offEmpty") return r.official.length === 0;
+      if (tab === "inspect") return r.src === "inspect";
+      return true;
+    });
+  }
+  function renderKpi(rows) {
+    var off = rows.filter(function (r) { return r.official.length; }).length;
+    var inn = rows.filter(function (r) { return r.inner.length; }).length;
+    var wait = rows.filter(function (r) { return !r.official.length && r.inner.length; }).length;
+    var both = rows.filter(function (r) { return r.official.length && r.inner.length; }).length;
+    $("kpis").innerHTML =
+      '<div class="kpi"><b>' + rows.length + "</b><span>当前命中品名</span></div>" +
+      '<div class="kpi off"><b>' + off + "</b><span>已有官方标</span></div>" +
+      '<div class="kpi inn"><b>' + inn + "</b><span>已有内部标</span></div>" +
+      '<div class="kpi"><b>' + both + "</b><span>官方+内部都有</span></div>" +
+      '<div class="kpi wait"><b>' + wait + "</b><span>仅内部 · 官方待补</span></div>";
+  }
+  function renderTabs(base) {
+    var items = [
+      ["all", "全部", base.length],
+      ["off", "官方已标", base.filter(function (r) { return r.official.length; }).length],
+      ["inn", "内部已标", base.filter(function (r) { return r.inner.length; }).length],
+      ["offEmpty", "官方未标", base.filter(function (r) { return !r.official.length; }).length],
+      ["inspect", "查货新建", base.filter(function (r) { return r.src === "inspect"; }).length]
+    ];
+    $("tabs").innerHTML = items.map(function (it) {
+      return '<button type="button" class="st' + (tab === it[0] ? " on" : "") + '" data-tab="' + it[0] + '">' + it[1] + " <b>" + it[2] + "</b></button>";
+    }).join("");
+  }
+  function render() {
+    var base = baseFiltered();
+    var rows = filtered();
+    renderKpi(base);
+    renderTabs(base);
+    $("tbody").innerHTML = rows.map(function (r, i) {
+      return "<tr class='clickable' data-id='" + r.id + "'>" +
+        "<td>" + (i + 1) + "</td>" +
+        "<td><div class='name'>" + r.name + "</div><div class='en'>" + r.id + "</div></td>" +
+        "<td>" + (r.en || "—") + (r.material ? "<div class='en'>" + r.material + "</div>" : "") + "</td>" +
+        "<td>" + (r.hsDecl || "—") + "</td><td>" + (r.hsClear || "—") + "</td>" +
+        "<td class='col-off'>" + tags(r.official, "off") + "</td>" +
+        "<td class='col-inn'>" + tags(r.inner, "inn") + "</td>" +
+        "<td>" + srcTag(r.src) + "</td>" +
+        "<td>" + summary(r) + "</td></tr>";
+    }).join("") || "<tr><td colspan='9' style='text-align:center;color:#999;padding:28px'>无匹配品名</td></tr>";
+    $("pager").textContent = "共 " + rows.length + " 条 · 点行看官方/内部对照";
+  }
+  function openDetail(id) {
+    var r = ROWS.filter(function (x) { return x.id === id; })[0];
+    if (!r) return;
+    $("dTitle").textContent = r.name;
+    $("dBody").innerHTML =
+      '<p class="kv">编码 <b>' + r.id + "</b>　来源 " + srcTag(r.src) + "</p>" +
+      '<p class="kv">英文 <b>' + (r.en || "—") + "</b>　材质 <b>" + (r.material || "—") + "</b></p>" +
+      '<p class="kv">报关 HS <b>' + (r.hsDecl || "—") + "</b>　清关 HS <b>" + (r.hsClear || "—") + "</b></p>" +
+      '<div class="pair"><div class="box off"><h3>官方状态</h3>' +
+      (r.official.length ? tags(r.official, "off") : '<span class="tag mute">未标 · 待风控在产品库补</span>') +
+      "</div><div class='box inn'><h3>内部状态</h3>" +
+      (r.inner.length ? tags(r.inner, "inn") : '<span class="tag mute">无内部标</span>') +
+      "</div></div>" +
+      '<p class="kv">合规策略 / 说明</p><p style="margin:0;line-height:1.6">' + r.policy + "</p>" +
+      '<p class="kv" style="margin-top:12px">规则：查货确认<strong>不写官方</strong>。库中无此品时新建行只打内部。</p>';
+    $("mask").classList.add("open");
+  }
+
+  $("offChips").innerHTML = chipHtml(OFFICIAL, "off", offSel);
+  $("innChips").innerHTML = chipHtml(INNER, "inn", innSel);
+  $("offChips").addEventListener("change", function (e) {
+    var t = e.target; if (t.tagName !== "INPUT") return;
+    offSel[t.value] = t.checked;
+    t.parentNode.classList.toggle("on", t.checked);
+    render();
+  });
+  $("innChips").addEventListener("change", function (e) {
+    var t = e.target; if (t.tagName !== "INPUT") return;
+    innSel[t.value] = t.checked;
+    t.parentNode.classList.toggle("on", t.checked);
+    render();
+  });
+  $("tabs").addEventListener("click", function (e) {
+    var btn = e.target.closest(".st"); if (!btn) return;
+    tab = btn.getAttribute("data-tab");
+    render();
+  });
+  $("tbody").addEventListener("click", function (e) {
+    var tr = e.target.closest("tr[data-id]"); if (!tr) return;
+    openDetail(tr.getAttribute("data-id"));
+  });
+  $("btnQuery").onclick = function () { render(); toast("已按条件查询"); };
+  $("qName").addEventListener("keydown", function (e) { if (e.key === "Enter") render(); });
+  $("qSrc").onchange = $("qOffSt").onchange = $("qInnSt").onchange = render;
+  $("btnReset").onclick = function () {
+    $("qName").value = ""; $("qSrc").value = ""; $("qOffSt").value = ""; $("qInnSt").value = "";
+    offSel = {}; innSel = {};
+    $("offChips").innerHTML = chipHtml(OFFICIAL, "off", offSel);
+    $("innChips").innerHTML = chipHtml(INNER, "inn", innSel);
+    tab = "all";
+    render(); toast("已重置");
+  };
+  $("dClose").onclick = $("dOk").onclick = function () { $("mask").classList.remove("open"); };
+  $("mask").addEventListener("click", function (e) { if (e.target === $("mask")) $("mask").classList.remove("open"); });
+
+  render();
+})();
+  </script>
+</body>
+</html>

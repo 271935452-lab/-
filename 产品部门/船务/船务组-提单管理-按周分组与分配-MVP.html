@@ -146,7 +146,7 @@
     .form-item.is-locked input {
       background: #f5f5f5; color: rgba(0,0,0,.45); cursor: not-allowed;
     }
-    .badge-new, .badge-chg {
+    .badge-new, .badge-chg, .badge-branch {
       display: inline-block; margin-left: 3px; padding: 0 3px; height: 14px; line-height: 13px;
       font-size: 9px; font-weight: 600; border-radius: 2px; vertical-align: 1px;
     }
@@ -156,7 +156,10 @@
     .badge-chg {
       background: #fff7e6; color: #d46b08; border: 1px solid #ffe7ba;
     }
-    .tool-btn .badge-new, .tool-btn .badge-chg { margin-left: 2px; }
+    .badge-branch {
+      background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7;
+    }
+    .tool-btn .badge-new, .tool-btn .badge-chg, .tool-btn .badge-branch { margin-left: 2px; }
     .status-tab .badge-new, .status-tab .badge-chg { margin-left: 4px; }
     .badge-ask {
       display: inline-block; margin-left: 2px; padding: 0 4px; height: 16px; line-height: 16px;
@@ -516,6 +519,18 @@
       max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,.2);
     }
     .modal.wide { width: min(760px, 96vw); }
+    .modal.gx-wide { width: min(980px, 96vw); }
+    .gx-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+    .gx-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .gx-tbl th, .gx-tbl td { border: 1px solid #f0f0f0; padding: 6px 8px; text-align: left; white-space: nowrap; }
+    .gx-tbl th { background: #fafafa; color: #8c8c8c; font-weight: 600; }
+    .gx-tbl input[type="text"] {
+      width: 168px; height: 26px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px;
+    }
+    .gx-tbl input:disabled { background: #f5f5f5; color: rgba(0,0,0,.45); }
+    .gx-st { font-size: 11px; color: #8c8c8c; }
+    .gx-st.warn { color: #d46b08; }
+    .gx-st.ok { color: #389e0d; }
     .modal-hd, .modal-ft {
       padding: 12px 16px; border-bottom: 1px solid var(--line);
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -1034,6 +1049,7 @@
           <button type="button" class="tool-btn" id="btnBlEdit">提单修改</button>
           <button type="button" class="tool-btn" data-live="批量提单修改">批量提单修改</button>
           <button type="button" class="tool-btn" id="btnAssign">提单分配 <span class="badge-chg">改</span></button>
+          <button type="button" class="tool-btn" id="btnGxBatch" title="对应现网腾信组货数据 · 旁支，不进主干验收">组货数据 · 批量创号分配 <span class="badge-branch">旁支</span></button>
           <button type="button" class="tool-btn" id="btnOpLog">操作日志 <span class="badge-new">新</span></button>
           <button type="button" class="tool-btn" id="btnBindImp">绑定进口商 <span class="badge-chg">改</span></button>
           <button type="button" class="tool-btn" id="btnMiscFee" title="登记费用并上传水单">费用登记 ·水单 <span class="badge-new">新</span></button>
@@ -2238,6 +2254,44 @@
         <a class="tool-btn outline" href="../关务组/关务组-改配三类场景-轨迹与同步.html" target="_blank" rel="noopener" style="margin-right:auto;text-decoration:none">改配三类说明</a>
         <button type="button" class="tool-btn outline" id="swapCancel">取消</button>
         <button type="button" class="tool-btn primary" id="swapConfirm">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="gxMask" aria-hidden="true">
+    <div class="modal gx-wide" role="dialog" aria-labelledby="gxTitle">
+      <div class="modal-hd">
+        <h3 id="gxTitle">组货数据 · 提单号批量创建和分配 <span class="badge-branch">旁支</span></h3>
+        <button type="button" class="tool-btn outline" id="gxClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert">
+          对应现网腾信「组货数据」的提单号批量创建和分配。本页<strong>旁支入口，不进主干 08/31 验收</strong>。不替代工具栏「批量创建提单」「提单分配」。先批量出号落入待分配，再走现有分配抽屉；空号不能分配，补号在本表填或走提单修改。
+        </div>
+        <div class="gx-bar">
+          <button type="button" class="tool-btn" id="gxFillBl">按规则填号</button>
+          <span class="gx-st">空号行按 TXBL+日期+序号填，不套船司前缀（船司规则二期）。已有号不覆盖。</span>
+        </div>
+        <table class="gx-tbl">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="gxAll" /></th>
+              <th>运单号</th>
+              <th>柜号</th>
+              <th>客户</th>
+              <th>柜型</th>
+              <th>始发港</th>
+              <th>提单号</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="gxBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="gxCancel">关闭</button>
+        <button type="button" class="tool-btn" id="gxCreate">仅创建提单</button>
+        <button type="button" class="tool-btn primary" id="gxCreateAssign">创建并分配</button>
       </div>
     </div>
   </div>
@@ -5374,6 +5428,166 @@
       document.getElementById("btnAssign").onclick = openAssign;
       document.getElementById("asClose").onclick = closeAssign;
       document.getElementById("asCancel").onclick = closeAssign;
+
+      var GX_ROWS = [
+        { id: "g1", wb: "TX-20260807-101", cntr: "TCLU8800101", cust: "宁波腾信仓", type: "40HQ", pol: "CNNGB", pod: "USLGB", bl: "", created: false, rowId: 0 },
+        { id: "g2", wb: "TX-20260807-102", cntr: "TCLU8800102", cust: "义乌仓客户A", type: "40HQ", pol: "CNNGB", pod: "USLAX", bl: "", created: false, rowId: 0 },
+        { id: "g3", wb: "TX-20260807-103", cntr: "TCLU8800103", cust: "上海客户B", type: "20GP", pol: "CNSHA", pod: "USNYC", bl: "", created: false, rowId: 0 },
+        { id: "g4", wb: "TX-20260807-104", cntr: "TCLU8800104", cust: "青岛客户C", type: "40HQ", pol: "CNTAO", pod: "USLGB", bl: "MEDU20260807TX01", created: false, rowId: 0 },
+        { id: "g5", wb: "TX-20260807-105", cntr: "TCLU8800105", cust: "天津保税", type: "20GP", pol: "CNTJN", pod: "USNYC", bl: "", created: false, rowId: 0 }
+      ];
+      var gxPick = {};
+      function gxFind(id) {
+        for (var i = 0; i < GX_ROWS.length; i++) if (GX_ROWS[i].id === id) return GX_ROWS[i];
+        return null;
+      }
+      function gxStText(g) {
+        if (g.created) return { cls: "ok", text: "已入待分配" };
+        if (String(g.bl || "").replace(/^\s+|\s+$/g, "")) return { cls: "warn", text: "已填号未创建" };
+        return { cls: "", text: "未出号" };
+      }
+      function renderGx() {
+        var html = "";
+        GX_ROWS.forEach(function (g) {
+          var st = gxStText(g);
+          html += "<tr>" +
+            '<td><input type="checkbox" data-gx="' + g.id + '"' + (gxPick[g.id] ? " checked" : "") + (g.created ? " disabled" : "") + " /></td>" +
+            "<td>" + g.wb + "</td><td>" + g.cntr + "</td><td>" + g.cust + "</td><td>" + g.type + "</td><td>" + g.pol + "</td>" +
+            '<td><input type="text" data-gx-bl="' + g.id + '" value="' + (g.bl || "") + '" placeholder="提单号" ' + (g.created ? "disabled" : "") + " /></td>" +
+            '<td><span class="gx-st ' + st.cls + '">' + st.text + "</span></td></tr>";
+        });
+        document.getElementById("gxBody").innerHTML = html;
+        var unchecked = GX_ROWS.filter(function (g) { return !g.created; });
+        document.getElementById("gxAll").checked = unchecked.length > 0 && unchecked.every(function (g) { return gxPick[g.id]; });
+      }
+      function syncGxInputs() {
+        document.querySelectorAll("[data-gx-bl]").forEach(function (inp) {
+          var g = gxFind(inp.getAttribute("data-gx-bl"));
+          if (g && !g.created) g.bl = inp.value.replace(/^\s+|\s+$/g, "");
+        });
+        document.querySelectorAll("[data-gx]").forEach(function (ck) {
+          gxPick[ck.getAttribute("data-gx")] = ck.checked;
+        });
+      }
+      function gxPicked() {
+        syncGxInputs();
+        return GX_ROWS.filter(function (g) { return gxPick[g.id] && !g.created; });
+      }
+      function openGx() {
+        GX_ROWS.forEach(function (g) { if (gxPick[g.id] == null) gxPick[g.id] = !g.created; });
+        renderGx();
+        document.getElementById("gxMask").classList.add("open");
+        document.getElementById("gxMask").setAttribute("aria-hidden", "false");
+      }
+      function closeGx() {
+        document.getElementById("gxMask").classList.remove("open");
+        document.getElementById("gxMask").setAttribute("aria-hidden", "true");
+      }
+      function nextRowId() {
+        var max = 0;
+        ROWS.forEach(function (r) { if (r.id > max) max = r.id; });
+        return max + 1;
+      }
+      function makeGxBlRow(g) {
+        var salesMap = { CNSHA: "王敏", CNNGB: "刘洋", CNTJN: "赵倩", CNYTN: "周宁", CNTAO: "孙悦" };
+        var csMap = { CNSHA: "陈洁", CNNGB: "吴芳", CNTJN: "郑华", CNYTN: "黄莉", CNTAO: "马超" };
+        var carrier = g.pol === "CNNGB" ? "MSC" : (g.pol === "CNSHA" ? "COSCO" : (g.pol === "CNTAO" ? "MSC" : "Hapag"));
+        var voy = g.pol === "CNNGB" ? "MSC LISA 03E" : (g.pol === "CNSHA" ? "COSCO HOPE 066E" : (g.pol === "CNTAO" ? "MSC MIRJA 08E" : "YM MOVEMENT 0TH5FE1MA"));
+        return {
+          id: nextRowId(),
+          bl: g.bl,
+          cntr: g.cntr,
+          st: "待分配",
+          it: "无IT", ck: "无", amd: "无", amdType: "", amdLetter: "", amdReason: "", amdAt: "",
+          release: "未放行", seaRel: "未放行", termRel: "未放行",
+          cutOff: "2026-08-10 17:00",
+          color: "", type: g.type,
+          etd: "2026-08-11 00:00:00", planEtd: "2026-08-11 00:00:00",
+          carrier: carrier, voy: voy,
+          pol: g.pol, pod: g.pod, agent: "", addr: g.cust || "",
+          loadAt: "", week: "2026-W32",
+          ckWb: g.wb, itReason: "", itTransit: "", itAt: "",
+          imp: "", impCode: "", broker: "", cargo: "散货", fees: [],
+          sales: salesMap[g.pol] || "王敏", cs: csMap[g.pol] || "陈洁",
+          seal: "", dlvAt: "", ftGrab: "能", arriveAt: "",
+          gxFrom: g.id
+        };
+      }
+      function createGxBls() {
+        var rows = gxPicked();
+        if (!rows.length) { toast("请先勾选组货行"); return null; }
+        if (rows.some(function (g) { return !String(g.bl || "").replace(/^\s+|\s+$/g, ""); })) {
+          toast("请先补充提单号等信息");
+          return null;
+        }
+        var created = [];
+        rows.forEach(function (g) {
+          var row = makeGxBlRow(g);
+          applyRowWeek(row);
+          ROWS.push(row);
+          g.created = true;
+          g.rowId = row.id;
+          gxPick[g.id] = false;
+          addLog(row, "创建提单",
+            "创建提单: [提单号: " + row.bl + ", 柜号: " + row.cntr + ", 运单号: " + g.wb + ", 柜型: " + row.type + ", 港向: " + row.pol + "→" + row.pod + ", 来源: 组货数据]");
+          created.push(row);
+        });
+        renderGx();
+        render();
+        return created;
+      }
+      document.getElementById("btnGxBatch").onclick = openGx;
+      document.getElementById("gxClose").onclick = closeGx;
+      document.getElementById("gxCancel").onclick = closeGx;
+      document.getElementById("gxMask").addEventListener("click", function (e) {
+        if (e.target === this) { /* 点遮罩不关 */ }
+      });
+      document.getElementById("gxAll").onclick = function () {
+        var on = this.checked;
+        GX_ROWS.forEach(function (g) { if (!g.created) gxPick[g.id] = on; });
+        renderGx();
+      };
+      document.getElementById("gxBody").addEventListener("change", function (e) {
+        var t = e.target;
+        if (t.getAttribute("data-gx")) gxPick[t.getAttribute("data-gx")] = t.checked;
+        if (t.getAttribute("data-gx-bl")) {
+          var g = gxFind(t.getAttribute("data-gx-bl"));
+          if (g && !g.created) g.bl = t.value.replace(/^\s+|\s+$/g, "");
+          renderGx();
+        }
+      });
+      document.getElementById("gxFillBl").onclick = function () {
+        var rows = gxPicked();
+        if (!rows.length) { toast("请先勾选组货行"); return; }
+        var seq = 1;
+        GX_ROWS.forEach(function (g) {
+          var m = String(g.bl || "").match(/^TXBL20260807(\d+)$/);
+          if (m) seq = Math.max(seq, parseInt(m[1], 10) + 1);
+        });
+        var n = 0;
+        rows.forEach(function (g) {
+          if (String(g.bl || "").replace(/^\s+|\s+$/g, "")) return;
+          g.bl = "TXBL20260807" + ("00" + seq).slice(-3);
+          seq += 1;
+          n += 1;
+        });
+        renderGx();
+        toast(n ? ("已填 " + n + " 个提单号") : "勾选行都已有号，未覆盖");
+      };
+      document.getElementById("gxCreate").onclick = function () {
+        var created = createGxBls();
+        if (!created) return;
+        toast("已创建 " + created.length + " 票，落入待分配");
+      };
+      document.getElementById("gxCreateAssign").onclick = function () {
+        var created = createGxBls();
+        if (!created) return;
+        Object.keys(selected).forEach(function (k) { selected[k] = false; });
+        created.forEach(function (r) { selected[r.id] = true; });
+        closeGx();
+        toast("已创建 " + created.length + " 票，打开分配");
+        openAssign();
+      };
       document.getElementById("asMask").addEventListener("click", function (e) {
         if (e.target === this) closeAssign();
       });
@@ -5950,6 +6164,8 @@
 
       ROWS.forEach(applyRowWeek);
       render();
+      var gxHash = (location.hash || "").replace(/^#/, "");
+      if (gxHash === "gxMask" || gxHash === "btnGxBatch") openGx();
     })();
   </script>
 </body>

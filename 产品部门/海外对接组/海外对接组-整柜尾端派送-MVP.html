@@ -1,0 +1,1485 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜尾端派送 · 海外对接组 · MVP</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --header: #0b1f3a;
+      --header-tab: #132d52;
+      --sidebar: #001529;
+      --tab-active: #fa541c;
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0, 0, 0, 0.85);
+      --sub: rgba(0, 0, 0, 0.45);
+      --blue: #1890ff;
+      --ok: #389e0d;
+      --warn: #d46b08;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header {
+      background: var(--header); color: #fff;
+      display: flex; align-items: stretch; min-height: 48px;
+    }
+    .logo {
+      width: 48px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.06); font-size: 11px; color: #94a3b8;
+    }
+    .nav-tabs { display: flex; flex: 1; overflow-x: auto; }
+    .nav-tab {
+      padding: 0 16px; display: flex; align-items: center; gap: 6px;
+      background: var(--header-tab); border: none; color: rgba(255,255,255,.75);
+      cursor: pointer; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+    .header-right {
+      display: flex; align-items: center; gap: 10px; padding: 0 14px;
+      font-size: 12px; color: rgba(255,255,255,.65);
+    }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 56px; background: var(--sidebar); color: rgba(255,255,255,.65);
+      display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px;
+    }
+    .side-ico {
+      width: 48px; padding: 8px 0 6px; text-align: center; font-size: 10px;
+      cursor: default; border-radius: 2px; line-height: 1.2;
+    }
+    .side-ico b { display: block; font-size: 16px; margin-bottom: 2px; font-weight: 400; }
+    .side-ico.on { background: rgba(24,144,255,.28); color: #fff; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .proto-bar {
+      padding: 6px 12px; font-size: 12px; color: var(--sub); background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(80px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 10px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 2000; opacity: 0; transition: .25s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .modal-mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 1200; align-items: center; justify-content: center;
+    }
+    .modal-mask.open { display: flex; }
+    .modal { width: min(480px, 94vw); background: #fff; border-radius: 4px; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+    .modal-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+    }
+    .modal-hd h2 { margin: 0; font-size: 14px; }
+    .modal-close { border: none; background: none; font-size: 18px; color: var(--sub); cursor: pointer; line-height: 1; }
+    .modal-bd { padding: 12px 14px; }
+    .modal-bd .hint { margin: 0 0 10px; color: var(--sub); font-size: 11px; line-height: 1.5; }
+    .modal-bd label { display: block; margin: 0 0 4px; color: var(--sub); font-size: 11px; }
+    .modal-bd select, .modal-bd textarea, .modal-bd input[type="text"], .modal-bd input[type="datetime-local"],
+    .modal-bd input[type="file"] {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px; font: inherit; margin-bottom: 10px;
+    }
+    .modal-bd textarea { min-height: 64px; resize: vertical; }
+    .modal-ft {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 10px 14px; border-top: 1px solid var(--line);
+    }
+    .modal-ft .btn {
+      height: 30px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer;
+    }
+    .modal-ft .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .modal.pick-modal { width: min(920px, 96vw); }
+    .pick-sum { margin: 0 0 12px; font-size: 13px; color: var(--text); }
+    .pick-sum b { color: #1890ff; font-weight: 600; margin-right: 18px; }
+    .pick-tools { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+    .pick-tools .fi { flex: 1; min-width: 0; }
+    .pick-tools .fi label { display: block; margin: 0 0 4px; color: var(--sub); font-size: 12px; }
+    .pick-tools select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; margin: 0; }
+    .pick-table-wrap { overflow: auto; max-height: 280px; border: 1px solid var(--line); }
+    .pick-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .pick-table th, .pick-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; white-space: nowrap; }
+    .pick-table th { background: #fafafa; font-weight: 600; }
+    .pick-table .th-filter { height: 22px; width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font: inherit; }
+    .modal-mask.drawer-mask { align-items: stretch; justify-content: flex-end; background: rgba(0,0,0,.28); }
+    .modal.drawer {
+      width: min(440px, 100vw); height: 100%; border-radius: 0; margin: 0;
+      display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.12);
+    }
+    .drawer .modal-hd { flex-shrink: 0; }
+    .drawer .modal-bd { flex: 1; overflow: auto; padding: 16px 18px; }
+    .drawer .modal-ft { flex-shrink: 0; }
+    .drawer .fi { margin-bottom: 16px; }
+    .drawer .fi label { display: block; margin: 0 0 6px; color: rgba(0,0,0,.85); font-size: 13px; }
+    .drawer .fi label .req { color: #ff4d4f; margin-right: 2px; }
+    .drawer .fi input[type="datetime-local"] { width: 100%; height: 32px; margin: 0; }
+    .upload {
+      border: 1px dashed #d9d9d9; border-radius: 2px; height: 120px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #1890ff; cursor: pointer; background: #fafafa; gap: 6px;
+    }
+    .upload:hover { border-color: #1890ff; }
+    .upload .cloud {
+      width: 28px; height: 20px; border: 2px solid #1890ff; border-radius: 4px 4px 2px 2px;
+      position: relative;
+    }
+    .upload .cloud::before {
+      content: ""; position: absolute; left: 5px; top: -8px; width: 12px; height: 12px;
+      border: 2px solid #1890ff; border-radius: 50%; background: #fafafa;
+    }
+    .upload span { font-size: 12px; color: var(--sub); }
+    .upload-hint { margin: 8px 0 0; font-size: 12px; color: #ff4d4f; line-height: 1.65; }
+    .file-list { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text); }
+    .file-list li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; }
+    .file-list button { border: none; background: none; color: var(--sub); cursor: pointer; }
+    .pod-sel span {
+      display: inline-block; padding: 2px 8px; border: 1px solid #91d5ff; background: #e6f7ff;
+      border-radius: 2px; font-size: 11px; color: #096dd9;
+    }
+
+    .tab-bar {
+      display: flex; align-items: stretch; background: #fafafa;
+      border-bottom: 1px solid var(--line); overflow-x: auto;
+    }
+    .tab-bar a, .tab-bar span {
+      padding: 0 16px; height: 36px; line-height: 36px; white-space: nowrap;
+      border-right: 1px solid var(--line); font-size: 13px; color: var(--text);
+      background: #f5f5f5; text-decoration: none;
+    }
+    .tab-bar .active { background: var(--tab-active); color: #fff; font-weight: 600; }
+
+    .page-hd {
+      background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 14px 0;
+    }
+    .page-title { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+
+    .filter-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px;
+    }
+    .filter-grid-more { display: none; }
+    .filter-wrap.is-expanded .filter-grid-more { display: grid; }
+    .filter-wrap:not(.is-expanded) .filter-grid-default { padding-bottom: 0; }
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(2, 1fr); } }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter-item input, .filter-item select, .filter-item textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .filter-item input, .filter-item select { height: 30px; }
+    .filter-item textarea {
+      min-height: 30px; height: 30px; resize: vertical; line-height: 1.4; padding: 4px 8px;
+    }
+    .filter-item .date-range { display: flex; align-items: center; gap: 6px; }
+    .filter-item .date-range input {
+      flex: 1; min-width: 0; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px;
+    }
+    .filter-item .date-range span { color: var(--sub); flex-shrink: 0; }
+    .filter-item.span2 { grid-column: span 2; }
+    .filter-extra {
+      display: flex; justify-content: flex-end; gap: 8px; padding: 10px 0;
+    }
+    .filter-extra .btn {
+      height: 30px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; color: var(--text); cursor: pointer;
+    }
+    .filter-extra .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .filter-extra .btn-more[aria-expanded="true"] { color: var(--blue); border-color: var(--blue); }
+
+    .toolbar {
+      padding: 8px 14px; background: var(--card); border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .toolbar .btn {
+      height: 30px; padding: 0 12px; border: none; border-radius: 4px;
+      cursor: pointer; white-space: nowrap; font-size: 12px; color: #fff;
+    }
+    .tb-blue { background: #1890ff; }
+    .tb-green { background: #52c41a; }
+    .tb-cyan { background: #13c2c2; }
+    .tb-purple { background: #722ed1; }
+    .tb-orange { background: #fa8c16; }
+    .tb-red { background: #ff4d4f; }
+    .tb-gray { background: #8c8c8c; }
+
+    .status-bar {
+      display: flex; flex-wrap: wrap; gap: 0; background: var(--card);
+      border-bottom: 1px solid var(--line); padding: 0 14px;
+    }
+    .status-tab {
+      padding: 10px 14px; border: none; background: none; cursor: pointer;
+      font-size: 13px; color: var(--sub); border-bottom: 2px solid transparent;
+    }
+    .status-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .status-tab .cnt { color: var(--sub); font-size: 12px; margin-left: 2px; }
+
+    .mode-legend {
+      padding: 8px 14px; background: #fafafa; border-bottom: 1px solid var(--line);
+      font-size: 12px; color: var(--sub); line-height: 1.6;
+    }
+    .mode-legend strong { color: var(--text); }
+
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1400px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; white-space: nowrap; vertical-align: middle; }
+    th { background: #fafafa; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+    tr:hover td { background: #e6f7ff; }
+    tr.selected td { background: #bae7ff; }
+    .link { color: var(--blue); cursor: pointer; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; line-height: 18px;
+      border: 1px solid transparent;
+    }
+    .tag-mode { background: #e6f4ff; color: #0958d9; border-color: #91caff; }
+    .tag-mode.skip { background: #f5f5f5; color: #8c8c8c; border-color: #d9d9d9; }
+    .track-cell .t-main { font-weight: 600; }
+    .track-cell .t-sub { color: var(--sub); font-size: 11px; margin-top: 2px; }
+
+    .tag-pending { background: #fff7e6; color: #d46b08; border-color: #ffd591; }
+    .tag-ok { background: #f6ffed; color: var(--ok); border-color: #b7eb8f; }
+    .tag-warn { background: #fff1f0; color: #cf1322; border-color: #ffa39e; }
+    .tag-isa { background: #f9f0ff; color: #531dab; border-color: #d3adf7; }
+    .table-foot {
+      padding: 8px 14px; background: var(--card); border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; font-size: 12px; color: var(--sub);
+    }
+    .demo-bar {
+      padding: 6px 14px; background: #e6f4ff; border-bottom: 1px solid #91caff;
+      font-size: 12px; color: #0958d9;
+    }
+    .demo-bar a { color: #1890ff; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <div class="logo">ESS</div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab">控制台</button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-部门进仓数据-MVP.html'">部门进仓数据</button>
+        <button type="button" class="nav-tab" onclick="location.href='海外对接组-卡派跟进新-MVP.html'">卡派跟进(新)</button>
+        <button type="button" class="nav-tab active">整柜尾端派送</button>
+      </div>
+      <div class="header-right">
+        <span>IT(BT0022)</span>
+        <a href="../产品部门-导航.html" style="color:#91d5ff">导航</a>
+      </div>
+    </header>
+    <div class="body-wrap">
+      <aside class="sidebar">
+        <div class="side-ico"><b>⌂</b>控制台</div>
+        <div class="side-ico"><b>箱</b>仓储</div>
+        <div class="side-ico"><b>单</b>订单</div>
+        <div class="side-ico on"><b>港</b>港后客服</div>
+        <div class="side-ico"><b>卡</b>卡派</div>
+        <div class="side-ico"><b>表</b>报表</div>
+      </aside>
+      <main class="main">
+        <div class="proto-bar">
+          原型 · 整柜尾端派送 · 七种配送模式 · 约仓 / 提柜 / 派送 / POD ·
+          <a href="海外对接组-卡派跟进新-MVP.html">卡派跟进(新)</a> ·
+          <a href="海外对接组-尾程快递件-MVP.html">尾程快递件</a> ·
+          <a href="海外对接组-海外卡派自提件-MVP.html">海外卡派自提件</a> ·
+          <a href="海外对接组-一件代发-MVP.html">一件代发</a> ·
+          <a href="../../整柜下单/整柜配送模式-业务流程图-MVP.html">配送模式流程图</a> ·
+          <a href="海外对接组-导航.html">返回海外对接组导航</a>
+        </div>
+
+    <div class="page-hd">
+      <h1 class="page-title">整柜尾端派送</h1>
+      <div class="filter-wrap" id="filterWrap">
+        <div class="filter-grid filter-grid-default">
+          <div class="filter-item span2">
+            <label>柜号 / 运单号</label>
+            <textarea rows="1" placeholder="支持批量，一行一个或逗号分隔"></textarea>
+          </div>
+          <div class="filter-item">
+            <label>客户单号</label>
+            <input type="text" placeholder="请输入客户单号" />
+          </div>
+          <div class="filter-item">
+            <label>配送模式</label>
+            <select id="filterDeliveryMode">
+              <option value="">全部</option>
+              <option value="PK2548">整柜清关</option>
+              <option value="PK2549">整柜清关直送</option>
+              <option value="PK2550">整柜清关拆送</option>
+              <option value="PK2551">整柜直送</option>
+              <option value="PK2552">整柜拆送</option>
+              <option value="PK2553">整柜到港自提</option>
+              <option value="PK2554">整柜海外仓自提</option>
+            </select>
+          </div>
+        </div>
+        <div class="filter-grid filter-grid-more">
+          <div class="filter-item">
+            <label>FBA 仓 / 目的地</label>
+            <input type="text" placeholder="如 ONT8、洛杉矶仓" />
+          </div>
+          <div class="filter-item span2">
+            <label>预约时间</label>
+            <div class="date-range">
+              <input type="date" aria-label="预约时间起" />
+              <span>—</span>
+              <input type="date" aria-label="预约时间止" />
+            </div>
+          </div>
+          <div class="filter-item">
+            <label>ISA</label>
+            <input type="text" placeholder="ISA 编号" />
+          </div>
+          <div class="filter-item">
+            <label>仓库代码</label>
+            <input type="text" id="qWhCode" placeholder="如 ONT8 / LGB8" />
+          </div>
+          <div class="filter-item">
+            <label>海外仓</label>
+            <select id="qWh">
+              <option value="">全部</option>
+              <option>洛杉矶海外仓</option>
+              <option>纽约仓</option>
+              <option>LA 海外仓</option>
+              <option>新泽西海外仓</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>港后客服</label>
+            <select id="qCs">
+              <option value="">全部</option>
+              <option>张敏</option>
+              <option>李婷</option>
+              <option>王芳</option>
+              <option>陈静</option>
+            </select>
+          </div>
+          <div class="filter-item span2">
+            <label>开船日期</label>
+            <div class="date-range">
+              <input type="date" />
+              <span>—</span>
+              <input type="date" />
+            </div>
+          </div>
+          <div class="filter-item span2">
+            <label>拆柜时间</label>
+            <div class="date-range">
+              <input type="date" />
+              <span>—</span>
+              <input type="date" />
+            </div>
+          </div>
+          <div class="filter-item span2">
+            <label>预计到港</label>
+            <div class="date-range">
+              <input type="date" />
+              <span>—</span>
+              <input type="date" />
+            </div>
+          </div>
+          <div class="filter-item span2">
+            <label>预计提柜</label>
+            <div class="date-range">
+              <input type="date" />
+              <span>—</span>
+              <input type="date" />
+            </div>
+          </div>
+          <div class="filter-item span2">
+            <label>实际提柜</label>
+            <div class="date-range">
+              <input type="date" />
+              <span>—</span>
+              <input type="date" />
+            </div>
+          </div>
+          <div class="filter-item">
+            <label>船司</label>
+            <select>
+              <option value="">全部</option>
+              <option>COSCO</option>
+              <option>EMC</option>
+              <option>MSC</option>
+              <option>CMA</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>提单号</label>
+            <input type="text" placeholder="TXZG..." />
+          </div>
+        </div>
+      </div>
+      <div class="filter-extra">
+        <button type="button" class="btn btn-more" id="btnMoreFilter" aria-expanded="false" aria-controls="filterWrap">更多筛选</button>
+        <button type="button" class="btn btn-primary" id="btnQuery">查询</button>
+        <button type="button" class="btn" id="btnReset">重置</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button type="button" class="btn tb-blue">导出查询</button>
+      <button type="button" class="btn tb-blue" id="btnBook">约仓登记</button>
+      <button type="button" class="btn tb-orange" id="btnStrip">拆柜登记</button>
+      <button type="button" class="btn tb-blue" id="btnPod">上传 POD</button>
+      <button type="button" class="btn tb-gray">修改备注</button>
+      <button type="button" class="btn tb-blue" id="btnPickup">自提登记</button>
+      <button type="button" class="btn tb-blue" id="btnDone">自提完结</button>
+      <button type="button" class="btn tb-blue" id="btnUpload">上传自提单</button>
+      <button type="button" class="btn tb-blue" id="btnTrack">轨迹维护</button>
+    </div>
+
+    <div class="status-bar" role="tablist" id="statusTabs">
+      <button type="button" class="status-tab active" data-filter="all">全部<span class="cnt" id="cAll">(9)</span></button>
+      <button type="button" class="status-tab" data-filter="await-strip">待拆柜<span class="cnt" id="cStrip">(2)</span></button>
+      <button type="button" class="status-tab" data-filter="pending-appt" id="tabWait">未约仓<span class="cnt" id="cWait">(1)</span></button>
+      <button type="button" class="status-tab" data-filter="appointed" id="tabBook">已约仓<span class="cnt" id="cBook">(1)</span></button>
+      <button type="button" class="status-tab" data-filter="done">已送达<span class="cnt" id="cDone">(1)</span></button>
+      <button type="button" class="status-tab" data-filter="closed">已完结<span class="cnt" id="cClosed">(2)</span></button>
+    </div>
+
+    <div class="mode-legend">
+      <strong>七种配送模式 · 尾端派送范围</strong>：
+      清关直送/清关拆送/直送/拆送 → 卡派约仓提柜派送；
+      海外仓自提 → 入仓后客户自提；
+      到港自提 / 仅清关 → 尾端「不涉及」，列表灰标展示。
+    </div>
+
+    <div class="table-wrap">
+      <table aria-label="尾端派送列表">
+        <thead>
+          <tr>
+            <th><input type="checkbox" aria-label="全选" /></th>
+            <th>运单号</th>
+            <th>配送模式</th>
+            <th>柜号</th>
+            <th>客户单号</th>
+            <th>FBA仓/目的地</th>
+            <th>仓库代码</th>
+            <th>状态</th>
+            <th>最新轨迹</th>
+            <th>预警标记</th>
+            <th>开船日期</th>
+            <th>预计到港</th>
+            <th>预计提柜</th>
+            <th>实际提柜</th>
+            <th>提柜后天数</th>
+            <th>拆柜时间</th>
+            <th>预约时间</th>
+            <th>到达入仓</th>
+            <th>入仓后天数</th>
+            <th>签收时间</th>
+            <th>POD</th>
+            <th>船司</th>
+            <th>提单号</th>
+            <th>海外仓</th>
+            <th>港后客服</th>
+            <th>箱数</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr class="selected" data-status="delivering" data-mode="PK2549">
+            <td><input type="checkbox" checked /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266501</a></td>
+            <td><span class="tag tag-mode">整柜清关直送</span></td>
+            <td data-col="cntr">TEMU1234567</td>
+            <td>CUST-2026-001</td>
+            <td>ONT8</td>
+            <td data-col="whCode">ONT8</td>
+            <td data-col="status"><span class="tag tag-pending">派送中</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">派送中 · 途中</div><div class="t-sub">2026-07-10 14:00</div></div></td>
+            <td>—</td>
+            <td>2026-06-28</td>
+            <td>2026-07-08</td>
+            <td>2026-07-09</td>
+            <td data-col="pickAt">2026-07-09 10:30</td>
+            <td>29 天</td>
+            <td data-col="stripAt">—</td>
+            <td data-col="bookAt">2026-07-10 14:00</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td data-col="pod">—</td>
+            <td>COSCO</td>
+            <td>TXZG00000000043</td>
+            <td>洛杉矶海外仓</td>
+            <td data-col="cs">张敏</td>
+            <td data-col="pcs">1</td>
+            <td data-col="remark">—</td>
+          </tr>
+          <tr data-status="await-strip" data-mode="PK2550">
+            <td><input type="checkbox" /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266502</a></td>
+            <td><span class="tag tag-mode">整柜清关拆送</span></td>
+            <td data-col="cntr">MSKU9988776</td>
+            <td>CUST-2026-002</td>
+            <td>LGB8 + SBD1</td>
+            <td data-col="whCode">LGB8</td>
+            <td data-col="status"><span class="tag tag-warn">待拆柜</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">清关完成 · 待拆柜登记</div><div class="t-sub">2026-07-13 11:00</div></div></td>
+            <td>—</td>
+            <td>2026-06-30</td>
+            <td>2026-07-12</td>
+            <td>2026-07-13</td>
+            <td data-col="pickAt">2026-07-13 09:00</td>
+            <td>25 天</td>
+            <td data-col="stripAt">—</td>
+            <td data-col="bookAt">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td data-col="pod">—</td>
+            <td>EMC</td>
+            <td>TXZG00000000051</td>
+            <td>—</td>
+            <td data-col="cs">李婷</td>
+            <td data-col="pcs">2</td>
+            <td data-col="remark">清关拆送 · 须先拆柜再约仓/上传 POD</td>
+          </tr>
+          <tr data-status="appointed" data-mode="PK2551">
+            <td><input type="checkbox" /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266503</a></td>
+            <td><span class="tag tag-mode">整柜直送</span></td>
+            <td data-col="cntr">CCLU5566778</td>
+            <td>CUST-2026-003</td>
+            <td>SMF3</td>
+            <td data-col="whCode">SMF3</td>
+            <td data-col="status"><span class="tag tag-pending">已约仓</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">已约仓 · 待提柜</div><div class="t-sub">2026-07-11 09:00</div></div></td>
+            <td>—</td>
+            <td>2026-07-01</td>
+            <td>2026-07-10</td>
+            <td>2026-07-11</td>
+            <td data-col="pickAt">—</td>
+            <td>—</td>
+            <td data-col="stripAt">—</td>
+            <td data-col="bookAt">2026-07-11 09:00</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td data-col="pod">—</td>
+            <td>MSC</td>
+            <td>TXZG00000000051</td>
+            <td>—</td>
+            <td data-col="cs">王芳</td>
+            <td data-col="pcs">1</td>
+            <td data-col="remark">—</td>
+          </tr>
+          <tr data-status="await-strip" data-mode="PK2552">
+            <td><input type="checkbox" /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266504</a></td>
+            <td><span class="tag tag-mode">整柜拆送</span></td>
+            <td data-col="cntr">HLBU3344556</td>
+            <td>CUST-2026-004</td>
+            <td>多个 FBA 仓</td>
+            <td data-col="whCode">ONT8</td>
+            <td data-col="status"><span class="tag tag-warn">待拆柜</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">装柜完成 · 待拆柜登记</div><div class="t-sub">2026-07-08 15:20</div></div></td>
+            <td>—</td>
+            <td>2026-06-26</td>
+            <td>2026-07-07</td>
+            <td>2026-07-08</td>
+            <td data-col="pickAt">2026-07-08 15:20</td>
+            <td>30 天</td>
+            <td data-col="stripAt">—</td>
+            <td data-col="bookAt">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td data-col="pod">—</td>
+            <td>CMA</td>
+            <td>TXZG00000000052</td>
+            <td>纽约仓</td>
+            <td data-col="cs">陈静</td>
+            <td data-col="pcs">3</td>
+            <td data-col="remark">整柜拆送 · 须先拆柜</td>
+          </tr>
+          <tr data-status="pending-appt" data-mode="PK2550" data-stripped="1" data-track-code="TA0001">
+            <td><input type="checkbox" /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266505</a></td>
+            <td><span class="tag tag-mode">整柜清关拆送</span></td>
+            <td data-col="cntr">TCLU6677889</td>
+            <td>CUST-2026-005</td>
+            <td>ONT8 + LGB8</td>
+            <td data-col="whCode">ONT8</td>
+            <td data-col="status"><span class="tag tag-warn">未约仓</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">TA0001 海外拆柜</div><div class="t-sub">2026-07-08 14:20</div></div></td>
+            <td>—</td>
+            <td>2026-06-25</td>
+            <td>2026-07-06</td>
+            <td>2026-07-07</td>
+            <td data-col="pickAt">2026-07-07 09:40</td>
+            <td>31 天</td>
+            <td data-col="stripAt">2026-07-08 14:20</td>
+            <td data-col="bookAt">2026-07-08 11:00</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td data-col="pod">—</td>
+            <td>EMC</td>
+            <td>TXZG00000000054</td>
+            <td>洛杉矶海外仓</td>
+            <td data-col="cs">张敏</td>
+            <td data-col="pcs">2</td>
+            <td data-col="remark">TA0001 海外拆柜 · 2026-07-08 14:20</td>
+          </tr>
+          <tr data-status="done" data-mode="PK2554" data-cbm="68.400" data-ratio="35.43" data-pallet="—">
+            <td><input type="checkbox" /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266506</a></td>
+            <td><span class="tag tag-mode">整柜海外仓自提</span></td>
+            <td data-col="cntr">TRHU1122334</td>
+            <td>CUST-2026-006</td>
+            <td>海外仓 LA-01</td>
+            <td data-col="whCode">LA-01</td>
+            <td data-col="status"><span class="tag tag-ok">已送达</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">已签收 · POD 已回传</div><div class="t-sub">2026-07-07 16:00</div></div></td>
+            <td>—</td>
+            <td>2026-06-22</td>
+            <td>2026-07-05</td>
+            <td>2026-07-06</td>
+            <td data-col="pickAt">2026-07-06 08:00</td>
+            <td>32 天</td>
+            <td data-col="stripAt">2026-07-06 12:00</td>
+            <td data-col="bookAt">—</td>
+            <td>2026-07-06 18:00</td>
+            <td>31 天</td>
+            <td>2026-07-07 16:00</td>
+            <td data-col="pod"><span class="tag tag-ok">已回传</span></td>
+            <td>COSCO</td>
+            <td>TXZG00000000055</td>
+            <td>LA 海外仓</td>
+            <td data-col="cs">李婷</td>
+            <td data-col="pcs">1</td>
+            <td data-col="remark">POD已回传</td>
+          </tr>
+          <tr data-status="delivering" data-mode="PK2554" data-cbm="72.052" data-ratio="35.43" data-pallet="—">
+            <td><input type="checkbox" /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266507</a></td>
+            <td><span class="tag tag-mode">整柜海外仓自提</span></td>
+            <td data-col="cntr">OOLU7788990</td>
+            <td>CUST-2026-007</td>
+            <td>海外仓 NJ-02</td>
+            <td data-col="whCode">NJ-02</td>
+            <td data-col="status"><span class="tag tag-pending">派送中</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">入仓预约已确认</div><div class="t-sub">2026-07-12 10:00</div></div></td>
+            <td><span class="tag tag-warn">入仓 &gt;2天未签/POD</span></td>
+            <td>2026-07-02</td>
+            <td>2026-07-11</td>
+            <td>2026-07-12</td>
+            <td data-col="pickAt">—</td>
+            <td>—</td>
+            <td data-col="stripAt">—</td>
+            <td data-col="bookAt">2026-07-12 10:00</td>
+            <td>2026-07-12 15:00</td>
+            <td>26 天</td>
+            <td>—</td>
+            <td data-col="pod"><span class="tag tag-warn">未回传</span></td>
+            <td>ONE</td>
+            <td>TXZG00000000056</td>
+            <td>新泽西海外仓</td>
+            <td data-col="cs">王芳</td>
+            <td data-col="pcs">1</td>
+            <td data-col="remark">入仓预约已确认</td>
+          </tr>
+          <tr data-status="closed" data-mode="PK2548" data-track-code="清关完成">
+            <td><input type="checkbox" /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266508</a></td>
+            <td><span class="tag tag-mode skip">整柜清关</span></td>
+            <td data-col="cntr">EGHU9900112</td>
+            <td>CUST-2026-008</td>
+            <td>—</td>
+            <td data-col="whCode">—</td>
+            <td data-col="status"><span class="tag tag-ok">已完结</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">清关完成</div><div class="t-sub">2026-07-16 10:00</div></div></td>
+            <td>—</td>
+            <td>2026-07-05</td>
+            <td>2026-07-15</td>
+            <td>—</td>
+            <td data-col="pickAt">—</td>
+            <td>—</td>
+            <td data-col="stripAt">—</td>
+            <td data-col="bookAt">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td data-col="pod">—</td>
+            <td>EMC</td>
+            <td>TXZG00000000057</td>
+            <td>—</td>
+            <td data-col="cs">陈静</td>
+            <td data-col="pcs">1</td>
+            <td data-col="remark">清关完成 · 仅清关服务</td>
+          </tr>
+          <tr data-status="closed" data-mode="PK2553" data-cbm="65.200" data-ratio="32.10" data-pallet="—" data-track-code="A00197">
+            <td><input type="checkbox" /></td>
+            <td data-col="awb"><a class="link" href="../../整柜下单/传统订单管理-MVP.html">RC266509</a></td>
+            <td><span class="tag tag-mode skip">整柜到港自提</span></td>
+            <td data-col="cntr">CSNU4455667</td>
+            <td>CUST-2026-009</td>
+            <td>洛杉矶港</td>
+            <td data-col="whCode">POLA</td>
+            <td data-col="status"><span class="tag tag-ok">已完结</span></td>
+            <td data-col="track"><div class="track-cell"><div class="t-main">A00197 已还柜</div><div class="t-sub">2026-07-06 16:30</div></div></td>
+            <td>—</td>
+            <td>2026-06-20</td>
+            <td>2026-07-04</td>
+            <td>—</td>
+            <td data-col="pickAt">2026-07-05 11:00</td>
+            <td>33 天</td>
+            <td data-col="stripAt">—</td>
+            <td data-col="bookAt">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td data-col="pod">—</td>
+            <td>COSCO</td>
+            <td>TXZG00000000058</td>
+            <td>—</td>
+            <td data-col="cs">张敏</td>
+            <td data-col="pcs">1</td>
+            <td data-col="remark">A00197 已还柜 · 2026-07-06 16:30</td>
+          </tr>
+        
+        </tbody>
+      </table>
+    </div>
+    <div class="table-foot">
+      <span>当前筛选：全部配送模式 · 共 <strong>9</strong> 条</span>
+      <span>50 条/页 · 第 1/1 页</span>
+    </div>
+      </main>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="modal-mask" id="pickMask">
+    <div class="modal pick-modal">
+      <div class="modal-hd"><h2>自提登记</h2><button type="button" class="modal-close" id="pickClose">×</button></div>
+      <div class="modal-bd">
+        <p class="pick-sum" id="pickHint">选择票数：<b>0票</b>选择件数：<b>0件</b></p>
+        <div class="pick-tools">
+          <div class="fi">
+            <label>自提模板</label>
+            <select id="pickTpl">
+              <option value="">请选择</option>
+              <option>自提单模板--AA萨凡纳-Walk T250428154932</option>
+              <option>自提单模板--芝加哥-Wall T250428104918</option>
+              <option>自提单模板--休斯顿-Walk由提单 T250428154306</option>
+              <option>自提单模板--EPS-Axel(浩) T250210140516</option>
+              <option>自提单模板--美库-LA T250428160012</option>
+            </select>
+          </div>
+          <div class="fi">
+            <label>&nbsp;</label>
+            <select id="pickPrint">
+              <option value="">请选择</option>
+              <option>打印自提单</option>
+              <option>仅登记不打印</option>
+            </select>
+          </div>
+        </div>
+        <div class="pick-table-wrap">
+          <table class="pick-table" aria-label="自提登记明细">
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>单号</th>
+                <th>提柜日期</th>
+                <th>件数</th>
+                <th>方数CBM</th>
+                <th>预计件重比</th>
+                <th>板数</th>
+              </tr>
+              <tr>
+                <th><input class="th-filter" aria-label="筛序号" /></th>
+                <th><input class="th-filter" aria-label="筛单号" /></th>
+                <th><input class="th-filter" aria-label="筛提柜日期" /></th>
+                <th><input class="th-filter" aria-label="筛件数" /></th>
+                <th><input class="th-filter" aria-label="筛方数" /></th>
+                <th><input class="th-filter" aria-label="筛件重比" /></th>
+                <th><input class="th-filter" aria-label="筛板数" /></th>
+              </tr>
+            </thead>
+            <tbody id="pickTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="pickCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="pickSave">确认</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-mask drawer-mask" id="stripMask">
+    <div class="modal drawer" role="dialog" aria-labelledby="stripTitle">
+      <div class="modal-hd">
+        <h2 id="stripTitle">拆柜登记</h2>
+        <button type="button" class="modal-close" id="stripClose">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="fi">
+          <label><span class="req">*</span>轨迹时间</label>
+          <input type="datetime-local" id="stripAt" step="1" />
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-primary" id="stripSave">确定</button>
+        <button type="button" class="btn" id="stripCancel">关闭</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-mask drawer-mask" id="bookMask">
+    <div class="modal drawer" role="dialog" aria-labelledby="bookTitle">
+      <div class="modal-hd">
+        <h2 id="bookTitle">约仓登记</h2>
+        <button type="button" class="modal-close" id="bookClose">×</button>
+      </div>
+      <div class="modal-bd">
+        <p class="hint" id="bookHint">勾未约仓票。确定后状态改已约仓，预约时间回写本列。</p>
+        <div class="fi">
+          <label><span class="req">*</span>预约时间</label>
+          <input type="datetime-local" id="bookAt" step="1" />
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-primary" id="bookSave">确定</button>
+        <button type="button" class="btn" id="bookCancel">关闭</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-mask drawer-mask" id="doneMask">
+    <div class="modal drawer" role="dialog" aria-labelledby="doneTitle">
+      <div class="modal-hd">
+        <h2 id="doneTitle">自提完结</h2>
+        <button type="button" class="modal-close" id="doneClose">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="fi">
+          <label><span class="req">*</span>完结时间</label>
+          <input type="datetime-local" id="doneAt" step="1" />
+        </div>
+        <div class="fi">
+          <label>上传POD</label>
+          <div class="upload" id="doneUpload" tabindex="0">
+            <i class="cloud"></i>
+            <span>将文件拖到此处，或点击上传</span>
+          </div>
+          <input type="file" id="doneFile" hidden multiple accept=".rar,.zip,.doc,.docx,.xls,.xlsx,.pdf,.jpg,.jpeg,.png,.7z" />
+          <ul class="file-list" id="doneFileList"></ul>
+          <p class="upload-hint">单个文件大小不超过 100MB，格式为 rar/zip/doc/docx/xls/xlsx/pdf/jpg/jpeg/png/7z，最多上传 10 个附件</p>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn btn-primary" id="doneSave">确定</button>
+        <button type="button" class="btn" id="doneCancel">关闭</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-mask" id="podMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <h2 id="podTitle">上传 POD</h2>
+        <button type="button" class="modal-close" id="podClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p class="hint" id="podHint">勾选后一次可挂多票、一次可选多个文件</p>
+        <div class="pod-sel" id="podSel" style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px"></div>
+        <label>POD 文件（可多选）</label>
+        <div class="upload" id="podUpload" tabindex="0">
+          <i class="cloud"></i>
+          <span>将文件拖到此处，或点击上传</span>
+        </div>
+        <input type="file" id="podFile" hidden multiple accept=".rar,.zip,.doc,.docx,.xls,.xlsx,.pdf,.jpg,.jpeg,.png,.7z" />
+        <ul class="file-list" id="podFileList"></ul>
+        <p class="upload-hint">最多 10 个，单文件 ≤100MB。文件名含柜号/运单号则挂对应票，否则挂全部已选。</p>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="podCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="podSave">确认上传</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-mask" id="uploadMask">
+    <div class="modal">
+      <div class="modal-hd"><h2>上传自提单</h2><button type="button" class="modal-close" id="uploadClose">×</button></div>
+      <div class="modal-bd">
+        <p class="hint" id="uploadHint">已选 0 票 · 回写备注「自提单已上传」</p>
+        <label>自提单文件</label>
+        <input type="file" id="uploadFile" accept=".pdf,.jpg,.jpeg,.png,.zip" />
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="uploadCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="uploadSave">确认上传</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-mask" id="trackMask">
+    <div class="modal">
+      <div class="modal-hd"><h2>轨迹维护</h2><button type="button" class="modal-close" id="trackClose">×</button></div>
+      <div class="modal-bd">
+        <p class="hint" id="trackHint">已选 0 票 · 回写「备注」</p>
+        <label>轨迹节点</label>
+        <select id="trackNode">
+          <option>已拆柜 · 待客户自提</option>
+          <option value="A00197">A00197 已还柜</option>
+          <option value="清关完成">清关完成</option>
+          <option>已通知客户自提</option>
+          <option>客户已到仓自提</option>
+          <option>已自提完成</option>
+          <option>入仓途中</option>
+          <option>异常滞留</option>
+        </select>
+        <label>补充说明</label>
+        <textarea id="trackNote"></textarea>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="trackCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="trackSave">保存轨迹</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="海外对接组-整柜尾端派送-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD · 整柜尾端派送 · MVP</span>
+  </div>
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var DELIVERY_MODES = {
+        PK2548: "整柜清关",
+        PK2549: "整柜清关直送",
+        PK2550: "整柜清关拆送",
+        PK2551: "整柜直送",
+        PK2552: "整柜拆送",
+        PK2553: "整柜到港自提",
+        PK2554: "整柜海外仓自提"
+      };
+
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        if (!el) { alert(msg); return; }
+        el.textContent = msg;
+        el.classList.add("show");
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+      }
+
+      var filterWrap = document.getElementById("filterWrap");
+      var btnMoreFilter = document.getElementById("btnMoreFilter");
+      if (filterWrap && btnMoreFilter) {
+        btnMoreFilter.addEventListener("click", function () {
+          var expanded = filterWrap.classList.toggle("is-expanded");
+          btnMoreFilter.setAttribute("aria-expanded", expanded ? "true" : "false");
+          btnMoreFilter.textContent = expanded ? "收起筛选" : "更多筛选";
+        });
+      }
+
+      function allRows() {
+        return Array.prototype.slice.call(
+          document.querySelectorAll('table[aria-label="尾端派送列表"] tbody tr')
+        );
+      }
+      function currentMode() {
+        return document.getElementById("filterDeliveryMode").value;
+      }
+      function currentTab() {
+        var on = document.querySelector(".status-tab.active");
+        return on ? on.getAttribute("data-filter") : "all";
+      }
+      function updateTabCounts() {
+        var mode = currentMode();
+        var base = allRows().filter(function (tr) { return !mode || tr.dataset.mode === mode; });
+        function set(id, n) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = "(" + n + ")";
+        }
+        set("cAll", base.length);
+        set("cWait", base.filter(function (r) { return r.dataset.status === "pending-appt"; }).length);
+        set("cBook", base.filter(function (r) { return r.dataset.status === "appointed"; }).length);
+        set("cStrip", base.filter(function (r) { return r.dataset.status === "await-strip"; }).length);
+        set("cDone", base.filter(function (r) { return r.dataset.status === "done"; }).length);
+        set("cClosed", base.filter(function (r) { return r.dataset.status === "closed"; }).length);
+      }
+      function applyFilters() {
+        var mode = currentMode();
+        var f = currentTab();
+        var shown = 0;
+        allRows().forEach(function (tr) {
+          var match = (!mode || tr.dataset.mode === mode) && (f === "all" || tr.dataset.status === f);
+          tr.hidden = !match;
+          if (match) shown++;
+        });
+        var label = mode ? DELIVERY_MODES[mode] : "全部配送模式";
+        var tabEl = document.querySelector(".status-tab.active");
+        var tabTxt = tabEl ? tabEl.firstChild.textContent.trim() : "全部";
+        document.querySelector(".table-foot span").innerHTML =
+          "当前筛选：<strong>" + label + "</strong> · " + tabTxt + " · 共 <strong>" + shown + "</strong> 条";
+        updateTabCounts();
+        return shown;
+      }
+
+      document.getElementById("btnQuery").addEventListener("click", function () {
+        toast("查询完成 · 显示 " + applyFilters() + " 条（原型演示）");
+      });
+
+      document.getElementById("btnReset").addEventListener("click", function () {
+        document.querySelectorAll(".page-hd input, .page-hd select, .page-hd textarea").forEach(function (el) {
+          if (el.tagName === "SELECT") el.selectedIndex = 0;
+          else el.value = "";
+        });
+        document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
+        var allTab = document.querySelector('.status-tab[data-filter="all"]');
+        if (allTab) allTab.classList.add("active");
+        applyFilters();
+        toast("筛选条件已重置");
+      });
+
+      document.querySelectorAll(".status-tab").forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (t) {
+            t.classList.remove("active");
+          });
+          tab.classList.add("active");
+          toast("已切换至「" + tab.firstChild.textContent.trim() + "」· " + applyFilters() + " 条");
+        });
+      });
+      updateTabCounts();
+      applyFilters();
+
+      function checkedRows() {
+        return Array.prototype.filter.call(
+          document.querySelectorAll('table[aria-label="尾端派送列表"] tbody tr'),
+          function (tr) {
+            if (tr.hidden) return false;
+            var cb = tr.querySelector('input[type="checkbox"]');
+            return cb && cb.checked;
+          }
+        );
+      }
+      function isSelfPickup(tr) {
+        return tr.dataset.mode === "PK2553" || tr.dataset.mode === "PK2554";
+      }
+      function needSel(onlySelfPickup) {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选记录"); return null; }
+        if (onlySelfPickup) {
+          rows = rows.filter(isSelfPickup);
+          if (!rows.length) {
+            toast("请勾选整柜到港自提 / 海外仓自提记录");
+            return null;
+          }
+        }
+        return rows;
+      }
+      function col(tr, name) { return tr.querySelector('[data-col="' + name + '"]'); }
+      function remarkCell(tr) { return col(tr, "remark"); }
+      function statusCell(tr) { return col(tr, "status"); }
+      function bookAtCell(tr) { return col(tr, "bookAt"); }
+      function trackCellEl(tr) { return col(tr, "track"); }
+      function canBookMode(tr) {
+        return /^(PK2549|PK2550|PK2551|PK2552)$/.test(tr.dataset.mode || "");
+      }
+      function canStripMode(tr) {
+        return tr.dataset.mode === "PK2550" || tr.dataset.mode === "PK2552";
+      }
+      function isStripped(tr) {
+        return tr.dataset.stripped === "1" || tr.dataset.status === "stripped";
+      }
+      function openMask(id, on) {
+        document.getElementById(id).classList.toggle("open", !!on);
+      }
+      function setRemark(tr, text) {
+        var cell = remarkCell(tr);
+        if (cell) cell.textContent = text;
+      }
+      function setTrack(tr, main, at) {
+        var cell = trackCellEl(tr);
+        if (!cell) return;
+        cell.innerHTML = '<div class="track-cell"><div class="t-main">' + main +
+          '</div><div class="t-sub">' + (at || "") + '</div></div>';
+      }
+
+      function fillPickTable(rows) {
+        var pcsSum = 0;
+        var html = rows.map(function (tr, i) {
+          var awb = col(tr, "awb") ? col(tr, "awb").innerText.trim() : "";
+          var pickAt = col(tr, "pickAt") ? col(tr, "pickAt").innerText.trim() : "";
+          pickAt = pickAt === "—" ? "" : pickAt.slice(0, 10);
+          var pcs = parseInt(col(tr, "pcs") ? col(tr, "pcs").innerText : "1", 10) || 1;
+          pcsSum += pcs;
+          var cbm = tr.getAttribute("data-cbm") || "68.000";
+          var ratio = tr.getAttribute("data-ratio") || "35.43";
+          var pal = tr.getAttribute("data-pallet") || "—";
+          return "<tr><td>" + (i + 1) + "</td><td>" + awb + "</td><td>" + (pickAt || "—") +
+            "</td><td>" + pcs + "</td><td>" + cbm + "</td><td>" + ratio + "</td><td>" + pal + "</td></tr>";
+        }).join("");
+        document.getElementById("pickTbody").innerHTML = html;
+        document.getElementById("pickHint").innerHTML =
+          "选择票数：<b>" + rows.length + "票</b>选择件数：<b>" + pcsSum + "件</b>";
+      }
+
+      document.getElementById("btnBook").addEventListener("click", function () {
+        var rows = needSel(false); if (!rows) return;
+        var skip = rows.filter(function (tr) { return !canBookMode(tr); });
+        if (skip.length) {
+          toast("仅清关 / 到港自提 / 海外仓自提不约仓，请勾选直送或拆送");
+          return;
+        }
+        var wait = rows.filter(function (tr) { return tr.dataset.status === "pending-appt"; });
+        if (!wait.length) {
+          toast("请勾选未约仓记录");
+          return;
+        }
+        if (wait.length !== rows.length) {
+          toast("已约仓不能重复约仓，请只勾未约仓");
+          return;
+        }
+        document.getElementById("bookHint").textContent =
+          "已选 " + wait.length + " 票 · 确定后状态改已约仓，预约时间回写本列";
+        document.getElementById("bookAt").value = "2026-07-14T09:00";
+        openMask("bookMask", true);
+      });
+      document.getElementById("bookClose").onclick =
+      document.getElementById("bookCancel").onclick = function () { openMask("bookMask", false); };
+      document.getElementById("bookSave").addEventListener("click", function () {
+        var rows = needSel(false); if (!rows) return;
+        rows = rows.filter(function (tr) {
+          return canBookMode(tr) && tr.dataset.status === "pending-appt";
+        });
+        if (!rows.length) { toast("请勾选未约仓记录"); return; }
+        var at = document.getElementById("bookAt").value;
+        if (!at) { toast("请填写预约时间"); return; }
+        var atTxt = at.replace("T", " ");
+        rows.forEach(function (tr) {
+          tr.dataset.status = "appointed";
+          var st = statusCell(tr);
+          if (st) st.innerHTML = '<span class="tag tag-pending">已约仓</span>';
+          var atCell = bookAtCell(tr);
+          if (atCell) atCell.textContent = atTxt;
+          setRemark(tr, "约仓已登记 · " + atTxt);
+        });
+        openMask("bookMask", false);
+        applyFilters();
+        toast("约仓已登记 · " + rows.length + " 票");
+      });
+
+      function stripCandidates(rows) {
+        return (rows || []).filter(function (tr) {
+          return canStripMode(tr) && (tr.dataset.status === "await-strip" || tr.dataset.status === "picked" || tr.dataset.status === "delivering");
+        });
+      }
+      document.getElementById("btnStrip").addEventListener("click", function () {
+        var rows = needSel(false); if (!rows) return;
+        if (rows.some(function (tr) { return !canStripMode(tr); })) {
+          toast("请勾选整柜清关拆送 / 整柜拆送");
+          return;
+        }
+        var done = rows.filter(isStripped);
+        if (done.length) {
+          toast("运单[" + awbOf(done[0]) + "]已拆柜，不能重复登记");
+          return;
+        }
+        if (!stripCandidates(rows).length) {
+          toast("请勾选待拆柜登记的拆送柜");
+          return;
+        }
+        if (stripCandidates(rows).length !== rows.length) {
+          toast("请勾选待拆柜登记的拆送柜");
+          return;
+        }
+        document.getElementById("stripAt").value = "2026-08-28T10:00:00";
+        openMask("stripMask", true);
+      });
+      document.getElementById("stripClose").onclick =
+      document.getElementById("stripCancel").onclick = function () { openMask("stripMask", false); };
+      document.getElementById("stripSave").addEventListener("click", function () {
+        var rows = needSel(false); if (!rows) return;
+        rows = stripCandidates(rows).filter(function (tr) { return !isStripped(tr); });
+        if (!rows.length) { toast("请勾选待拆柜登记的拆送柜"); return; }
+        var at = document.getElementById("stripAt").value;
+        if (!at) { toast("请填写轨迹时间"); return; }
+        var atTxt = at.replace("T", " ");
+        rows.forEach(function (tr) {
+          tr.dataset.stripped = "1";
+          tr.dataset.trackCode = "TA0001";
+          tr.dataset.status = "pending-appt";
+          var st = statusCell(tr);
+          if (st) st.innerHTML = '<span class="tag tag-warn">未约仓</span>';
+          setRemark(tr, "TA0001 海外拆柜 · " + atTxt);
+          setTrack(tr, "TA0001 海外拆柜", atTxt);
+          var stripCell = tr.querySelector('[data-col="stripAt"]');
+          if (stripCell) stripCell.textContent = atTxt;
+        });
+        openMask("stripMask", false);
+        applyFilters();
+        toast("已拆柜 · 进入未约仓 · 轨迹 TA0001");
+      });
+
+      document.getElementById("btnPickup").addEventListener("click", function () {
+        var rows = needSel(true); if (!rows) return;
+        document.getElementById("pickTpl").selectedIndex = 0;
+        document.getElementById("pickPrint").selectedIndex = 0;
+        fillPickTable(rows);
+        openMask("pickMask", true);
+      });
+      document.getElementById("pickClose").onclick =
+      document.getElementById("pickCancel").onclick = function () { openMask("pickMask", false); };
+      document.getElementById("pickSave").addEventListener("click", function () {
+        var rows = needSel(true); if (!rows) return;
+        var tpl = document.getElementById("pickTpl").value;
+        if (!tpl) { toast("请选择自提模板"); return; }
+        var printOpt = document.getElementById("pickPrint").value;
+        rows.forEach(function (tr) {
+          tr.dataset.status = "appointed";
+          var st = statusCell(tr);
+          if (st) st.innerHTML = '<span class="tag tag-pending">已约仓</span>';
+          setRemark(tr, "自提已登记 · " + tpl + (printOpt ? " · " + printOpt : ""));
+        });
+        openMask("pickMask", false);
+        applyFilters();
+        toast(printOpt === "打印自提单" ? "自提已登记 · 自提单已送打印" : "自提已登记");
+      });
+
+      var doneFiles = [];
+      function renderDoneFiles() {
+        document.getElementById("doneFileList").innerHTML = doneFiles.map(function (f, i) {
+          return "<li>" + f.name + "<button type=\"button\" data-i=\"" + i + "\">×</button></li>";
+        }).join("");
+      }
+      function addDoneFiles(list) {
+        Array.prototype.forEach.call(list || [], function (f) {
+          if (doneFiles.length >= 10) return;
+          doneFiles.push(f);
+        });
+        if (doneFiles.length > 10) doneFiles = doneFiles.slice(0, 10);
+        renderDoneFiles();
+      }
+      document.getElementById("doneFileList").addEventListener("click", function (e) {
+        var btn = e.target.closest("button");
+        if (!btn) return;
+        doneFiles.splice(Number(btn.getAttribute("data-i")), 1);
+        renderDoneFiles();
+      });
+      document.getElementById("doneUpload").addEventListener("click", function () {
+        document.getElementById("doneFile").click();
+      });
+      document.getElementById("doneFile").addEventListener("change", function () {
+        addDoneFiles(this.files);
+        this.value = "";
+      });
+      document.getElementById("doneUpload").addEventListener("dragover", function (e) {
+        e.preventDefault();
+      });
+      document.getElementById("doneUpload").addEventListener("drop", function (e) {
+        e.preventDefault();
+        addDoneFiles(e.dataTransfer.files);
+      });
+
+      document.getElementById("btnDone").addEventListener("click", function () {
+        var rows = needSel(true); if (!rows) return;
+        document.getElementById("doneAt").value = "2026-08-28T20:18:34";
+        doneFiles = [];
+        renderDoneFiles();
+        openMask("doneMask", true);
+      });
+      document.getElementById("doneClose").onclick =
+      document.getElementById("doneCancel").onclick = function () { openMask("doneMask", false); };
+      document.getElementById("doneSave").addEventListener("click", function () {
+        var rows = needSel(true); if (!rows) return;
+        var at = document.getElementById("doneAt").value;
+        if (!at) { toast("请填写完结时间"); return; }
+        var atTxt = at.replace("T", " ");
+        var pod = doneFiles.length ? " · POD " + doneFiles.map(function (f) { return f.name; }).join("、") : "";
+        rows.forEach(function (tr) {
+          tr.dataset.status = "done";
+          var st = statusCell(tr);
+          if (st) st.innerHTML = '<span class="tag tag-ok">已送达</span>';
+          var prev = remarkCell(tr) ? remarkCell(tr).textContent.trim() : "";
+          setRemark(tr, (prev && prev !== "—" ? prev + " · " : "") + "已自提完结 " + atTxt + pod);
+        });
+        openMask("doneMask", false);
+        applyFilters();
+        toast("已标记自提完结");
+      });
+
+      document.getElementById("btnUpload").addEventListener("click", function () {
+        var rows = needSel(true); if (!rows) return;
+        document.getElementById("uploadHint").textContent = "已选 " + rows.length + " 票 · 回写备注「自提单已上传」";
+        document.getElementById("uploadFile").value = "";
+        openMask("uploadMask", true);
+      });
+      document.getElementById("uploadClose").onclick =
+      document.getElementById("uploadCancel").onclick = function () { openMask("uploadMask", false); };
+      document.getElementById("uploadSave").addEventListener("click", function () {
+        var rows = needSel(true); if (!rows) return;
+        var file = document.getElementById("uploadFile").files[0];
+        var name = file ? file.name : "自提单.pdf";
+        rows.forEach(function (tr) {
+          var prev = remarkCell(tr) ? remarkCell(tr).textContent.trim() : "";
+          setRemark(tr, (prev && prev !== "—" ? prev + " · " : "") + "自提单已上传（" + name + "）");
+        });
+        openMask("uploadMask", false);
+        toast("自提单已上传（原型演示）");
+      });
+
+      var podFiles = [];
+      function awbOf(tr) { return col(tr, "awb") ? col(tr, "awb").innerText.trim() : ""; }
+      function cntrOf(tr) { return col(tr, "cntr") ? col(tr, "cntr").innerText.trim() : ""; }
+      function renderPodFiles() {
+        document.getElementById("podFileList").innerHTML = podFiles.map(function (f, i) {
+          return "<li>" + f.name + "<button type=\"button\" data-i=\"" + i + "\">×</button></li>";
+        }).join("");
+      }
+      function addPodFiles(list) {
+        Array.prototype.forEach.call(list || [], function (f) {
+          if (podFiles.length >= 10) return;
+          podFiles.push(f);
+        });
+        if (podFiles.length > 10) podFiles = podFiles.slice(0, 10);
+        renderPodFiles();
+      }
+      function matchPodTr(name, rows) {
+        var up = String(name || "").toUpperCase();
+        for (var i = 0; i < rows.length; i++) {
+          var awb = awbOf(rows[i]).toUpperCase();
+          var cntr = cntrOf(rows[i]).toUpperCase();
+          if (cntr && up.indexOf(cntr) !== -1) return rows[i];
+          if (awb && up.indexOf(awb) !== -1) return rows[i];
+        }
+        return null;
+      }
+      document.getElementById("btnPod").addEventListener("click", function () {
+        var rows = needSel(false); if (!rows) return;
+        var needStripFirst = rows.filter(function (tr) {
+          return canStripMode(tr) && !isStripped(tr);
+        });
+        if (needStripFirst.length) {
+          toast("运单[" + awbOf(needStripFirst[0]) + "]须先拆柜登记，再上传 POD");
+          return;
+        }
+        document.getElementById("podHint").textContent =
+          "已选 " + rows.length + " 票 · 一次可传多个文件，回写备注「POD已回传」";
+        document.getElementById("podSel").innerHTML = rows.map(function (tr) {
+          return "<span>" + awbOf(tr) + " · " + cntrOf(tr) + "</span>";
+        }).join("");
+        podFiles = [];
+        renderPodFiles();
+        openMask("podMask", true);
+      });
+      document.getElementById("podClose").onclick =
+      document.getElementById("podCancel").onclick = function () { openMask("podMask", false); };
+      document.getElementById("podFileList").addEventListener("click", function (e) {
+        var btn = e.target.closest("button");
+        if (!btn) return;
+        podFiles.splice(Number(btn.getAttribute("data-i")), 1);
+        renderPodFiles();
+      });
+      document.getElementById("podUpload").addEventListener("click", function () {
+        document.getElementById("podFile").click();
+      });
+      document.getElementById("podFile").addEventListener("change", function () {
+        addPodFiles(this.files);
+        this.value = "";
+      });
+      document.getElementById("podUpload").addEventListener("dragover", function (e) { e.preventDefault(); });
+      document.getElementById("podUpload").addEventListener("drop", function (e) {
+        e.preventDefault();
+        addPodFiles(e.dataTransfer.files);
+      });
+      document.getElementById("podSave").addEventListener("click", function () {
+        var rows = needSel(false); if (!rows) return;
+        if (!podFiles.length) { toast("请先选择 POD 文件（可一次选多个）"); return; }
+        var hits = [];
+        var shared = [];
+        rows.forEach(function () { hits.push([]); });
+        podFiles.forEach(function (f) {
+          var tr = matchPodTr(f.name, rows);
+          if (tr) hits[rows.indexOf(tr)].push(f.name);
+          else shared.push(f.name);
+        });
+        rows.forEach(function (tr, i) {
+          var names = hits[i].concat(shared);
+          if (!names.length) return;
+          if (tr.dataset.status === "delivering" || tr.dataset.status === "picked") {
+            tr.dataset.status = "done";
+            var st = statusCell(tr);
+            if (st) st.innerHTML = '<span class="tag tag-ok">已送达</span>';
+          }
+          var prev = remarkCell(tr) ? remarkCell(tr).textContent.trim() : "";
+          setRemark(tr, (prev && prev !== "—" ? prev + " · " : "") + "POD已回传（" + names.join("、") + "）");
+        });
+        openMask("podMask", false);
+        applyFilters();
+        toast("POD 已批量回传 · " + rows.length + " 票（原型演示）");
+      });
+
+      document.getElementById("btnTrack").addEventListener("click", function () {
+        var rows = needSel(false); if (!rows) return;
+        document.getElementById("trackHint").textContent = "已选 " + rows.length + " 票 · 回写「备注」";
+        document.getElementById("trackNote").value = "";
+        openMask("trackMask", true);
+      });
+      document.getElementById("trackClose").onclick =
+      document.getElementById("trackCancel").onclick = function () { openMask("trackMask", false); };
+      document.getElementById("trackSave").addEventListener("click", function () {
+        var rows = needSel(false); if (!rows) return;
+        var sel = document.getElementById("trackNode");
+        var nodeVal = sel.value;
+        var nodeTxt = sel.options[sel.selectedIndex].textContent.trim();
+        var extra = document.getElementById("trackNote").value.trim();
+        var text = extra ? (nodeTxt + " · " + extra) : nodeTxt;
+        var atTxt = "2026-08-28 17:40";
+        rows.forEach(function (tr) {
+          setRemark(tr, text + (nodeVal === "A00197" || nodeVal === "清关完成" ? " · " + atTxt : ""));
+          if (nodeVal === "A00197") {
+            tr.dataset.status = "closed";
+            tr.dataset.trackCode = "A00197";
+            var stA = statusCell(tr);
+            if (stA) stA.innerHTML = '<span class="tag tag-ok">已完结</span>';
+          } else if (nodeVal === "清关完成") {
+            tr.dataset.status = "closed";
+            tr.dataset.trackCode = "清关完成";
+            var stC = statusCell(tr);
+            if (stC) stC.innerHTML = '<span class="tag tag-ok">已完结</span>';
+          }
+        });
+        openMask("trackMask", false);
+        applyFilters();
+        toast(nodeVal === "A00197" || nodeVal === "清关完成" ? "已完结 · " + nodeTxt : "轨迹已维护");
+      });
+
+      document.querySelectorAll(".toolbar .btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (/^(btnPickup|btnDone|btnUpload|btnTrack|btnPod|btnBook|btnStrip)$/.test(btn.id)) return;
+          var checked = document.querySelectorAll('table[aria-label="尾端派送列表"] tbody input:checked').length;
+          if (btn.textContent.indexOf("导出") !== -1) {
+            toast("导出任务已提交（原型演示）");
+            return;
+          }
+          if (!checked && btn.classList.contains("tb-red")) {
+            toast("请先勾选记录");
+            return;
+          }
+          toast("「" + btn.textContent.trim() + "」已提交（原型演示）");
+        });
+      });
+
+      var stripHash = (location.hash || "").replace(/^#/, "");
+      if (stripHash === "btnStrip" || stripHash === "stripMask") {
+        allRows().forEach(function (tr) {
+          var cb = tr.querySelector('input[type="checkbox"]');
+          if (cb) cb.checked = canStripMode(tr) && tr.dataset.status === "await-strip" && !isStripped(tr);
+        });
+        document.getElementById("btnStrip").click();
+      }
+    })();
+  </script>
+</body>
+</html>
