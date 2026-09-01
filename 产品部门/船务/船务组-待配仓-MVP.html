@@ -270,8 +270,9 @@
             <div class="fi"><label>预配舱单号</label><input id="fPreNo" /></div>
             <div class="fi"><label>提单号</label><input id="fBl" /></div>
             <div class="fi"><label>销售产品</label><input id="fProduct" /></div>
-            <div class="fi"><label>报关编号</label><input id="fDeclNo" placeholder="关务作业号" /></div>
-            <div class="fi"><label>运单报关编号</label><input id="fDeclare" placeholder="运单默认编号" /></div>
+            <div class="fi"><label>报关编号</label><input id="fDeclNo" placeholder="关务回写作业号" /></div>
+            <div class="fi"><label>运单报关编号</label><input id="fDeclare" placeholder="运单默认编号（不改）" /></div>
+            <div class="fi"><label>关务报关标记</label><input id="fCustomsMark" placeholder="合并/拆分/单独" /></div>
             <div class="fi"><label>到港时间</label>
               <div class="fi range"><input id="fArrFrom" type="date" /><span>~</span><input id="fArrTo" type="date" /></div>
             </div>
@@ -444,6 +445,7 @@
         { k: "stowSt", t: "配舱状态", w: 80 },
         { k: "wbSt", t: "运单状态", w: 80 },
         { k: "declNo", t: "报关编号", w: 190 },
+        { k: "customsMark", t: "关务报关标记", w: 110 },
         { k: "wbDecl", t: "运单报关编号", w: 190 },
         { k: "holdSt", t: "扣件状态", w: 80 },
         { k: "density", t: "收货比重", w: 80 },
@@ -531,13 +533,13 @@
       ];
 
       function leaf(sn, waybill, goods, wh, zip, custNo, pcs, chg, density) {
-        var wbDecl = waybill + "-1(" + pcs + ")";
+        var wbDecl = waybill + "-1(1)";
         return {
           id: "r" + sn, sn: sn, waybill: waybill,
           pcs: pcs, allocPcs: pcs, unAct: (chg * 0.92).toFixed(3), unCbm: (chg / 280).toFixed(3),
           shipAct: (chg * 0.9).toFixed(3), shipDim: (chg * 1.05).toFixed(1), shipCbm: (chg / 250).toFixed(3),
           stowSt: "未配舱", wbSt: "已签入",
-          wbDecl: wbDecl, declNo: wbDecl, holdSt: "",
+          wbDecl: wbDecl, declNo: wbDecl, customsMark: "报关", holdSt: "",
           density: density, arrNode: "泉州分公司", arrAt: "2026-08-22 16:17:30",
           outChg: chg, chg: chg, pcsTxt: pcs + "件",
           opRemark: "", forecastAt: "2026-08-20 17:24:52", shipAt: "",
@@ -586,24 +588,44 @@
         }
         function mark(wbs, mg, broker) {
           var lead = wbs[0];
-          var totalPcs = 0;
-          wbs.forEach(function (wb) {
-            var r = find(wb);
-            if (r) totalPcs += Number(r.pcs) || 0;
-          });
-          var customsNo = lead + "-1(" + totalPcs + ")";
+          var ticketN = wbs.length;
+          var customsNo = lead + "-1(" + ticketN + ")";
           wbs.forEach(function (wb) {
             var r = find(wb);
             if (!r) return;
             r.merge = mg;
             r.broker = broker;
             r.declNo = customsNo;
+            r.customsMark = "合并报关";
             r.extra = "合并报关,商业地址";
           });
         }
         mark(["ICBU00001215403", "ICBU00001218772"], "MB-0826-QZ", "王敏");
         mark(["ICBU00001221001", "ICBU00001221016", "ICBU00001221027"], "MB-0820-QD", "张丽");
         mark(["ICBU00001222011", "ICBU00001222024"], "MB-0822-NS", "李强");
+      })();
+
+      /** 关务合并后再分票样例：客户原合并标保留；运单报关编号仍为客户合并号；报关编号已拆成 3 份 */
+      (function seedCustomsResplit() {
+        function find(wb) {
+          var hit = null;
+          GROUPS.forEach(function (g) {
+            g.rows.forEach(function (r) { if (r.waybill === wb) hit = r; });
+          });
+          return hit;
+        }
+        var wbs = ["ICBU00001221001", "ICBU00001221016", "ICBU00001221027"];
+        var custNo = "ICBU00001221001-1(3)";
+        wbs.forEach(function (wb, i) {
+          var r = find(wb);
+          if (!r) return;
+          r.wbDecl = custNo;
+          r.declNo = wb + "-" + (i + 2) + "(1)";
+          r.customsMark = "报关";
+          r.merge = "MB-0820-QD";
+          r.broker = "张丽";
+          r.extra = "合并报关,商业地址";
+        });
       })();
 
       var openMap = { g1: true, g2: true, g3: true, g4: true, g5: true };
@@ -638,6 +660,8 @@
         if (declNo && String(r.declNo || "").indexOf(declNo) < 0) return false;
         var decl = has("fDeclare");
         if (decl && String(r.wbDecl || "").indexOf(decl) < 0) return false;
+        var cm = has("fCustomsMark");
+        if (cm && String(r.customsMark || "").indexOf(cm) < 0) return false;
         var cust = has("fCust");
         if (cust && r.customer.indexOf(cust) < 0) return false;
         var chan = has("fChan");
@@ -701,6 +725,7 @@
       function cell(r, k) {
         if (k === "preNo") return r.preNo || "";
         if (k === "declNo") return r.declNo || r.wbDecl || "";
+        if (k === "customsMark") return r.customsMark || "";
         if (k === "wbDecl") return r.wbDecl || "";
         if (k === "stowSt") {
           var html = r.stowSt + (r.autoStow ? " <span class='tag auto-stow'>自动配舱</span>" : "");
