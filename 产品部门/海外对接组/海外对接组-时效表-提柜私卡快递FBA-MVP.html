@@ -126,6 +126,8 @@
     .tag-ex { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
     .tag-fba { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
     .tag-pick { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag-local { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag-oos { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
     .muted { color: var(--sub); }
     .ref-box {
       margin: 12px 16px 16px; padding: 12px; border: 1px dashed #ffd591; border-radius: 2px;
@@ -164,7 +166,7 @@
         <p class="sub">
           每周统计，数据来自海外对接组汇总。明细页签按运单绑定<strong>销售产品 · 派送方式</strong>分：
           <strong>FBA派</strong>·<strong>卡派</strong>·<strong>快递派</strong>；另加跨派送的<strong>提柜时效</strong>（付雪）。
-          柜 → 柜下明细（按仓库/客户单号）。对齐现网周报 Excel + 0804 时效公式。
+          卡派（私卡）按<strong>渠道 + 邮编</strong>区分<strong>本地 / 外州</strong>，洛杉矶与外港 SLA 口径不同。
         </p>
       </div>
       <div class="links">
@@ -214,12 +216,33 @@
             </select>
           </div>
           <div class="filter-item">
+            <label>私卡渠道 <span class="badge new">NEW</span></label>
+            <select id="qPkCh">
+              <option value="">全部</option>
+              <option>洛杉矶</option>
+              <option>纽约</option>
+              <option>萨凡纳</option>
+              <option>休斯顿</option>
+              <option>芝加哥</option>
+              <option>奥克兰</option>
+              <option>西雅图</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>本地/外州 <span class="badge new">NEW</span></label>
+            <select id="qRegion">
+              <option value="">全部</option>
+              <option value="本地">本地</option>
+              <option value="外州">外州</option>
+            </select>
+          </div>
+          <div class="filter-item">
             <label>柜号</label>
             <input id="qCntr" placeholder="例 OOCU8957474" />
           </div>
           <div class="filter-item">
             <label>关键字</label>
-            <input id="qKw" placeholder="客户单号 / FBA / 目的站 / 仓库" />
+            <input id="qKw" placeholder="客户单号 / FBA / 目的站 / 邮编 / 仓库" />
           </div>
         </div>
       </div>
@@ -277,6 +300,15 @@
     HGR6: 7, HIA1: 7, IUST: 7, MDT4: 7, RDU2: 7, RMN3: 7
   };
 
+  /* 私卡渠道 · 本地邮编前缀（奥克兰全本地、西雅图全外州） */
+  var PK_LOCAL_ZIP = {
+    "萨凡纳": ["31"],
+    "休斯顿": ["77"],
+    "芝加哥": ["60"],
+    "洛杉矶": ["90", "91", "92"],
+    "纽约": ["07", "08"]
+  };
+
   function parseD(s) {
     if (!s) return null;
     var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -301,8 +333,28 @@
     return m ? (+m[1] + "月" + (+m[2]) + "日") : s;
   }
 
+  /** 私卡本地/外州：按渠道 + 邮编前缀 */
+  function pkZone(r) {
+    if (r.ch !== "卡派") return "";
+    var ch = r.pkCh || "";
+    if (ch === "奥克兰") return "本地";
+    if (ch === "西雅图") return "外州";
+    var prefixes = PK_LOCAL_ZIP[ch];
+    if (!prefixes || !prefixes.length) return "";
+    var zip = String(r.zip || "").replace(/\D/g, "");
+    if (!zip) return "";
+    for (var i = 0; i < prefixes.length; i++) {
+      if (zip.indexOf(prefixes[i]) === 0) return "本地";
+    }
+    return "外州";
+  }
+  function isLaPk(r) {
+    return r.ch === "卡派" && r.pkCh === "洛杉矶";
+  }
+
   /*
    * ch = 销售产品·派送方式：卡派 | 快递派 | FBA派 | 自提
+   * pkCh = 私卡渠道（仅卡派）；zip = 目的邮编
    * pickAt 提柜 · stripAt 拆柜 · outAt 出库 · signAt 签收
    * sailAt 开船 · scanAt 最早扫描
    */
@@ -348,16 +400,37 @@
       pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-27", signAt: "2026-07-30",
       sailAt: "2026-07-10", scanAt: "", owner: "付雪" },
 
-    /* 卡派（原私卡） */
-    { week: "2026-W31", ch: "卡派", cntr: "CSNU6688456", ref: "PK-20260728-001", dest: "私人地址·NJ", wh: "美库",
-      pickAt: "2026-07-25", stripAt: "2026-07-26", outAt: "2026-07-30", signAt: "2026-08-01",
+    /* 卡派（私卡）· 渠道 + 邮编 → 本地/外州 */
+    { week: "2026-W31", ch: "卡派", pkCh: "纽约", zip: "07001", cntr: "CSNU6688456", ref: "PK-20260728-001", dest: "私人地址·NJ", wh: "美库",
+      pickAt: "2026-07-25", stripAt: "2026-07-26", outAt: "2026-07-28", signAt: "2026-07-29",
       sailAt: "2026-07-12", scanAt: "", owner: "港后卡派" },
-    { week: "2026-W31", ch: "卡派", cntr: "CSNU6688456", ref: "PK-20260728-002", dest: "私人地址·PA", wh: "美库",
-      pickAt: "2026-07-25", stripAt: "2026-07-26", outAt: "2026-07-31", signAt: "2026-08-03",
+    { week: "2026-W31", ch: "卡派", pkCh: "纽约", zip: "10001", cntr: "CSNU6688456", ref: "PK-20260728-002", dest: "私人地址·NY", wh: "美库",
+      pickAt: "2026-07-25", stripAt: "2026-07-26", outAt: "2026-07-29", signAt: "2026-08-03",
       sailAt: "2026-07-12", scanAt: "", owner: "港后卡派" },
-    { week: "2026-W31", ch: "卡派", cntr: "HLCU9900112", ref: "PK-20260722-018", dest: "私人地址·CA", wh: "VMI",
-      pickAt: "2026-07-20", stripAt: "2026-07-21", outAt: "2026-07-24", signAt: "2026-07-27",
+    { week: "2026-W31", ch: "卡派", pkCh: "洛杉矶", zip: "90001", cntr: "HLCU9900112", ref: "PK-20260722-018", dest: "私人地址·CA", wh: "VMI",
+      pickAt: "2026-07-20", stripAt: "2026-07-21", outAt: "2026-07-22", signAt: "2026-07-23",
       sailAt: "2026-07-05", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", pkCh: "洛杉矶", zip: "94501", cntr: "HLCU9900112", ref: "PK-20260722-019", dest: "私人地址·CA外州", wh: "VMI",
+      pickAt: "2026-07-20", stripAt: "2026-07-21", outAt: "2026-07-23", signAt: "2026-07-30",
+      sailAt: "2026-07-05", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", pkCh: "萨凡纳", zip: "31408", cntr: "MSCU7788990", ref: "PK-SAV-001", dest: "私人地址·GA", wh: "美库",
+      pickAt: "2026-07-24", stripAt: "2026-07-25", outAt: "2026-07-27", signAt: "2026-07-28",
+      sailAt: "2026-07-10", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", pkCh: "萨凡纳", zip: "30301", cntr: "MSCU7788990", ref: "PK-SAV-002", dest: "私人地址·ATL", wh: "美库",
+      pickAt: "2026-07-24", stripAt: "2026-07-25", outAt: "2026-07-28", signAt: "2026-08-02",
+      sailAt: "2026-07-10", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", pkCh: "休斯顿", zip: "77001", cntr: "TEMU112244", ref: "PK-HOU-001", dest: "私人地址·TX", wh: "4DS",
+      pickAt: "2026-07-22", stripAt: "2026-07-23", outAt: "2026-07-25", signAt: "2026-07-26",
+      sailAt: "2026-07-08", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", pkCh: "芝加哥", zip: "60601", cntr: "ONEU556677", ref: "PK-CHI-001", dest: "私人地址·IL", wh: "美库",
+      pickAt: "2026-07-21", stripAt: "2026-07-22", outAt: "2026-07-24", signAt: "2026-07-25",
+      sailAt: "2026-07-06", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", pkCh: "奥克兰", zip: "94607", cntr: "OOLU334455", ref: "PK-OAK-001", dest: "私人地址·OA", wh: "VMI",
+      pickAt: "2026-07-23", stripAt: "2026-07-24", outAt: "2026-07-26", signAt: "2026-07-27",
+      sailAt: "2026-07-09", scanAt: "", owner: "港后卡派" },
+    { week: "2026-W31", ch: "卡派", pkCh: "西雅图", zip: "98101", cntr: "WHLU223344", ref: "PK-SEA-001", dest: "私人地址·WA", wh: "4DS",
+      pickAt: "2026-07-22", stripAt: "2026-07-23", outAt: "2026-07-26", signAt: "2026-07-31",
+      sailAt: "2026-07-07", scanAt: "", owner: "港后卡派" },
 
     /* 快递派 */
     { week: "2026-W31", ch: "快递派", cntr: "MSCU3344667", ref: "1Z999AA10123456784", dest: "快递派送", wh: "4DS",
@@ -374,8 +447,8 @@
     { week: "2026-W30", ch: "FBA派", cntr: "TGHU5566778", ref: "FBA19E9TEST01", dest: "ABE8", wh: "4DS",
       pickAt: "2026-07-16", stripAt: "2026-07-17", outAt: "2026-07-20", signAt: "2026-07-22",
       sailAt: "2026-07-02", scanAt: "", owner: "付雪" },
-    { week: "2026-W30", ch: "卡派", cntr: "TGHU5566889", ref: "PK-20260715-009", dest: "私人地址·TX", wh: "VMI",
-      pickAt: "2026-07-14", stripAt: "2026-07-15", outAt: "2026-07-18", signAt: "2026-07-21",
+    { week: "2026-W30", ch: "卡派", pkCh: "休斯顿", zip: "75001", cntr: "TGHU5566889", ref: "PK-20260715-009", dest: "私人地址·TX外州", wh: "VMI",
+      pickAt: "2026-07-14", stripAt: "2026-07-15", outAt: "2026-07-18", signAt: "2026-07-23",
       sailAt: "2026-06-28", scanAt: "", owner: "港后卡派" }
   ];
 
@@ -391,12 +464,34 @@
     var pickAge = r.pickAt && r.sailAt ? days(r.sailAt, r.pickAt) + 1 : null;
     var sla = FBA_SLA[r.dest] != null ? FBA_SLA[r.dest] : 7;
     var overFba = pickToSign != null && pickToSign > sla;
-    var overPk = stripToSign != null && stripToSign > 15;
+    var zone = pkZone(r);
+    var overPk = false;
+    var pkSlaText = "";
+    if (r.ch === "卡派" && zone) {
+      if (isLaPk(r)) {
+        if (zone === "本地") {
+          pkSlaText = "提柜→签收 ≤3";
+          overPk = pickToSign != null && pickToSign > 3;
+        } else {
+          pkSlaText = "提柜→出库 ≤3 · 出库→签收 ≤7";
+          overPk = (pickToOut != null && pickToOut > 3) || (outToSign != null && outToSign > 7);
+        }
+      } else {
+        if (zone === "本地") {
+          pkSlaText = "拆柜+1→出库 ≤3 · 拆柜+1→签收 ≤3";
+          overPk = (stripToOut != null && stripToOut > 3) || (stripToSign != null && stripToSign > 3);
+        } else {
+          pkSlaText = "拆柜+1→出库 ≤3 · 拆柜+1→签收 ≤7";
+          overPk = (stripToOut != null && stripToOut > 3) || (stripToSign != null && stripToSign > 7);
+        }
+      }
+    }
     var overEx = exAge != null && exAge > 20;
     var overPick = pickAge != null && pickAge > 25;
     return {
       pickToOut: pickToOut, stripToOut: stripToOut, outToSign: outToSign, pickToSign: pickToSign, stripToSign: stripToSign,
       exAge: exAge, actualSign: actualSign, pickAge: pickAge, sla: sla,
+      zone: zone, pkSlaText: pkSlaText,
       overFba: overFba, overPk: overPk, overEx: overEx, overPick: overPick
     };
   }
@@ -428,15 +523,22 @@
     var ch = $("qCh").value;
     var wh = $("qWh").value;
     var over = $("qOver").value;
+    var pkCh = $("qPkCh").value;
+    var region = $("qRegion").value;
     var cntr = ($("qCntr").value || "").trim().toLowerCase();
     var kw = ($("qKw").value || "").trim().toLowerCase();
     return ROWS.filter(function (r) {
       if (week && r.week !== week) return false;
       if (ch && r.ch !== ch) return false;
       if (wh && r.wh !== wh) return false;
+      if (pkCh && r.pkCh !== pkCh) return false;
+      if (region) {
+        if (r.ch !== "卡派") return false;
+        if (pkZone(r) !== region) return false;
+      }
       if (cntr && r.cntr.toLowerCase().indexOf(cntr) < 0) return false;
       if (kw) {
-        var blob = [r.ref, r.dest, r.cntr, r.wh, r.ch].join(" ").toLowerCase();
+        var blob = [r.ref, r.dest, r.cntr, r.wh, r.ch, r.pkCh || "", r.zip || ""].join(" ").toLowerCase();
         if (blob.indexOf(kw) < 0) return false;
       }
       var m = metrics(r);
@@ -488,7 +590,7 @@
       kpi("本周明细", all.length, "", Object.keys(cntrs).length + " 柜") +
       kpi("FBA派入仓", fba.length, "purple", "超时 " + fbaOver) +
       kpi("FBA派均时效", avgFba === "—" ? "—" : avgFba + "天", avgFba > 7 ? "warn" : "ok", "提柜→签收") +
-      kpi("卡派均时效", avgPk === "—" ? "—" : avgPk + "天", avgPk > 10 ? "warn" : "ok", "拆柜+1→签收") +
+      kpi("卡派均时效", avgPk === "—" ? "—" : avgPk + "天", avgPk > 7 ? "warn" : "ok", "拆柜+1→签收 · 本地/外州") +
       kpi("快递派均时效", avgEx === "—" ? "—" : avgEx + "天", "", "开船+1→扫描") +
       kpi("提柜均时效", avgPick === "—" ? "—" : avgPick + "天", "warn", "开船→提柜+1 · 付雪");
     $("cntFba").textContent = fba.length;
@@ -545,19 +647,30 @@
   }
 
   function renderPk(list) {
-    $("secTitle").textContent = "卡派时效明细";
-    $("secHint").textContent = "派送方式=卡派 · 五项公式：提柜/拆柜+1 → 出库/签收，另加出库→签收";
+    $("secTitle").textContent = "卡派时效明细 · 本地 / 外州";
+    $("secHint").textContent = "私卡按渠道+邮编判本地/外州；洛杉矶与外港 SLA 不同；超时黄底";
     $("thead").innerHTML = "<tr>" +
-      "<th>柜号</th><th>客户单号</th><th>目的</th><th>海外仓</th>" +
+      "<th>柜号</th><th>客户单号</th><th>私卡渠道</th><th>邮编</th><th>本地/外州</th>" +
+      "<th>目的</th><th>海外仓</th>" +
       "<th>提柜</th><th>拆柜</th><th>出库</th><th>签收</th>" +
       "<th class='num'>提柜→出库</th><th class='num'>拆柜+1→出库</th>" +
       "<th class='num'>出库→签收</th>" +
-      "<th class='num'>提柜→签收</th><th class='num'>拆柜+1→签收</th><th>超时(签收&gt;15)</th></tr>";
-    var rows = byDim(list);
+      "<th class='num'>提柜→签收</th><th class='num'>拆柜+1→签收</th>" +
+      "<th>SLA 要求</th><th>是否超时</th></tr>";
+    var rows = byDim(list).slice().sort(function (a, b) {
+      var za = (a.pkCh || "") + (a.zip || "");
+      var zb = (b.pkCh || "") + (b.zip || "");
+      return za.localeCompare(zb);
+    });
     $("tbody").innerHTML = rows.map(function (r) {
       var m = metrics(r);
+      var zoneTag = m.zone === "本地"
+        ? '<span class="tag tag-local">本地</span>'
+        : (m.zone === "外州" ? '<span class="tag tag-oos">外州</span>' : '<span class="muted">—</span>');
       return "<tr class='" + (m.overPk ? "over" : "") + "'>" +
-        "<td><b>" + r.cntr + "</b></td><td>" + r.ref + "</td><td>" + r.dest + "</td><td>" + r.wh + "</td>" +
+        "<td><b>" + r.cntr + "</b></td><td>" + r.ref + "</td>" +
+        "<td>" + (r.pkCh || "—") + "</td><td>" + (r.zip || "—") + "</td><td>" + zoneTag + "</td>" +
+        "<td>" + r.dest + "</td><td>" + r.wh + "</td>" +
         "<td>" + shortD(r.pickAt) + "</td><td>" + shortD(r.stripAt) + "</td>" +
         "<td>" + shortD(r.outAt) + "</td><td>" + shortD(r.signAt) + "</td>" +
         "<td class='num'>" + (m.pickToOut != null ? m.pickToOut : "—") + "</td>" +
@@ -565,24 +678,33 @@
         "<td class='num'><b>" + (m.outToSign != null ? m.outToSign : "—") + "</b></td>" +
         "<td class='num'>" + (m.pickToSign != null ? m.pickToSign : "—") + "</td>" +
         "<td class='num'>" + (m.stripToSign != null ? m.stripToSign : "—") + "</td>" +
+        "<td class='muted' style='white-space:normal;max-width:180px'>" + (m.pkSlaText || "—") + "</td>" +
         "<td>" + overTag(m.overPk) + "</td></tr>";
-    }).join("") || empty(14);
+    }).join("") || empty(18);
     $("tabNote").innerHTML =
-      "<strong>公式口径（本页签 · 系统自动算）</strong>" +
+      "<strong>公式口径（本页签 · 私卡本地/外州）</strong>" +
       '<div class="lines">' +
-      "<div>分流依据：运单绑定<strong>销售产品 · 派送方式 = 卡派</strong>（原「私卡」口径）</div>" +
-      "<div>提柜→出库 = 出库时间 − 提柜时间</div>" +
-      "<div>拆柜第二天→出库 = 出库时间 − 拆柜时间 + 1</div>" +
-      "<div>出库→签收 = 签收时间 − 出库时间</div>" +
-      "<div>提柜→签收 = 签收时间 − 提柜时间</div>" +
-      "<div>拆柜第二天→签收 = 签收时间 − 拆柜时间 + 1（与尾单「派送时效」一致）</div>" +
+      "<div>分流：销售产品 · 派送方式 = <strong>卡派</strong>（私卡）。本地/外州按<strong>私卡渠道 + 邮编前缀</strong>判定。</div>" +
+      "<div><strong>洛杉矶</strong>本地：提柜→签收 ≤ <b>3</b> 天；外州：提柜→出库 ≤ <b>3</b>、出库→签收 ≤ <b>7</b></div>" +
+      "<div><strong>外港</strong>（萨凡纳/休斯顿/芝加哥/奥克兰/西雅图/纽约）本地：拆柜第二天→出库 ≤ <b>3</b>、拆柜第二天→签收 ≤ <b>3</b>；外州：拆柜第二天→出库 ≤ <b>3</b>、拆柜第二天→签收 ≤ <b>7</b></div>" +
+      "<div>拆柜第二天→出库/签收 = 出库或签收 − 拆柜 + 1（与尾单派送时效一致）</div>" +
       "</div>";
-    $("refBox").innerHTML = "";
+    $("refBox").innerHTML =
+      "<h5>私卡渠道 · 本地邮编规则</h5>" +
+      '<table><thead><tr><th>渠道</th><th>本地</th><th>外州</th></tr></thead><tbody>' +
+      "<tr><td>萨凡纳私人卡派</td><td>邮编 <b>31</b> 开头</td><td>同渠道非 31 开头</td></tr>" +
+      "<tr><td>休斯顿私人卡派</td><td>邮编 <b>77</b> 开头</td><td>同渠道非 77 开头</td></tr>" +
+      "<tr><td>芝加哥私人卡派</td><td>邮编 <b>60</b> 开头</td><td>同渠道非 60 开头</td></tr>" +
+      "<tr><td>奥克兰私人卡派</td><td colspan='2'><b>全部本地</b></td></tr>" +
+      "<tr><td>西雅图私人卡派</td><td colspan='2'><b>全部外州</b></td></tr>" +
+      "<tr><td>洛杉矶私人卡派</td><td>邮编 <b>90 / 91 / 92</b> 开头</td><td>其余邮编</td></tr>" +
+      "<tr><td>纽约私人卡派</td><td>邮编 <b>07 / 08</b> 开头</td><td>其余邮编</td></tr>" +
+      "</tbody></table>";
   }
 
   function renderEx(list) {
     $("secTitle").textContent = "快递派时效明细";
-    $("secHint").textContent = "派送方式=快递派 · 开船第二天 → 最早扫描；实际签收时效 = 最早扫描 − 拆柜";
+    $("secHint").textContent = "派送方式=快递派 · 最早扫描=TB00114/TB00110 首次维护较早者 · 开船第二天→最早扫描；实际签收=最早扫描−拆柜";
     $("thead").innerHTML = "<tr>" +
       "<th>柜号</th><th>运单/客户单号</th><th>海外仓</th>" +
       "<th>开船</th><th>开船+1(起算)</th><th>拆柜</th><th>最早扫描</th><th>签收</th>" +
@@ -605,6 +727,7 @@
       "<div>分流依据：运单绑定<strong>销售产品 · 派送方式 = 快递派</strong></div>" +
       "<div>快递时效 = 最早扫描时间 −（开船日 + 1）　← 开船第二天起算</div>" +
       "<div>实际签收时效 = 最早扫描时间 − 拆柜时间</div>" +
+      "<div>最早扫描时间 = 轨迹 <strong>TB00114</strong>、<strong>TB00110</strong> 第一次维护时间的较早者</div>" +
       "</div>";
     $("refBox").innerHTML = "";
   }
@@ -666,7 +789,7 @@
         if (arr.length) avg = (arr.reduce(function (s, r) { return s + (metrics(r).pickToSign || 0); }, 0) / arr.length).toFixed(1);
         over = arr.filter(function (r) { return metrics(r).overFba; }).length;
       } else if (ch === "卡派") {
-        rule = "拆柜+1→签收"; thr = ">15 天";
+        rule = "按渠道本地/外州 SLA"; thr = "洛杉矶/外港分口径";
         if (arr.length) avg = (arr.reduce(function (s, r) { return s + (metrics(r).stripToSign || 0); }, 0) / arr.length).toFixed(1);
         over = arr.filter(function (r) { return metrics(r).overPk; }).length;
       } else {
@@ -731,6 +854,8 @@
     $("qCh").value = "";
     $("qWh").value = "";
     $("qOver").value = "";
+    $("qPkCh").value = "";
+    $("qRegion").value = "";
     $("qCntr").value = "";
     $("qKw").value = "";
     render();

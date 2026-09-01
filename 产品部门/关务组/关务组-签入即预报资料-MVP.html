@@ -401,9 +401,37 @@
       border-radius: 2px; color: #ad6800; font-size: 11px; line-height: 1.55;
     }
     .modal .bd .file-pick {
-      border: 1px dashed #d9d9d9; border-radius: 2px; padding: 12px; text-align: center;
-      background: #fafafa; color: var(--sub);
+      border: 1px dashed #d9d9d9; border-radius: 2px; padding: 18px 12px; text-align: center;
+      background: #fafafa; color: var(--sub); cursor: pointer; transition: border-color .15s, background .15s;
     }
+    .modal .bd .file-pick:hover { border-color: #40a9ff; background: #f0f9ff; }
+    .modal .bd .file-pick.drag { border-color: #1890ff; background: #e6f7ff; color: #096dd9; }
+    .modal .bd .file-pick .up-title { font-size: 13px; color: #262626; margin-bottom: 4px; }
+    .modal .bd .file-pick .up-sub { font-size: 11px; color: #8c8c8c; line-height: 1.5; }
+    .modal .bd .file-pick .up-btn {
+      display: inline-block; margin-top: 10px; height: 28px; line-height: 26px; padding: 0 12px;
+      border: 1px solid #91d5ff; background: #e6f7ff; color: #096dd9; border-radius: 2px; font-size: 12px;
+    }
+    .pre-file-list {
+      margin: 8px 0 0; padding: 0; list-style: none; border: 1px solid #f0f0f0;
+      border-radius: 2px; max-height: 160px; overflow: auto; background: #fff;
+    }
+    .pre-file-list:empty { display: none; }
+    .pre-file-list li {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 8px 10px; border-bottom: 1px solid #f5f5f5; font-size: 12px;
+    }
+    .pre-file-list li:last-child { border-bottom: 0; }
+    .pre-file-list .name {
+      flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      color: #262626; font-family: Consolas, "Courier New", monospace;
+    }
+    .pre-file-list .meta { color: #8c8c8c; flex-shrink: 0; }
+    .pre-file-list .rm {
+      border: 0; background: none; color: #8c8c8c; cursor: pointer; font-size: 14px; padding: 0 4px; flex-shrink: 0;
+    }
+    .pre-file-list .rm:hover { color: #cf1322; }
+    .modal.upload-pre-dlg { width: min(520px, calc(100vw - 32px)); }
   </style>
 </head>
 <body>
@@ -812,22 +840,28 @@
   </div>
 
   <div class="modal-mask" id="uploadPreModal">
-    <div class="modal">
-      <h3>上传预录单</h3>
+    <div class="modal upload-pre-dlg">
+      <div class="modal-hd">
+        <h3>上传预录单</h3>
+        <button type="button" class="modal-x" id="btnUploadPreX" aria-label="关闭">×</button>
+      </div>
       <div class="bd">
         <p id="uploadPreTip">勾选运单处于「报关行处理中」，且报关行未对接 API。</p>
         <label>运单 / 报关编号</label>
         <div id="uploadPreIds" style="line-height:1.6;font-family:Consolas,'Courier New',monospace"></div>
         <label>报关行</label>
         <p id="uploadPreBroker" style="margin:0;color:#262626"></p>
-        <label>预录单文件</label>
-        <div class="file-pick">
-          <input type="file" id="uploadPreFile" accept=".pdf,.xlsx,.xls,.zip,.jpg,.jpeg,.png" />
-          <div style="margin-top:6px;font-size:11px">支持 PDF / Excel / 压缩包 / 图片</div>
+        <label>预录单附件 <span style="color:#cf1322">*</span></label>
+        <div class="file-pick" id="uploadPreZone" tabindex="0" role="button" aria-label="选择或拖拽预录单附件">
+          <div class="up-title">将文件拖到此处，或点击选择</div>
+          <div class="up-sub">支持 PDF / Excel / 压缩包 / 图片 · 可多选 · 单文件建议 ≤20MB</div>
+          <span class="up-btn">选择文件</span>
         </div>
+        <input type="file" id="uploadPreFile" hidden multiple accept=".pdf,.xlsx,.xls,.zip,.rar,.7z,.jpg,.jpeg,.png" />
+        <ul class="pre-file-list" id="uploadPreFileList"></ul>
         <label>备注（可选）</label>
         <textarea id="uploadPreNote" rows="2" placeholder="例：报关行微信回传 · 2026-08-20"></textarea>
-        <p class="upload-hint">上传后写入预录附件，状态进入「预录待复审」，等同 API #04 回传。已对接报关行由系统自动回传，无需手工上传。</p>
+        <p class="upload-hint">上传后写入预录附件，状态进入「预录待复审」，等同 API #04 回传。已对接报关行由系统自动回传，无需手工上传。合并组同步；同一批附件写所选报关编号。</p>
       </div>
       <div class="ft">
         <button type="button" class="btn" id="btnUploadPreCancel">取消</button>
@@ -930,6 +964,7 @@
       var brokerPending = [];
       var attPending = [];
       var uploadPrePending = [];
+      var uploadPreFiles = [];
       var pickedIds = {};
       var collapsed = {};
       var tbody = document.getElementById("tbody");
@@ -2004,22 +2039,66 @@
           ok.length > 1
             ? "将为 " + ok.length + " 组报关编号上传同一批预录附件（合并组同步）。"
             : (ok[0].id + " 当前报关行处理中，上传报关行回传的预录单文件。");
-        document.getElementById("uploadPreFile").value = "";
+        resetUploadPreFiles();
         document.getElementById("uploadPreNote").value = "";
         document.getElementById("uploadPreModal").classList.add("show");
       }
 
-      function applyUploadPre(units, fileName, note) {
+      function formatFileSize(n) {
+        n = Number(n) || 0;
+        if (n < 1024) return n + " B";
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+        return (n / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function isPreFileOk(file) {
+        var name = String(file && file.name || "").toLowerCase();
+        return /\.(pdf|xlsx?|xls|zip|rar|7z|jpe?g|png)$/.test(name);
+      }
+
+      function resetUploadPreFiles() {
+        uploadPreFiles = [];
+        var el = document.getElementById("uploadPreFile");
+        if (el) el.value = "";
+        renderUploadPreFiles();
+      }
+
+      function addUploadPreFiles(fileList) {
+        var files = Array.prototype.slice.call(fileList || []);
+        if (!files.length) return;
+        var skipped = 0;
+        files.forEach(function (f) {
+          if (!isPreFileOk(f)) { skipped += 1; return; }
+          if (uploadPreFiles.some(function (x) { return x.name === f.name && x.size === f.size; })) return;
+          if (uploadPreFiles.length >= 10) { skipped += 1; return; }
+          uploadPreFiles.push(f);
+        });
+        renderUploadPreFiles();
+        if (skipped) toast("已跳过不合规或超额文件（最多 10 个 · PDF/Excel/压缩包/图片）");
+      }
+
+      function renderUploadPreFiles() {
+        var ul = document.getElementById("uploadPreFileList");
+        if (!ul) return;
+        ul.innerHTML = uploadPreFiles.map(function (f, i) {
+          return '<li data-i="' + i + '"><span class="name" title="' + f.name + '">' + f.name +
+            '</span><span class="meta">' + formatFileSize(f.size) +
+            '</span><button type="button" class="rm" data-rm="' + i + '" title="移除" aria-label="移除">×</button></li>';
+        }).join("");
+      }
+
+      function applyUploadPre(units, fileNames, note) {
+        var label = (fileNames && fileNames.length) ? fileNames.join("、") : "预录单.pdf";
         var names = [];
         units.forEach(function (r) {
           applyGroup(r, function (x) {
             x.preIssued = true;
             x.amendState = "";
-            x.preFile = fileName || "预录单.pdf";
+            x.preFile = label;
             if (note) x.preUploadNote = note;
           });
           names.push(declNo(r) + "（" + groupIds(r) + "）");
-          writeLog(r, "上传预录单", "预录附件 " + (fileName || "预录单.pdf") + (note ? " · " + note : "") + " · 进入预录待复审");
+          writeLog(r, "上传预录单", "预录附件 " + label + (note ? " · " + note : "") + " · 进入预录待复审");
         });
         return names;
       }
@@ -2089,20 +2168,59 @@
       document.getElementById("btnUploadPre").addEventListener("click", function () {
         openUploadPreModal(checkedRows());
       });
-      document.getElementById("btnUploadPreCancel").addEventListener("click", function () {
+      function closeUploadPreModal() {
         document.getElementById("uploadPreModal").classList.remove("show");
         uploadPrePending = [];
-      });
+        resetUploadPreFiles();
+      }
+      document.getElementById("btnUploadPreCancel").addEventListener("click", closeUploadPreModal);
+      document.getElementById("btnUploadPreX").addEventListener("click", closeUploadPreModal);
+      (function bindUploadPreZone() {
+        var zone = document.getElementById("uploadPreZone");
+        var input = document.getElementById("uploadPreFile");
+        if (!zone || !input) return;
+        function openPicker() { input.click(); }
+        zone.addEventListener("click", openPicker);
+        zone.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(); }
+        });
+        input.addEventListener("change", function () {
+          addUploadPreFiles(input.files);
+          input.value = "";
+        });
+        ["dragenter", "dragover"].forEach(function (ev) {
+          zone.addEventListener(ev, function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.add("drag");
+          });
+        });
+        ["dragleave", "drop"].forEach(function (ev) {
+          zone.addEventListener(ev, function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.remove("drag");
+          });
+        });
+        zone.addEventListener("drop", function (e) {
+          addUploadPreFiles(e.dataTransfer && e.dataTransfer.files);
+        });
+        document.getElementById("uploadPreFileList").addEventListener("click", function (e) {
+          var btn = e.target.closest("[data-rm]");
+          if (!btn) return;
+          var i = Number(btn.getAttribute("data-rm"));
+          uploadPreFiles.splice(i, 1);
+          renderUploadPreFiles();
+        });
+      })();
       document.getElementById("btnUploadPreOk").addEventListener("click", function () {
         if (!uploadPrePending.length) return;
-        var fileEl = document.getElementById("uploadPreFile");
-        var file = fileEl && fileEl.files && fileEl.files[0];
-        if (!file) { toast("请选择预录单文件"); return; }
+        if (!uploadPreFiles.length) { toast("请先添加预录单附件"); return; }
         var note = (document.getElementById("uploadPreNote").value || "").trim();
-        var names = applyUploadPre(uploadPrePending, file.name, note);
-        document.getElementById("uploadPreModal").classList.remove("show");
-        uploadPrePending = [];
-        toast("已上传预录单 · " + names.join("；") + " → 预录待复审（等同 #04 回传）");
+        var fileNames = uploadPreFiles.map(function (f) { return f.name; });
+        var names = applyUploadPre(uploadPrePending, fileNames, note);
+        closeUploadPreModal();
+        toast("已上传预录单 · " + fileNames.length + " 个附件 · " + names.join("；") + " → 预录待复审（等同 #04 回传）");
         render();
       });
       document.getElementById("btnAttCancel").addEventListener("click", function () {
