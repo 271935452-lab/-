@@ -309,10 +309,19 @@
       width: 100%; min-height: 88px; border: 1px solid #d9d9d9; border-radius: 2px;
       padding: 6px 8px; font: inherit; resize: vertical;
     }
-    .modal-bd select, .modal-bd input[type="datetime-local"] {
+    .modal-bd select, .modal-bd input[type="datetime-local"], .modal-bd input[type="text"] {
       width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px;
-      padding: 0 8px; font: inherit; margin-bottom: 10px;
+      padding: 0 8px; font: inherit; margin-bottom: 10px; box-sizing: border-box;
     }
+    .modal.out-modal { width: min(560px, 94vw); }
+    .pro-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
+    .pro-row input[type="text"] { margin-bottom: 0; flex: 1; }
+    .pro-row .btn-ocr {
+      flex: 0 0 auto; height: 30px; padding: 0 10px; border: 1px solid #d9d9d9;
+      background: #fff; border-radius: 2px; cursor: pointer; font: inherit; font-size: 12px; white-space: nowrap;
+    }
+    .pro-row .btn-ocr:hover { border-color: var(--blue); color: var(--blue); }
+    .req { color: #cf1322; margin-left: 2px; }
     .modal-bd .chips { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 10px; }
     .modal-bd .chips label {
       display: inline-flex; align-items: center; gap: 4px; margin: 0; color: var(--text); font-size: 12px; cursor: pointer;
@@ -416,7 +425,7 @@
       <div class="nav-tabs">
         <button type="button" class="nav-tab">控制台</button>
         <button type="button" class="nav-tab" onclick="location.href='海外对接组-部门进仓数据-MVP.html'">部门进仓数据</button>
-        <button type="button" class="nav-tab active">卡派跟进(新) <span class="badge-new">NEW</span></button>
+        <button type="button" class="nav-tab active">卡派跟进(新)</button>
         <button type="button" class="nav-tab" onclick="location.href='海外对接组-港后-尾单单票跟踪-原型.html'">尾单单票跟踪</button>
       </div>
       <div class="header-right">
@@ -524,10 +533,6 @@
                 </select>
               </div>
               <div class="fi">
-                <label>仓库代码 <span class="tag-new">NEW</span></label>
-                <input id="qWhCode" placeholder="如 POC2 / LGB8 / ONT8" />
-              </div>
-              <div class="fi">
                 <label>港后客服 <span class="chg">改</span></label>
                 <select id="qCs">
                   <option value="">全部</option>
@@ -569,14 +574,14 @@
           <button type="button" class="tool warn">状态调整</button>
           <button type="button" class="tool">约仓登记</button>
           <button type="button" class="tool danger">取消约仓</button>
-          <button type="button" class="tool">派送登记</button>
+          <button type="button" class="tool" id="btnOutReg">出库登记 <span class="tag-new">NEW</span></button>
           <button type="button" class="tool danger">取消派送</button>
           <button type="button" class="tool">+ 附件记录</button>
           <button type="button" class="tool" id="btnPod">上传POD</button>
           <button type="button" class="tool" id="btnRemark">修改备注</button>
           <button type="button" class="tool">拆分派送</button>
           <button type="button" class="tool outline" id="btnJumpTail">跳转尾单</button>
-          <button type="button" class="tool" id="btnWbDetail">运单明细</button>
+          <button type="button" class="tool" id="btnWbDetail">运单明细 <span class="tag-new">NEW</span></button>
           <button type="button" class="tool" id="btnTrackMaint">轨迹维护</button>
         </div>
 
@@ -623,7 +628,9 @@
                 <th>到达入仓</th>
                 <th>入仓后天数</th>
                 <th>签收时间</th>
+                <th id="colPodAt">POD上传时间 <span style="color:#cf1322;font-size:10px">NEW</span></th>
                 <th>POD</th>
+                <th id="colPro">PRO追踪号 <span style="color:#cf1322;font-size:10px">NEW</span></th>
                 <th>船司</th>
                 <th>提单号</th>
                 <th>柜号</th>
@@ -802,6 +809,35 @@
     </div>
   </div>
 
+  <div class="modal-mask" id="outMask" aria-hidden="true">
+    <div class="modal out-modal" role="dialog" aria-labelledby="outTitle">
+      <div class="modal-hd">
+        <h2 id="outTitle">出库登记 <span class="tag-new">NEW</span></h2>
+        <button type="button" class="modal-close" id="outClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p class="hint" id="outHint">勾选后登记出库。PRO 为卡车公司出库单追踪号（非 POD），必填；可手输或上传出库单识别。</p>
+        <div class="pod-sel" id="outSel"></div>
+        <label>出库时间</label>
+        <input type="datetime-local" id="outAt" />
+        <label>PRO 追踪号 <span class="req">*</span></label>
+        <div class="pro-row">
+          <input type="text" id="outPro" placeholder="例 6123456789012345 或 出库单上的 PRO #" />
+          <button type="button" class="btn-ocr" id="outOcrBtn" title="上传出库单识别 PRO">上传识别</button>
+        </div>
+        <input type="file" id="outFile" hidden accept=".pdf,.jpg,.jpeg,.png,.webp" />
+        <p class="upload-hint" id="outFileHint" style="color:var(--sub);margin-top:-6px">未上传。也可点「上传识别」从出库单附件自动带出 PRO（原型演示）。</p>
+        <p class="hint" style="margin:8px 0 0;background:#f6ffed;border:1px solid #b7eb8f;padding:6px 8px;border-radius:2px;color:#389e0d">
+          保存后：机器人按 PRO 在 <strong>17TRACK</strong> 抓轨迹 → 写入「轨迹维护 / 最新轨迹」。
+        </p>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="outCancel">取消</button>
+        <button type="button" class="btn primary" id="outSave">确认出库</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-mask" id="podMask" aria-hidden="true">
     <div class="modal pod-modal" role="dialog" aria-labelledby="podTitle">
       <div class="modal-hd">
@@ -811,8 +847,9 @@
       <div class="modal-bd">
         <p class="hint" id="podHint">勾选后一次可挂多票、一次可选多个文件</p>
         <div class="pod-sel" id="podSel"></div>
-        <label>签收时间（未填签收的票一并回写）</label>
+        <label>POD上传时间（轨迹发生时间）</label>
         <input type="datetime-local" id="podAt" />
+        <p class="upload-hint" style="margin:-4px 0 10px;color:var(--sub);font-size:11px">回写列表「POD上传时间」；维护 POD 轨迹（私卡 <code>TC00105</code> / FBA <code>TC00102</code>）。未填签收的票签收日期一并回写。</p>
         <label>POD 文件（可多选）</label>
         <div class="upload" id="podUpload" tabindex="0">
           <span>将文件拖到此处，或点击上传</span>
@@ -846,18 +883,33 @@
     { id: 4, eta: "2026-08-01", pickPlan: "2026-08-03", pickAt: "2026-08-04", stripAt: "2026-08-05", bookAt: "", arriveWh: "", signAt: "", pod: false, carrier: "MSC", bl: "MEDU20260804001", cntr: "MSCU3344556", st: "未约仓", type: "FBA派", fba: "SCK4", wh: "VMI", cs: "张敏", note: "未超15天", track: "已提柜 · 待约仓", trackAt: "2026-08-04 16:40" },
     { id: 5, eta: "2026-07-25", pickPlan: "2026-07-27", pickAt: "2026-07-28", stripAt: "2026-07-29", bookAt: "2026-08-01", arriveWh: "2026-08-03", signAt: "", pod: false, carrier: "ONE", bl: "ONEY5566778899", cntr: "NYKU4455667", st: "已出库", type: "FBA派", fba: "LGB8", wh: "4DS", cs: "陈静", note: "入仓后未签未POD", track: "已入仓 · 派送途中 · 未签收", trackAt: "2026-08-03 18:22" },
     { id: 6, eta: "2026-07-22", pickPlan: "2026-07-24", pickAt: "2026-07-25", stripAt: "2026-07-26", bookAt: "2026-07-28", arriveWh: "2026-08-01", signAt: "", pod: false, carrier: "EMC", bl: "EGLV1426001234", cntr: "EGSU1025993", st: "已出库", type: "FBA派", fba: "VGT2", wh: "美库", cs: "李婷", note: "催 POD", track: "已送达仓门 · 待回传 POD", trackAt: "2026-08-01 15:05" },
-    { id: 7, eta: "2026-07-28", pickPlan: "2026-07-30", pickAt: "2026-07-31", stripAt: "2026-08-01", bookAt: "2026-08-02", arriveWh: "2026-08-05", signAt: "", pod: true, carrier: "COSCO", bl: "COSU6509082001", cntr: "CSNU7788990", st: "已出库", type: "快递派", fba: "ABE8", wh: "4DS", cs: "王芳", note: "有POD无签收仍算盯控", track: "快递派送中 · POD 已回传", trackAt: "2026-08-05 10:18" },
+    { id: 7, eta: "2026-07-28", pickPlan: "2026-07-30", pickAt: "2026-07-31", stripAt: "2026-08-01", bookAt: "2026-08-02", arriveWh: "2026-08-05", signAt: "", pod: true, podAt: "2026-08-05 10:18", carrier: "COSCO", bl: "COSU6509082001", cntr: "CSNU7788990", st: "已出库", type: "快递派", fba: "ABE8", wh: "4DS", cs: "王芳", note: "有POD无签收仍算盯控", track: "快递派送中 · POD 已回传", trackAt: "2026-08-05 10:18" },
     { id: 8, eta: "2026-08-02", pickPlan: "2026-08-04", pickAt: "2026-08-05", stripAt: "2026-08-05", bookAt: "2026-08-06", arriveWh: "2026-08-06", signAt: "", pod: false, carrier: "WHL", bl: "WHLU260805002", cntr: "WHSU8899001", st: "已约仓", type: "FBA派", fba: "ACY2", wh: "4DS", cs: "张敏", note: "入仓未满2天", track: "已约仓 · 预约送仓 08-07", trackAt: "2026-08-06 09:30" },
-    { id: 9, eta: "2026-07-15", pickPlan: "2026-07-17", pickAt: "2026-07-18", stripAt: "2026-07-19", bookAt: "2026-07-20", arriveWh: "2026-07-25", signAt: "2026-07-28", pod: true, carrier: "COSCO", bl: "COSU1234567890", cntr: "CSNU6688123", st: "已送达", type: "FBA派", fba: "AVP1", wh: "4DS", cs: "陈静", note: "", track: "已签收 · POD 已回传", trackAt: "2026-07-28 14:00" },
+    { id: 9, eta: "2026-07-15", pickPlan: "2026-07-17", pickAt: "2026-07-18", stripAt: "2026-07-19", bookAt: "2026-07-20", arriveWh: "2026-07-25", signAt: "2026-07-28", pod: true, podAt: "2026-07-28 14:00", carrier: "COSCO", bl: "COSU1234567890", cntr: "CSNU6688123", st: "已送达", type: "FBA派", fba: "AVP1", wh: "4DS", cs: "陈静", note: "", track: "已签收 · POD 已回传", trackAt: "2026-07-28 14:00" },
     { id: 10, eta: "2026-07-12", pickPlan: "2026-07-14", pickAt: "2026-07-16", stripAt: "2026-07-17", bookAt: "", arriveWh: "", signAt: "", pod: false, carrier: "MSC", bl: "MEDU20260716088", cntr: "MSCU9900112", st: "未约仓", type: "私卡派", fba: "私人CA", wh: "VMI", cs: "李婷", note: "超15天未约", track: "提柜后滞留 · 超15天未约", trackAt: "2026-08-01 08:00" },
     { id: 11, eta: "2026-07-30", pickPlan: "2026-08-01", pickAt: "2026-08-02", stripAt: "2026-08-02", bookAt: "2026-08-03", arriveWh: "2026-08-04", signAt: "2026-08-05", pod: false, carrier: "ONE", bl: "ONEY5566778800", cntr: "NYKU4455778", st: "已送达", type: "FBA派", fba: "MDT4", wh: "美库", cs: "王芳", note: "签收了但POD未回传", track: "已签收 · 催回传 POD", trackAt: "2026-08-05 16:45" },
     { id: 12, eta: "2026-08-20", pickPlan: "", pickAt: "", stripAt: "", bookAt: "", arriveWh: "", signAt: "", pod: false, carrier: "COSCO", bl: "COSU9508882240", cntr: "TGHU1122334", st: "未约仓", type: "FBA派", fba: "HGR6", wh: "4DS", cs: "张敏", note: "未提柜", track: "在途 · 未提柜", trackAt: "2026-08-06 12:00" },
     { id: 13, eta: "2026-07-05", pickPlan: "2026-07-07", pickAt: "2026-07-08", stripAt: "2026-07-09", bookAt: "2026-07-12", arriveWh: "2026-07-20", signAt: "", pod: false, carrier: "WHL", bl: "026G546882", cntr: "WHSU3344556", st: "已出库", type: "FBA派", fba: "RDU2", wh: "4DS", cs: "陈静", note: "双维：若仍未约会另计；本票已约但POD超时", track: "已入仓 · POD 超时未回传", trackAt: "2026-07-20 11:20" },
-    { id: 14, eta: "2026-07-19", pickPlan: "2026-07-21", pickAt: "2026-07-20", stripAt: "2026-07-21", bookAt: "2026-07-22", arriveWh: "2026-07-30", signAt: "2026-08-01", pod: true, carrier: "EMC", bl: "EGLV1426008888", cntr: "EGSU7788990", st: "已送达", type: "快递派", fba: "BWI4", wh: "美库", cs: "李婷", note: "", track: "已签收 · POD 已回传", trackAt: "2026-08-01 09:50" }
+    { id: 14, eta: "2026-07-19", pickPlan: "2026-07-21", pickAt: "2026-07-20", stripAt: "2026-07-21", bookAt: "2026-07-22", arriveWh: "2026-07-30", signAt: "2026-08-01", pod: true, podAt: "2026-08-01 09:50", carrier: "EMC", bl: "EGLV1426008888", cntr: "EGSU7788990", st: "已送达", type: "快递派", fba: "BWI4", wh: "美库", cs: "李婷", note: "", track: "已签收 · POD 已回传", trackAt: "2026-08-01 09:50" }
   ];
   ROWS.forEach(function (r) {
     if (!r.whCode) r.whCode = r.fba || "";
+    if (r.pro == null) r.pro = "";
   });
+  /* 演示：已出库 · 私卡带 PRO（卡车公司出库单追踪号） */
+  (function () {
+    var r = ROWS.filter(function (x) { return x.id === 8; })[0];
+    if (!r) return;
+    r.type = "私卡派";
+    r.st = "已出库";
+    r.fba = "私人CA";
+    r.whCode = "92705";
+    r.pro = "6128889900112233";
+    r.track = "已出库 · PRO 追踪中（17TRACK）";
+    r.trackAt = "2026-08-06 14:20";
+    r.note = "卡车出库单 PRO 已登记";
+    r.arriveWh = "2026-08-06";
+  })();
 
   var WO_STEPS = ["发起", "待接单", "处理中", "待协同", "已结案"];
   var WO_ROWS = [
@@ -934,6 +986,14 @@
     if (r.pod) return '<span class="tag tag-done">已回传</span>';
     if (r.arriveWh || r.st === "已出库" || r.st === "已送达") return '<span class="tag tag-bad">未回传</span>';
     return '<span class="muted">—</span>';
+  }
+  function podAtCell(r) {
+    return r.podAt ? short(r.podAt) : '<span class="muted">—</span>';
+  }
+  function proCell(r) {
+    return r.pro
+      ? '<span style="font-family:Consolas,monospace;font-size:12px">' + r.pro + "</span>"
+      : '<span class="muted">—</span>';
   }
   function trackCell(r) {
     if (!r.track) return '<span class="muted">—</span>';
@@ -1112,7 +1172,6 @@
     var st = $("qSt").value;
     var type = $("qType").value;
     var fba = ($("qFba").value || "").trim().toLowerCase();
-    var whCode = ($("qWhCode").value || "").trim().toLowerCase();
     if (carrier && r.carrier !== carrier) return false;
     if (bl && r.bl.toLowerCase().indexOf(bl) < 0) return false;
     if (cntr && r.cntr.toLowerCase().indexOf(cntr) < 0) return false;
@@ -1121,10 +1180,6 @@
     if (st && r.st !== st) return false;
     if (type && r.type !== type) return false;
     if (fba && (r.fba || "").toLowerCase().indexOf(fba) < 0) return false;
-    if (whCode) {
-      var code = String(r.whCode || r.fba || "").toLowerCase();
-      if (code.indexOf(whCode) < 0) return false;
-    }
     return true;
   }
 
@@ -1244,7 +1299,9 @@
         "<td class='days " + (isOver2(r) ? "warn" : "") + "'>" +
           (dWh != null ? dWh + " 天" : "—") + "</td>" +
         "<td>" + short(r.signAt) + "</td>" +
+        "<td>" + podAtCell(r) + "</td>" +
         "<td>" + podCell(r) + "</td>" +
+        "<td>" + proCell(r) + "</td>" +
         "<td>" + r.carrier + "</td>" +
         "<td>" + r.bl + "</td>" +
         "<td><b>" + r.cntr + "</b></td>" +
@@ -1253,7 +1310,7 @@
         "<td>" + r.wh + "</td>" +
         "<td>" + r.cs + "</td>" +
         "<td class='muted' data-note='" + r.id + "'>" + (r.note || "—") + "</td></tr>";
-    }).join("") || "<tr><td colspan='24' style='text-align:center;color:#999;padding:28px'>无匹配数据</td></tr>";
+    }).join("") || "<tr><td colspan='26' style='text-align:center;color:#999;padding:28px'>无匹配数据</td></tr>";
     updateSelBar();
   }
 
@@ -1270,7 +1327,7 @@
   $("btnSearch").onclick = $("btnQuery").onclick = render;
   $("btnReset").onclick = function () {
     ["qCarrier", "qWh", "qCs", "qSt", "qType"].forEach(function (id) { $(id).value = ""; });
-    ["qBl", "qCntr", "qFba", "qWhCode"].forEach(function (id) { $(id).value = ""; });
+    ["qBl", "qCntr", "qFba"].forEach(function (id) { $(id).value = ""; });
     tab = "all";
     render();
   };
@@ -1381,8 +1438,85 @@
   $("wbMask").addEventListener("click", function (e) {
     if (e.target === $("wbMask")) closeWbList();
   });
-  document.querySelectorAll(".toolbar .tool:not(#btnQuery):not(#btnJumpTail):not(#btnRemark):not(#btnWbDetail):not(#btnTrackMaint):not(#btnPod)").forEach(function (b) {
+  document.querySelectorAll(".toolbar .tool:not(#btnQuery):not(#btnJumpTail):not(#btnRemark):not(#btnWbDetail):not(#btnTrackMaint):not(#btnPod):not(#btnOutReg)").forEach(function (b) {
     b.addEventListener("click", function () { toast("演示：" + b.textContent.trim()); });
+  });
+
+  /* —— 出库登记 · PRO —— */
+  var outMask = $("outMask");
+  var outTargets = [];
+  var outFileName = "";
+  function openOut() {
+    outTargets = selectedRows();
+    if (!outTargets.length) {
+      toast("请先勾选需要出库登记的运单");
+      return;
+    }
+    $("outHint").textContent = "已选 " + outTargets.length + " 票 · PRO 为卡车出库单追踪号（非 POD），必填";
+    $("outSel").innerHTML = outTargets.map(function (r) {
+      return "<span>" + r.bl + " / " + r.cntr + (r.type ? " · " + r.type : "") + "</span>";
+    }).join("");
+    $("outAt").value = "2026-08-07T16:30";
+    var samePro = outTargets[0].pro || "";
+    var allSame = outTargets.every(function (r) { return (r.pro || "") === samePro; });
+    $("outPro").value = allSame ? samePro : "";
+    outFileName = "";
+    $("outFile").value = "";
+    $("outFileHint").textContent = "未上传。也可点「上传识别」从出库单附件自动带出 PRO（原型演示）。";
+    $("outFileHint").style.color = "var(--sub)";
+    outMask.classList.add("open");
+    outMask.setAttribute("aria-hidden", "false");
+  }
+  function closeOut() {
+    outMask.classList.remove("open");
+    outMask.setAttribute("aria-hidden", "true");
+    outTargets = [];
+    outFileName = "";
+  }
+  function guessProFromName(name) {
+    var m = String(name || "").match(/(\d{10,22})/);
+    return m ? m[1] : "6128889900112233";
+  }
+  function saveOut() {
+    if (!outTargets.length) return;
+    var pro = ($("outPro").value || "").trim().replace(/\s+/g, "");
+    if (!pro) {
+      toast("请填写 PRO 追踪号（必填），或上传出库单识别");
+      return;
+    }
+    var at = ($("outAt").value || "").replace("T", " ");
+    if (at && at.length === 16) at += ":00";
+    outTargets.forEach(function (r) {
+      r.pro = pro;
+      r.st = "已出库";
+      if (!r.arriveWh) r.arriveWh = (at || "2026-08-07").slice(0, 10);
+      r.track = "已出库 · PRO " + pro + " · 待 17TRACK 抓取";
+      r.trackAt = at || "2026-08-07 16:30:00";
+      var tip = "PRO已登记";
+      if (!r.note || r.note === "—") r.note = tip;
+      else if (r.note.indexOf("PRO") === -1) r.note = r.note + " · " + tip;
+    });
+    var n = outTargets.length;
+    closeOut();
+    render();
+    toast("出库已登记 · PRO " + pro + " · " + n + " 票 · 将交 17TRACK 机器人抓轨迹（原型）");
+  }
+  $("btnOutReg").onclick = openOut;
+  $("outClose").onclick = $("outCancel").onclick = closeOut;
+  $("outSave").onclick = saveOut;
+  $("outOcrBtn").onclick = function () { $("outFile").click(); };
+  $("outFile").onchange = function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    outFileName = f.name;
+    var guessed = guessProFromName(f.name);
+    $("outPro").value = guessed;
+    $("outFileHint").textContent = "已识别附件「" + f.name + "」→ PRO " + guessed + "（可改）";
+    $("outFileHint").style.color = "#389e0d";
+    this.value = "";
+  };
+  outMask.addEventListener("click", function (e) {
+    if (e.target === outMask) closeOut();
   });
 
   var remarkMask = $("remarkMask");
@@ -1529,7 +1663,7 @@
       toast("请先勾选需要上传 POD 的运单");
       return;
     }
-    $("podHint").textContent = "已选 " + podTargets.length + " 票 · 一次可传多个文件，批量回写「POD」列";
+    $("podHint").textContent = "已选 " + podTargets.length + " 票 · 一次可传多个文件，批量回写「POD」「POD上传时间」列";
     $("podSel").innerHTML = podTargets.map(function (r) {
       return "<span>" + r.cntr + " · " + r.bl + "</span>";
     }).join("");
@@ -1569,6 +1703,7 @@
       var names = (hits[r.id] || []).concat(shared);
       if (!names.length) return;
       r.pod = true;
+      r.podAt = at;
       if (!r.signAt) r.signAt = signDay;
       if (r.st === "已出库") r.st = "已送达";
       r.track = "已签收 · POD 已回传";

@@ -265,7 +265,7 @@ COVER = r'''    <section class="hero">
           <tr><td>快递异常靠备注</td><td>登记快递异常件，写回列并标红</td></tr>
         </tbody>
       </table>
-      <p class="note">口径：<a href="流程图/G5-海外对接-组流程图.html">G5</a> · <a href="海外对接组-0804-港前港后整柜价格-大致方案.html">0804</a>。进行中 · 08/28 下午业务 · 08/31 上午内部收口。跨页索引见 <a href="海外对接组-需求PRD.html">海外对接组 · 需求 PRD</a>。</p>
+      <p class="note">口径：<a href="流程图/G5-海外对接-组流程图.html">G5</a> · <a href="海外对接组-0804-港前港后整柜价格-大致方案.html">0804</a>。已完成 · 可开发。跨页索引见 <a href="海外对接组-需求PRD.html">海外对接组 · 需求 PRD</a>。</p>
     </section>
 
     <section class="card" id="m0">

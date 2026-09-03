@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>私卡邮编与 SLA 配置 · MVP</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --green: #52c41a; --red: #ff4d4f; --orange: #fa8c16;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .topbar {
+      height: 48px; background: #001529; color: #fff;
+      display: flex; align-items: center; padding: 0 16px; gap: 24px;
+    }
+    .topbar .logo { font-weight: 700; }
+    .topbar .nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.75); padding: 6px 10px; border-radius: 2px; font-size: 12px; text-decoration: none;
+    }
+    .topbar .nav a.on, .topbar .nav a:hover { color: #fff; background: rgba(255,255,255,.12); }
+    .topbar .right { color: rgba(255,255,255,.55); font-size: 12px; }
+    .layout { max-width: 1280px; margin: 0 auto; padding: 16px; }
+    body.ess-prd-page:not(.ess-prd-collapsed) .layout { max-width: none; }
+
+    .page-hd { margin-bottom: 12px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .page-hd h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .page-hd .sub { margin: 4px 0 0; color: var(--sub); font-size: 12px; line-height: 1.55; max-width: 920px; }
+    .page-hd .links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .page-hd .links a {
+      color: var(--blue); font-size: 12px; padding: 4px 8px;
+      border: 1px solid #91d5ff; border-radius: 2px; background: #e6f7ff; text-decoration: none;
+    }
+    .badge {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; line-height: 18px; vertical-align: middle; margin-left: 4px;
+    }
+    .badge.new { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+
+    .sticky-bar {
+      position: sticky; top: 0; z-index: 8;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin: 0 0 12px; padding: 8px 12px;
+      background: #fff7e6; border: 1px solid #ffd591; border-radius: 2px;
+      font-size: 12px; line-height: 1.45;
+    }
+    .sticky-bar .meta { flex: 1; min-width: 200px; color: #874d00; }
+    .sticky-bar .meta b { color: #ad4e00; }
+    .btn {
+      height: 32px; padding: 0 14px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; font: inherit; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn-primary:hover { color: #fff; opacity: .92; }
+    .btn-ok { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn-ok:hover { color: #fff; opacity: .92; }
+    .btn-danger { border-color: #ffa39e; color: #cf1322; }
+    .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 2px; margin-bottom: 12px; }
+    .sec-hd {
+      padding: 10px 16px; border-bottom: 1px solid var(--line); font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .sec-hd .hint { font-weight: 400; font-size: 12px; color: var(--sub); }
+    .note {
+      margin: 0; padding: 10px 16px; font-size: 12px; line-height: 1.75;
+      background: #fffbe6; border-bottom: 1px solid #ffe58f; color: #613400;
+    }
+    .note strong { color: #ad4e00; }
+
+    .table-wrap { overflow-x: auto; padding: 0 0 4px; }
+    table.cfg { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 880px; }
+    table.cfg th, table.cfg td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; text-align: left; vertical-align: middle; }
+    table.cfg th { background: #fafafa; color: var(--sub); font-weight: 600; white-space: nowrap; }
+    table.cfg tr:hover td { background: #fafafa; }
+    table.cfg input[type="text"], table.cfg input[type="number"], table.cfg select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    table.cfg input[type="number"] { max-width: 72px; }
+    table.cfg .chk { text-align: center; }
+    table.cfg .muted { color: var(--sub); }
+    table.cfg .prefix-cell input:disabled {
+      background: #f5f5f5; color: var(--sub); cursor: not-allowed;
+    }
+
+    .grid-2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px 16px;
+    }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+    .sla-card {
+      border: 1px solid var(--line); border-radius: 2px; background: #fafafa; padding: 12px 14px;
+    }
+    .sla-card h4 { margin: 0 0 8px; font-size: 13px; }
+    .sla-card .sla-rows { display: grid; gap: 8px; }
+    .sla-row {
+      display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: start;
+      background: #fff; border: 1px solid #f0f0f0; border-radius: 2px; padding: 8px 10px;
+    }
+    .sla-row .zone-tag {
+      display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 2px;
+      font-size: 11px; font-weight: 700; border: 1px solid;
+    }
+    .zone-local { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .zone-oos { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .metric-line {
+      display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 12px;
+    }
+    .metric-line label { color: var(--sub); }
+    .metric-line .pair { display: inline-flex; align-items: center; gap: 6px; }
+    .metric-line select { height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font: inherit; }
+    .metric-line input[type="number"] {
+      width: 56px; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font: inherit;
+    }
+    .metric-and { color: var(--sub); }
+
+    .try-bd { padding: 14px 16px 16px; }
+    .try-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 10px 16px; align-items: end;
+    }
+    @media (max-width: 900px) { .try-grid { grid-template-columns: 1fr 1fr; } }
+    .try-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .try-item input, .try-item select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .try-result {
+      margin-top: 12px; padding: 12px 14px; border: 1px dashed #91d5ff; border-radius: 2px;
+      background: #e6f7ff; font-size: 12px; line-height: 1.7;
+    }
+    .try-result .big { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .try-result .err { color: #cf1322; }
+
+    .log-list { padding: 8px 16px 14px; }
+    .log-item {
+      display: grid; grid-template-columns: 140px 80px 1fr; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px;
+    }
+    .log-item:last-child { border-bottom: none; }
+    .log-item .who { color: var(--sub); }
+    .tag {
+      display: inline-block; padding: 1px 8px; border-radius: 2px; font-size: 11px;
+      font-weight: 600; border: 1px solid;
+    }
+    .tag-pub { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag-draft { color: #d48806; background: #fffbe6; border-color: #ffe58f; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(80px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 10px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 2000; opacity: 0; transition: .25s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">腾信物流</div>
+    <div class="nav">
+      <a href="海外对接组-时效表-提柜私卡快递FBA-MVP.html">时效表</a>
+      <a class="on" href="#">私卡邮编 / SLA 配置</a>
+      <a href="海外对接组-导航.html">返回海外对接组导航</a>
+      <a href="../产品部门-导航.html">产品导航</a>
+    </div>
+    <div class="right">海外对接组 · 轻量配置</div>
+  </div>
+
+  <div class="layout">
+    <div class="page-hd">
+      <div>
+        <h1>私卡邮编与 SLA 配置 <span class="badge new">NEW</span></h1>
+        <p class="sub">
+          算法写死：按<strong>销售产品 + 邮编前缀</strong>判本地/外州，再按<strong>SLA 口径组</strong>（洛杉矶 / 外港）× 本地/外州取天数。
+          本页只维护「数」：销售产品映射、前缀、SLA 天数。供时效表卡派页签筛选与超时判定读取。
+        </p>
+      </div>
+      <div class="links">
+        <a href="海外对接组-时效表-提柜私卡快递FBA-MVP.html">← 时效表</a>
+        <a href="海外对接组-私卡邮编与SLA配置-MVP-PRD.html">本页 PRD</a>
+        <a href="海外对接组-导航.html">返回海外对接组导航</a>
+      </div>
+    </div>
+
+    <div class="sticky-bar">
+      <div class="meta" id="verMeta">当前版本：<b>已发布 v1</b> · 草稿未改 · 生效：立即（已在途票按读配置时点判定）</div>
+      <button type="button" class="btn" id="btnReset">恢复默认</button>
+      <button type="button" class="btn" id="btnDraft">保存草稿</button>
+      <button type="button" class="btn btn-ok" id="btnPub">发布生效</button>
+    </div>
+
+    <!-- ① 渠道 · 邮编 -->
+    <section class="panel">
+      <div class="sec-hd">
+        <div>
+          ① 销售产品 · 本地邮编规则
+          <div class="hint">判定模式写死三种；前缀多值用 / 或空格分隔（如 90/91/92）。禁用后不参与时效表筛选与判定。行名对应私卡销售产品（如萨凡纳私人卡派 → 简称萨凡纳）。</div>
+        </div>
+        <button type="button" class="btn btn-sm" id="btnAddCh">+ 新增销售产品</button>
+      </div>
+      <p class="note">
+        <strong>口径：</strong>前缀模式 = 目的邮编匹配任一本地前缀 → 本地，否则外州；
+        「全本地 / 全外州」忽略前缀。奥克兰、西雅图为特殊模式示意。
+      </p>
+      <div class="table-wrap">
+        <table class="cfg">
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th style="min-width:120px">销售产品</th>
+              <th style="min-width:120px">判定模式</th>
+              <th style="min-width:200px">本地邮编前缀</th>
+              <th style="min-width:110px">SLA 口径组</th>
+              <th class="chk" style="width:64px">启用</th>
+              <th style="width:72px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="chBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ② SLA -->
+    <section class="panel">
+      <div class="sec-hd">
+        <div>
+          ② SLA 要求（天数）
+          <div class="hint">口径组挂在渠道上；指标段写死可选节点，天数可改。任一段超限 → 时效表黄底超时。</div>
+        </div>
+      </div>
+      <p class="note">
+        <strong>节点口径：</strong>「拆柜+1→出库/签收」= 出库或签收 − 拆柜 + 1（拆柜第二天起算）。
+        洛杉矶走「提柜」起点；外港走「拆柜+1」起点。
+      </p>
+      <div class="grid-2" id="slaGrid"></div>
+    </section>
+
+    <!-- ③ 试算 -->
+    <section class="panel">
+      <div class="sec-hd">
+        <div>
+          ③ 试算 · 本地/外州 + SLA 文案
+          <div class="hint">改完配置后即时按当前草稿试算，不需先发布。</div>
+        </div>
+      </div>
+      <div class="try-bd">
+        <div class="try-grid">
+          <div class="try-item">
+            <label>销售产品</label>
+            <select id="tryCh"></select>
+          </div>
+          <div class="try-item">
+            <label>目的邮编</label>
+            <input id="tryZip" type="text" placeholder="如 31408 / 90001" value="31408" />
+          </div>
+          <div class="try-item">
+            <label>快捷样例</label>
+            <select id="trySample">
+              <option value="">自选…</option>
+              <option value="萨凡纳|31408">萨凡纳 · 31408 → 本地</option>
+              <option value="萨凡纳|30301">萨凡纳 · 30301 → 外州</option>
+              <option value="洛杉矶|90001">洛杉矶 · 90001 → 本地</option>
+              <option value="洛杉矶|94501">洛杉矶 · 94501 → 外州</option>
+              <option value="纽约|07001">纽约 · 07001 → 本地</option>
+              <option value="纽约|10001">纽约 · 10001 → 外州</option>
+              <option value="奥克兰|94607">奥克兰 · 任意 → 本地</option>
+              <option value="西雅图|98101">西雅图 · 任意 → 外州</option>
+            </select>
+          </div>
+          <div class="try-item" style="grid-column: span 1">
+            <label>&nbsp;</label>
+            <button type="button" class="btn btn-primary" id="btnTry" style="width:100%">试算</button>
+          </div>
+        </div>
+        <div class="try-result" id="tryOut">点「试算」查看判定结果与 SLA 文案。</div>
+      </div>
+    </section>
+
+    <!-- ④ 变更记录 -->
+    <section class="panel">
+      <div class="sec-hd">
+        <div>
+          ④ 变更记录（示意）
+          <div class="hint">正式环境记谁改了前缀/天数、何时发布；本页演示写入内存。</div>
+        </div>
+      </div>
+      <div class="log-list" id="logList"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+(function () {
+  var METRICS = [
+    { id: "pick_to_sign", label: "提柜→签收" },
+    { id: "pick_to_out", label: "提柜→出库" },
+    { id: "out_to_sign", label: "出库→签收" },
+    { id: "strip1_to_out", label: "拆柜+1→出库" },
+    { id: "strip1_to_sign", label: "拆柜+1→签收" }
+  ];
+  var MODE_OPTS = [
+    { v: "prefix", t: "邮编前缀" },
+    { v: "all_local", t: "全部本地" },
+    { v: "all_oos", t: "全部外州" }
+  ];
+  var PROFILE_OPTS = [
+    { v: "la", t: "洛杉矶" },
+    { v: "port", t: "外港" }
+  ];
+
+  function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  var DEFAULT = {
+    channels: [
+      { name: "萨凡纳", mode: "prefix", prefixes: "31", profile: "port", on: true },
+      { name: "休斯顿", mode: "prefix", prefixes: "77", profile: "port", on: true },
+      { name: "芝加哥", mode: "prefix", prefixes: "60", profile: "port", on: true },
+      { name: "奥克兰", mode: "all_local", prefixes: "", profile: "port", on: true },
+      { name: "西雅图", mode: "all_oos", prefixes: "", profile: "port", on: true },
+      { name: "洛杉矶", mode: "prefix", prefixes: "90/91/92", profile: "la", on: true },
+      { name: "纽约", mode: "prefix", prefixes: "07/08", profile: "port", on: true }
+    ],
+    sla: {
+      la: {
+        title: "洛杉矶口径",
+        local: [{ metric: "pick_to_sign", days: 3 }],
+        oos: [{ metric: "pick_to_out", days: 3 }, { metric: "out_to_sign", days: 7 }]
+      },
+      port: {
+        title: "外港口径",
+        local: [{ metric: "strip1_to_out", days: 3 }, { metric: "strip1_to_sign", days: 3 }],
+        oos: [{ metric: "strip1_to_out", days: 3 }, { metric: "strip1_to_sign", days: 7 }]
+      }
+    }
+  };
+
+  var draft = deepClone(DEFAULT);
+  var published = deepClone(DEFAULT);
+  var dirty = false;
+  var ver = 1;
+  var logs = [
+    { at: "2026-09-01 10:20", who: "产品·阳", tag: "pub", text: "初始发布 v1：七渠道邮编 + 洛杉矶/外港 SLA 默认天数" }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg) {
+    var el = $("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+  function markDirty() {
+    dirty = true;
+    syncMeta();
+  }
+  function syncMeta() {
+    $("verMeta").innerHTML = dirty
+      ? "当前版本：<b>已发布 v" + ver + "</b> · <span style='color:#cf1322'>草稿有未发布改动</span> · 试算读草稿"
+      : "当前版本：<b>已发布 v" + ver + "</b> · 草稿与已发布一致 · 生效：立即";
+  }
+
+  function parsePrefixes(s) {
+    return String(s || "")
+      .split(/[\s,，/;|]+/)
+      .map(function (x) { return x.replace(/\D/g, ""); })
+      .filter(Boolean);
+  }
+
+  function metricLabel(id) {
+    for (var i = 0; i < METRICS.length; i++) if (METRICS[i].id === id) return METRICS[i].label;
+    return id;
+  }
+
+  function slaText(profileKey, zone) {
+    var p = draft.sla[profileKey];
+    if (!p) return "—";
+    var rows = zone === "本地" ? p.local : p.oos;
+    return rows.map(function (r) {
+      return metricLabel(r.metric) + " ≤" + r.days;
+    }).join(" · ");
+  }
+
+  function judgeZone(chName, zip) {
+    var ch = null;
+    for (var i = 0; i < draft.channels.length; i++) {
+      if (draft.channels[i].name === chName) { ch = draft.channels[i]; break; }
+    }
+    if (!ch) return { ok: false, err: "销售产品不存在" };
+    if (!ch.on) return { ok: false, err: "销售产品已禁用" };
+    if (ch.mode === "all_local") return { ok: true, zone: "本地", ch: ch };
+    if (ch.mode === "all_oos") return { ok: true, zone: "外州", ch: ch };
+    var z = String(zip || "").replace(/\D/g, "");
+    if (!z) return { ok: false, err: "请输入目的邮编" };
+    var prefs = parsePrefixes(ch.prefixes);
+    if (!prefs.length) return { ok: false, err: "前缀模式须配置本地邮编前缀" };
+    for (var j = 0; j < prefs.length; j++) {
+      if (z.indexOf(prefs[j]) === 0) return { ok: true, zone: "本地", ch: ch, matched: prefs[j] };
+    }
+    return { ok: true, zone: "外州", ch: ch, matched: null };
+  }
+
+  function renderChannels() {
+    var tb = $("chBody");
+    tb.innerHTML = draft.channels.map(function (c, i) {
+      var modeOpts = MODE_OPTS.map(function (o) {
+        return "<option value='" + o.v + "'" + (c.mode === o.v ? " selected" : "") + ">" + o.t + "</option>";
+      }).join("");
+      var profOpts = PROFILE_OPTS.map(function (o) {
+        return "<option value='" + o.v + "'" + (c.profile === o.v ? " selected" : "") + ">" + o.t + "</option>";
+      }).join("");
+      var prefixDis = c.mode !== "prefix" ? " disabled" : "";
+      var prefixPh = c.mode === "prefix" ? "如 90/91/92" : "（本模式不需要）";
+      return "<tr data-i='" + i + "'>" +
+        "<td class='muted'>" + (i + 1) + "</td>" +
+        "<td><input type='text' data-f='name' value='" + esc(c.name) + "' /></td>" +
+        "<td><select data-f='mode'>" + modeOpts + "</select></td>" +
+        "<td class='prefix-cell'><input type='text' data-f='prefixes' value='" + esc(c.prefixes) + "' placeholder='" + prefixPh + "'" + prefixDis + " /></td>" +
+        "<td><select data-f='profile'>" + profOpts + "</select></td>" +
+        "<td class='chk'><input type='checkbox' data-f='on'" + (c.on ? " checked" : "") + " /></td>" +
+        "<td><button type='button' class='btn btn-sm btn-danger' data-act='del'>删除</button></td>" +
+        "</tr>";
+    }).join("") || "<tr><td colspan='7' style='text-align:center;color:#999;padding:24px'>暂无渠道，请新增</td></tr>";
+
+    tb.querySelectorAll("tr[data-i]").forEach(function (tr) {
+      var i = +tr.getAttribute("data-i");
+      tr.querySelectorAll("[data-f]").forEach(function (el) {
+        el.addEventListener("change", function () { applyChField(i, el); });
+        if (el.tagName === "INPUT" && el.type === "text") {
+          el.addEventListener("input", function () { applyChField(i, el); });
+        }
+      });
+      var del = tr.querySelector("[data-act=del]");
+      if (del) del.addEventListener("click", function () {
+        if (!confirm("删除销售产品「" + draft.channels[i].name + "」？")) return;
+        draft.channels.splice(i, 1);
+        markDirty();
+        renderAll();
+      });
+    });
+    fillTryCh();
+  }
+
+  function applyChField(i, el) {
+    var f = el.getAttribute("data-f");
+    var c = draft.channels[i];
+    if (!c) return;
+    if (f === "on") c.on = !!el.checked;
+    else if (f === "mode") {
+      c.mode = el.value;
+      markDirty();
+      renderChannels();
+      return;
+    } else c[f] = el.value;
+    markDirty();
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+  }
+
+  function renderSla() {
+    var html = ["la", "port"].map(function (key) {
+      var p = draft.sla[key];
+      return '<div class="sla-card" data-pk="' + key + '">' +
+        "<h4>" + p.title + " <span class='muted' style='font-weight:400'>（key=" + key + "）</span></h4>" +
+        '<div class="sla-rows">' +
+        zoneBlock(key, "local", "本地", "zone-local") +
+        zoneBlock(key, "oos", "外州", "zone-oos") +
+        "</div></div>";
+    }).join("");
+    $("slaGrid").innerHTML = html;
+
+    $("slaGrid").querySelectorAll("[data-pk]").forEach(function (card) {
+      var pk = card.getAttribute("data-pk");
+      card.querySelectorAll("[data-zone]").forEach(function (row) {
+        var zone = row.getAttribute("data-zone");
+        row.querySelectorAll("[data-mi]").forEach(function (line) {
+          var mi = +line.getAttribute("data-mi");
+          line.querySelector("[data-f=metric]").addEventListener("change", function (e) {
+            draft.sla[pk][zone][mi].metric = e.target.value;
+            markDirty();
+          });
+          line.querySelector("[data-f=days]").addEventListener("change", function (e) {
+            var n = parseInt(e.target.value, 10);
+            if (isNaN(n) || n < 0) n = 0;
+            draft.sla[pk][zone][mi].days = n;
+            e.target.value = n;
+            markDirty();
+          });
+          var add = line.querySelector("[data-act=add]");
+          var rm = line.querySelector("[data-act=rm]");
+          if (add) add.addEventListener("click", function () {
+            draft.sla[pk][zone].push({ metric: "strip1_to_out", days: 3 });
+            markDirty();
+            renderSla();
+          });
+          if (rm) rm.addEventListener("click", function () {
+            if (draft.sla[pk][zone].length <= 1) { toast("至少保留 1 段指标"); return; }
+            draft.sla[pk][zone].splice(mi, 1);
+            markDirty();
+            renderSla();
+          });
+        });
+      });
+    });
+  }
+
+  function zoneBlock(pk, zoneKey, zoneLabel, tagCls) {
+    var rows = draft.sla[pk][zoneKey];
+    var lines = rows.map(function (r, mi) {
+      var opts = METRICS.map(function (m) {
+        return "<option value='" + m.id + "'" + (r.metric === m.id ? " selected" : "") + ">" + m.label + "</option>";
+      }).join("");
+      return '<div class="metric-line" data-mi="' + mi + '">' +
+        '<span class="pair"><select data-f="metric">' + opts + "</select></span>" +
+        '<span class="pair"><label>≤</label><input type="number" min="0" step="1" data-f="days" value="' + r.days + '" /><label>天</label></span>' +
+        (mi === 0
+          ? '<button type="button" class="btn btn-sm" data-act="add">+ 段</button>'
+          : '<button type="button" class="btn btn-sm btn-danger" data-act="rm">删</button>') +
+        (mi < rows.length - 1 ? '<span class="metric-and">且</span>' : "") +
+        "</div>";
+    }).join("");
+    return '<div class="sla-row" data-zone="' + zoneKey + '">' +
+      '<span class="zone-tag ' + tagCls + '">' + zoneLabel + "</span>" +
+      "<div>" + lines + "</div></div>";
+  }
+
+  function fillTryCh() {
+    var sel = $("tryCh");
+    var cur = sel.value;
+    sel.innerHTML = draft.channels.map(function (c) {
+      return "<option value='" + esc(c.name) + "'" + (!c.on ? " disabled" : "") + ">" +
+        esc(c.name) + (c.on ? "" : "（禁用）") + "</option>";
+    }).join("");
+    if (cur) sel.value = cur;
+  }
+
+  function runTry() {
+    var ch = $("tryCh").value;
+    var zip = $("tryZip").value;
+    var j = judgeZone(ch, zip);
+    var box = $("tryOut");
+    if (!j.ok) {
+      box.innerHTML = '<div class="err">' + esc(j.err) + "</div>";
+      return;
+    }
+    var zoneCls = j.zone === "本地" ? "zone-local" : "zone-oos";
+    var matchTip = j.ch.mode === "prefix"
+      ? (j.matched ? "命中本地前缀 <b>" + esc(j.matched) + "</b>" : "未命中本地前缀 → 外州")
+      : (j.ch.mode === "all_local" ? "模式：全部本地" : "模式：全部外州");
+    var profLabel = j.ch.profile === "la" ? "洛杉矶" : "外港";
+    box.innerHTML =
+      '<div class="big">' + esc(ch) + " · 邮编 " + esc(String(zip || "").replace(/\D/g, "") || "—") +
+      ' → <span class="zone-tag ' + zoneCls + '">' + j.zone + "</span></div>" +
+      "<div>" + matchTip + " · SLA 口径组：<b>" + profLabel + "</b></div>" +
+      "<div>SLA 要求：<b>" + esc(slaText(j.ch.profile, j.zone)) + "</b></div>" +
+      "<div class='muted'>时效表卡派列「SLA 要求 / 是否超时」读此配置；算法不在本页改。</div>";
+  }
+
+  function renderLogs() {
+    $("logList").innerHTML = logs.map(function (l) {
+      var tag = l.tag === "pub"
+        ? '<span class="tag tag-pub">发布</span>'
+        : '<span class="tag tag-draft">草稿</span>';
+      return '<div class="log-item"><div>' + esc(l.at) + "</div><div>" + tag +
+        '</div><div>' + esc(l.text) + ' <span class="who">· ' + esc(l.who) + "</span></div></div>";
+    }).join("");
+  }
+
+  function renderAll() {
+    renderChannels();
+    renderSla();
+    renderLogs();
+    syncMeta();
+  }
+
+  function nowStr() {
+    var d = new Date();
+    function p(n) { return n < 10 ? "0" + n : "" + n; }
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " +
+      p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  $("btnAddCh").addEventListener("click", function () {
+        draft.channels.push({ name: "新销售产品", mode: "prefix", prefixes: "", profile: "port", on: true });
+    markDirty();
+    renderChannels();
+    toast("已新增销售产品行，请改名称与前缀");
+  });
+
+  $("btnReset").addEventListener("click", function () {
+    if (!confirm("恢复为系统默认七渠道 + 默认 SLA 天数？未发布的草稿会丢失。")) return;
+    draft = deepClone(DEFAULT);
+    dirty = true;
+    renderAll();
+    toast("已恢复默认（仍须发布才生效到已发布副本）");
+  });
+
+  $("btnDraft").addEventListener("click", function () {
+    if (!validate()) return;
+    logs.unshift({ at: nowStr(), who: "当前用户", tag: "draft", text: "保存草稿：渠道 " + draft.channels.length + " 条 · SLA 两口径组" });
+    dirty = true;
+    renderLogs();
+    syncMeta();
+    toast("草稿已保存（示意，未持久化）");
+  });
+
+  $("btnPub").addEventListener("click", function () {
+    if (!validate()) return;
+    if (!confirm("发布后时效表将按新配置判定本地/外州与 SLA。确认发布？")) return;
+    published = deepClone(draft);
+    ver += 1;
+    dirty = false;
+    logs.unshift({ at: nowStr(), who: "当前用户", tag: "pub", text: "发布生效 v" + ver });
+    renderAll();
+    toast("已发布 v" + ver);
+  });
+
+  function validate() {
+    var names = {};
+    for (var i = 0; i < draft.channels.length; i++) {
+      var c = draft.channels[i];
+      var n = (c.name || "").trim();
+      if (!n) { toast("第 " + (i + 1) + " 行销售产品名称不能为空"); return false; }
+      if (names[n]) { toast("销售产品名称重复：" + n); return false; }
+      names[n] = true;
+      if (c.mode === "prefix" && !parsePrefixes(c.prefixes).length) {
+        toast(n + "：前缀模式须填写本地邮编前缀");
+        return false;
+      }
+    }
+    return true;
+  }
+
+  $("btnTry").addEventListener("click", runTry);
+  $("tryZip").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") runTry();
+  });
+  $("trySample").addEventListener("change", function () {
+    var v = $("trySample").value;
+    if (!v) return;
+    var parts = v.split("|");
+    $("tryCh").value = parts[0];
+    $("tryZip").value = parts[1];
+    runTry();
+  });
+
+  renderAll();
+  runTry();
+})();
+  </script>
+</body>
+</html>
