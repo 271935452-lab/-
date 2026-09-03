@@ -611,6 +611,7 @@
           <button type="button" class="st on" data-tab="all">全部报关单<span class="n" id="cAll">(0)</span></button>
           <button type="button" class="st" data-tab="blocked">待上传资料<span class="n" id="cBlocked">(0)</span></button>
           <button type="button" class="st" data-tab="ready">待推送<span class="n" id="cReady">(0)</span></button>
+          <button type="button" class="st" data-tab="pushFail">推送失败<span class="n" id="cPushFail">(0)</span></button>
           <button type="button" class="st" data-tab="processing">报关行处理中<span class="n" id="cProcessing">(0)</span></button>
           <button type="button" class="st" data-tab="issued">预录待复审<span class="n" id="cIssued">(0)</span></button>
           <button type="button" class="st" data-tab="confirmed">待放行<span class="n" id="cConfirmed">(0)</span></button>
@@ -985,12 +986,18 @@
         if (r.preConfirmed) return "confirmed";
         if (r.preIssued) return "issued";
         if (r.forecasted) return "processing";
+        if (r.pushSt === "fail") return "pushFail";
         return "ready";
+      }
+
+      function canManualPush(r) {
+        var s = derive(r);
+        return s === "ready" || s === "pushFail";
       }
 
       function statusLabel(s) {
         return {
-          blocked: "待上传资料", ready: "待推送", processing: "报关行处理中",
+          blocked: "待上传资料", ready: "待推送", pushFail: "推送失败", processing: "报关行处理中",
           issued: "预录待复审", confirmed: "待放行",
           revoked: "改单已撤销", locked: "已放行"
         }[s] || s;
@@ -998,7 +1005,7 @@
 
       function statusTag(s) {
         var cls = {
-          blocked: "no", ready: "push", processing: "proc",
+          blocked: "no", ready: "push", pushFail: "no", processing: "proc",
           issued: "review", confirmed: "wait", revoked: "proc", locked: "yes"
         }[s] || "skip";
         return '<span class="tag ' + cls + '">' + statusLabel(s) + "</span>";
@@ -1033,6 +1040,7 @@
         if (r && r.declMark === "合并报关") return "row-merge";
         if (s === "blocked") return "row-block";
         if (s === "ready" || s === "confirmed") return "row-ok";
+        if (s === "pushFail") return "row-block";
         if (s === "issued" || s === "processing") return "row-wait";
         if (s === "revoked") return "row-amend";
         if (s === "locked") return "row-lock";
@@ -1444,7 +1452,7 @@
       }
 
       function recount() {
-        var n = { all: 0, blocked: 0, ready: 0, processing: 0, issued: 0, confirmed: 0, revoked: 0, locked: 0 };
+        var n = { all: 0, blocked: 0, ready: 0, pushFail: 0, processing: 0, issued: 0, confirmed: 0, revoked: 0, locked: 0 };
         filtered(true).forEach(function (r) {
           n.all += 1;
           n[derive(r)] += 1;
@@ -1453,6 +1461,7 @@
         setCnt("cAll", n.all);
         setCnt("cBlocked", n.blocked);
         setCnt("cReady", n.ready);
+        setCnt("cPushFail", n.pushFail);
         setCnt("cProcessing", n.processing);
         setCnt("cIssued", n.issued);
         setCnt("cConfirmed", n.confirmed);
@@ -1563,8 +1572,9 @@
         if (!brokerFrozen(r)) {
           btns.push('<button type="button" class="btn" data-act="editBroker" data-id="' + id + '">修改报关行</button>');
         }
-        if (s === "ready") {
-          btns.push('<button type="button" class="btn primary" data-act="forecast" data-id="' + id + '">推送报关行</button>');
+        if (canManualPush(r)) {
+          btns.push('<button type="button" class="btn primary" data-act="forecast" data-id="' + id + '">' +
+            (s === "pushFail" ? "重新推送" : "推送报关行") + "</button>");
         }
         if (canUploadPre(r)) {
           btns.push('<button type="button" class="btn teal" data-act="uploadPre" data-id="' + id + '">上传预录单</button>');
@@ -1971,7 +1981,7 @@
             missAtt.push(r.id);
             return;
           }
-          if (s !== "ready") {
+          if (!canManualPush(r)) {
             notReady.push(r.id + "（" + statusLabel(s) + "）");
             return;
           }
@@ -1987,8 +1997,9 @@
         var names = [];
         var offline = [];
         ok.forEach(function (r) {
+          var wasFail = derive(r) === "pushFail";
           applyGroup(r, function (x) { markPushOk(x); });
-          writeLog(r, "推送报关行", "推送状态: →推送成功 → " + (r.broker || "—") +
+          writeLog(r, wasFail ? "重新推送" : "推送报关行", "推送状态: →推送成功 → " + (r.broker || "—") +
             (brokerApi(r.broker) ? "" : " · 未对接行，待手工上传预录单"));
           names.push(declNo(r) + "（" + groupIds(r) + "）→ " + r.broker);
           if (!brokerApi(r.broker)) offline.push(declNo(r));
