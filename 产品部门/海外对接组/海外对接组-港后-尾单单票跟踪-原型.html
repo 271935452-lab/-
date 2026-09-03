@@ -98,20 +98,28 @@
     .fi .date-range input { flex: 1; min-width: 0; }
     .fi .date-range span { color: #bfbfbf; flex: none; }
 
+    /* 分桶条：与上方派送方式页签同量级高度（单行） */
     .status-bucket {
-      display: flex; gap: 8px; padding: 8px 12px; border: 1px solid var(--line);
-      border-top: none; background: #fafafa; flex-wrap: wrap; align-items: center;
+      display: flex; gap: 0; align-items: stretch; background: #fff;
+      border: 1px solid var(--line); border-top: none; overflow-x: auto;
     }
-    .status-bucket .lab {
-      color: var(--sub); font-size: 11px; min-width: 72px; line-height: 1.35;
+    .status-bucket .bucket-row {
+      display: flex; gap: 0; align-items: stretch; min-height: 0; width: 100%;
     }
+    .status-bucket .bucket-row[hidden] { display: none; }
     .st-bk {
-      border: 1px solid #d9d9d9; background: #fff; border-radius: 2px;
-      padding: 6px 12px; cursor: pointer; min-width: 96px;
+      padding: 9px 14px; border: none; background: #fafafa; cursor: pointer;
+      border-right: 1px solid var(--line); white-space: nowrap; font: inherit; color: var(--sub);
     }
-    .st-bk.on { border-color: var(--blue); background: #e6f7ff; }
-    .st-bk .t { font-weight: 600; font-size: 12px; }
-    .st-bk .c { color: var(--sub); font-size: 11px; margin-top: 2px; }
+    .st-bk.on {
+      background: #fff; color: var(--blue); font-weight: 600;
+      box-shadow: inset 0 -2px 0 var(--blue);
+    }
+    .st-bk b { font-weight: 600; margin-left: 4px; color: #8c8c8c; }
+    .st-bk.on b { color: var(--blue); }
+    .st-bk.alert { color: #cf1322; }
+    .st-bk.alert.on { color: #cf1322; box-shadow: inset 0 -2px 0 #cf1322; }
+    .st-bk.alert.on b { color: #cf1322; }
 
     .acts {
       display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
@@ -280,7 +288,7 @@
         <h1>尾单单票跟踪 <span class="badge chg">改</span> · 港后按票跟进</h1>
         <p>
           核心列按港后 Excel 口径对齐（开船·到港·提柜·拆柜·出库·签收 / 目的站·邮编 / 板数 / 签收备注等）；
-          页结构：筛选在上、派送方式页签在筛选下；状态分桶统一为<strong>全部 / 未送达 / 已送达</strong>（私卡派与其他页签一致，不再用约仓分桶）。周 / 参考号码 / 跟进桶 / 资料齐套 / 预警 / 拦截等改走<strong>工单二期</strong>或<strong>卡派跟进</strong>，本页不展示。本期补<strong>拆柜时间</strong>、<strong>费用登记</strong>（与提单管理同一套字段，本页默认挂运单）；私卡尾端费用预估比对仍在<strong>柜子维度</strong>（旁支）。本页列表已去掉私人地址海外仓报价 / 派送时效 / 特殊要求备注 / 提柜后未约(天) / 约仓时间。
+          页结构：筛选在上、派送方式页签在筛选下；分桶条与页签同高。私卡派及其他页签为<strong>全部 / 未送达 / 已送达</strong>；仅<strong>卡车派送</strong>恢复约仓分桶（全部 / 未约仓 / 提柜后未约 &gt;15 天 / 已约仓 / 已送达）。周 / 参考号码 / 跟进桶 / 资料齐套 / 预警 / 拦截等改走<strong>工单二期</strong>或<strong>卡派跟进</strong>。本期补<strong>拆柜时间</strong>、<strong>费用登记</strong>（本页默认挂运单）；私卡尾端费用预估比对仍在<strong>柜子维度</strong>（旁支）。
           右侧 PRD 默认收起，点击「PRD」展开。周时效汇总见
           <a href="海外对接组-时效表-提柜私卡快递FBA-MVP.html">时效表（提柜/私卡/快递/FBA）</a>。
         </p>
@@ -358,11 +366,19 @@
         <button type="button" class="tab" data-ch="卡车派送">卡车派送 <span class="n">200972</span></button>
         <button type="button" class="tab" data-ch="自提">自提 <span class="n">5836</span></button>
       </div>
-      <div class="status-bucket" id="statusBucket" aria-label="送达状态分桶">
-        <div class="lab">状态分桶<br/><span style="font-weight:400">各页签统一</span></div>
-        <button type="button" class="st-bk on" data-st="全部"><div class="t">全部</div><div class="c" id="stAll">本页 5 票</div></button>
-        <button type="button" class="st-bk" data-st="未送达"><div class="t">未送达</div><div class="c" id="stOpen">4 票</div></button>
-        <button type="button" class="st-bk" data-st="已送达"><div class="t">已送达</div><div class="c" id="stDone">1 票</div></button>
+      <div class="status-bucket" id="statusBucket" aria-label="分桶">
+        <div class="bucket-row" id="bucketDeliver" aria-label="送达状态分桶">
+          <button type="button" class="st-bk on" data-st="全部">全部 <b id="stAll">5</b></button>
+          <button type="button" class="st-bk" data-st="未送达">未送达 <b id="stOpen">4</b></button>
+          <button type="button" class="st-bk" data-st="已送达">已送达 <b id="stDone">1</b></button>
+        </div>
+        <div class="bucket-row" id="bucketBook" hidden aria-label="约仓分桶">
+          <button type="button" class="st-bk on" data-bk="全部">全部 <b id="bkAll">5</b></button>
+          <button type="button" class="st-bk" data-bk="未约仓">未约仓 <b id="bkWait">3</b></button>
+          <button type="button" class="st-bk alert" data-bk="over15">提柜后未约 &gt;15天 <b id="bk15">1</b></button>
+          <button type="button" class="st-bk" data-bk="已约仓">已约仓 <b id="bkBooked">1</b></button>
+          <button type="button" class="st-bk" data-bk="已送达">已送达 <b id="bkDone">1</b></button>
+        </div>
       </div>
 
       <div class="panel">
@@ -411,7 +427,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr class="alert15">
+              <tr class="alert15" data-book="未约仓" data-over15="1">
                 <td><input type="checkbox" checked /></td>
                 <td>TDQN8SUFQM</td>
                 <td>GHBU8012345</td>
@@ -444,7 +460,7 @@
                 <td>UPS</td>
                 <td><span class="link">改快递</span> · <span class="link">卡派</span></td>
               </tr>
-              <tr class="alert">
+              <tr class="alert" data-book="未约仓">
                 <td><input type="checkbox" /></td>
                 <td>MSKU998812</td>
                 <td>TCLU556677</td>
@@ -477,7 +493,7 @@
                 <td>深圳世诚</td>
                 <td><span class="link">详情</span></td>
               </tr>
-              <tr>
+              <tr data-book="已约仓">
                 <td><input type="checkbox" /></td>
                 <td>OOLU445566</td>
                 <td>FSCU778899</td>
@@ -510,7 +526,7 @@
                 <td>UPS</td>
                 <td><span class="link">轨迹</span></td>
               </tr>
-              <tr>
+              <tr data-book="已约仓">
                 <td><input type="checkbox" /></td>
                 <td>EGLV123456</td>
                 <td>TEMU112233</td>
@@ -543,7 +559,7 @@
                 <td>FEDEX</td>
                 <td><span class="link">详情</span></td>
               </tr>
-              <tr>
+              <tr data-book="未约仓">
                 <td><input type="checkbox" /></td>
                 <td>COSCO7788</td>
                 <td>CMAU334455</td>
@@ -737,7 +753,9 @@
 
   <script>
     (function () {
+      var channelFilter = "私卡派";
       var statusFilter = "全部";
+      var bookFilter = "全部";
       var COL_DONE = 25; /* 完结标识 */
 
       function rowDoneFlag(tr) {
@@ -747,47 +765,112 @@
       function isDelivered(tr) {
         return rowDoneFlag(tr) === "已完结";
       }
-      function applyStatusFilter() {
+      function rowBook(tr) {
+        return tr.getAttribute("data-book") || "";
+      }
+      function isOver15(tr) {
+        return tr.getAttribute("data-over15") === "1" || tr.classList.contains("alert15");
+      }
+      function isTruckChannel() {
+        return channelFilter === "卡车派送";
+      }
+      function syncBucketUi() {
+        var deliver = document.getElementById("bucketDeliver");
+        var book = document.getElementById("bucketBook");
+        if (!deliver || !book) return;
+        if (isTruckChannel()) {
+          deliver.hidden = true;
+          book.hidden = false;
+        } else {
+          book.hidden = true;
+          deliver.hidden = false;
+        }
+      }
+      function applyBucketFilter() {
         var rows = document.querySelectorAll("table.grid tbody tr");
         var nAll = 0, nOpen = 0, nDone = 0;
+        var nBkAll = 0, nWait = 0, n15 = 0, nBooked = 0, nBkDone = 0;
+        var truck = isTruckChannel();
         rows.forEach(function (tr) {
           var done = isDelivered(tr);
+          var book = rowBook(tr);
+          var over15 = isOver15(tr);
           nAll++;
           if (done) nDone++; else nOpen++;
-          var show = statusFilter === "全部"
-            || (statusFilter === "已送达" && done)
-            || (statusFilter === "未送达" && !done);
+          nBkAll++;
+          if (book === "未约仓") nWait++;
+          if (over15) n15++;
+          if (book === "已约仓" && !done) nBooked++;
+          if (done) nBkDone++;
+
+          var show;
+          if (truck) {
+            show = bookFilter === "全部"
+              || (bookFilter === "未约仓" && book === "未约仓" && !done)
+              || (bookFilter === "over15" && over15 && !done)
+              || (bookFilter === "已约仓" && book === "已约仓" && !done)
+              || (bookFilter === "已送达" && done);
+          } else {
+            show = statusFilter === "全部"
+              || (statusFilter === "已送达" && done)
+              || (statusFilter === "未送达" && !done);
+          }
           tr.style.display = show ? "" : "none";
         });
         var elAll = document.getElementById("stAll");
         var elOpen = document.getElementById("stOpen");
         var elDone = document.getElementById("stDone");
-        if (elAll) elAll.textContent = "本页 " + nAll + " 票";
-        if (elOpen) elOpen.textContent = nOpen + " 票";
-        if (elDone) elDone.textContent = nDone + " 票";
+        if (elAll) elAll.textContent = String(nAll);
+        if (elOpen) elOpen.textContent = String(nOpen);
+        if (elDone) elDone.textContent = String(nDone);
+        var bkAll = document.getElementById("bkAll");
+        var bkWait = document.getElementById("bkWait");
+        var bk15 = document.getElementById("bk15");
+        var bkBooked = document.getElementById("bkBooked");
+        var bkDone = document.getElementById("bkDone");
+        if (bkAll) bkAll.textContent = String(nBkAll);
+        if (bkWait) bkWait.textContent = String(nWait);
+        if (bk15) bk15.textContent = String(n15);
+        if (bkBooked) bkBooked.textContent = String(nBooked);
+        if (bkDone) bkDone.textContent = String(nBkDone);
       }
 
       document.querySelectorAll("#channelTabs .tab").forEach(function (el) {
         el.addEventListener("click", function () {
           document.querySelectorAll("#channelTabs .tab").forEach(function (x) { x.classList.remove("on"); });
           el.classList.add("on");
+          channelFilter = el.getAttribute("data-ch") || "全部";
           statusFilter = "全部";
-          document.querySelectorAll("#statusBucket .st-bk").forEach(function (b) {
+          bookFilter = "全部";
+          document.querySelectorAll("#bucketDeliver .st-bk").forEach(function (b) {
             b.classList.toggle("on", b.getAttribute("data-st") === "全部");
           });
-          applyStatusFilter();
+          document.querySelectorAll("#bucketBook .st-bk").forEach(function (b) {
+            b.classList.toggle("on", b.getAttribute("data-bk") === "全部");
+          });
+          syncBucketUi();
+          applyBucketFilter();
         });
       });
 
-      document.querySelectorAll("#statusBucket .st-bk").forEach(function (el) {
+      document.querySelectorAll("#bucketDeliver .st-bk").forEach(function (el) {
         el.addEventListener("click", function () {
           statusFilter = el.getAttribute("data-st") || "全部";
-          document.querySelectorAll("#statusBucket .st-bk").forEach(function (x) { x.classList.remove("on"); });
+          document.querySelectorAll("#bucketDeliver .st-bk").forEach(function (x) { x.classList.remove("on"); });
           el.classList.add("on");
-          applyStatusFilter();
+          applyBucketFilter();
         });
       });
-      applyStatusFilter();
+      document.querySelectorAll("#bucketBook .st-bk").forEach(function (el) {
+        el.addEventListener("click", function () {
+          bookFilter = el.getAttribute("data-bk") || "全部";
+          document.querySelectorAll("#bucketBook .st-bk").forEach(function (x) { x.classList.remove("on"); });
+          el.classList.add("on");
+          applyBucketFilter();
+        });
+      });
+      syncBucketUi();
+      applyBucketFilter();
 
       var btn = document.getElementById("btnMoreFilter");
       var more = document.getElementById("filtersMore");
