@@ -196,8 +196,44 @@
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
       background: #111827; color: #fff; padding: 10px 16px; border-radius: 6px;
-      font-size: 12px; display: none; z-index: 99;
+      font-size: 12px; display: none; z-index: 1100;
     }
+    .badge.branch {
+      background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7;
+    }
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: none; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 4px; width: min(560px, 96vw);
+      max-height: 90vh; display: flex; flex-direction: column;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    }
+    .modal.wide { width: min(720px, 96vw); }
+    .modal-hd, .modal-ft {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .modal-ft { border-bottom: none; border-top: 1px solid var(--line); justify-content: flex-end; }
+    .modal-hd h3 { margin: 0; font-size: 15px; }
+    .modal-bd { padding: 14px 16px; overflow: auto; }
+    .alert {
+      padding: 8px 10px; border-radius: 2px; font-size: 12px; line-height: 1.55; margin-bottom: 12px;
+      background: #fffbe6; border: 1px solid #ffe58f; color: #614700;
+    }
+    .alert.info { background: #e6f7ff; border-color: #91d5ff; color: #0050b3; }
+    .alert.branch {
+      background: #f9f0ff; border-color: #d3adf7; color: #531dab;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .form-item input, .form-item select, .form-item textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px; font: inherit;
+    }
+    .form-item textarea { min-height: 72px; resize: vertical; }
   </style>
 </head>
 <body data-cb-nav="off">
@@ -209,7 +245,7 @@
       <a href="报关管理-列表-MVP.html?tab=push">分单号自动生成</a>
       <a href="../产品部门/各组sop/关务组-资料核准双通道-流程与页面设计.html">双通道方案</a>
     </div>
-    <div class="right">资料员工作台 · To-Be · IT(BT0022)</div>
+    <div class="right">当前登录：黄小菊（资料员） · To-Be · IT(BT0022)</div>
   </div>
 
   <div class="main">
@@ -223,10 +259,10 @@
       <h1>做资料 · 分票数据表 + 双通道核准 <span class="badge new">NEW</span></h1>
       <p>
         按<a href="../产品部门/各组sop/关务组-资料核准双通道-流程与页面设计.html">双核准通道</a>落资料员做资料：
-        <strong>报关件</strong>取报关行预录结构化（通道②优先）；
-        <strong>最后一票固定买单</strong> = 终配合计（可调） − Σ报关件；
-        总重量 / 总方数 / 总件数支持调整并留痕。
-        <strong>已核准是本页标记</strong>，资料岗点「核准通过」写入；报关执行不设核准状态。
+        <strong>报关件件数/重量</strong>取报关单<strong>件数、毛重</strong>；
+        <strong>终配合计</strong>取终配舱<strong>出货重、方数</strong>（可调留痕）；
+        <strong>最后一票固定买单</strong> = 终配合计 − Σ报关件。
+        <strong>已核准是本页标记</strong>，资料岗点「核准通过」写入；同时把<strong>当前操作人写入报关管理「资料员」</strong>（取点击核准的人）。
         分单号可联动
         <a href="报关管理-列表-MVP.html?tab=push">自动生成</a>。
       </p>
@@ -240,6 +276,11 @@
       <div class="sum-card teal">
         <div class="k">船司 × 港口 · 报关行</div>
         <div class="v">COSCO · 上海 · 青岛港兴</div>
+      </div>
+      <div class="sum-card teal">
+        <div class="k">资料员 <span class="badge new">NEW</span></div>
+        <div class="v" id="docClerkVal">—</div>
+        <p class="mark-hint" style="margin:6px 0 0">取本页点击「核准通过」的人；回写报关管理列表。退回修改清空。</p>
       </div>
       <div class="sum-card orange" id="stCard">
         <div class="k">核准标记</div>
@@ -279,9 +320,9 @@
       </div>
 
       <div class="hint">
-        <strong>规则：</strong>① 柜级合计（总件/总重/总方）以<strong>终配</strong>为准，支持调整留痕；
-        ② 报关件行数据取<strong>报关行预录件</strong>（通道②），可与报关资料/识别结果 diff；
-        ③ <strong>最后一票固定为买单</strong>，件数/毛重/方数 = 合计 − Σ其他报关件（只读自动算）；
+        <strong>规则：</strong>① 柜级合计：重量取终配<strong>出货重</strong>、方数取终配<strong>方数</strong>（总件数若有则带出），支持调整留痕；
+        ② 报关件<strong>件数=报关单件数</strong>、<strong>重量=报关单毛重</strong>（预录结构化优先，可与报关资料 diff）；
+        ③ <strong>最后一票固定为买单</strong>，件数/重量/方数 = 合计 − Σ其他报关件（只读自动算）；
         ④ 支持调整报关件顺序（末票始终买单）、增删报关件后即时重算。
         品牌授权比对已移除：查货侧提前确认侵权；本页核准不卡授权。
       </div>
@@ -292,11 +333,11 @@
           <input type="number" id="totPcs" step="1" value="120" />
         </div>
         <div class="hl">
-          <label>终配合计 · 总毛重(KG) <span class="badge chg">可调</span></label>
+          <label>终配合计 · 出货重(KG) <span class="badge chg">可调 · 取终配</span></label>
           <input type="number" id="totW" step="0.01" value="18500" />
         </div>
         <div class="hl">
-          <label>终配合计 · 总方数(m³) <span class="badge chg">可调</span></label>
+          <label>终配合计 · 总方数(m³) <span class="badge chg">可调 · 取终配</span></label>
           <input type="number" id="totCbm" step="0.000001" value="65" />
         </div>
         <button type="button" class="btn primary" id="btnApplyTotal">应用调整并重算买单</button>
@@ -305,7 +346,7 @@
       <div class="body-grid">
         <div class="col">
           <h3>分票清单 <span class="badge new">NEW</span></h3>
-          <div class="src">报关件 = 预录件信息 · 买单 = 轧差（始终最后一行）· <strong>点击报关件行</strong>即看右侧比对 · 多商品行品名逗号拼接</div>
+          <div class="src">报关件件数/重量=报关单件数、毛重 · 买单=轧差（始终最后一行）· <strong>点击报关件行</strong>即看右侧比对 · 多商品行品名逗号拼接</div>
           <div style="overflow:auto">
             <table class="grid" id="splitTable">
               <thead>
@@ -358,6 +399,73 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- 退回修改 → 改单标记 -->
+  <div class="mask" id="amdMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3>改单标记 <span class="badge new">NEW</span></h3>
+        <button type="button" class="btn" id="amdClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info">
+          「退回修改」将解除已核准锁定，并写入改单标记（回写报关管理业务标记）。与船务换柜换船写下的改单标同列展示。
+        </div>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="amdTargets" readonly value="COSU6502971850 · OOCU9737915" />
+          </div>
+          <div class="form-item full">
+            <label>改单说明</label>
+            <textarea id="amdRemark" placeholder="例：件数 40→38；HS 调整；买单轧差重算；退回原因…"></textarea>
+          </div>
+          <div class="form-item full">
+            <label>费用录入 <span class="badge branch">旁支</span></label>
+            <div class="desc" style="margin-bottom:8px;color:#666;font-size:12px;line-height:1.5">
+              退回改单若产生改单费 / 查验加费等可在此登记（选填）。旁支不进本期主干验收；字段对齐船务「费用登记 · 水单」。
+            </div>
+          </div>
+          <div class="form-item">
+            <label>费用大类</label>
+            <select id="feeSide">
+              <option>国内</option>
+              <option>国外</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>费用类型</label>
+            <select id="feeType">
+              <option>改单费</option>
+              <option>查验加费</option>
+              <option>舱单费</option>
+              <option>文件费</option>
+              <option>其他杂费</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>金额</label>
+            <input id="feeAmt" type="number" step="0.01" placeholder="0.00（选填）" />
+          </div>
+          <div class="form-item">
+            <label>币种</label>
+            <select id="feeCur">
+              <option>CNY</option>
+              <option>USD</option>
+            </select>
+          </div>
+          <div class="form-item full">
+            <label>费用说明</label>
+            <textarea id="feeRemark" placeholder="关联退回改单原因，例：件毛体改单加收"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="amdCancel">取消</button>
+        <button type="button" class="btn primary" id="amdConfirm">确认退回并写入改单标记</button>
+      </div>
+    </div>
+  </div>
+
   <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="报关管理-做资料分票核准-MVP-PRD.html">
     <span class="ess-prd-chip">PRD · 资料员做资料 · 分票 + 买单 + 双通道</span>
   </div>
@@ -379,7 +487,7 @@
 
   var totals = { pcs: 120, w: 18500, cbm: 65 };
   var selected = 0;
-  var logs = ["系统：自终配带出合计 120件 / 18500KG / 65方"];
+  var logs = ["系统：自终配带出合计 120件 / 出货重 18500KG / 方数 65"];
 
   // 报关件：来自预录；买单不在此数组，渲染时追加
   // 品名：多商品行 gName 按序逗号拼接（无空格），与 PRD「品名 · 多商品行展示」一致
@@ -655,14 +763,51 @@
     toast("已触发附件识别（通道① · 示意）");
   };
   document.getElementById("btnReject").onclick = function () {
-    if (window.__splitLocked) {
-      if (!confirm("已核准状态将解除锁定，可再编辑分票。确认退回修改？")) return;
-      clearApproved();
-      toast("已退回修改，分票可编辑");
-      return;
-    }
-    toast("已退回：请客户改资料或报关行改预录（示意）");
+    openAmdMask();
   };
+
+  function openAmdMask() {
+    var locked = !!window.__splitLocked;
+    document.getElementById("amdRemark").value = locked
+      ? "已核准后退回修改，解除锁定并重开分票编辑"
+      : "退回：请客户改资料或报关行改预录";
+    document.getElementById("feeAmt").value = "";
+    document.getElementById("feeRemark").value = "";
+    document.getElementById("feeSide").selectedIndex = 0;
+    document.getElementById("feeType").selectedIndex = 0;
+    document.getElementById("feeCur").selectedIndex = 0;
+    document.getElementById("amdMask").classList.add("open");
+  }
+  function closeAmdMask() {
+    document.getElementById("amdMask").classList.remove("open");
+  }
+
+  document.getElementById("amdClose").onclick = closeAmdMask;
+  document.getElementById("amdCancel").onclick = closeAmdMask;
+  document.getElementById("amdMask").onclick = function (e) {
+    if (e.target === this) closeAmdMask();
+  };
+  document.getElementById("amdConfirm").onclick = function () {
+    var remark = (document.getElementById("amdRemark").value || "").trim();
+    var feeAmt = document.getElementById("feeAmt").value;
+    var feeType = document.getElementById("feeType").value;
+    var feeCur = document.getElementById("feeCur").value;
+    var feeSide = document.getElementById("feeSide").value;
+    var feeRemark = (document.getElementById("feeRemark").value || "").trim();
+    if (window.__splitLocked) clearApproved(true);
+    var parts = ["退回修改", "改单标记=改单中"];
+    if (remark) parts.push(remark);
+    if (feeAmt !== "" && feeAmt != null) {
+      parts.push("费用(旁支)=" + feeSide + " · " + feeType + " · " + feeCur + " " + feeAmt);
+      if (feeRemark) parts.push(feeRemark);
+    }
+    pushLog(parts.join(" · "));
+    closeAmdMask();
+    toast(feeAmt !== "" && feeAmt != null
+      ? "已退回修改并写入改单标记 · 已登记费用 " + feeType + " " + feeCur + " " + feeAmt
+      : "已退回修改并写入改单标记「改单中」");
+  };
+
   document.getElementById("btnApprove").onclick = function () {
     var buy = calcBuy();
     if (buy.pcs < 0 || buy.w < 0 || buy.cbm < 0) {
@@ -675,21 +820,25 @@
         || String(r.order.method) !== String(r.pre.method);
     });
     if (hasDiff && !confirm("字段比对仍有不一致，确定核准通过？")) return;
-    toast("已写入核准标记「已核准」，分票锁定");
+    toast("已写入核准标记「已核准」· 资料员=黄小菊（回写报关管理），分票锁定");
     setApproved();
-    pushLog("核准通过");
+    pushLog("核准通过 · 资料员：黄小菊");
     render();
   };
+
+  var CURRENT_USER = "黄小菊";
 
   function setApproved() {
     window.__splitLocked = true;
     document.body.classList.add("is-ro");
     document.getElementById("approveStatus").textContent = "已核准";
+    var clerk = document.getElementById("docClerkVal");
+    if (clerk) clerk.textContent = CURRENT_USER;
     var st = document.getElementById("stField");
     st.value = "已核准";
     st.classList.add("marked");
     var hint = document.getElementById("markHint");
-    if (hint) hint.textContent = "本页已标记已核准，分票锁定。需改资料请点「退回修改」解除锁定。";
+    if (hint) hint.textContent = "本页已标记已核准，分票锁定。资料员已回写报关管理。需改资料请点「退回修改」解除锁定。";
     var card = document.getElementById("stCard");
     if (card) {
       card.classList.remove("orange");
@@ -697,10 +846,12 @@
     }
   }
 
-  function clearApproved() {
+  function clearApproved(skipLog) {
     window.__splitLocked = false;
     document.body.classList.remove("is-ro");
     document.getElementById("approveStatus").textContent = "未标记";
+    var clerk = document.getElementById("docClerkVal");
+    if (clerk) clerk.textContent = "—";
     var st = document.getElementById("stField");
     st.value = "未标记";
     st.classList.remove("marked");
@@ -712,7 +863,7 @@
       card.classList.add("orange");
     }
     document.getElementById("roBanner").style.display = "none";
-    pushLog("退回修改 · 解除已核准锁定");
+    if (!skipLog) pushLog("退回修改 · 解除已核准锁定 · 清空资料员");
     render();
   }
 

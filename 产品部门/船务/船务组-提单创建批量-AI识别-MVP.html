@@ -609,7 +609,22 @@
                   <option>Matson</option><option>ZIM</option><option>HEDE</option>
                 </select>
               </div>
-              <div class="fi"><label><i>*</i>船名航次</label><input id="fVoy" placeholder="请输入船名航次" /></div>
+              <div class="fi"><label><i>*</i>船名</label><input id="fVessel" placeholder="请输入船名" /></div>
+              <div class="fi"><label><i>*</i>航次</label><input id="fVoyage" placeholder="请输入航次，如 088E" /></div>
+              <div class="fi"><label><i>*</i>普提/快提</label>
+                <select id="fPickupType">
+                  <option value="">请选择</option>
+                  <option>普提</option>
+                  <option>快提</option>
+                </select>
+              </div>
+              <div class="fi"><label>是否保舱 <span class="badge-new">新</span></label>
+                <select id="fHoldCabin">
+                  <option value="">请选择</option>
+                  <option>是</option>
+                  <option>否</option>
+                </select>
+              </div>
               <div class="fi"><label><i>*</i>预计出发时间</label><input id="fEtd" type="datetime-local" /></div>
               <div class="fi"><label><i>*</i>预计到达时间</label><input id="fEta" type="datetime-local" /></div>
               <div class="fi"><label><i>*</i>海运费</label>
@@ -854,7 +869,9 @@
         { k: "pod", title: "国外到达港口", short: "目的港", req: true, type: "text", ph: "搜索港口", w: 110, g: "港口" },
         { k: "transit", title: "中转港", short: "中转港", req: false, type: "text", ph: "非必填", w: 96, g: "港口" },
         { k: "carrier", title: "船公司(航运)", short: "船公司", req: true, type: "select", options: CARRIER_OPTS, w: 100, g: "航运" },
-        { k: "voy", title: "船名航次", short: "船名航次", req: true, type: "text", ph: "船名航次", w: 140, g: "航运" },
+        { k: "vessel", title: "船名", short: "船名", req: true, type: "text", ph: "船名", w: 120, g: "航运" },
+        { k: "voyage", title: "航次", short: "航次", req: true, type: "text", ph: "如 088E", w: 88, g: "航运" },
+        { k: "pickupType", title: "普提/快提", short: "普提/快提", req: true, type: "select", options: ["", "普提", "快提"], w: 96, g: "航运" },
         { k: "supplier", title: "订柜供应商", short: "订柜供应商", req: true, type: "select", options: ["", "我司订舱", "代理订舱", "客户自订"], w: 108, g: "航运" },
         { k: "remark", title: "备注", short: "备注", req: false, type: "text", ph: "非必填", w: 96, g: "航运" }
       ];
@@ -912,10 +929,17 @@
         if (/^\d+$/.test(t)) return { freeCn: t, freeOs: t };
         return { freeCn: "", freeOs: "" };
       }
+      function parseVesselVoyage(s) {
+        var t = String(s || "").trim().replace(/\s+/g, " ");
+        if (!t) return { vessel: "", voyage: "" };
+        var m = t.match(/^(.*?)[\s/／]+([A-Za-z0-9-]+)$/);
+        if (m && /[0-9]/.test(m[2])) return { vessel: m[1].trim(), voyage: m[2].trim() };
+        return { vessel: t, voyage: "" };
+      }
       var emptyRow = function () {
         return {
           mode: "海运", bl: "", freight: "", freeCn: "", freeOs: "", etd: "", cutOff: "", loadAt: "", arriveAt: "", portCode: "",
-          cntr: "", weighKg: "", type: "", pol: "", pod: "", transit: "", carrier: "", voy: "",
+          cntr: "", weighKg: "", type: "", pol: "", pod: "", transit: "", carrier: "", vessel: "", voyage: "", pickupType: "",
           supplier: "", remark: "", ai: false, lock: {}, baseHit: {}
         };
       };
@@ -983,25 +1007,25 @@
           conf: 96, mode: "海运", bl: "COSU1234567890", freight: "2850", freeCn: "7", freeOs: "10",
           etd: "08-12", cutOff: "08-04 17:00", loadAt: "08-05 09:00", cntr: "CSNU6688123", weighKg: "14280.5", type: "40HQ",
           pol: "CNSHA 上海", pod: "USLAX 洛杉矶", transit: "KRPUS 釜山", carrier: "COSCO",
-          voy: "COSCO SHIPPING 088E", supplier: "我司订舱", remark: "", pick: true
+          vessel: "COSCO SHIPPING", voyage: "088E", pickupType: "普提", supplier: "我司订舱", remark: "", pick: true
         },
         {
           conf: 94, mode: "海运", bl: "COSU1234567890", freight: "2850", freeCn: "7", freeOs: "10",
           etd: "08-12", cutOff: "08-04 17:00", cntr: "CSNU6688456", weighKg: "14110.0", type: "40HQ",
           pol: "CNSHA 上海", pod: "USLAX 洛杉矶", transit: "KRPUS 釜山", carrier: "COSCO",
-          voy: "COSCO SHIPPING 088E", supplier: "我司订舱", remark: "同票第二柜", pick: true
+          vessel: "COSCO SHIPPING", voyage: "088E", pickupType: "普提", supplier: "我司订舱", remark: "同票第二柜", pick: true
         },
         {
           conf: 78, mode: "海运", bl: "HLCUTS12698AZMK1", freight: "", freeCn: "", freeOs: "",
           etd: "08-14", cutOff: "08-10 12:00", cntr: "HLBU2877104", weighKg: "", type: "20GP",
           pol: "CNTJN 天津", pod: "USNYC 纽约", transit: "", carrier: "Hapag",
-          voy: "YM MOVEMENT 0TH5FE1MA", supplier: "代理订舱", remark: "", pick: true
+          vessel: "YM MOVEMENT", voyage: "0TH5FE1MA", pickupType: "普提", supplier: "代理订舱", remark: "", pick: true
         },
         {
           conf: 62, mode: "海运", bl: "MEDU9988776655", freight: "3100", freeCn: "5", freeOs: "7",
           etd: "08-18", cutOff: "", cntr: "MEDU1122334", weighKg: "15850.0", type: "40HQ",
           pol: "CNNGB 宁波", pod: "USLGB 长滩", transit: "", carrier: "MSC",
-          voy: "MSC OSCAR 12W", supplier: "", remark: "", pick: true
+          vessel: "MSC OSCAR", voyage: "12W", pickupType: "普提", supplier: "", remark: "", pick: true
         }
       ];
 
@@ -1289,6 +1313,12 @@
         if (col.k === "etd") v = mdOnly(v);
         if (col.k === "cutOff" || col.k === "loadAt") v = mdTime(v);
         if (col.type === "select") v = matchOpt(col, v);
+        if (col.k === "vessel") {
+          var vv = parseVesselVoyage(v);
+          r.vessel = vv.vessel;
+          if (vv.voyage && !r.voyage) r.voyage = vv.voyage;
+          return;
+        }
         r[col.k] = v;
         if (col.k === "carrier") applyBlPrefix(r, "");
       }
@@ -1312,7 +1342,7 @@
           if (hit) return hit.k;
           var alias = {
             "出发港": "pol", "国内出发港口": "pol", "目的港": "pod", "国外到达港口": "pod",
-            "船公司": "carrier", "船名航次": "voy", "订柜供应商": "supplier",
+            "船公司": "carrier", "船名": "vessel", "航次": "voyage", "船名航次": "vessel", "普提/快提": "pickupType", "普提": "pickupType", "快提": "pickupType", "订柜供应商": "supplier",
             "国内免用箱": "freeCn", "国内免箱": "freeCn", "国外免用箱": "freeOs", "国外免箱": "freeOs",
             "开船时间": "etd", "ETD": "etd",
             "截单时间": "cutOff", "截单": "cutOff",
@@ -1413,7 +1443,7 @@
 
       function rowReady(r) {
         /* 提单号非必填：有船司/航次/柜型/港口等之一即可落库示意 */
-        return !!(r.carrier || r.voy || r.type || r.pol || r.pod || r.cntr || r.freight || r.bl);
+        return !!(r.carrier || r.vessel || r.voyage || r.type || r.pol || r.pod || r.cntr || r.freight || r.bl);
       }
       function rowFreeOk(r) {
         return String(r.freeCn || "").trim() !== "" && String(r.freeOs || "").trim() !== "";
@@ -1463,7 +1493,7 @@
           if (c.req && !String(r[c.k] || "").trim()) keys.push(c.k);
         });
         if ((r.conf || 0) < 75) {
-          ["bl", "cntr", "pol", "pod", "carrier", "voy", "freight"].forEach(function (k) {
+          ["bl", "cntr", "pol", "pod", "carrier", "vessel", "voyage", "pickupType", "freight"].forEach(function (k) {
             if (keys.indexOf(k) < 0) keys.push(k);
           });
         }
@@ -1498,7 +1528,7 @@
             ? [rowFromSample(0)]
             : [rowFromSample(0, {
                 bl: "OOLU5566778899", cntr: "OOLU1234567", carrier: "OOCL",
-                voy: "OOCL TOKYO 072E", freight: "2600", freeCn: "7", freeOs: "14",
+                vessel: "OOCL TOKYO", voyage: "072E", pickupType: "普提", freight: "2600", freeCn: "7", freeOs: "14",
                 supplier: "我司订舱", remark: ""
               })];
         }
@@ -2004,7 +2034,7 @@
           pod: r.pod || "",
           transit: r.transit || "",
           carrier: r.carrier || "",
-          voy: r.voy || "",
+          vessel: r.vessel || "", voyage: r.voyage || "", pickupType: r.pickupType || "",
           supplier: r.supplier || "",
           remark: r.remark || "",
           loKeys: r.loKeys || [],
@@ -2020,7 +2050,7 @@
         var map = {
           bl: "fBl", cntr: "fCntr", mode: "fMode", type: "fType",
           pol: "fPol", pod: "fPod", transit: "fTransit", carrier: "fCarrier",
-          voy: "fVoy", freight: "fFreight", freeCn: "fFreeCn", freeOs: "fFreeOs",
+          vessel: "fVessel", voyage: "fVoyage", pickupType: "fPickupType", freight: "fFreight", freeCn: "fFreeCn", freeOs: "fFreeOs",
           weighKg: "fWeighKg", supplier: "fBooker", remark: "fRemark",
           etd: "fEtd", eta: "fEta", cutOff: "fCutOff", loadAt: "fLoadAt"
         };
@@ -2287,7 +2317,7 @@
             pod: r.pod || "",
             transit: r.transit || "",
             carrier: r.carrier || "",
-            voy: r.voy || "",
+            vessel: r.vessel || "", voyage: r.voyage || "", pickupType: r.pickupType || "",
             supplier: r.supplier || "",
             remark: r.remark || "",
             ai: true
@@ -2354,7 +2384,7 @@
             pod: p.podCode || p.pod || "",
             transit: "",
             carrier: p.carrierCode || p.carrier || "",
-            voy: "",
+            vessel: "", voyage: "", pickupType: "",
             supplier: p.supplier || (p.src === "agent" ? "代理订舱" : "我司订舱"),
             remark: p.note || "",
             lock: { freight: !!(p.freight != null && String(p.freight) !== "") },
@@ -2415,7 +2445,9 @@
         setVal("fPod", (String(p.pod || "").match(/^[A-Z]{5}/) || [p.pod || ""])[0]);
         setVal("fTransit", (String(p.transit || p.itTransit || p.transitPortCode || "").match(/^[A-Z]{5}/) || [p.transit || p.itTransit || p.transitPortCode || ""])[0]);
         setVal("fCarrier", p.carrier);
-        setVal("fVoy", p.voy);
+        setVal("fVessel", p.vessel);
+        setVal("fVoyage", p.voyage);
+        setVal("fPickupType", p.pickupType || "");
         setVal("fEtd", toLocal(p.etd));
         setVal("fEta", toLocal(p.eta));
         setVal("fFreight", p.freight);
@@ -2485,7 +2517,7 @@
             p = {
               bl: "ZIMUISH17785991", cntr: "BEAU8337594", mode: "海运", type: "40HQ",
               pol: "CNSHA", pod: "USJAX", transit: "", carrier: "ZIM",
-              voy: "ZIM MOUNT EVEREST 13/E", etd: "2025-07-04T22:37", eta: "2025-08-05T20:06",
+              vessel: "ZIM MOUNT EVEREST", voyage: "13/E", pickupType: "普提", etd: "2025-07-04T22:37", eta: "2025-08-05T20:06",
               freight: "4300", freeCn: "7", freeOs: "10", seal: "A4240549942",
               weighKg: "14280.5",
               loadAt: "2025-07-03T14:00", arriveAt: "2025-07-04T09:30", portCode: "SHA",
@@ -2528,8 +2560,13 @@
           location.href = "船务组-提单管理-按周分组与分配-MVP.html";
         };
         document.getElementById("btnFormOk").onclick = function () {
-          if (!formFreeOk()) {
-            toast("国内 / 国外免用箱天数必填");
+          var miss = [];
+          if (!getVal("fVessel")) miss.push("船名");
+          if (!getVal("fVoyage")) miss.push("航次");
+          if (!getVal("fPickupType")) miss.push("普提/快提");
+          if (!formFreeOk()) miss.push("国内/国外免用箱");
+          if (miss.length) {
+            toast(miss.join("、") + " 必填");
             return;
           }
           if (getVal("fBl")) {

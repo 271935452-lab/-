@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>清关管理 · 查验通知（MVP）</title>
+  <title>清关管理 · 查验跟进 / 查验通知（MVP）</title>
   <link rel="stylesheet" href="二期/ess-prototype-prd.css" />
   <style>
     :root {
@@ -177,6 +177,37 @@
     }
     .toast.show { display: block; }
     .hidden { display: none !important; }
+    .fu-meta {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px;
+      padding: 10px 12px; background: #fafafa; border: 1px solid var(--line); border-radius: 2px;
+      margin-bottom: 12px; font-size: 12px;
+    }
+    @media (max-width: 900px) { .fu-meta { grid-template-columns: 1fr 1fr; } }
+    .fu-meta .k { color: var(--sub); margin-right: 4px; }
+    .fu-meta .v { color: var(--text); word-break: break-all; }
+    .fu-meta .span2 { grid-column: span 2; }
+    .fu-meta .span4 { grid-column: 1 / -1; }
+    .fu-sec-title {
+      font-size: 13px; font-weight: 700; margin: 14px 0 8px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .fu-sec-title .sub { font-weight: 400; color: var(--sub); font-size: 12px; }
+    .fu-hist {
+      border: 1px solid var(--line); border-radius: 2px; max-height: 280px; overflow: auto;
+    }
+    .fu-hist table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 0; }
+    .fu-hist th, .fu-hist td {
+      border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top;
+      white-space: normal;
+    }
+    .fu-hist th { background: #fafafa; color: var(--sub); position: sticky; top: 0; }
+    .fu-hist tr:last-child td { border-bottom: none; }
+    .tag.fu { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .link-btn {
+      border: none; background: none; color: var(--blue); cursor: pointer; padding: 0;
+      font-size: 12px;
+    }
+    .link-btn:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -202,6 +233,7 @@
           <a href="产品部门/船务/船务组-提单管理-按周分组与分配-MVP.html">船务·取消IT（提单侧）</a> ·
           <a href="产品部门/关务组/关务组-导航.html">关务导航</a> ·
           <a href="产品部门/关务组/关务组-0729-查验分柜装授权-大致方案.html">关务查验方案</a> ·
+          <a href="产品部门/关务组/关务组-查验报表-提单运单维度-MVP.html">查验报表</a> ·
           <a href="产品部门/产品部门-导航.html">导航</a>
         </p>
 
@@ -302,7 +334,7 @@
           工具栏<strong>消息推送</strong>可事后补发；打开「清关查验」时，推送文案直接铺在轨迹表下方，不必再点按钮。查验通知同步进度给业务员/客服，文案不强调是否转发客户。取消 IT 仅在船务「提单管理」操作；本页只展示<strong>是否已取消</strong>（已取消标「取消IT」，否则「无」）。
         </p>
         <p class="tip-bar inspect hidden" id="tipInspect">
-          <strong>清关查验页签：</strong>勾选查验中提单 → 打开「清关查验」，轨迹表下方直接预览站内/企微文案 → 发送或复制。文案只同步查验进度，不写是否转发客户。漏发可事后用工具栏「消息推送」补发。通知后行内显示「已通知」。
+          <strong>清关查验页签：</strong>勾选查验中提单 →「清关查验」登记轨迹并可推送；「查验跟进」登记国外查验进度（送检/开查/放行、状态进程等）并查看历史。口径对齐业务表「查验统计」Sheet1（国外）。
         </p>
 
         <div class="toolbar">
@@ -311,7 +343,8 @@
           <button type="button" class="tool-btn">上传资料</button>
           <button type="button" class="tool-btn" id="btnInspect">清关查验</button>
           <button type="button" class="tool-btn outline">撤销清关查验</button>
-          <button type="button" class="tool-btn purple" id="btnNotify">消息推送 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn purple" id="btnFollow">查验跟进 <span class="badge-new">NEW</span></button>
+          <button type="button" class="tool-btn purple" id="btnNotify">消息推送</button>
           <button type="button" class="tool-btn ok">清关放行</button>
           <button type="button" class="tool-btn outline">撤销清关放行</button>
           <button type="button" class="tool-btn outline" id="btnDetail">清关详情</button>
@@ -343,7 +376,8 @@
                 <th>清关查验状态</th>
                 <th>清关状态</th>
                 <th>取消IT <span class="badge-new">NEW</span></th>
-                <th>查验通知 <span class="badge-new">NEW</span></th>
+                <th>查验通知</th>
+                <th>查验跟进 <span class="badge-new">NEW</span></th>
                 <th>清关备注</th>
                 <th>清关客服</th>
                 <th>清关查验开始时间</th>
@@ -519,43 +553,97 @@
     </div>
   </div>
 
+  <!-- 查验跟进 · 国外查验 -->
+  <div class="mask" id="fuMask">
+    <div class="modal xl">
+      <div class="modal-hd">
+        <h3>查验跟进 · 国外查验 <span class="badge-new">NEW</span></h3>
+        <button type="button" class="tool-btn outline" id="fuClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info" style="margin-bottom:10px">
+          针对目的港查验中的货物登记跟进（对齐业务表「查验统计」Sheet1：送检/开查/放行、海外仓、清关行、系统轨迹、状态进程等）。
+          每次保存写入历史，可回溯。周汇总见
+          <a href="产品部门/关务组/关务组-查验报表-提单运单维度-MVP.html">查验报表 · 国外</a>。
+        </div>
+        <div class="fu-meta" id="fuMeta"></div>
+
+        <div class="fu-sec-title">
+          登记本次跟进
+          <span class="sub">跟进人默认当前清关客服；保存后追加历史</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-item">
+            <label>查验方式</label>
+            <select id="fuExamParty">
+              <option value="">请选择</option>
+              <option>1H</option>
+              <option>1H前</option>
+              <option>1H后</option>
+              <option>2H前</option>
+              <option>7H后</option>
+              <option>文件查验</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label>查验状态</label>
+            <select id="fuExamSt">
+              <option value="">进行中</option>
+              <option>放行后查验</option>
+              <option>退运</option>
+              <option>HOLD</option>
+            </select>
+          </div>
+          <div class="form-item"><label>送检时间</label><input id="fuSendAt" type="date" /></div>
+          <div class="form-item"><label>开查时间</label><input id="fuOpenAt" type="date" /></div>
+          <div class="form-item"><label>放行时间</label><input id="fuPassAt" type="date" /></div>
+          <div class="form-item"><label>海外仓</label><input id="fuWh" placeholder="VMI / DrayEasy / 美库…" /></div>
+          <div class="form-item"><label>清关行</label><input id="fuClearance" placeholder="精准 / 02B / 赛因…" /></div>
+          <div class="form-item"><label>跟进人</label><input id="fuOwner" placeholder="港后客服" /></div>
+          <div class="form-item full"><label>状态进程</label>
+            <input id="fuStatusProg" placeholder="例：等待检查站重新装柜 / 需提交资料 / READY FOR INSPECTION" />
+          </div>
+          <div class="form-item full"><label>系统轨迹摘要</label>
+            <textarea id="fuTrack" rows="2" placeholder="同步系统轨迹要点，如：查验已放行，等待提柜送火车站"></textarea>
+          </div>
+          <div class="form-item full"><label>跟进说明 / 备注</label>
+            <textarea id="fuNote" rows="2" placeholder="本次跟进动作、卡点、对客/对清关行沟通要点"></textarea>
+          </div>
+        </div>
+
+        <div class="fu-sec-title">
+          跟进历史
+          <span class="sub" id="fuHistCnt">0 条</span>
+        </div>
+        <div class="fu-hist">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:120px">跟进时间</th>
+                <th style="width:72px">跟进人</th>
+                <th style="width:64px">查验方式</th>
+                <th style="width:88px">送检</th>
+                <th style="width:88px">开查</th>
+                <th style="width:88px">放行</th>
+                <th style="width:90px">状态</th>
+                <th>状态进程 / 轨迹 / 说明</th>
+              </tr>
+            </thead>
+            <tbody id="fuHistBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="fuCancel">取消</button>
+        <button type="button" class="tool-btn purple" id="fuSave">保存跟进</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
-  <div class="ess-prd" data-ess-prd>
-    <h3>产品说明 · 清关管理增量</h3>
-    <h4>进口商 / 清关行（绑定后展示）</h4>
-    <ul>
-      <li>船务在提单管理<strong>绑定进口商</strong>时一并选定已授权清关行并落库。本页与做资料<strong>只展示</strong>，不在本页改绑。</li>
-      <li>列表列名用「清关行」（目录：精准 / 02B / 赛因 / 关关通 / 人人数智 / 帝成），不再用「清关供应商」。</li>
-      <li>未绑定进口商时进口商、清关行均显示 —。筛选支持名称/编码、清关行、未绑定。</li>
-    </ul>
-    <h4>取消 IT（只读协同）</h4>
-    <ul>
-      <li>「取消IT」仅在船务 <a href="产品部门/船务/船务组-提单管理-按周分组与分配-MVP.html">提单管理</a> 操作；清关管理<strong>不设</strong>取消IT工具栏入口。</li>
-      <li>本页列表「取消IT」列只读：已取消标<strong>取消IT</strong>，未取消显示<strong>无</strong>。不展示有IT / 无IT。</li>
-      <li>筛选项仅「取消IT / 无」，与列展示一致。</li>
-    </ul>
-    <h4>查验消息推送</h4>
-    <ul>
-      <li><strong>文案口径：</strong>只同步目的港查验进度，不写「请转发客户 / 无需转发客户 / 无需操作回复」。渠道仍为业务员/客服站内待办 + 企微；不发邮件、不建客户待办。</li>
-      <li>列表工具栏常驻<strong>消息推送</strong>：勾选清关查验/查验放行提单 → 预览站内/企微文案 → 发送或复制（事后补发）。渠道无邮件；收件对象仅业务员/客服。</li>
-      <li>「清关查验」弹窗（轨迹登记）<strong>下方直接铺开消息推送</strong>：渠道、对象、说明、文案预览、复制/发送，不必再点页脚按钮。</li>
-    </ul>
-    <h4>海外清关品名</h4>
-    <ul>
-      <li>清关详情中<strong>出口报关品名</strong>与<strong>海外清关品名</strong>分字段维护；目的港清关资料以海外清关品名为准。</li>
-    </ul>
-    <h4>现网筛选项 / 列补齐</h4>
-    <ul>
-      <li>筛选对齐现网两行：<strong>提单号、运单号、柜号、运输方式、柜型、出发港、目的港、船名航次、船公司、订舱供应商、国内拖车供应商、报关供应商</strong>；右侧保留更多筛选 / 查询 / 重置。</li>
-      <li>列表在增量列之外补现网列：提单/报关/查验状态、清关备注与查验/放行时间、件毛体、计划/业务 ETA、出发港·中转港、供应商、创建人、最新阶段等。清关供应商列名仍用「清关行」。</li>
-      <li>「更多筛选」放现网列头常见条件：提单状态、报关状态、清关查验状态、创建人。</li>
-    </ul>
-    <h4>下期关注</h4>
-    <ul>
-      <li><strong>费用异常标记</strong>（本期列表不展示）：目的港查验若后端产生改港、退差价等，需同步到清关列表前端（关务 GW020）。</li>
-      <li><strong>改港费</strong>：清关过久触发天数、金额、归属待与海外·船务对齐后固化；再在清关详情登记。</li>
-    </ul>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="清关管理-MVP-PRD.html" data-prd-anchor="m-bg">
+    <span class="ess-prd-chip">PRD · 清关管理</span>
   </div>
 
   <script src="二期/ess-prototype-prd.js"></script>
@@ -650,6 +738,73 @@
           }
           r.transit = r.transit || (r.pod === "USNYC" || r.pod === "USHOU" ? "USLAX 洛杉矶" : "");
         });
+        /* 国外查验跟进种子（对齐查验统计.xls · Sheet1） */
+        var fuSeed = {
+          5: {
+            arriveAt: "2026-08-16", lane: "青岛-长滩", examParty: "1H",
+            sendAt: "2026-08-18", openAt: "2026-08-20", passAt: "",
+            wh: "VMI邮件回", clearance: "赛因",
+            track: "等待检查站重新装柜，开柜后还码头再送到检查站",
+            statusProg: "需提交资料", examStatus: "",
+            logs: [
+              { at: "2026-08-18 10:20", owner: "王敏", examParty: "1H", sendAt: "2026-08-18", openAt: "", passAt: "", examStatus: "", statusProg: "已递交查验站", track: "货物已递交查验站", note: "登记送检" },
+              { at: "2026-08-20 15:40", owner: "王敏", examParty: "1H", sendAt: "2026-08-18", openAt: "2026-08-20", passAt: "", examStatus: "", statusProg: "需提交资料", track: "等待检查站重新装柜", note: "海关要求补原产地证，已催客户" }
+            ]
+          },
+          6: {
+            arriveAt: "2026-08-15", lane: "天津-纽约", examParty: "1H前",
+            sendAt: "2026-08-17", openAt: "", passAt: "",
+            wh: "DrayEasy邮件回", clearance: "02B苏州赵佳卉整柜",
+            track: "等待检查站重新装柜，开柜后还码头再送到检查站",
+            statusProg: "READY FOR INSPECTION", examStatus: "",
+            logs: [
+              { at: "2026-08-17 09:05", owner: "李倩", examParty: "1H前", sendAt: "2026-08-17", openAt: "", passAt: "", examStatus: "", statusProg: "READY FOR INSPECTION", track: "等待提柜送检查站", note: "清关行邮件确认待检" }
+            ]
+          },
+          7: {
+            arriveAt: "2026-08-14", lane: "宁波-洛杉矶", examParty: "1H后",
+            sendAt: "2026-08-16", openAt: "2026-08-19", passAt: "",
+            wh: "美库邮件回", clearance: "精准cestracking",
+            track: "查验已放行，等待检查站将货物重新装回集装箱",
+            statusProg: "放行后查验", examStatus: "放行后查验",
+            logs: [
+              { at: "2026-08-16 11:00", owner: "周杰", examParty: "1H后", sendAt: "2026-08-16", openAt: "", passAt: "", examStatus: "", statusProg: "已送检", track: "送检中", note: "通知业务员" },
+              { at: "2026-08-19 14:30", owner: "周杰", examParty: "1H后", sendAt: "2026-08-16", openAt: "2026-08-19", passAt: "", examStatus: "", statusProg: "开查中", track: "海关开箱", note: "品名核对中" },
+              { at: "2026-08-22 16:10", owner: "周杰", examParty: "1H后", sendAt: "2026-08-16", openAt: "2026-08-19", passAt: "", examStatus: "放行后查验", statusProg: "放行后查验", track: "查验已放行，等待重新装柜", note: "已通知客户；盯重装" }
+            ]
+          },
+          10: {
+            arriveAt: "2026-08-08", lane: "上海-纽约", examParty: "1H",
+            sendAt: "2026-08-09", openAt: "2026-08-10", passAt: "2026-08-11",
+            wh: "MAX GLOBAL", clearance: "关关通苏州龚程振整柜",
+            track: "查验已放行,等待提柜送火车站",
+            statusProg: "已放行", examStatus: "",
+            logs: [
+              { at: "2026-08-09 08:40", owner: "周杰", examParty: "1H", sendAt: "2026-08-09", openAt: "", passAt: "", examStatus: "", statusProg: "送检", track: "已送检", note: "开始跟进" },
+              { at: "2026-08-10 13:15", owner: "周杰", examParty: "1H", sendAt: "2026-08-09", openAt: "2026-08-10", passAt: "", examStatus: "", statusProg: "开查", track: "开箱查验中", note: "" },
+              { at: "2026-08-11 15:40", owner: "周杰", examParty: "1H", sendAt: "2026-08-09", openAt: "2026-08-10", passAt: "2026-08-11", examStatus: "", statusProg: "已放行", track: "查验已放行,等待提柜送火车站", note: "查验放行结案" }
+            ]
+          }
+        };
+        ROWS.forEach(function (r) {
+          var s = fuSeed[r.id];
+          r.followLogs = (s && s.logs) ? s.logs.slice() : [];
+          if (s) {
+            r.arriveAt = s.arriveAt;
+            r.lane = s.lane;
+            r.examParty = s.examParty;
+            r.sendAt = s.sendAt;
+            r.openAt = s.openAt;
+            r.passAt = s.passAt;
+            r.wh = s.wh;
+            r.clearance = s.clearance || r.broker;
+            r.track = s.track;
+            r.statusProg = s.statusProg;
+            r.examStatus = s.examStatus || "";
+          } else {
+            r.followLogs = r.followLogs || [];
+          }
+        });
       })();
 
       var stFilter = "";
@@ -657,6 +812,7 @@
       var detailCtx = { row: null };
       var inspCtx = { rows: [], type: "reg", tracks: [] };
       var ntCtx = { rows: [] };
+      var fuCtx = { row: null };
 
       var TRACK_TYPES = [
         { id: "reg", name: "清关查验登记" },
@@ -686,6 +842,14 @@
         return n === "已通知"
           ? '<span class="tag notify">已通知</span>'
           : '<span class="tag it-off">未通知</span>';
+      }
+      function followCell(r) {
+        var n = (r.followLogs || []).length;
+        var can = r.st === "清关查验" || r.st === "查验放行";
+        if (!can && !n) return "—";
+        var last = n ? r.followLogs[n - 1].at : "";
+        var label = n ? ('<span class="tag fu">' + n + "次</span> " + (last || "").slice(0, 16)) : '<span class="muted">未跟进</span>';
+        return '<button type="button" class="link-btn js-open-follow" data-id="' + r.id + '">' + label + "</button>";
       }
       function impCell(r) {
         if (!r.imp) return "—";
@@ -777,6 +941,7 @@
             "<td>" + stTag(r.st) + "</td>" +
             "<td>" + itTag(r.it) + "</td>" +
             "<td>" + ntTag(r.notify) + "</td>" +
+            "<td>" + followCell(r) + "</td>" +
             "<td>" + dash(r.clearRemark) + "</td>" +
             "<td>" + r.cs + "</td>" +
             "<td>" + dash(r.inspStart) + "</td>" +
@@ -808,7 +973,7 @@
             "</tr>";
         });
         document.getElementById("tbody").innerHTML = html ||
-          '<tr><td colspan="41" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+          '<tr><td colspan="42" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
         syncInspectUi();
       }
 
@@ -863,11 +1028,20 @@
       function closeDetail() { document.getElementById("detailMask").classList.remove("open"); }
       document.getElementById("tbody").addEventListener("click", function (e) {
         var a = e.target.closest(".js-open-detail");
-        if (!a) return;
-        e.preventDefault();
-        var id = Number(a.getAttribute("data-id"));
-        var row = ROWS.filter(function (r) { return r.id === id; })[0];
-        if (row) openDetail(row);
+        if (a) {
+          e.preventDefault();
+          var id = Number(a.getAttribute("data-id"));
+          var row = ROWS.filter(function (r) { return r.id === id; })[0];
+          if (row) openDetail(row);
+          return;
+        }
+        var fu = e.target.closest(".js-open-follow");
+        if (fu) {
+          e.preventDefault();
+          var fid = Number(fu.getAttribute("data-id"));
+          var frow = ROWS.filter(function (r) { return r.id === fid; })[0];
+          if (frow) openFollow(frow);
+        }
       });
       document.getElementById("btnDetail").onclick = function () {
         var rows = checkedRows();
@@ -1068,14 +1242,158 @@
         markNotified(rows, document.getElementById("inspNtChannel"));
       };
 
+      /* 查验跟进 · 国外 */
+      function setDateVal(id, v) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.value = v ? String(v).slice(0, 10) : "";
+      }
+      function renderFuMeta(r) {
+        var cells = [
+          ["提单号", r.bl],
+          ["柜号", r.cntr],
+          ["到港日期", r.arriveAt || (r.eta || "—")],
+          ["船名航次", r.voy || "—"],
+          ["起运目的", r.lane || [r.polLabel, r.podLabel].filter(Boolean).join("→") || "—"],
+          ["进口商", impCell(r)],
+          ["清关行", r.clearance || r.broker || "—"],
+          ["海外仓", r.wh || "—"],
+          ["查验方式", r.examParty || "—"],
+          ["查验状态", r.examStatus || r.inspSt || "—"],
+          ["送检 / 开查 / 放行", [r.sendAt || "—", r.openAt || "—", r.passAt || "—"].join(" / ")],
+          ["跟进人", r.cs || "—"]
+        ];
+        var html = cells.map(function (c) {
+          return '<div><span class="k">' + c[0] + "</span><span class=\"v\">" + c[1] + "</span></div>";
+        }).join("");
+        html += '<div class="span2"><span class="k">状态进程</span><span class="v">' + (r.statusProg || "—") + "</span></div>";
+        html += '<div class="span4"><span class="k">系统轨迹</span><span class="v">' + (r.track || "—") + "</span></div>";
+        document.getElementById("fuMeta").innerHTML = html;
+      }
+      function renderFuHist(r) {
+        var logs = (r.followLogs || []).slice().reverse();
+        document.getElementById("fuHistCnt").textContent = logs.length + " 条";
+        if (!logs.length) {
+          document.getElementById("fuHistBody").innerHTML =
+            '<tr><td colspan="8" style="text-align:center;color:#8c8c8c;padding:20px">暂无跟进历史，保存后出现在此</td></tr>';
+          return;
+        }
+        document.getElementById("fuHistBody").innerHTML = logs.map(function (log) {
+          var detail = [
+            log.statusProg ? ("进程：" + log.statusProg) : "",
+            log.track ? ("轨迹：" + log.track) : "",
+            log.note ? ("说明：" + log.note) : ""
+          ].filter(Boolean).join("<br/>") || "—";
+          return "<tr>" +
+            "<td>" + (log.at || "—") + "</td>" +
+            "<td>" + (log.owner || "—") + "</td>" +
+            "<td>" + (log.examParty || "—") + "</td>" +
+            "<td>" + (log.sendAt || "—") + "</td>" +
+            "<td>" + (log.openAt || "—") + "</td>" +
+            "<td>" + (log.passAt || "—") + "</td>" +
+            "<td>" + (log.examStatus || "进行中") + "</td>" +
+            "<td>" + detail + "</td></tr>";
+        }).join("");
+      }
+      function fillFuForm(r) {
+        document.getElementById("fuExamParty").value = r.examParty || "";
+        document.getElementById("fuExamSt").value = r.examStatus || "";
+        setDateVal("fuSendAt", r.sendAt);
+        setDateVal("fuOpenAt", r.openAt);
+        setDateVal("fuPassAt", r.passAt);
+        document.getElementById("fuWh").value = r.wh || "";
+        document.getElementById("fuClearance").value = r.clearance || r.broker || "";
+        document.getElementById("fuOwner").value = r.cs || "港后客服";
+        document.getElementById("fuStatusProg").value = r.statusProg || "";
+        document.getElementById("fuTrack").value = r.track || "";
+        document.getElementById("fuNote").value = "";
+      }
+      function openFollow(row) {
+        if (!row) return;
+        if (row.st !== "清关查验" && row.st !== "查验放行") {
+          toast("仅清关查验 / 查验放行可登记国外查验跟进");
+          return;
+        }
+        fuCtx.row = row;
+        renderFuMeta(row);
+        fillFuForm(row);
+        renderFuHist(row);
+        document.getElementById("fuMask").classList.add("open");
+      }
+      function closeFollow() {
+        document.getElementById("fuMask").classList.remove("open");
+        fuCtx.row = null;
+      }
+      document.getElementById("btnFollow").onclick = function () {
+        var rows = checkedRows().filter(function (r) {
+          return r.st === "清关查验" || r.st === "查验放行";
+        });
+        if (!rows.length) {
+          toast("请勾选清关查验 / 查验放行的提单");
+          return;
+        }
+        openFollow(rows[0]);
+      };
+      document.getElementById("fuClose").onclick = closeFollow;
+      document.getElementById("fuCancel").onclick = closeFollow;
+      document.getElementById("fuMask").onclick = function (e) { if (e.target === this) closeFollow(); };
+      document.getElementById("fuSave").onclick = function () {
+        var row = fuCtx.row;
+        if (!row) return;
+        var log = {
+          at: trackNow(),
+          owner: (document.getElementById("fuOwner").value || row.cs || "港后客服").trim(),
+          examParty: document.getElementById("fuExamParty").value,
+          sendAt: document.getElementById("fuSendAt").value,
+          openAt: document.getElementById("fuOpenAt").value,
+          passAt: document.getElementById("fuPassAt").value,
+          examStatus: document.getElementById("fuExamSt").value,
+          statusProg: document.getElementById("fuStatusProg").value.trim(),
+          track: document.getElementById("fuTrack").value.trim(),
+          note: document.getElementById("fuNote").value.trim(),
+          wh: document.getElementById("fuWh").value.trim(),
+          clearance: document.getElementById("fuClearance").value.trim()
+        };
+        row.examParty = log.examParty || row.examParty;
+        row.sendAt = log.sendAt || row.sendAt;
+        row.openAt = log.openAt || row.openAt;
+        row.passAt = log.passAt || row.passAt;
+        row.examStatus = log.examStatus || row.examStatus;
+        row.statusProg = log.statusProg || row.statusProg;
+        row.track = log.track || row.track;
+        row.wh = log.wh || row.wh;
+        row.clearance = log.clearance || row.clearance;
+        if (log.passAt) {
+          row.st = "查验放行";
+          row.inspSt = "查验放行";
+          row.inspEnd = log.passAt + " 00:00:00";
+          row.stage = "查验放行";
+        } else if (row.st !== "查验放行") {
+          row.st = "清关查验";
+          row.inspSt = "查验中";
+          row.stage = "目的港查验中";
+        }
+        row.followLogs = row.followLogs || [];
+        row.followLogs.push(log);
+        renderFuMeta(row);
+        fillFuForm(row);
+        renderFuHist(row);
+        render();
+        toast("已保存查验跟进 · 历史 " + row.followLogs.length + " 条");
+      };
+
       var params = new URLSearchParams(location.search || "");
-      if (params.get("tab") === "inspect") {
+      if (params.get("tab") === "inspect" || params.get("tab") === "follow") {
         stFilter = "清关查验";
         document.querySelectorAll(".status-tab").forEach(function (b) {
           b.classList.toggle("active", b.getAttribute("data-st") === "清关查验");
         });
       }
       render();
+      if (params.get("tab") === "follow") {
+        var first = ROWS.filter(function (r) { return r.st === "清关查验"; })[0];
+        if (first) openFollow(first);
+      }
     })();
   </script>
 </body>

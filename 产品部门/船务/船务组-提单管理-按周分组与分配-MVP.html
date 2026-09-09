@@ -113,6 +113,8 @@
     .tool-btn.purple { background: #fff; color: var(--text); border-color: #d9d9d9; }
     .tool-btn.danger { background: #fff; color: #cf1322; border-color: #ffa39e; }
     .tool-btn.danger:hover { border-color: #cf1322; color: #a8071a; }
+    .tag.rs-off { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    tr.rs-returned td:first-child { box-shadow: inset 3px 0 0 #ff7875; }
     .tool-btn:disabled { opacity: .45; cursor: not-allowed; }
     a.tool-btn { text-decoration: none; box-sizing: border-box; }
     .swap-scene {
@@ -343,6 +345,9 @@
     .tag.sail, .tag.ams-ok, .tag.ck-pass, .tag.rel-ok, .tag.sea-ok,
     .tag.arr-ok, .tag.done, .tag.imp-ok, .tag.amd-done, .tag.term-ok {
       color: #389e0d; background: #f6ffed; border-color: #d9f7be;
+    }
+    .tag.void {
+      color: #8c8c8c; background: #fafafa; border-color: #d9d9d9;
     }
     .tag.it, .tag.ams-no, .tag.rel-no, .tag.sea-no, .tag.warn-sail,
     .tag.arr-no, .tag.warn-over, .tag.imp-over {
@@ -1060,6 +1065,7 @@
           <span class="tb-split" aria-hidden="true"></span>
           <button type="button" class="tool-btn" id="btnBroadcast">舱位播报 <span class="badge-new">新</span></button>
           <button type="button" class="tool-btn" id="btnCancelIt">取消IT标记 <span class="badge-new">新</span></button>
+          <button type="button" class="tool-btn danger" id="btnReturnShip" title="按柜退运；仅待分配提单；亏舱费选填">退运 <span class="badge-new">新</span></button>
           <button type="button" class="tool-btn" id="btnAms" title="装柜前由船务发送 AMS">发 AMS <span class="badge-new">新</span></button>
         </div>
         <div class="status-tabs">
@@ -1117,6 +1123,8 @@
                 <th>装柜地址1</th>
                 <th>装柜地址2</th>
                 <th>装柜地址3</th>
+                <th>工厂地址 <span class="badge-new">改</span></th>
+                <th>普提/快提 <span class="badge-new">新</span></th>
                 <th>预计装柜时间</th>
                 <th>飞驼轨迹自动抓取状态</th>
                 <th>备注</th>
@@ -1418,6 +1426,50 @@
       <div class="modal-ft">
         <button type="button" class="tool-btn outline" id="itCancel">取消</button>
         <button type="button" class="tool-btn primary" id="itConfirm">确认取消IT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 退运 · 按柜 · 亏舱费选填 -->
+  <div class="mask" id="rsMask" aria-hidden="true">
+    <div class="modal" role="dialog">
+      <div class="modal-hd">
+        <h3>退运 <span class="badge-new">新</span></h3>
+        <button type="button" class="tool-btn outline" id="rsClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert">
+          按<strong>柜</strong>退运（勾选行=柜）。<strong>仅「待分配」</strong>提单可操作；已分配（待装柜及之后）不可退运。确认后提单状态改为<strong>已作废</strong>，不打业务标记。退运费/亏舱费选填，有则写入<strong>提单预估</strong>。
+        </div>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用柜子</label>
+            <input id="rsTargets" readonly />
+          </div>
+          <div class="form-item full">
+            <label>退运原因</label>
+            <input id="rsReason" placeholder="选填，例：客户取消 / 船期变更" />
+          </div>
+          <div class="form-item">
+            <label>退运费 / 亏舱费金额 <span class="badge-new">非必填</span></label>
+            <input id="rsFeeAmt" type="number" min="0" step="0.01" placeholder="留空=不登记；有则进提单预估" />
+          </div>
+          <div class="form-item">
+            <label>币种</label>
+            <select id="rsFeeCcy">
+              <option>USD</option>
+              <option>CNY</option>
+            </select>
+          </div>
+          <div class="form-item full">
+            <label>费用说明</label>
+            <input id="rsFeeNote" placeholder="选填" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="rsCancel">取消</button>
+        <button type="button" class="tool-btn danger" id="rsConfirm">确认退运</button>
       </div>
     </div>
   </div>
@@ -1887,20 +1939,66 @@
             </div>
             <div class="field-err">此处为必填项</div>
           </div>
-          <div class="form-item fac-only hidden" id="asFactory1Wrap">
-            <label><span class="req">*</span> 工厂地址1</label>
+          <div class="form-item fac-only hidden" id="asFactoryProvWrap">
+            <label><span class="req">*</span> 省</label>
             <div class="as-ctrl">
-              <input id="asFactory1" placeholder="请输入工厂地址1" />
+              <input id="asFactoryProv" list="asFactoryProvOpts" placeholder="请选择或输入省" autocomplete="off" />
               <button type="button" class="as-copy" title="复制内容" aria-label="复制内容"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M3 11V3h8"/></svg></button>
             </div>
             <div class="field-err">此处为必填项</div>
           </div>
-          <div class="form-item fac-only hidden">
-            <label>工厂地址2</label>
+          <div class="form-item fac-only hidden" id="asFactoryCityWrap">
+            <label><span class="req">*</span> 市</label>
             <div class="as-ctrl">
-              <input id="asFactory2" placeholder="请输入工厂地址2" />
+              <input id="asFactoryCity" list="asFactoryCityOpts" placeholder="请选择或输入市" autocomplete="off" />
               <button type="button" class="as-copy" title="复制内容" aria-label="复制内容"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M3 11V3h8"/></svg></button>
             </div>
+            <div class="field-err">此处为必填项</div>
+          </div>
+          <div class="form-item fac-only hidden full" id="asFactoryAddrWrap">
+            <label><span class="req">*</span> 工厂地址</label>
+            <div class="as-ctrl">
+              <input id="asFactoryAddr" list="asFactoryOpts" placeholder="请选择或输入详细地址" autocomplete="off" />
+              <button type="button" class="as-copy" title="复制内容" aria-label="复制内容"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M3 11V3h8"/></svg></button>
+            </div>
+            <div class="field-err">此处为必填项</div>
+          </div>
+          <datalist id="asFactoryProvOpts">
+            <option value="广东省"></option>
+            <option value="上海市"></option>
+            <option value="浙江省"></option>
+            <option value="山东省"></option>
+            <option value="天津市"></option>
+            <option value="福建省"></option>
+          </datalist>
+          <datalist id="asFactoryCityOpts">
+            <option value="东莞市"></option>
+            <option value="上海市"></option>
+            <option value="宁波市"></option>
+            <option value="青岛市"></option>
+            <option value="天津市"></option>
+            <option value="深圳市"></option>
+            <option value="义乌市"></option>
+          </datalist>
+          <datalist id="asFactoryOpts">
+            <option value="××工业区A栋（工厂直装）"></option>
+            <option value="××工业园"></option>
+            <option value="××工厂"></option>
+            <option value="××路工厂"></option>
+            <option value="××厂区"></option>
+            <option value="××道工厂"></option>
+          </datalist>
+          <div class="form-item" id="asPickupTypeWrap">
+            <label><span class="req">*</span> 普提/快提</label>
+            <div class="as-ctrl">
+              <select id="asPickupType">
+                <option value="">请选择</option>
+                <option>普提</option>
+                <option>快提</option>
+              </select>
+              <button type="button" class="as-copy" title="复制内容" aria-label="复制内容"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M3 11V3h8"/></svg></button>
+            </div>
+            <div class="field-err">此处为必填项</div>
           </div>
           <div class="form-item fac-only hidden" id="asFacLoadAtWrap">
             <label><span class="req">*</span> 预计装柜时间</label>
@@ -1994,6 +2092,20 @@
         </div>
         <div id="asTrailerEmpty" class="as-empty">数据为空</div>
         <div id="asTrailerList" class="hidden"></div>
+
+        <div class="as-sec-hd" style="margin-top:14px">
+          <span>派单文案 <span class="badge-new">新</span></span>
+          <span class="acts">
+            <button type="button" class="tool-btn primary" id="asCopyMsg">一键复制</button>
+          </span>
+        </div>
+        <div class="chat-shell">
+          <div class="chat-meta">
+            <span class="group">● 派单预览（可改）</span>
+            <span>仅复制到剪贴板，不推企微</span>
+          </div>
+          <textarea class="chat-bubble" id="asMsg" rows="9" placeholder="填完地址/车辆/拖车后自动生成派单文案"></textarea>
+        </div>
 
       </div>
       <div class="modal-ft">
@@ -2709,6 +2821,11 @@
           r.addr1 = r.addr1 || r.addr || "";
           r.addr2 = r.addr2 || (r.trailer ? (addr2Map[r.pol] || "") : "");
           r.addr3 = r.addr3 || "";
+          r.factory1 = r.factory1 || "";
+          r.factoryProv = r.factoryProv || "";
+          r.factoryCity = r.factoryCity || "";
+          r.factoryAddr = r.factoryAddr || "";
+          r.pickupType = r.pickupType || "";
           if (!r.seal) r.seal = (r.trailer ? "SML" : "A") + String(240000000 + r.id * 137).slice(-9);
           r.remark = r.remark || "";
           r.createdBy = r.createdBy || (r.id % 7 === 0 ? "潘俊凌" : "黎小清");
@@ -2727,6 +2844,38 @@
         if (byId[3]) { byId[3].freight = 2300; byId[3].seal = ""; }
         if (byId[11]) byId[11].freight = 2650;
         if (byId[13]) { byId[13].cntr = ""; byId[13].seal = ""; }
+        /* 工厂装柜样例：列表展示工厂地址、普提/快提 */
+        if (byId[4]) {
+          byId[4].loadMode = "fac";
+          byId[4].factoryProv = "上海市";
+          byId[4].factoryCity = "上海市";
+          byId[4].factoryAddr = "松江区××工业园";
+          byId[4].factory1 = "上海市松江区××工业园";
+          byId[4].pickupType = "普提";
+          byId[4].addr1 = "";
+          byId[4].addr2 = "";
+        }
+        if (byId[7]) {
+          byId[7].loadMode = "fac";
+          byId[7].factoryProv = "广东省";
+          byId[7].factoryCity = "东莞市";
+          byId[7].factoryAddr = "××工业区A栋（工厂直装）";
+          byId[7].factory1 = "广东省东莞市××工业区A栋（工厂直装）";
+          byId[7].pickupType = "快提";
+          byId[7].addr1 = "";
+          byId[7].addr2 = "";
+        }
+        if (byId[20]) {
+          byId[20].loadMode = "fac";
+          byId[20].factoryProv = "天津市";
+          byId[20].factoryCity = "天津市";
+          byId[20].factoryAddr = "开发区××道工厂";
+          byId[20].factory1 = "天津市开发区××道工厂";
+          byId[20].pickupType = "普提";
+          byId[20].addr1 = "";
+        }
+        if (byId[3]) byId[3].pickupType = byId[3].pickupType || "普提";
+        if (byId[8]) byId[8].pickupType = byId[8].pickupType || "普提";
       })();
 
       var OP_LOGS = [];
@@ -2786,7 +2935,7 @@
         "落箱费", "提柜费", "还柜费",
         "滞箱费", "滞港费",
         "查验加费", "加载加费", "改港费", "AN杂费",
-        "取消IT费",
+        "取消IT费", "亏舱费", "退运费",
         "电放费", "舱单费", "铅封费", "超重费",
         "其他杂费",
         "国内", "国外"
@@ -3181,6 +3330,14 @@
         return "";
       }
 
+      function returnTag(r) {
+        return "";
+      }
+
+      function isVoidBl(r) {
+        return r.st === "已作废" || r.returned;
+      }
+
       function ckTag(r) {
         var parts = [];
         var ck = r.ck || "无";
@@ -3202,7 +3359,7 @@
         return "";
       }
 
-      /** 业务标记：IT + 海放/码放 + 查验 + 改单 + AMS/ISF（船务装柜前发送） */
+      /** 业务标记：IT + 海放/码放 + 查验 + 改单 + AMS/ISF（船务装柜前发送）；退运不打标，看状态「已作废」 */
       function marksCell(r) {
         return '<div class="marks-cell">' +
           itTag(r) + relWarnCell(r) + ckTag(r) + amdTag(r) + amsIsfTag(r) +
@@ -3268,7 +3425,7 @@
       }
 
       function stTag(st) {
-        var cls = st === "待分配" ? "wait" : st === "待装柜" ? "load" : "sail";
+        var cls = st === "待分配" ? "wait" : st === "待装柜" ? "load" : st === "已作废" ? "void" : "sail";
         return '<span class="tag ' + cls + '">' + st + '</span>';
       }
 
@@ -3624,6 +3781,7 @@
           var ck = selected[r.id] ? " checked" : "";
           var sel = selected[r.id] ? " selected" : "";
           var itCls = r.it === "已取消IT" ? " it-cancelled" : "";
+          var rsCls = isVoidBl(r) ? " rs-returned" : "";
           var amdCls = (r.amd === "改单中") ? " amd-row" : "";
           var ls = loadStatus(r);
           var warned = hasWarn(r, "any");
@@ -3637,7 +3795,7 @@
           if (f.nearSail) warnBorder = " warn-sail-row";
           else if (f.nearCut) warnBorder = " warn-cut-row";
           if (f.missCntrSeal) warnBorder += " warn-seal-row";
-          return '<tr class="data-row' + sel + itCls + amdCls + loadCls + warnBorder + '" data-id="' + r.id + '">' +
+          return '<tr class="data-row' + sel + itCls + rsCls + amdCls + loadCls + warnBorder + '" data-id="' + r.id + '">' +
             '<td><input type="checkbox" class="row-ck"' + ck + ' /></td>' +
             "<td>" + n + "</td>" +
             '<td>' + blCell(r) + '</td>' +
@@ -3669,9 +3827,11 @@
             "<td>" + dash(r.customs) + "</td>" +
             "<td>" + impCell(r) + "</td>" +
             "<td>" + dash(r.trailer) + "</td>" +
-            "<td>" + dash(r.addr1 || r.addr) + "</td>" +
+            "<td>" + dash(r.addr1 || (r.loadMode === "fac" ? "" : r.addr)) + "</td>" +
             "<td>" + dash(r.addr2) + "</td>" +
             "<td>" + dash(r.addr3) + "</td>" +
+            "<td>" + dash(r.factory1) + "</td>" +
+            "<td>" + dash(r.pickupType) + "</td>" +
             "<td>" + dash(r.loadAt) + "</td>" +
             "<td>" + ftAutoCell(r) + "</td>" +
             "<td>" + dash(r.remark) + "</td>" +
@@ -4296,6 +4456,79 @@
         toast("已打「取消IT」标记 ×" + rows.length +
           (addFee ? " · 取消IT费挂预估 ×" + blRows.length : "") +
           (transit ? " · 中转港已记" : ""));
+      };
+
+      /* —— 退运（按柜）· 仅待分配 · 退运费选填 → 提单预估；状态→已作废，不打业务标记 —— */
+      function canReturnShip(r) {
+        return r && r.st === "待分配" && !isVoidBl(r);
+      }
+      function openReturnShip() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选要退运的柜子"); return; }
+        var ok = rows.filter(canReturnShip);
+        var voided = rows.filter(isVoidBl);
+        var notPending = rows.filter(function (r) { return !isVoidBl(r) && r.st !== "待分配"; });
+        if (!ok.length) {
+          toast(notPending.length ? "退运仅适用于「待分配」提单" : "勾选柜子均已作废");
+          return;
+        }
+        if (voided.length) toast("已跳过已作废 ×" + voided.length);
+        if (notPending.length) toast("已跳过非待分配 ×" + notPending.length);
+        document.getElementById("rsTargets").value = ok.map(function (r) {
+          return (r.bl || "—") + " / " + (r.cntr || "—");
+        }).join("；");
+        document.getElementById("rsReason").value = "";
+        document.getElementById("rsFeeAmt").value = "";
+        document.getElementById("rsFeeCcy").value = "USD";
+        document.getElementById("rsFeeNote").value = "";
+        document.getElementById("rsMask").classList.add("open");
+      }
+      function closeReturnShip() {
+        document.getElementById("rsMask").classList.remove("open");
+      }
+      document.getElementById("btnReturnShip").onclick = openReturnShip;
+      document.getElementById("rsClose").onclick = closeReturnShip;
+      document.getElementById("rsCancel").onclick = closeReturnShip;
+      document.getElementById("rsMask").addEventListener("click", function (e) {
+        if (e.target === this) closeReturnShip();
+      });
+      document.getElementById("rsConfirm").onclick = function () {
+        var rows = checkedRows().filter(canReturnShip);
+        if (!rows.length) { toast("退运仅适用于「待分配」提单"); return; }
+        var reason = (document.getElementById("rsReason").value || "").trim();
+        var amtRaw = (document.getElementById("rsFeeAmt").value || "").trim();
+        var amt = amtRaw === "" ? null : parseFloat(amtRaw, 10);
+        var ccy = document.getElementById("rsFeeCcy").value || "USD";
+        var note = (document.getElementById("rsFeeNote").value || "").trim();
+        if (amtRaw !== "" && !(amt >= 0)) { toast("退运费金额须为有效数字，或不填"); return; }
+        var feeLogged = amt != null && amt > 0;
+        var now = "2026-08-06 23:55";
+        rows.forEach(function (r) {
+          var oldSt = r.st || "—";
+          r.st = "已作废";
+          r.returned = true;
+          r.returnAt = now;
+          r.returnReason = reason;
+          addLog(r, "退运",
+            "退运: [柜: " + (r.cntr || "—") +
+            ", 提单: " + (r.bl || "—") +
+            ", 状态: " + oldSt + "→已作废" +
+            (reason ? ", 原因: " + reason : "") +
+            (feeLogged ? ", 退运费: " + ccy + " " + amt + " · 挂提单预估" + (note ? " · " + note : "") : ", 退运费: 无") +
+            "]");
+          if (feeLogged) {
+            if (!r.fees) r.fees = [];
+            r.fees.push({
+              type: "退运费", amount: amt, ccy: ccy, hang: "提单",
+              wb: "", remark: note || reason, at: now, side: "国内",
+              payable: "提单预估", dim: "forecast", fromReturn: true, cntr: r.cntr
+            });
+          }
+        });
+        closeReturnShip();
+        render();
+        toast("已退运并作废 ×" + rows.length +
+          (feeLogged ? " · 退运费挂提单预估 ×" + rows.length : " · 未登记退运费"));
       };
 
       /* —— 查验标记（轨迹编号） —— */
@@ -5284,6 +5517,45 @@
         { name: "青港物流", price: "¥880", eta: "约 4.5h" },
         { name: "盐田畅通", price: "¥960", eta: "约 6h" }
       ];
+      /** 工厂地址簿：选详细地址时自动带出省、市（可再手改） */
+      var FACTORY_ADDR_BOOK = [
+        { prov: "广东省", city: "东莞市", addr: "××工业区A栋（工厂直装）", label: "东莞××工业区A栋（工厂直装）" },
+        { prov: "上海市", city: "上海市", addr: "松江区××工业园", label: "上海市松江区××工业园" },
+        { prov: "浙江省", city: "宁波市", addr: "慈溪××工厂", label: "宁波慈溪××工厂" },
+        { prov: "山东省", city: "青岛市", addr: "黄岛××路工厂", label: "青岛黄岛××路工厂" },
+        { prov: "广东省", city: "深圳市", addr: "盐田区××厂区", label: "深圳市盐田区××厂区" },
+        { prov: "天津市", city: "天津市", addr: "开发区××道工厂", label: "天津开发区××道工厂" },
+        { prov: "浙江省", city: "义乌市", addr: "××工业园", label: "义乌××工业园" }
+      ];
+      function factoryBookHit(val) {
+        var v = String(val || "").trim();
+        if (!v) return null;
+        for (var i = 0; i < FACTORY_ADDR_BOOK.length; i++) {
+          var b = FACTORY_ADDR_BOOK[i];
+          if (v === b.label || v === b.addr || v === (b.prov + b.city + b.addr)) return b;
+        }
+        return null;
+      }
+      function factoryFullText(prov, city, addr) {
+        prov = String(prov || "").trim();
+        city = String(city || "").trim();
+        addr = String(addr || "").trim();
+        var head = prov;
+        if (city && city !== prov) head += city;
+        else if (!head && city) head = city;
+        return head + addr;
+      }
+      function fillFactoryFromBook(hit) {
+        if (!hit) return;
+        document.getElementById("asFactoryProv").value = hit.prov;
+        document.getElementById("asFactoryCity").value = hit.city;
+        document.getElementById("asFactoryAddr").value = hit.addr;
+      }
+      function onFactoryAddrPick() {
+        var hit = factoryBookHit(asVal("asFactoryAddr"));
+        if (hit) fillFactoryFromBook(hit);
+        refreshMsg();
+      }
 
       function toLocalDt(str) {
         if (!str) return "";
@@ -5337,8 +5609,66 @@
         var el = document.getElementById(id);
         return el ? (el.value || "").trim() : "";
       }
+      function asSelectText(id) {
+        var el = document.getElementById(id);
+        if (!el || el.tagName !== "SELECT" || !el.value) return asVal(id);
+        var opt = el.options[el.selectedIndex];
+        return (opt && (opt.text || opt.value)) || el.value;
+      }
+      function buildAssignMsg() {
+        var rows = checkedRows();
+        var r = rows[0] || {};
+        var modeLab = asMode === "fac" ? "工厂装柜" : "仓库装柜";
+        var addr = asMode === "fac"
+          ? factoryFullText(asVal("asFactoryProv"), asVal("asFactoryCity"), asVal("asFactoryAddr")) || "—"
+          : (asSelectText("asAddr1") || "—");
+        var addr2 = asMode === "fac" ? "" : asSelectText("asAddr2");
+        var pickupType = asVal("asPickupType") || "—";
+        var loadAt = asMode === "fac" ? fmtAsTime("asFacLoadAt") : fmtAsTime("asLoadAt1");
+        var loadAt2 = asMode === "wh" ? fmtAsTime("asLoadAt2") : "";
+        var lines = [];
+        lines.push("【拖车派单】" + modeLab);
+        lines.push("————————");
+        if (rows.length > 1) {
+          lines.push("共 " + rows.length + " 票：");
+          rows.forEach(function (x, i) {
+            lines.push((i + 1) + ". " + (x.bl || "—") + " / " + (x.cntr || "—") + " / " + (x.type || ""));
+          });
+        } else {
+          lines.push("提单号：" + (r.bl || "—"));
+          lines.push("柜号：" + (r.cntr || "—") + "　柜型：" + (r.type || "—"));
+        }
+        lines.push("船名航次：" + (r.voy || "—"));
+        lines.push("始发港：" + (r.pol || "—") + "　目的港：" + (r.pod || "—"));
+        lines.push("第一装柜地点：" + (asSelectText("asFirstLoc") || "—"));
+        if (asMode === "fac") {
+          lines.push("省/市：" + (asVal("asFactoryProv") || "—") + " / " + (asVal("asFactoryCity") || "—"));
+          lines.push("工厂地址：" + (asVal("asFactoryAddr") || "—"));
+        } else {
+          lines.push("装柜地址：" + addr + (addr2 ? ("；" + addr2) : ""));
+        }
+        lines.push("普提/快提：" + pickupType);
+        lines.push("预计装柜：" + (loadAt || "—") + (loadAt2 ? ("；时间2 " + loadAt2) : ""));
+        lines.push("提货地点：" + (asSelectText("asPickup") || "—"));
+        lines.push("送货/还箱：" + (asSelectText("asReturn") || "—"));
+        if (asVal("asWhiteCard") || asVal("asPlate") || asVal("asDriver")) {
+          lines.push("车辆：" + [
+            asVal("asWhiteCard") ? ("白卡 " + asVal("asWhiteCard")) : "",
+            asVal("asPlate") ? ("车号 " + asVal("asPlate")) : "",
+            asVal("asDriver") ? ("司机 " + asVal("asDriver")) : "",
+            asVal("asDriverPhone") ? asVal("asDriverPhone") : ""
+          ].filter(Boolean).join(" / "));
+        }
+        if (asSelectText("asCustoms")) lines.push("报关服务商：" + asSelectText("asCustoms"));
+        lines.push("拖车公司：" + (asTrailerPick || "待指定"));
+        lines.push("————————");
+        lines.push("请按以上信息派车，谢谢。");
+        return lines.join("\n");
+      }
       function refreshMsg() {
         refreshAsWeek();
+        var msg = document.getElementById("asMsg");
+        if (msg) msg.value = buildAssignMsg();
       }
       function pickSelect(id, want) {
         if (!want) return;
@@ -5369,9 +5699,12 @@
           need("asAddr1Wrap", asVal("asAddr1"));
           need("asLoadAt1Wrap", asVal("asLoadAt1"));
         } else {
-          need("asFactory1Wrap", asVal("asFactory1"));
+          need("asFactoryProvWrap", asVal("asFactoryProv"));
+          need("asFactoryCityWrap", asVal("asFactoryCity"));
+          need("asFactoryAddrWrap", asVal("asFactoryAddr"));
           need("asFacLoadAtWrap", asVal("asFacLoadAt"));
         }
+        need("asPickupTypeWrap", asVal("asPickupType"));
         need("asPickupWrap", asVal("asPickup"));
         need("asReturnWrap", asVal("asReturn"));
         return ok;
@@ -5400,9 +5733,22 @@
         document.getElementById("asLoadAt1").value = toLocalDt(r.loadAt) || toLocalDt(r.etd) || "2026-08-07T14:00";
         document.getElementById("asLoadAt2").value = "";
         document.getElementById("asAddr2").value = "";
-        document.getElementById("asFactory1").value = r.addr || "";
-        document.getElementById("asFactory2").value = "";
+        var fHit = factoryBookHit(r.factory1);
+        if (r.factoryProv || r.factoryCity || r.factoryAddr) {
+          document.getElementById("asFactoryProv").value = r.factoryProv || "";
+          document.getElementById("asFactoryCity").value = r.factoryCity || "";
+          document.getElementById("asFactoryAddr").value = r.factoryAddr || "";
+        } else if (fHit) {
+          fillFactoryFromBook(fHit);
+        } else {
+          document.getElementById("asFactoryProv").value = "";
+          document.getElementById("asFactoryCity").value = "";
+          document.getElementById("asFactoryAddr").value = r.factory1 || (r.loadMode === "fac" ? (r.addr || "") : "");
+        }
         document.getElementById("asFacLoadAt").value = toLocalDt(r.loadAt) || toLocalDt(r.etd) || "2026-08-07T14:00";
+        pickSelect("asPickupType", r.pickupType || "普提");
+        if (r.loadMode === "fac") setAsMode("fac");
+        else setAsMode("wh");
         pickSelect("asPickup", r.pol === "CNNGB" ? "宁波梅山堆场" : (r.pol === "CNSHA" ? "上海洋山堆场" : (r.pol === "CNTAO" ? "青岛前湾堆场" : "宁波梅山堆场")));
         pickSelect("asReturn", r.pol === "CNNGB" ? "宁波港进港" : (r.pol === "CNSHA" ? "上海港进港" : (r.pol === "CNTAO" ? "青岛港还箱" : "宁波港进港")));
         document.getElementById("asWhiteCard").value = r.whiteCard || "";
@@ -5414,10 +5760,11 @@
         document.getElementById("asTrailerEmpty").classList.remove("hidden");
         document.getElementById("asTrailerList").classList.add("hidden");
         document.getElementById("asTrailerList").innerHTML = "";
-        ["asFirstLocWrap", "asAddr1Wrap", "asLoadAt1Wrap", "asFactory1Wrap", "asFacLoadAtWrap", "asPickupWrap", "asReturnWrap"].forEach(function (id) {
+        ["asFirstLocWrap", "asAddr1Wrap", "asLoadAt1Wrap", "asFactoryProvWrap", "asFactoryCityWrap", "asFactoryAddrWrap", "asFacLoadAtWrap", "asPickupTypeWrap", "asPickupWrap", "asReturnWrap"].forEach(function (id) {
           setAsBad(id, false);
         });
-        setAsMode("wh");
+        if (r.loadMode === "fac") setAsMode("fac");
+        else setAsMode("wh");
         refreshMsg();
         document.getElementById("asMask").classList.add("open");
       }
@@ -5602,6 +5949,24 @@
       document.getElementById("asExpand").onclick = function () {
         renderAsQuotes(true);
       };
+      document.getElementById("asCopyMsg").onclick = function () {
+        var text = (document.getElementById("asMsg").value || "").replace(/^\s+|\s+$/g, "");
+        if (!text) { toast("没有可复制的内容"); return; }
+        function copied() { toast("已复制派单文案"); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(copied).catch(function () {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); } catch (e) {}
+            document.body.removeChild(ta);
+            copied();
+          });
+        } else {
+          copied();
+        }
+      };
       document.getElementById("asBody").addEventListener("click", function (e) {
         var btn = e.target.closest ? e.target.closest(".as-copy") : null;
         if (!btn) return;
@@ -5639,13 +6004,15 @@
         }
       });
       ["asFirstLoc", "asAddr1", "asAddr2", "asLoadAt1", "asLoadAt2",
-        "asFactory1", "asFactory2", "asFacLoadAt", "asPickup", "asReturn",
+        "asFactoryProv", "asFactoryCity", "asFactoryAddr", "asFacLoadAt", "asPickupType", "asPickup", "asReturn",
         "asWhiteCard", "asPlate", "asDriverPhone", "asDriver", "asCustoms"].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) return;
         el.addEventListener("input", refreshMsg);
         el.addEventListener("change", refreshMsg);
       });
+      document.getElementById("asFactoryAddr").addEventListener("change", onFactoryAddrPick);
+      document.getElementById("asFactoryAddr").addEventListener("blur", onFactoryAddrPick);
 
       document.getElementById("asConfirm").onclick = function () {
         var rows = checkedRows();
@@ -5657,20 +6024,35 @@
           toast("请补全必填项（红色提示）");
           return;
         }
-        var addr = asMode === "fac" ? asVal("asFactory1") : asVal("asAddr1");
+        var addr = asMode === "fac" ? asVal("asFactoryAddr") : asVal("asAddr1");
+        var fProv = asMode === "fac" ? asVal("asFactoryProv") : "";
+        var fCity = asMode === "fac" ? asVal("asFactoryCity") : "";
+        var addr2 = asMode === "fac" ? "" : asVal("asAddr2");
+        var pickupType = asVal("asPickupType");
         var loadAt = asMode === "fac" ? fmtAsTime("asFacLoadAt") : fmtAsTime("asLoadAt1");
         var agent = asTrailerPick || "";
         var newWeek = isoWeekKey(loadAt);
         rows.forEach(function (r) {
           var oldSt = r.st;
           var oldAgent = r.agent || r.trailer || "空";
-          var oldAddr = r.addr || "空";
+          var oldAddr = asMode === "fac" ? (r.factory1 || "空") : (r.addr1 || r.addr || "空");
           var oldWeek = r.week || "空";
           r.agent = agent || r.agent;
           r.trailer = agent || r.trailer;
-          r.addr = addr || r.addr;
-          r.addr1 = addr || r.addr1;
+          r.loadMode = asMode;
           r.loadAt = loadAt || r.loadAt;
+          r.pickupType = pickupType || r.pickupType;
+          if (asMode === "fac") {
+            r.factoryProv = fProv;
+            r.factoryCity = fCity;
+            r.factoryAddr = addr || r.factoryAddr;
+            r.factory1 = factoryFullText(fProv, fCity, r.factoryAddr) || r.factory1;
+            r.addr = r.factory1 || r.addr;
+          } else {
+            r.addr = addr || r.addr;
+            r.addr1 = addr || r.addr1;
+            r.addr2 = addr2 || r.addr2;
+          }
           r.whiteCard = asVal("asWhiteCard");
           r.plate = asVal("asPlate");
           r.driver = asVal("asDriver");
@@ -5680,7 +6062,9 @@
           addLog(r, "提单分配",
             "提单分配: [装柜方式: " + (asMode === "fac" ? "工厂" : "仓库") +
             ", 拖车供应商: " + oldAgent + "→" + (r.agent || r.trailer || "空") +
-            ", 装柜地址1: " + oldAddr + "→" + (r.addr || "空") +
+            ", " + (asMode === "fac" ? "工厂地址" : "装柜地址1") + ": " + oldAddr + "→" +
+            (asMode === "fac" ? (r.factory1 || "空") : (r.addr1 || r.addr || "空")) +
+            ", 普提/快提: " + (r.pickupType || "空") +
             ", 装柜时间: " + (r.loadAt || "空") +
             ", 周: " + oldWeek + "→" + (r.week || "空") +
             ", 状态: " + oldSt + "→" + r.st + "]");

@@ -128,7 +128,27 @@
     .tag-ok { background: #f6ffed; color: var(--ok); border: 1px solid #b7eb8f; }
     .tag-warn { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
     .tag-no { background: #fff1f0; color: var(--req); border: 1px solid #ffa39e; }
+    .tag-void { background: #f5f5f5; color: #8c8c8c; border: 1px solid #d9d9d9; }
     .tag-tail { background: #e6f4ff; color: #0958d9; border: 1px solid #91caff; font-size: 10px; margin-left: 4px; }
+    .row-returned { background: #fafafa; color: #8c8c8c; }
+    .row-returned td { text-decoration: line-through; }
+    .row-returned td:first-child, .row-returned td:nth-child(9) { text-decoration: none; }
+    .return-alert {
+      margin: 0 0 12px; padding: 8px 10px; border-radius: 4px; font-size: 12px; line-height: 1.55;
+      background: #e6f4ff; border: 1px solid #91caff; color: #0958d9;
+    }
+    .return-alert.warn {
+      background: #fff7e6; border-color: #ffd591; color: #d46b08;
+    }
+    .return-meta {
+      display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; margin-bottom: 12px;
+    }
+    .return-meta b { font-weight: 600; }
+    .return-fee-box {
+      border: 1px solid var(--line); border-radius: 4px; padding: 12px; background: #fafafa; margin-top: 8px;
+    }
+    .return-fee-box h4 { margin: 0 0 8px; font-size: 13px; }
+    .return-fee-box .opt { font-size: 12px; color: var(--sub); font-weight: 400; margin-left: 6px; }
     .flow-tip {
       margin-top: 8px; padding: 8px 10px; border-radius: 4px;
       background: #e6f4ff; border: 1px solid #91caff; color: #0958d9; font-size: 12px; line-height: 1.5;
@@ -758,6 +778,7 @@
           <button type="button" class="btn btn-primary" id="btnAdd">新增订舱登记<span class="mark-phase-chg">调</span></button>
           <button type="button" class="btn btn-ghost" id="btnEdit">完善提单 / 编辑舱位<span class="mark-phase-chg">调</span></button>
           <button type="button" class="btn btn-warn" id="btnRollover" title="已放舱舱位更换船名航次/SO，原记录作废并由异人录入新舱">甩柜换船<span class="mark-new">新</span></button>
+          <button type="button" class="btn btn-danger" id="btnReturnShip" title="未放舱/已放舱均可发起退运；未放舱确定后改已退仓并回退运单">退运<span class="mark-new">新</span></button>
           <button type="button" class="btn" id="btnExportBc">导出放舱 BC<span class="mark-new">新</span></button>
           <button type="button" class="btn" id="btnExportForecast">导出预报模板<span class="mark-new">新</span></button>
           <button type="button" class="btn" id="btnBatchExport" title="按当前查询条件（筛选区+状态页签）导出列表数据">批量导出<span class="mark-new">新</span></button>
@@ -774,12 +795,13 @@
           <button type="button" class="status-tab" data-filter="freight">海运费异常<span class="cnt">(1)</span></button>
           <button type="button" class="status-tab" data-filter="cutoff">截单/截关临近(1)</button>
           <button type="button" class="status-tab" data-filter="released">已放舱(11)</button>
+          <button type="button" class="status-tab" data-filter="returned">已退仓<span class="cnt">(0)</span><span class="mark-new">新</span></button>
         </div>
 
         <div class="legend-bar">
           <span><i class="lg-danger"></i>红底行：未放舱（放舱=否）/ 海运费已过期 / 装柜完成不在有效期内 / 必填缺失</span>
           <span><i class="lg-warn"></i>橙底行：截关时间为空 / 截关距 ETD≤3 天 / 截单(SI) 48h 内 / 船期待确认</span>
-          <span><i class="lg-void"></i>灰底删除线：甩柜换船后原舱作废</span>
+          <span><i class="lg-void"></i>灰底删除线：甩柜换船后原舱作废 / 已退仓</span>
           <span><i class="lg-new"></i>绿底行：甩柜换船后新生成舱位</span>
         </div>
 
@@ -1083,6 +1105,51 @@
     </div>
   </div>
 
+  </div>
+
+  <!-- 退运 · 含亏舱费（非必填） -->
+  <div class="modal-mask" id="returnShipMask" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="returnShipTitle" style="width:min(560px,96vw)">
+      <div class="modal-hd">
+        <h2 id="returnShipTitle">退运 <span class="mark-new">新</span></h2>
+        <button type="button" class="modal-close" id="returnShipClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="return-alert" id="returnShipAlert"></div>
+        <div class="return-meta" id="returnShipMeta"></div>
+        <div class="field" style="margin-bottom:10px">
+          <label>退运原因</label>
+          <input type="text" id="returnShipReason" placeholder="选填，例：客户取消 / 船期变更" />
+        </div>
+        <div class="return-fee-box">
+          <h4>亏舱费录入 <span class="opt">非必填</span></h4>
+          <p style="margin:0 0 10px;font-size:12px;color:var(--sub);line-height:1.5">有亏舱费可在此登记；不填也可直接确认退运。</p>
+          <div class="form-grid" style="grid-template-columns:1fr 100px 1fr;gap:10px">
+            <div class="field">
+              <label>金额</label>
+              <input type="number" id="returnDeadAmt" min="0" step="0.01" placeholder="留空=不登记" />
+            </div>
+            <div class="field">
+              <label>币种</label>
+              <select id="returnDeadCcy">
+                <option>USD</option>
+                <option>CNY</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>费用说明</label>
+              <input type="text" id="returnDeadNote" placeholder="选填" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="modal-ft">
+        <button type="button" class="btn" id="returnShipCancel">取消</button>
+        <button type="button" class="btn btn-danger" id="returnShipOk">确认退运</button>
+      </footer>
+    </div>
+  </div>
+
   <!-- 全屏页：订舱登记 + 完善提单 -->
   <div class="drawer-mask" id="drawerMask" aria-hidden="true"></div>
   <aside class="drawer" id="drawer" aria-label="订舱登记与完善提单">
@@ -1128,9 +1195,21 @@
               <input type="text" id="blNo" value="TXZG00000000043" />
             </div>
             <div class="field field-vessel">
-              <label>船名航次<span class="req">*</span></label>
-              <input type="text" id="vesselVoyage" value="COSCO AQUARIUS / 2518W" placeholder="船名 / 航次" autocomplete="off" />
+              <label>船名<span class="req">*</span></label>
+              <input type="text" id="vesselName" value="COSCO AQUARIUS" placeholder="船名" autocomplete="off" />
               <div class="vessel-ac" id="vesselAc" hidden></div>
+            </div>
+            <div class="field">
+              <label>航次<span class="req">*</span></label>
+              <input type="text" id="voyageNo" value="2518W" placeholder="航次，如 2518W" />
+            </div>
+            <div class="field">
+              <label>普提/快提<span class="req">*</span></label>
+              <select id="pickupType">
+                <option value="">请选择</option>
+                <option value="普提" selected>普提</option>
+                <option value="快提">快提</option>
+              </select>
             </div>
             <div class="field field-port">
               <label>起运港<span class="req">*</span></label>
@@ -1438,7 +1517,7 @@
   </aside>
 
   <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="仓位管理-订舱完善提单-整合-MVP-PRD.html">
-    <span class="ess-prd-chip">PRD · 订舱登记 + 完善提单 · 整合页</span>
+    <span class="ess-prd-chip">PRD · 舱位管理</span>
   </div>
   <script src="../二期/ess-prototype-prd.js"></script>
   <script>
@@ -2194,7 +2273,9 @@
         drawerMode = mode;
         if (mode === "add") {
           document.getElementById("blNo").value = "";
-          if (document.getElementById("vesselVoyage")) document.getElementById("vesselVoyage").value = "";
+          if (document.getElementById("vesselName")) document.getElementById("vesselName").value = "";
+          if (document.getElementById("voyageNo")) document.getElementById("voyageNo").value = "";
+          if (document.getElementById("pickupType")) document.getElementById("pickupType").value = "";
           if (document.getElementById("bookingAgent")) document.getElementById("bookingAgent").value = "";
           if (polInput) polInput.value = "";
           if (podInput) podInput.value = "";
@@ -2653,8 +2734,36 @@
         }
       };
 
-      var vesselVoyage = document.getElementById("vesselVoyage");
+      var vesselName = document.getElementById("vesselName");
+      var voyageNo = document.getElementById("voyageNo");
+      var pickupTypeEl = document.getElementById("pickupType");
       var vesselAc = document.getElementById("vesselAc");
+      function parseVesselVoyage(s) {
+        var t = String(s || "").trim().replace(/\s+/g, " ");
+        if (!t) return { vessel: "", voyage: "" };
+        var m = t.match(/^(.*?)[\s/／]+([A-Za-z0-9/-]+)$/);
+        if (m && /[0-9]/.test(m[2])) return { vessel: m[1].trim(), voyage: m[2].trim() };
+        return { vessel: t, voyage: "" };
+      }
+      function getVesselVoyageCombined() {
+        var v = (vesselName && vesselName.value.trim()) || "";
+        var vo = (voyageNo && voyageNo.value.trim()) || "";
+        if (v && vo) return v + " / " + vo;
+        return v || vo;
+      }
+      function setVesselVoyageCombined(s) {
+        var p = parseVesselVoyage(s);
+        if (vesselName) vesselName.value = p.vessel;
+        if (voyageNo) voyageNo.value = p.voyage;
+      }
+      // compat alias used by older snippets
+      var vesselVoyage = {
+        get value() { return getVesselVoyageCombined(); },
+        set value(v) { setVesselVoyageCombined(v); },
+        addEventListener: function (type, fn) {
+          if (vesselName) vesselName.addEventListener(type, fn);
+        }
+      };
       var polInput = document.getElementById("polInput");
       var podInput = document.getElementById("podInput");
       var feituoRouteList = document.getElementById("feituoRouteList");
@@ -2742,7 +2851,10 @@
         var q = normalizeVessel(input);
         if (!q) return null;
         for (var i = 0; i < VESSEL_CATALOG.length; i++) {
-          if (normalizeVessel(VESSEL_CATALOG[i]) === q) return VESSEL_CATALOG[i];
+          var full = VESSEL_CATALOG[i];
+          if (normalizeVessel(full) === q) return full;
+          var parts = parseVesselVoyage(full);
+          if (normalizeVessel(parts.vessel) === q) return full;
         }
         return null;
       }
@@ -2751,7 +2863,9 @@
         var q = normalizeVessel(input);
         if (q.length < 2) return [];
         return VESSEL_CATALOG.filter(function (v) {
-          return normalizeVessel(v).indexOf(q) !== -1;
+          var parts = parseVesselVoyage(v);
+          return normalizeVessel(v).indexOf(q) !== -1 ||
+            normalizeVessel(parts.vessel).indexOf(q) !== -1;
         }).slice(0, 6);
       }
 
@@ -2903,8 +3017,8 @@
       }
 
       function filterRouteGroups(groups) {
-        var vesselQ = normalizeVessel((feituoVesselFilter && feituoVesselFilter.value) || (vesselVoyage && vesselVoyage.value) || "");
-        var exactVessel = findExactVessel(vesselVoyage && vesselVoyage.value);
+        var vesselQ = normalizeVessel((feituoVesselFilter && feituoVesselFilter.value) || (vesselName && vesselName.value) || "");
+        var exactVessel = findExactVessel(vesselName && vesselName.value);
         return groups.map(function (rg) {
           var voyages = rg.voyages.filter(function (v) {
             if (feituoCarriers.length && feituoCarriers.indexOf(v.carrier) === -1) return false;
@@ -3057,7 +3171,12 @@
       function applyFeituoSchedule(item, group) {
         if (!item) return;
         selectedFeituoId = item.id;
-        if (vesselVoyage) vesselVoyage.value = item.vesselVoyage;
+        if (item.vessel || item.voyage) {
+          if (vesselName) vesselName.value = item.vessel || "";
+          if (voyageNo) voyageNo.value = item.voyage || "";
+        } else if (item.vesselVoyage) {
+          setVesselVoyageCombined(item.vesselVoyage);
+        }
         etdLeg1.value = item.etd;
         leg1Eta.value = item.podEta || item.leg1Eta;
         siCutoff.value = item.si;
@@ -3086,7 +3205,10 @@
 
       function clearFeituoSchedule(clearVessel) {
         selectedFeituoId = null;
-        if (clearVessel && vesselVoyage) vesselVoyage.value = "";
+        if (clearVessel) {
+          if (vesselName) vesselName.value = "";
+          if (voyageNo) voyageNo.value = "";
+        }
         scheduleFieldIds.forEach(function (id) {
           var el = document.getElementById(id);
           if (!el) return;
@@ -3114,15 +3236,15 @@
       }
 
       function preciseVesselLookup() {
-        if (!vesselVoyage) return false;
-        var exact = findExactVessel(vesselVoyage.value);
+        if (!vesselName) return false;
+        var exact = findExactVessel(vesselName.value);
         if (exact) {
-          vesselVoyage.value = exact;
+          setVesselVoyageCombined(exact);
           vesselAc.hidden = true;
           queryFeituoSchedules();
           return true;
         }
-        var suggestions = searchVesselSuggestions(vesselVoyage.value);
+        var suggestions = searchVesselSuggestions(vesselName && vesselName.value);
         if (suggestions.length) {
           showVesselAc(suggestions);
         } else {
@@ -3191,8 +3313,8 @@
         vesselVoyage.addEventListener("input", function () {
           selectedFeituoId = null;
           markScheduleFilled(false);
-          var suggestions = searchVesselSuggestions(vesselVoyage.value);
-          if (suggestions.length >= 1 && vesselVoyage.value.length >= 2) {
+          var suggestions = searchVesselSuggestions(vesselName && vesselName.value);
+          if (suggestions.length >= 1 && vesselName && vesselName.value.length >= 2) {
             showVesselAc(suggestions);
           } else {
             showVesselAc([]);
@@ -3206,7 +3328,7 @@
         vesselAc.addEventListener("click", function (e) {
           var btn = e.target.closest("button[data-vessel]");
           if (!btn) return;
-          vesselVoyage.value = btn.getAttribute("data-vessel");
+          setVesselVoyageCombined(btn.getAttribute("data-vessel"));
           vesselAc.hidden = true;
           queryFeituoSchedules();
         });
@@ -3222,7 +3344,9 @@
         var pol = polInput && polInput.value.trim();
         var pod = podInput && podInput.value.trim();
         var bl = document.getElementById("blNo").value.trim();
-        var vv = vesselVoyage && vesselVoyage.value.trim();
+        var vName = vesselName && vesselName.value.trim();
+        var vVoy = voyageNo && voyageNo.value.trim();
+        var pickup = pickupTypeEl && pickupTypeEl.value.trim();
         var released = isReleasedYes();
         var missing = [];
         if (drawerMode === "add") {
@@ -3233,7 +3357,9 @@
           }
         }
         if (!agent) missing.push("订舱代理");
-        if (!vv) missing.push("船名航次");
+        if (!vName) missing.push("船名");
+        if (!vVoy) missing.push("航次");
+        if (!pickup) missing.push("普提/快提");
         if (!pol) missing.push("起运港");
         if (!pod) missing.push("目的港");
         if (released) {
@@ -3383,7 +3509,7 @@
       syncPortFromSi();
       syncCustomsWarn();
 
-      if (vesselVoyage && findExactVessel(vesselVoyage.value)) {
+      if (vesselName && findExactVessel(vesselName.value)) {
         selectedFeituoId = "ft-ytn-1";
         markScheduleFilled(true);
         if (scheduleSource) {
@@ -3997,6 +4123,139 @@
       }
       if (btnUnreleasedExport) {
         btnUnreleasedExport.addEventListener("click", function () { openExportTplModal("unreleased"); });
+      }
+
+      /* —— 退运（按柜/SO）· 亏舱费选填 —— */
+      var returnShipMask = document.getElementById("returnShipMask");
+      var returnShipPending = [];
+
+      function refreshReturnTabCount() {
+        var n = 0;
+        document.querySelectorAll('table[aria-label="舱位列表"] tbody tr').forEach(function (tr) {
+          if (tr.dataset.release === "returned") n += 1;
+        });
+        var tab = document.querySelector('.status-tab[data-filter="returned"]');
+        if (tab) {
+          var cnt = tab.querySelector(".cnt");
+          if (cnt) cnt.textContent = "(" + n + ")";
+        }
+      }
+
+      function applyStatusFilter(filter) {
+        document.querySelectorAll('table[aria-label="舱位列表"] tbody tr').forEach(function (tr) {
+          var show = true;
+          var rel = tr.dataset.release || "";
+          if (filter === "unreleased") show = rel === "unreleased";
+          else if (filter === "released") show = rel === "released";
+          else if (filter === "returned") show = rel === "returned";
+          else if (filter === "freight") show = tr.dataset.freight === "expired";
+          else if (filter === "cutoff") show = tr.classList.contains("row-warn");
+          tr.style.display = show ? "" : "none";
+        });
+      }
+
+      document.querySelectorAll(".status-tab").forEach(function (tab) {
+        tab.addEventListener("click", function () {
+          document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
+          tab.classList.add("active");
+          applyStatusFilter(tab.getAttribute("data-filter") || "all");
+        });
+      });
+
+      function openReturnShipModal() {
+        var rows = getSelectedSlotRows().filter(function (tr) {
+          return tr.dataset.release !== "returned" && tr.dataset.slotStatus !== "void";
+        });
+        if (!rows.length) {
+          rolloverToast("请勾选未退运的舱位（按柜/SO）", "warn");
+          return;
+        }
+        returnShipPending = rows;
+        var hasUn = rows.some(function (tr) { return tr.dataset.release === "unreleased"; });
+        var hasRel = rows.some(function (tr) { return tr.dataset.release === "released"; });
+        var alertEl = document.getElementById("returnShipAlert");
+        var tips = [];
+        tips.push("按柜（SO）退运，共 " + rows.length + " 条。");
+        if (hasUn) tips.push("含未放舱：确认后取消运单绑定 → 舱位「已退仓」→ 运单回退「待订舱」。");
+        if (hasRel) tips.push("含已放舱：结果口径待产品确认（原型暂演示改「已退仓」）。");
+        alertEl.className = "return-alert" + (hasRel ? " warn" : "");
+        alertEl.textContent = tips.join(" ");
+        document.getElementById("returnShipMeta").innerHTML = rows.map(function (tr) {
+          var blEl = tr.querySelector("[data-open-drawer]");
+          var bl = blEl ? blEl.textContent.trim() : cellText(tr, 3);
+          var so = cellText(tr, 7);
+          var rel = tr.dataset.release === "released" ? "已放舱" : "未放舱";
+          return "<span><b>" + (bl || "—") + "</b> · SO " + (so || "—") + " · " + rel + "</span>";
+        }).join("");
+        document.getElementById("returnShipReason").value = "";
+        document.getElementById("returnDeadAmt").value = "";
+        document.getElementById("returnDeadCcy").value = "USD";
+        document.getElementById("returnDeadNote").value = "";
+        returnShipMask.classList.add("open");
+        returnShipMask.setAttribute("aria-hidden", "false");
+      }
+
+      function closeReturnShipModal() {
+        returnShipMask.classList.remove("open");
+        returnShipMask.setAttribute("aria-hidden", "true");
+        returnShipPending = [];
+      }
+
+      function confirmReturnShip() {
+        if (!returnShipPending.length) return;
+        var reason = (document.getElementById("returnShipReason").value || "").trim();
+        var amtRaw = (document.getElementById("returnDeadAmt").value || "").trim();
+        var amt = amtRaw === "" ? null : parseFloat(amtRaw, 10);
+        var ccy = document.getElementById("returnDeadCcy").value || "USD";
+        var note = (document.getElementById("returnDeadNote").value || "").trim();
+        if (amtRaw !== "" && !(amt >= 0)) {
+          rolloverToast("亏舱费金额须为有效数字，或不填", "warn");
+          return;
+        }
+        var feeLogged = amt != null && amt > 0;
+        var n = returnShipPending.length;
+        var unN = 0;
+        returnShipPending.forEach(function (tr) {
+          var wasUn = tr.dataset.release === "unreleased" ||
+            (tr.dataset.release !== "released" && tr.dataset.release !== "returned");
+          if (wasUn) unN += 1;
+          tr.classList.remove("row-danger", "row-warn", "selected", "row-new");
+          tr.classList.add("row-returned");
+          tr.dataset.release = "returned";
+          tr.dataset.slotStatus = "returned";
+          if (tr.cells[8]) tr.cells[8].innerHTML = '<span class="tag tag-void">已退仓</span>';
+          var cb = tr.querySelector('input[type="checkbox"]');
+          if (cb) { cb.checked = false; cb.disabled = true; }
+          tr.dataset.returnReason = reason;
+          if (feeLogged) {
+            tr.dataset.deadFreight = ccy + " " + amt + (note ? " · " + note : "");
+          }
+        });
+        closeReturnShipModal();
+        refreshReturnTabCount();
+        var active = document.querySelector(".status-tab.active");
+        if (active) applyStatusFilter(active.getAttribute("data-filter") || "all");
+        rolloverToast(
+          "已退运 ×" + n +
+            (unN ? " · 未放舱已解绑运单并回退待订舱 ×" + unN : "") +
+            (feeLogged ? " · 已登记亏舱费 " + ccy + " " + amt : " · 未登记亏舱费") +
+            (reason ? " · " + reason : ""),
+          "ok"
+        );
+      }
+
+      var btnReturnShip = document.getElementById("btnReturnShip");
+      if (btnReturnShip) btnReturnShip.addEventListener("click", openReturnShipModal);
+      var returnShipClose = document.getElementById("returnShipClose");
+      var returnShipCancel = document.getElementById("returnShipCancel");
+      var returnShipOk = document.getElementById("returnShipOk");
+      if (returnShipClose) returnShipClose.addEventListener("click", closeReturnShipModal);
+      if (returnShipCancel) returnShipCancel.addEventListener("click", closeReturnShipModal);
+      if (returnShipOk) returnShipOk.addEventListener("click", confirmReturnShip);
+      if (returnShipMask) {
+        returnShipMask.addEventListener("click", function (e) {
+          if (e.target === returnShipMask) closeReturnShipModal();
+        });
       }
     })();
   </script>

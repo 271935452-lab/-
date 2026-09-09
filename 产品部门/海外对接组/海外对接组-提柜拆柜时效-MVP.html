@@ -97,10 +97,11 @@
       display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
     }
     .sec-hd .hint { font-weight: 400; font-size: 12px; color: var(--sub); }
-    .table-wrap { overflow-x: auto; }
+    .table-wrap { overflow-x: auto; overflow-y: visible; }
     table.data { width: 100%; border-collapse: collapse; min-width: 1680px; font-size: 12px; }
     table.data th, table.data td { padding: 7px 8px; border-bottom: 1px solid #f0f0f0; text-align: left; white-space: nowrap; }
-    table.data th { background: #fafafa; color: var(--sub); font-weight: 600; }
+    table.data th { background: #fafafa; color: var(--sub); font-weight: 600; position: relative; overflow: visible; }
+    table.data thead { position: relative; z-index: 2; }
     table.data th.grp { background: #e6f7ff; color: #0958d9; text-align: center; }
     table.data tr:hover td { background: #fafafa; }
     table.data tr.over-pick td { background: #fffbe6; }
@@ -118,7 +119,33 @@
     .tag-ltd { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
     .link { color: var(--blue); cursor: pointer; background: none; border: none; padding: 0; font: inherit; }
     .muted { color: var(--sub); }
-    .mix { font-size: 11px; color: #614700; max-width: 280px; white-space: normal; line-height: 1.4; }
+    .mix { font-size: 11px; color: #614700; max-width: 320px; white-space: normal; line-height: 1.45; }
+    .th-q, .tip-q {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; margin-left: 3px; border-radius: 50%;
+      border: 1px solid #91d5ff; color: #1677ff; background: #e6f7ff;
+      font-size: 10px; font-weight: 700; cursor: pointer; vertical-align: middle;
+      line-height: 1; position: relative; top: -1px; padding: 0; font-family: inherit;
+    }
+    .tip-q:hover, .tip-q.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+    th .tip-wrap { position: relative; display: inline-flex; align-items: center; gap: 2px; z-index: 1; }
+    th .tip-pop {
+      display: none; position: absolute; z-index: 30;
+      left: 0; top: calc(100% + 4px); min-width: 260px; max-width: 360px;
+      padding: 10px 12px; background: #fff; border: 1px solid #91d5ff; border-radius: 2px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.14);
+      font-size: 12px; color: var(--text); line-height: 1.7; font-weight: 400;
+      white-space: normal; text-align: left;
+    }
+    th .tip-pop.show { display: block; }
+    th .tip-wrap:has(.tip-pop.show) { z-index: 8; }
+    th .tip-pop code {
+      display: inline-block; background: #fffbe6; border: 1px solid #ffe58f;
+      padding: 1px 6px; border-radius: 2px; font-family: Consolas, "Courier New", monospace;
+      font-size: 11px; color: #ad4e00; margin: 2px 0;
+    }
+    th .tip-pop .tip-f { margin: 0 0 4px; }
+    th .tip-pop .tip-sub { margin: 0; color: var(--sub); font-size: 11px; }
     .toast {
       position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(80px);
       background: rgba(0,0,0,.78); color: #fff; padding: 10px 16px; border-radius: 4px;
@@ -163,6 +190,8 @@
         <h1>海外提柜拆柜时效表 <span class="badge new">NEW</span></h1>
         <p class="sub">
           按柜看提柜 / 等拆 / 拆柜耗时，并带出柜内货型件数，方便判断拆柜久的原因。
+          <strong>到仓时间</strong>取<strong>提柜时间</strong>（来源：
+          <a href="海外对接组-主单跟进-MVP.html">主单跟进</a> · 主单轨迹「集装箱已提柜」节点）；
           <strong>拆柜耗时</strong>来自美库导出（拆结−开拆）；
           <strong>货型件数</strong>按提单号从运单管理导出，再按类型分成 FBA / 私卡 / 自提 / FEDEX / UPS。
         </p>
@@ -252,10 +281,7 @@
       </div>
       <div class="tab-note">
         <div class="lines">
-          <div><strong>提柜时效</strong> = 到仓日期 − 到港时间（天）　超 5 天进「提柜超5天」</div>
-          <div><strong>等拆时效</strong> = 拆柜日期 − 到仓日期（天）　超 2 天进「等拆超2天」</div>
-          <div><strong>拆柜耗时</strong> = 拆结时间 − 开拆时间（美库导出）　超 2 小时标红，对照右侧货型件数看原因</div>
-          <div>货型：总件数 + FBA/私卡/自提（票）+ 联邦/UPS（件）。按提单号从运单管理取柜内明细，销售产品对照参数表分类型；快递再按单号前缀分 FEDEX / UPS。</div>
+          <div>点列表表头蓝色 <span class="th-q">?</span> 查看该列公式。开拆 / 拆结 / 耗时 / 异常原因仅美库有值。</div>
         </div>
       </div>
       <div class="sec-hd">
@@ -272,16 +298,80 @@
               <th rowspan="2">柜号</th>
               <th rowspan="2">到港时间</th>
               <th rowspan="2">海外仓</th>
-              <th rowspan="2">提柜时效</th>
-              <th rowspan="2">到仓日期</th>
+              <th rowspan="2">
+                <span class="tip-wrap">提柜时效
+                  <button type="button" class="tip-q" aria-label="提柜时效公式">?</button>
+                  <div class="tip-pop">
+                    <p class="tip-f">公式：<code>提柜时效 = 到仓时间（提柜） − 到港时间</code>（单位：天）</p>
+                    <p class="tip-sub">超 5 天 → 进「提柜超5天」页签，数值标红。</p>
+                  </div>
+                </span>
+              </th>
+              <th rowspan="2">
+                <span class="tip-wrap">到仓时间
+                  <button type="button" class="tip-q" aria-label="到仓时间公式">?</button>
+                  <div class="tip-pop">
+                    <p class="tip-f">公式：<code>到仓时间 = 提柜时间</code></p>
+                    <p class="tip-sub">取自<a href="海外对接组-主单跟进-MVP.html">主单跟进</a> · 轨迹节点「集装箱已提柜,等待拆柜分拣」发生时间（非美库到仓）。</p>
+                  </div>
+                </span>
+                <br/><span style="font-weight:400;color:#8c8c8c;font-size:11px">=提柜时间</span>
+              </th>
               <th rowspan="2">拆柜日期</th>
-              <th rowspan="2">等拆时效</th>
-              <th rowspan="2">开拆时间</th>
-              <th rowspan="2">拆结时间</th>
-              <th rowspan="2">拆柜耗时</th>
-              <th class="grp" colspan="6">柜内货型（判断拆柜久的原因）</th>
-              <th rowspan="2">货型提示</th>
-              <th rowspan="2">异常 / 原因</th>
+              <th rowspan="2">
+                <span class="tip-wrap">等拆时效
+                  <button type="button" class="tip-q" aria-label="等拆时效公式">?</button>
+                  <div class="tip-pop">
+                    <p class="tip-f">公式：<code>等拆时效 = 拆柜日期 − 到仓时间（提柜）</code>（单位：天）</p>
+                    <p class="tip-sub">超 2 天 → 进「等拆超2天」页签，数值标红。</p>
+                  </div>
+                </span>
+              </th>
+              <th rowspan="2">
+                <span class="tip-wrap">开拆时间
+                  <button type="button" class="tip-q" aria-label="开拆时间说明">?</button>
+                  <div class="tip-pop">
+                    <p class="tip-f">来源：<code>美库导出 · 开拆时间</code></p>
+                    <p class="tip-sub">仅海外仓 = 美库时有值；其他海外仓为空。</p>
+                  </div>
+                </span>
+              </th>
+              <th rowspan="2">
+                <span class="tip-wrap">拆结时间
+                  <button type="button" class="tip-q" aria-label="拆结时间说明">?</button>
+                  <div class="tip-pop">
+                    <p class="tip-f">来源：<code>美库导出 · 拆结时间</code></p>
+                    <p class="tip-sub">仅海外仓 = 美库时有值；其他海外仓为空。</p>
+                  </div>
+                </span>
+              </th>
+              <th rowspan="2">
+                <span class="tip-wrap">拆柜耗时
+                  <button type="button" class="tip-q" aria-label="拆柜耗时公式">?</button>
+                  <div class="tip-pop">
+                    <p class="tip-f">公式：<code>拆柜耗时 = 拆结时间 − 开拆时间</code>（美库导出）</p>
+                    <p class="tip-sub">仅美库可算。超 2 小时 → 整行粉底、耗时红字；对照右侧货型件数看原因。</p>
+                  </div>
+                </span>
+              </th>
+              <th class="grp" colspan="6">
+                <span class="tip-wrap">柜内货型（判断拆柜久的原因）
+                  <button type="button" class="tip-q" aria-label="柜内货型说明">?</button>
+                  <div class="tip-pop">
+                    <p class="tip-f">字段：<code>总件数 + FBA/私卡/自提（票）+ 联邦/UPS（件）</code></p>
+                    <p class="tip-sub">按提单号从运单管理取柜内明细；销售产品对照参数表分类型；快递按单号前缀分 FEDEX / UPS。点柜号可看来源。</p>
+                  </div>
+                </span>
+              </th>
+              <th rowspan="2">
+                <span class="tip-wrap">异常原因
+                  <button type="button" class="tip-q" aria-label="异常原因说明">?</button>
+                  <div class="tip-pop">
+                    <p class="tip-f">来源：<code>美库 · 拆柜异常原因</code></p>
+                    <p class="tip-sub">有则展示，无则空。非美库海外仓为空。</p>
+                  </div>
+                </span>
+              </th>
             </tr>
             <tr>
               <th class="grp">总件数</th>
@@ -328,19 +418,21 @@
   <script>
 (function () {
   var tab = "all";
-  var PICK_REASON = {
-    MATU2619690: "查验",
-    SEKU6634182: "查验",
-    FCIU9616430: "不带车架，需要刷约",
-    XHCU5644953: "20号卸船 21号清关 卡周末",
-    ONEU5167764: "查验",
-    MATU4536717: "查验",
-    MATU4623030: "查验"
-  };
-  var WAIT_REASON = {
-    KOCU5058444: "T25渠道 排在最后拆",
-    WHSU5932950: "T25渠道 排在最后拆"
-  };
+  /* 演示：非美库仓无开拆/拆结/异常原因（原数据全为美库，抽 2 柜改仓） */
+  (function seedNonMeikuDemo() {
+    if (!window.RAW || !RAW.length) return;
+    [3, 12].forEach(function (id, i) {
+      var r = RAW.filter(function (x) { return x.id === id; })[0];
+      if (!r) return;
+      r.wh = i === 0 ? "4DS" : "VMI";
+      r.startAt = "";
+      r.endAt = "";
+      r.stripCost = "";
+      r.over2h = false;
+      r.issue = "";
+      r.issueType = "";
+    });
+  })();
   function $(id) { return document.getElementById(id); }
   function toast(msg) {
     var el = $("toast"); el.textContent = msg; el.classList.add("show");
@@ -351,28 +443,23 @@
     if (!m) return 0;
     return (+m[1]) + (+m[2]) / 60 + (+(m[3] || 0)) / 3600;
   }
+  function isMeiku(r) { return r.wh === "美库"; }
+  function dash(v) { return v == null || v === "" ? "—" : v; }
+  function meikuStart(r) { return isMeiku(r) ? dash(r.startAt) : "—"; }
+  function meikuEnd(r) { return isMeiku(r) ? dash(r.endAt) : "—"; }
+  function meikuCost(r) { return isMeiku(r) ? dash(r.stripCost) : "—"; }
+  function meikuIssue(r) {
+    if (!isMeiku(r)) return "—";
+    var iss = String(r.issue || "").trim();
+    if (!iss || iss === "无") return "—";
+    return iss;
+  }
   function isLtd(r) { return String(r.chan).indexOf("限时达") >= 0; }
   function isPickOver(r) { return r.pickAge > 5; }
   function isWaitOver(r) { return r.waitAge > 2; }
-  function isStripOver(r) { return r.over2h || hours(r.stripCost) > 2; }
-  function mixHint(r) {
-    var parts = [];
-    if (r.pcs >= 800) parts.push("总件数 " + r.pcs);
-    if (r.tickets >= 80) parts.push("票数 " + r.tickets);
-    if (r.fba >= 15) parts.push("FBA " + r.fba + "票");
-    if (r.fedex + r.ups >= 100) parts.push("快递 " + (r.fedex + r.ups) + "件（联邦" + r.fedex + " / UPS" + r.ups + "）");
-    if (r.pk >= 3) parts.push("私卡 " + r.pk + "票");
-    if (r.self >= 3) parts.push("自提 " + r.self + "票");
-    if (!parts.length) return "货型较均衡";
-    return parts.join(" · ");
-  }
-  function reasonText(r) {
-    var bits = [];
-    if (isPickOver(r)) bits.push("提柜：" + (PICK_REASON[r.cntr] || r.reason || "超5天"));
-    if (isWaitOver(r)) bits.push("等拆：" + (WAIT_REASON[r.cntr] || "超2天"));
-    if (r.issueType) bits.push(r.issueType);
-    if (r.reason && bits.join("").indexOf(r.reason) < 0) bits.push(r.reason);
-    return bits.join("；") || "—";
+  function isStripOver(r) {
+    if (!isMeiku(r)) return false;
+    return r.over2h || hours(r.stripCost) > 2;
   }
   function tabMatch(r) {
     if (tab === "all") return true;
@@ -411,18 +498,23 @@
   }
   function renderKpi(rows) {
     var n = rows.length;
+    var meikuRows = rows.filter(isMeiku);
     var pick = avg(rows, function (r) { return r.pickAge; });
     var wait = avg(rows, function (r) { return r.waitAge; });
-    var strip = avg(rows, function (r) { return hours(r.stripCost); });
+    var strip = avg(meikuRows.filter(function (r) { return r.stripCost; }), function (r) { return hours(r.stripCost); });
     var overN = rows.filter(isStripOver).length;
     var pcs = rows.reduce(function (s, r) { return s + r.pcs; }, 0);
     $("kpiRow").innerHTML =
       '<div class="kpi"><div class="kpi-label" >本周柜数</div><div class="kpi-value">' + n + '</div><div class="kpi-sub">Excel 本周 86 柜</div></div>' +
-      '<div class="kpi"><div class="kpi-label">平均提柜时效</div><div class="kpi-value ' + (pick > 5 ? "warn" : "ok") + '">' + pick.toFixed(1) + '</div><div class="kpi-sub">到仓 − 到港 · 天</div></div>' +
-      '<div class="kpi"><div class="kpi-label">平均等拆时效</div><div class="kpi-value ' + (wait > 2 ? "warn" : "ok") + '">' + wait.toFixed(1) + '</div><div class="kpi-sub">拆柜日 − 到仓 · 天</div></div>' +
-      '<div class="kpi"><div class="kpi-label">平均拆柜耗时</div><div class="kpi-value ' + (strip > 2 ? "bad" : "ok") + '">' + fmtH(strip) + '</div><div class="kpi-sub">美库 拆结 − 开拆</div></div>' +
+      '<div class="kpi"><div class="kpi-label">平均提柜时效</div><div class="kpi-value ' + (pick > 5 ? "warn" : "ok") + '">' + pick.toFixed(1) + '</div><div class="kpi-sub">提柜 − 到港 · 天</div></div>' +
+      '<div class="kpi"><div class="kpi-label">平均等拆时效</div><div class="kpi-value ' + (wait > 2 ? "warn" : "ok") + '">' + wait.toFixed(1) + '</div><div class="kpi-sub">拆柜日 − 提柜 · 天</div></div>' +
+      '<div class="kpi"><div class="kpi-label">平均拆柜耗时</div><div class="kpi-value ' + (strip > 2 ? "bad" : "ok") + '">' + (meikuRows.length ? fmtH(strip) : "—") + '</div><div class="kpi-sub">仅美库 · 拆结 − 开拆</div></div>' +
       '<div class="kpi"><div class="kpi-label">拆柜超 2 小时</div><div class="kpi-value ' + (overN ? "bad" : "ok") + '">' + overN + '</div><div class="kpi-sub">对照货型件数看原因</div></div>' +
       '<div class="kpi"><div class="kpi-label">总件数</div><div class="kpi-value">' + pcs.toLocaleString() + '</div><div class="kpi-sub">柜内件数合计</div></div>';
+  }
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function render() {
     var weekRows = RAW.filter(function (r) { return r.week === $("qWeek").value; });
@@ -440,27 +532,34 @@
       var pickCls = isPickOver(r) ? "num hot" : "num";
       var waitCls = isWaitOver(r) ? "num hot" : "num";
       var chan = isLtd(r) ? '<span class="tag tag-ltd">' + r.chan + "</span>" : r.chan;
+      var issue = meikuIssue(r);
+      var issueHtml = issue === "—"
+        ? '<span class="muted">—</span>'
+        : '<span class="mix" title="' + esc(issue) + '">' + esc(issue).replace(/\n/g, "<br/>") + "</span>";
       return "<tr class='" + cls + "'>" +
         "<td>" + (i + 1) + "</td><td>" + chan + "</td>" +
         "<td>" + r.bl + "</td>" +
         "<td><button type='button' class='link js-mix' data-id='" + r.id + "'>" + r.cntr + "</button></td>" +
         "<td>" + r.eta + "</td><td>" + r.wh + "</td>" +
         "<td class='" + pickCls + "'>" + r.pickAge + "</td>" +
-        "<td>" + r.arriveWh + "</td><td>" + r.stripDay + "</td>" +
+        '<td title="主单跟进 · 集装箱已提柜"><a href="海外对接组-主单跟进-MVP.html" style="color:#1677ff">' + r.arriveWh + "</a></td><td>" + r.stripDay + "</td>" +
         "<td class='" + waitCls + "'>" + r.waitAge + "</td>" +
-        "<td>" + r.startAt + "</td><td>" + r.endAt + "</td>" +
-        "<td class='" + costCls + "'>" + r.stripCost + "</td>" +
+        "<td>" + meikuStart(r) + "</td><td>" + meikuEnd(r) + "</td>" +
+        "<td class='" + costCls + "'>" + meikuCost(r) + "</td>" +
         "<td class='num'>" + r.pcs + "</td>" +
         "<td class='num'>" + r.fba + "</td><td class='num'>" + r.pk + "</td><td class='num'>" + r.self + "</td>" +
         "<td class='num'>" + r.fedex + "</td><td class='num'>" + r.ups + "</td>" +
-        "<td class='mix'>" + mixHint(r) + "</td>" +
-        "<td class='mix'>" + reasonText(r) + "</td></tr>";
-    }).join("") || "<tr><td colspan='21' style='text-align:center;color:#999;padding:28px'>无匹配数据</td></tr>";
+        "<td>" + issueHtml + "</td></tr>";
+    }).join("") || "<tr><td colspan='20' style='text-align:center;color:#999;padding:28px'>无匹配数据</td></tr>";
   }
   function openMix(id) {
     var r = RAW.filter(function (x) { return x.id === id; })[0];
     if (!r) return;
-    $("mixHint").innerHTML = "提单 <b>" + r.bl + "</b> · 柜 <b>" + r.cntr + "</b> · 拆柜耗时 <b>" + r.stripCost + "</b><br/>拆柜耗时来自美库「拆柜开始/结束时间」。货型按提单号从运单管理导出，销售产品对照参数表：尾端=FBA/私卡/自提；快递再按单号前缀 1Z→UPS、77/27/28→FEDEX。";
+    var costNote = isMeiku(r)
+      ? ("拆柜耗时 <b>" + dash(r.stripCost) + "</b>（美库开拆/拆结）")
+      : "拆柜耗时 <b>—</b>（非美库，开拆/拆结不取）";
+    $("mixHint").innerHTML = "提单 <b>" + r.bl + "</b> · 柜 <b>" + r.cntr + "</b> · 仓 <b>" + r.wh + "</b> · 到仓/提柜 <b>" + r.arriveWh + "</b> · " + costNote +
+      "<br/>到仓时间取自主单跟进轨迹「集装箱已提柜」；开拆/拆结/异常原因仅美库。货型按提单号从运单管理导出，销售产品对照参数表：尾端=FBA/私卡/自提；快递再按单号前缀 1Z→UPS、77/27/28→FEDEX。";
     $("mixBody").innerHTML =
       "<tr><td>总件数</td><td>柜内件数合计</td><td>" + r.pcs + "</td><td>运单管理 · 件数</td></tr>" +
       "<tr><td>FBA</td><td>票</td><td>" + r.fba + "</td><td>参数表尾端=FBA</td></tr>" +
@@ -468,7 +567,8 @@
       "<tr><td>自提</td><td>票</td><td>" + r.self + "</td><td>派送方式=自提</td></tr>" +
       "<tr><td>联邦 FEDEX</td><td>件</td><td>" + r.fedex + "</td><td>快递单号前缀对照参数表</td></tr>" +
       "<tr><td>UPS</td><td>件</td><td>" + r.ups + "</td><td>快递单号 1Z / UP</td></tr>" +
-      "<tr><td>总票数</td><td>票</td><td>" + r.tickets + "</td><td>该提单下运单数</td></tr>";
+      "<tr><td>总票数</td><td>票</td><td>" + r.tickets + "</td><td>该提单下运单数</td></tr>" +
+      "<tr><td>异常原因</td><td>美库拆柜异常</td><td>" + esc(meikuIssue(r)).replace(/\n/g, "<br/>") + "</td><td>美库有则取，无则空</td></tr>";
     $("mixMask").classList.add("open");
   }
 
@@ -491,6 +591,41 @@
     render(); toast("已重置");
   };
   $("btnExport").onclick = function () { toast("已按当前筛导出本周拆柜时效（原型演示）"); };
+
+  function closeAllTips() {
+    document.querySelectorAll("th .tip-pop.show").forEach(function (p) {
+      p.classList.remove("show");
+      p.style.position = "";
+      p.style.left = "";
+      p.style.top = "";
+      p.style.zIndex = "";
+    });
+    document.querySelectorAll("th .tip-q.on").forEach(function (b) { b.classList.remove("on"); });
+  }
+  function placeTip(btn, pop) {
+    var rect = btn.getBoundingClientRect();
+    pop.style.position = "fixed";
+    pop.style.left = Math.min(rect.left, window.innerWidth - 340) + "px";
+    pop.style.top = (rect.bottom + 6) + "px";
+    pop.style.zIndex = "4000";
+    pop.classList.add("show");
+    btn.classList.add("on");
+  }
+  document.querySelector("table.data thead").addEventListener("click", function (e) {
+    var btn = e.target.closest(".tip-q");
+    if (!btn) return;
+    e.stopPropagation();
+    var wrap = btn.closest(".tip-wrap");
+    var pop = wrap && wrap.querySelector(".tip-pop");
+    var was = pop && pop.classList.contains("show");
+    closeAllTips();
+    if (pop && !was) placeTip(btn, pop);
+  });
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest("th .tip-wrap") && !e.target.closest("th .tip-pop")) closeAllTips();
+  });
+  document.querySelector(".table-wrap").addEventListener("scroll", closeAllTips);
+
   render();
 })();
   </script>

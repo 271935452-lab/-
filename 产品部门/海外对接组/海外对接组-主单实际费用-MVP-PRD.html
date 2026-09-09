@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>主单实际费用 · PRD</title>
+  <link rel="stylesheet" href="ess-overseas-prd.css" />
+</head>
+<body>
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add("ess-prd-embed");
+    (function () {
+      function scrollToHash() {
+        var id = (location.hash || "").replace(/^#/, "");
+        if (!id) return;
+        var el = document.getElementById(id);
+        if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scrollToHash);
+      else scrollToHash();
+      window.addEventListener("hashchange", scrollToHash);
+    })();
+  </script>
+  <div class="page">
+    <section class="hero">
+      <h1>主单实际费用</h1>
+      <p>旁支 · 计划一。只写本期新增修改口径；列表筛 / 现网列不复述。
+        <a href="海外对接组-主单实际费用-MVP.html">本页原型</a>
+        · <a href="../产品部门-导航.html#s-branch-report">产品旁支 · 计划一</a>
+      </p>
+    </section>
+    <nav class="toc">
+      <a href="#s-scope">范围</a>
+      <a href="#s-cols">列表字段</a>
+      <a href="#s-logic">修改逻辑</a>
+      <a href="#s-alloc">分摊</a>
+    </nav>
+
+    <section class="card" id="s-scope">
+      <h2>一、范围</h2>
+      <p class="note">入口：财务结算 → 费用管理 → 主单实际费用。编辑对象是费用行上的<strong>修改后金额</strong>（海外口径）；归集到运单后与尾程预估对照。</p>
+      <table>
+        <thead><tr><th>点</th><th>说明</th><th class="proto">原型</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>修改实际费用</td>
+            <td><ol class="steps"><li>行内「修改」或勾选后「修改实际费用」开抽屉</li><li>编辑<strong>修改后金额</strong>；默认可带出预估；须填修改原因</li><li>未确认实际金额只读展示，修改保存时不改</li></ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">修改抽屉</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="s-cols">
+      <h2>二、列表字段（本期）</h2>
+      <table>
+        <thead><tr><th>字段</th><th>说明</th><th class="proto">原型</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>未确认实际金额</td>
+            <td><ol class="steps">
+              <li>账单 / 导入落库的原始实际金额，待财务确认</li>
+              <li>新建或首次导入时，与修改后金额<strong>默认相同</strong></li>
+              <li>用户修改修改后金额后，本列<strong>不变</strong></li>
+            </ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">列表</a></td>
+          </tr>
+          <tr>
+            <td>修改后金额</td>
+            <td><ol class="steps">
+              <li>原列表「金额」列；经人工修改后的实际金额口径</li>
+              <li>默认 = 未确认实际金额；修改后与未确认列可不一致</li>
+              <li>折合 RMB、分摊、对冲均按本列计算</li>
+            </ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">列表</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="s-logic">
+      <h2>三、修改逻辑</h2>
+      <p class="note">按费用行是否已<strong>分摊</strong>分流，不得混用。</p>
+      <table>
+        <thead><tr><th>状态</th><th>说明</th><th class="proto">原型</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>未分摊</td>
+            <td>
+              <ol class="steps">
+                <li>含：待确认、待分摊、待重新分摊等<strong>尚未完成分摊</strong>的费用行</li>
+                <li><strong>直接修改</strong>修改后金额 / 币别 / 汇率，写修改原因与备注；未确认实际金额不变</li>
+                <li>不生成对冲分录；保存后仍可点「分摊」按修改后金额分摊到运单/票</li>
+                <li>测：待分摊行改金额保存后，修改后金额更新、未确认列不变，无对冲痕迹</li>
+              </ol>
+            </td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">未分摊行 · 修改</a></td>
+          </tr>
+          <tr>
+            <td>已分摊</td>
+            <td>
+              <ol class="steps">
+                <li>分摊状态 = <strong>已分摊</strong>（已分摊到运单/票）</li>
+                <li>修改<strong>不直接覆盖</strong>已落库的分摊结果，走现网<strong>对冲逻辑</strong>（按现网财务对冲规则记差额 / 对冲分录，轧平后再落到新修改后金额口径）</li>
+                <li>对冲完成后：本费用行进入待重新分摊或等价状态；再次「分摊」只重摊本费用项修改后金额，不整柜重摊其它费用项</li>
+                <li>测：已分摊行点修改保存后，走对冲而非静默改数；列表可见待重摊或对冲留痕（以实现为准）</li>
+              </ol>
+            </td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">已分摊行 · 修改</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="warn">对冲细则（科目、凭证形态、可否部分对冲）对齐现网财务实现，本 PRD 只定分流：未分摊=直接改修改后金额，已分摊=对冲。</p>
+    </section>
+
+    <section class="card" id="s-alloc">
+      <h2>四、分摊（沿用）</h2>
+      <table>
+        <thead><tr><th>点</th><th>说明</th><th class="proto">原型</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>按费用项分摊</td>
+            <td><ol class="steps"><li>只对勾选费用行，用<strong>修改后金额</strong>（含已调整）分摊到运单/票</li><li>同柜未勾选费用项保持原分摊，不整柜重算</li></ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">分摊</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <p class="foot">海外对接组 · 主单实际费用 · 旁支计划一</p>
+  </div>
+</body>
+</html>

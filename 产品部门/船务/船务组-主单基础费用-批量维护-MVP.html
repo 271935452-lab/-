@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>主单基础费用 · 批量维护 · MVP</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #eef1f6; --card: #fff; --line: #e5e7eb; --text: #1f2937; --sub: #6b7280;
+      --blue: #1677ff; --ok: #389e0d; --danger: #cf1322;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; }
+    .topbar nav { display: flex; gap: 10px; flex: 1; font-size: 12px; flex-wrap: wrap; }
+    .topbar nav a { color: rgba(255,255,255,.7); }
+    .topbar nav a.on { color: #fff; font-weight: 600; }
+    .page { padding: 12px 14px 48px; max-width: 1400px; margin: 0 auto; }
+    .panel {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px; margin-bottom: 10px;
+    }
+    .filter-bd { padding: 12px 14px 8px; display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 10px 14px; }
+    @media (max-width: 1100px) { .filter-bd { grid-template-columns: repeat(3, 1fr); } }
+    .fi label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .fi input, .fi select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 14px; border-top: 1px solid var(--line);
+    }
+    .btn {
+      height: 32px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { color: #fff; opacity: .92; }
+    .btn.danger { color: var(--danger); border-color: #ffa39e; }
+    .btn.new-mark { position: relative; }
+    .badge-new {
+      display: inline-block; margin-left: 4px; padding: 0 5px; height: 16px; line-height: 14px;
+      font-size: 10px; font-weight: 700; color: #cf1322; background: #fff1f0; border: 1px solid #ffa39e; border-radius: 2px;
+    }
+    .sec-hd {
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sec-hd .hint { font-size: 12px; color: var(--sub); }
+    .table-wrap { overflow: auto; }
+    table.data { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; }
+    table.data th, table.data td {
+      border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle;
+    }
+    table.data th { background: #fafafa; color: var(--sub); font-weight: 600; white-space: nowrap; }
+    table.data tr:hover td { background: #f8fbff; }
+    table.data tr.sel td { background: #e6f4ff; }
+    .tag-on {
+      display: inline-block; padding: 0 8px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; color: var(--ok); background: #f6ffed; border: 1px solid #b7eb8f;
+    }
+    .tag-off {
+      display: inline-block; padding: 0 8px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; color: var(--sub); background: #f5f5f5; border: 1px solid #d9d9d9;
+    }
+    .link { color: var(--blue); cursor: pointer; background: none; border: none; padding: 0; font: inherit; }
+    .hint-bar {
+      margin: 0 0 10px; padding: 8px 12px; font-size: 12px; line-height: 1.55;
+      background: #e6f4ff; border: 1px solid #91caff; color: #0958d9; border-radius: 4px;
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 10px 16px; border-radius: 4px;
+      opacity: 0; pointer-events: none; transition: .2s; z-index: 100; font-size: 13px;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .mask.show { display: flex; }
+    .dlg {
+      width: min(1080px, 96vw); max-height: 90vh; overflow: auto;
+      background: #fff; border-radius: 4px; box-shadow: 0 8px 28px rgba(0,0,0,.2);
+    }
+    .dlg-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+    }
+    .dlg-hd h3 { margin: 0; font-size: 15px; }
+    .dlg-bd { padding: 14px 16px; }
+    .dlg-ft {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 10px 16px; border-top: 1px solid var(--line); background: #fafafa;
+    }
+    .block-title {
+      font-size: 13px; font-weight: 600; margin: 0 0 10px; padding-left: 8px;
+      border-left: 3px solid var(--blue);
+    }
+    .form-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px 16px; margin-bottom: 16px;
+    }
+    @media (max-width: 900px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+    .fg label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .fg label .req { color: var(--danger); margin-right: 2px; }
+    .fg input, .fg select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .fg input:disabled, .fg select:disabled {
+      background: #f5f5f5; color: rgba(0,0,0,.45); cursor: not-allowed;
+    }
+    .radio-row { display: flex; gap: 16px; align-items: center; height: 32px; }
+    .fee-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 10px; flex-wrap: wrap; }
+    .fee-tab {
+      padding: 8px 14px; border: none; background: none; cursor: pointer; color: var(--sub); font: inherit;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .fee-tab.on { color: var(--blue); font-weight: 600; border-bottom-color: var(--blue); }
+    .fee-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .fee-table th, .fee-table td { border: 1px solid var(--line); padding: 4px 6px; }
+    .fee-table th { background: #fafafa; color: var(--sub); white-space: nowrap; }
+    .fee-table input, .fee-table select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 4px;
+    }
+    .batch-tip {
+      margin: 0 0 12px; padding: 8px 10px; background: #fff7e6; border: 1px solid #ffd591;
+      color: #d46b08; border-radius: 2px; font-size: 12px; line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">TX · TMS</div>
+    <nav>
+      <a href="船务组-导航.html">船务导航</a>
+      <a href="船务组-主单基础费用-批量维护-MVP.html" class="on">主单基础费用</a>
+      <a href="船务组-主单基础费用-批量维护-MVP-PRD.html">本页 PRD</a>
+      <a href="../产品部门-导航.html#s-branch-report">旁支 · 计划一</a>
+    </nav>
+  </div>
+
+  <div class="page">
+    <div class="hint-bar">
+      <strong>批量维护</strong>（NEW）：勾选 ≥1 条（<strong>可跨不同服务商</strong>）→ 点「批量维护」。弹窗与新增/修改同结构；批量时<strong>服务商置灰不可改</strong>（各行保持原服务商），其它可编辑字段确定后回写全部勾选行。细则见
+      <a href="船务组-主单基础费用-批量维护-MVP-PRD.html">本页 PRD</a>。
+    </div>
+
+    <section class="panel">
+      <div class="filter-bd">
+        <div class="fi"><label>服务商</label><select id="qVendor"><option value="">全部</option><option>青岛港信</option><option>宁波通航</option><option>厦门海联</option></select></div>
+        <div class="fi"><label>运输方式</label><select id="qMode"><option value="">全部</option><option>海运</option><option>空运</option></select></div>
+        <div class="fi"><label>柜型</label><input id="qCntr" placeholder="如 40HQ" /></div>
+        <div class="fi"><label>起运港</label><input id="qPol" placeholder="青岛 / 宁波…" /></div>
+        <div class="fi"><label>目的港</label><input id="qPod" placeholder="LOS ANGELES…" /></div>
+        <div class="fi"><label>船司</label><input id="qCarrier" placeholder="COSCO / MSC…" /></div>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="btn primary" id="btnSearch">查询数据</button>
+        <button type="button" class="btn primary" id="btnAdd">+ 新增数据</button>
+        <button type="button" class="btn primary" id="btnCopy">复制</button>
+        <button type="button" class="btn primary" id="btnEdit">修改</button>
+        <button type="button" class="btn primary" id="btnOn">启用</button>
+        <button type="button" class="btn danger" id="btnOff">禁用</button>
+        <button type="button" class="btn primary new-mark" id="btnBatch" title="勾选≥1条后可批量改公共字段；服务商各行保持原值">
+          批量维护 <span class="badge-new">NEW</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="sec-hd">
+        <span>主单基础费用列表</span>
+        <span class="hint" id="selHint">已勾选 0 条</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th style="width:36px"><input type="checkbox" id="chkAll" title="全选当前页" /></th>
+              <th>序号</th><th>状态</th><th>生效开始时间</th><th>生效结束时间</th>
+              <th>服务商</th><th>运输方式</th><th>起运港</th><th>目的港</th><th>柜型</th><th>船司</th><th>费用项摘要</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="mask" id="feeMask" aria-hidden="true">
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="feeTitle">
+      <div class="dlg-hd">
+        <h3 id="feeTitle">主单基础费用</h3>
+        <button type="button" class="btn" id="feeCloseX" aria-label="关闭">×</button>
+      </div>
+      <div class="dlg-bd">
+        <p class="batch-tip" id="batchTip" hidden>
+          当前为<strong>批量维护</strong>：将更新勾选的 <b id="batchCnt">0</b> 条记录。
+          <strong>服务商置灰不可编辑</strong>（可跨服务商勾选；各行保持原服务商）。其它基本字段与预付费用项可改，确定后回写全部勾选行。
+        </p>
+        <div class="block-title">基本费用</div>
+        <div class="form-grid">
+          <div class="fg">
+            <label><span class="req">*</span>服务商</label>
+            <select id="fVendor">
+              <option value="">请选择</option>
+              <option>青岛港信</option>
+              <option>宁波通航</option>
+              <option>厦门海联</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>运输方式</label>
+            <div class="radio-row">
+              <label><input type="radio" name="fMode" value="海运" checked /> 海运</label>
+              <label><input type="radio" name="fMode" value="空运" /> 空运</label>
+            </div>
+          </div>
+          <div class="fg">
+            <label><span class="req">*</span>匹配时间类型</label>
+            <select id="fMatchType">
+              <option value="">请选择</option>
+              <option>预计开船日</option>
+              <option>实际开船日</option>
+              <option>装柜日</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label><span class="req">*</span>开始时间</label>
+            <input type="datetime-local" id="fStart" />
+          </div>
+        </div>
+
+        <div class="block-title">预付费用项</div>
+        <div class="fee-tabs" id="feeTabs">
+          <button type="button" class="fee-tab on" data-tab="book">订舱环节</button>
+          <button type="button" class="fee-tab" data-tab="truck">拖车环节</button>
+          <button type="button" class="fee-tab" data-tab="decl">报关环节</button>
+          <button type="button" class="fee-tab" data-tab="clr">清关环节</button>
+          <button type="button" class="fee-tab" data-tab="last">尾程派送</button>
+          <button type="button" class="fee-tab" data-tab="wh">海外仓</button>
+        </div>
+        <div class="table-wrap">
+          <table class="fee-table">
+            <thead>
+              <tr>
+                <th style="width:40px">序号</th>
+                <th>费用类型</th><th>单位</th><th>单价</th><th>币别</th>
+                <th>是否初始化</th><th>起运港</th><th>柜型</th><th>目的港</th><th>船公司</th><th>仓库</th><th>仓库2</th>
+              </tr>
+            </thead>
+            <tbody id="feeBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn" id="feeCancel">取消</button>
+        <button type="button" class="btn primary" id="feeOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-主单基础费用-批量维护-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD · 主单基础费用 · 批量维护 / 修改</span>
+  </div>
+
+  <script src="../../二期/ess-prototype-prd.js"></script>
+  <script>
+  (function () {
+    var ROWS = [
+      { id: 1, on: true, start: "2026-01-01 00:00:00", end: "", vendor: "青岛港信", mode: "海运", pol: "青岛", pod: "LOS ANGELES", cntr: "40HQ", carrier: "COSCO", fee: "海运费/订舱费…" },
+      { id: 2, on: true, start: "2026-03-01 00:00:00", end: "", vendor: "青岛港信", mode: "海运", pol: "青岛", pod: "NEW YORK", cntr: "40HQ", carrier: "MSC", fee: "海运费/文件费…" },
+      { id: 3, on: true, start: "2026-02-15 00:00:00", end: "", vendor: "宁波通航", mode: "海运", pol: "宁波", pod: "LONG BEACH", cntr: "40GP", carrier: "ONE", fee: "拖车费/报关费…" },
+      { id: 4, on: false, start: "2025-11-01 00:00:00", end: "2026-01-31 23:59:59", vendor: "厦门海联", mode: "海运", pol: "厦门", pod: "OAKLAND", cntr: "45HQ", carrier: "EMC", fee: "清关费…" },
+      { id: 5, on: true, start: "2026-04-01 00:00:00", end: "", vendor: "宁波通航", mode: "空运", pol: "上海", pod: "LAX", cntr: "—", carrier: "—", fee: "空运费…" }
+    ];
+    var mode = "add"; /* add | edit | batch */
+    var editIds = [];
+    var FEE_TYPES = ["海运费", "订舱费", "文件费", "拖车费", "报关费", "清关费", "派送费", "仓储费"];
+
+    function $(id) { return document.getElementById(id); }
+    function toast(msg) {
+      var el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+    }
+    function selected() {
+      return Array.prototype.map.call(document.querySelectorAll("#tbody input.row-chk:checked"), function (c) {
+        return Number(c.getAttribute("data-id"));
+      }).map(function (id) {
+        return ROWS.find(function (r) { return r.id === id; });
+      }).filter(Boolean);
+    }
+    function syncSelHint() {
+      var n = selected().length;
+      $("selHint").textContent = "已勾选 " + n + " 条";
+      document.querySelectorAll("#tbody tr").forEach(function (tr) {
+        var ck = tr.querySelector("input.row-chk");
+        tr.classList.toggle("sel", !!(ck && ck.checked));
+      });
+    }
+    function render() {
+      var vendor = $("qVendor").value;
+      var modeQ = $("qMode").value;
+      var cntr = ($("qCntr").value || "").trim().toLowerCase();
+      var pol = ($("qPol").value || "").trim().toLowerCase();
+      var pod = ($("qPod").value || "").trim().toLowerCase();
+      var carrier = ($("qCarrier").value || "").trim().toLowerCase();
+      var list = ROWS.filter(function (r) {
+        if (vendor && r.vendor !== vendor) return false;
+        if (modeQ && r.mode !== modeQ) return false;
+        if (cntr && r.cntr.toLowerCase().indexOf(cntr) < 0) return false;
+        if (pol && r.pol.toLowerCase().indexOf(pol) < 0) return false;
+        if (pod && r.pod.toLowerCase().indexOf(pod) < 0) return false;
+        if (carrier && r.carrier.toLowerCase().indexOf(carrier) < 0) return false;
+        return true;
+      });
+      $("tbody").innerHTML = list.map(function (r, i) {
+        return "<tr data-id='" + r.id + "'>" +
+          "<td><input type='checkbox' class='row-chk' data-id='" + r.id + "' /></td>" +
+          "<td>" + (i + 1) + "</td>" +
+          "<td>" + (r.on ? "<span class='tag-on'>启用</span>" : "<span class='tag-off'>禁用</span>") + "</td>" +
+          "<td>" + r.start + "</td><td>" + (r.end || "—") + "</td>" +
+          "<td><button type='button' class='link' data-open='" + r.id + "'>" + r.vendor + "</button></td>" +
+          "<td>" + r.mode + "</td><td>" + r.pol + "</td><td>" + r.pod + "</td>" +
+          "<td>" + r.cntr + "</td><td>" + r.carrier + "</td><td>" + r.fee + "</td></tr>";
+      }).join("") || "<tr><td colspan='12' style='text-align:center;color:#999;padding:24px'>无数据</td></tr>";
+      $("chkAll").checked = false;
+      syncSelHint();
+    }
+    function buildFeeRows(n) {
+      var html = "";
+      for (var i = 0; i < n; i++) {
+        html += "<tr><td>" + (i + 1) + "</td>" +
+          "<td><select>" + FEE_TYPES.map(function (t) { return "<option>" + t + "</option>"; }).join("") + "</select></td>" +
+          "<td><select><option>票</option><option>柜</option><option>KG</option></select></td>" +
+          "<td><input type='number' step='0.01' placeholder='0' /></td>" +
+          "<td><select><option>CNY</option><option>USD</option></select></td>" +
+          "<td><select><option>是</option><option>否</option></select></td>" +
+          "<td><input placeholder='起运港' /></td>" +
+          "<td><input placeholder='柜型' /></td>" +
+          "<td><input placeholder='目的港' /></td>" +
+          "<td><input placeholder='船公司' /></td>" +
+          "<td><input placeholder='仓库' /></td>" +
+          "<td><input placeholder='仓库2' /></td></tr>";
+      }
+      $("feeBody").innerHTML = html;
+    }
+    var VENDOR_OPTS = '<option value="">请选择</option><option>青岛港信</option><option>宁波通航</option><option>厦门海联</option>';
+    function restoreVendorOptions() {
+      $("fVendor").innerHTML = VENDOR_OPTS;
+    }
+    function setVendorLocked(locked, value) {
+      var el = $("fVendor");
+      el.disabled = !!locked;
+      if (value != null) el.value = value;
+    }
+    function openDlg(m, rows) {
+      mode = m;
+      editIds = (rows || []).map(function (r) { return r.id; });
+      var isBatch = m === "batch";
+      $("batchTip").hidden = !isBatch;
+      $("batchCnt").textContent = String(editIds.length);
+      $("feeTitle").textContent = isBatch ? "主单基础费用 · 批量维护" : (m === "edit" ? "主单基础费用 · 修改" : "主单基础费用");
+
+      var sample = rows && rows[0];
+      restoreVendorOptions();
+      var vendorSet = {};
+      (rows || []).forEach(function (r) { if (r && r.vendor) vendorSet[r.vendor] = true; });
+      var vendorKeys = Object.keys(vendorSet);
+      if (isBatch && vendorKeys.length > 1) {
+        var multi = document.createElement("option");
+        multi.value = "";
+        multi.textContent = "多个服务商（各行保持原值）";
+        $("fVendor").appendChild(multi);
+        setVendorLocked(true, "");
+      } else if (sample) {
+        setVendorLocked(isBatch, sample.vendor);
+      } else {
+        setVendorLocked(false, "");
+      }
+      if (sample) {
+        document.querySelectorAll("input[name=fMode]").forEach(function (r) {
+          r.checked = r.value === sample.mode;
+        });
+        $("fMatchType").value = "预计开船日";
+        $("fStart").value = (sample.start || "").replace(" ", "T").slice(0, 16);
+      } else {
+        document.querySelectorAll("input[name=fMode]")[0].checked = true;
+        $("fMatchType").value = "";
+        $("fStart").value = "";
+      }
+      buildFeeRows(isBatch || m === "edit" ? 6 : 8);
+      $("feeMask").classList.add("show");
+      $("feeMask").setAttribute("aria-hidden", "false");
+    }
+    function closeDlg() {
+      $("feeMask").classList.remove("show");
+      $("feeMask").setAttribute("aria-hidden", "true");
+      restoreVendorOptions();
+      setVendorLocked(false);
+    }
+
+    $("btnSearch").onclick = render;
+    $("btnAdd").onclick = function () { openDlg("add", []); };
+    $("btnCopy").onclick = function () {
+      var rows = selected();
+      if (rows.length !== 1) { toast("复制请勾选恰好 1 条"); return; }
+      openDlg("add", rows);
+      setVendorLocked(false, rows[0].vendor);
+      toast("已带出复制内容，可改后保存为新记录");
+    };
+    $("btnEdit").onclick = function () {
+      var rows = selected();
+      if (rows.length !== 1) { toast("修改请勾选恰好 1 条"); return; }
+      openDlg("edit", rows);
+    };
+    $("btnBatch").onclick = function () {
+      var rows = selected();
+      if (!rows.length) { toast("请先勾选要批量维护的记录"); return; }
+      openDlg("batch", rows);
+    };
+    $("btnOn").onclick = function () {
+      var rows = selected();
+      if (!rows.length) { toast("请先勾选"); return; }
+      rows.forEach(function (r) { r.on = true; });
+      render();
+      toast("已启用 ×" + rows.length);
+    };
+    $("btnOff").onclick = function () {
+      var rows = selected();
+      if (!rows.length) { toast("请先勾选"); return; }
+      rows.forEach(function (r) { r.on = false; });
+      render();
+      toast("已禁用 ×" + rows.length);
+    };
+
+    $("tbody").addEventListener("change", function (e) {
+      if (e.target.classList.contains("row-chk")) syncSelHint();
+    });
+    $("tbody").addEventListener("click", function (e) {
+      var open = e.target.closest("[data-open]");
+      if (!open) return;
+      var id = Number(open.getAttribute("data-open"));
+      var row = ROWS.find(function (r) { return r.id === id; });
+      if (row) openDlg("edit", [row]);
+    });
+    $("chkAll").onchange = function () {
+      var on = $("chkAll").checked;
+      document.querySelectorAll("#tbody input.row-chk").forEach(function (c) { c.checked = on; });
+      syncSelHint();
+    };
+
+    document.querySelectorAll("#feeTabs .fee-tab").forEach(function (btn) {
+      btn.onclick = function () {
+        document.querySelectorAll("#feeTabs .fee-tab").forEach(function (b) { b.classList.remove("on"); });
+        btn.classList.add("on");
+        toast("演示：切换「" + btn.textContent + "」费用项（结构同订舱环节）");
+      };
+    });
+
+    $("feeCancel").onclick = $("feeCloseX").onclick = closeDlg;
+    $("feeMask").addEventListener("click", function (e) {
+      if (e.target === this) closeDlg();
+    });
+    $("feeOk").onclick = function () {
+      if (mode !== "batch" && !$("fVendor").value) {
+        toast("请选择服务商");
+        return;
+      }
+      if (!$("fMatchType").value) { toast("请选择匹配时间类型"); return; }
+      if (!$("fStart").value) { toast("请填写开始时间"); return; }
+      var modeVal = (document.querySelector("input[name=fMode]:checked") || {}).value || "海运";
+      var startTxt = $("fStart").value.replace("T", " ") + ":00";
+      if (mode === "batch") {
+        editIds.forEach(function (id) {
+          var r = ROWS.find(function (x) { return x.id === id; });
+          if (!r) return;
+          /* 服务商不改 */
+          r.mode = modeVal;
+          r.start = startTxt;
+          r.fee = "（批量已维护）订舱/拖车…";
+        });
+        closeDlg();
+        render();
+        toast("批量维护已保存 ×" + editIds.length + " · 服务商未改动");
+        return;
+      }
+      if (mode === "edit" && editIds[0]) {
+        var er = ROWS.find(function (x) { return x.id === editIds[0]; });
+        if (er) {
+          er.vendor = $("fVendor").value;
+          er.mode = modeVal;
+          er.start = startTxt;
+        }
+        closeDlg();
+        render();
+        toast("已保存修改");
+        return;
+      }
+      var nid = Math.max.apply(null, ROWS.map(function (r) { return r.id; })) + 1;
+      ROWS.unshift({
+        id: nid, on: true, start: startTxt, end: "",
+        vendor: $("fVendor").value, mode: modeVal,
+        pol: "—", pod: "—", cntr: "—", carrier: "—", fee: "新建费用项…"
+      });
+      closeDlg();
+      render();
+      toast("已新增");
+    };
+
+    render();
+  })();
+  </script>
+</body>
+</html>

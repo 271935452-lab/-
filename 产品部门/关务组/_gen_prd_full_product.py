@@ -217,7 +217,7 @@ COVER = r'''    <section class="hero">
           <tr><td>做资料分票核准</td><td>买单轧差。点行比对。「已核准」本页写入</td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">打开</a></td><td class="proto"><a href="#ch-split">第 5 章</a></td></tr>
           <tr><td>分单号规则</td><td>船司×港口模板。绑提单之后生成</td><td class="proto"><a href="../../报关行对接/分单号规则配置-MVP.html">打开</a></td><td class="proto"><a href="#ch-house">第 6 章</a></td></tr>
           <tr><td>报关行 API</td><td>#01 #04 #08 #09 #10 #12。主键报关编号</td><td class="proto"><a href="../../报关行对接/报关行API配置-MVP.html">打开</a></td><td class="proto"><a href="#ch-api">第 7 章</a></td></tr>
-          <tr><td>清关管理</td><td>取消IT只读展示。查验通知发给业务员/客服，不发邮件</td><td class="proto"><a href="../../清关管理-MVP.html">打开</a></td><td class="proto">见第 2 章查验口径</td></tr>
+          <tr><td>清关管理</td><td>取消IT只读展示。查验通知发给业务员/客服，不发邮件</td><td class="proto"><a href="../../清关管理-MVP.html">打开</a></td><td class="proto"><a href="../../清关管理-MVP-PRD.html">清关管理 PRD</a></td></tr>
         </tbody>
       </table>
     </section>
@@ -273,7 +273,7 @@ COVER = r'''    <section class="hero">
           <tr><td>做资料分票核准</td><td><a href="#ch-split">第 5 章</a> · <a href="../../报关行对接/报关管理-做资料分票核准-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关管理-做资料分票核准-MVP.html">打开</a></td></tr>
           <tr><td>分单号规则</td><td><a href="#ch-house">第 6 章</a> · <a href="../../报关行对接/分单号规则配置-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/分单号规则配置-MVP.html">打开</a></td></tr>
           <tr><td>报关行 API</td><td><a href="#ch-api">第 7 章</a> · <a href="../../报关行对接/报关行API配置-MVP-PRD.html">分册</a></td><td class="proto"><a href="../../报关行对接/报关行API配置-MVP.html">打开</a></td></tr>
-          <tr><td>清关管理</td><td><a href="#m-skip">查验通知本期口径</a></td><td class="proto"><a href="../../清关管理-MVP.html">打开</a></td></tr>
+          <tr><td>清关管理</td><td><a href="../../清关管理-MVP-PRD.html">清关管理 · 需求 PRD</a>（查验通知 / 跟进等细则）</td><td class="proto"><a href="../../清关管理-MVP.html">打开</a></td></tr>
           <tr><td>组流程</td><td>—</td><td class="proto"><a href="G4-关务-组流程图.html">G4</a></td></tr>
         </tbody>
       </table>

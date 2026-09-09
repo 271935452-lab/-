@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>海外仓 · 预估费用规则 · 旁支</title>
+  <title>海外仓 · 预估费用配置 · 旁支</title>
   <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
   <style>
     :root {
       --header: #102a43; --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
       --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
-      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --branch: #531dab;
+      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --branch: #531dab; --bad: #cf1322;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -17,7 +17,7 @@
       font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
       font-size: 13px; color: var(--text); background: var(--bg);
     }
-    button, input, select { font: inherit; }
+    button, input, select, textarea { font: inherit; }
     a { color: var(--blue); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
@@ -32,7 +32,7 @@
       display: inline-flex; align-items: center; white-space: nowrap; font-size: 12px;
     }
     .topbar .nav a.on { color: #fff; font-weight: 600; background: var(--header); }
-    .topbar .right { margin-left: auto; font-size: 11px; color: rgba(255,255,255,.6); }
+    .topbar .right { margin-left: auto; font-size: 11px; color: rgba(255,255,255,.6); display: flex; align-items: center; gap: 8px; }
 
     .main { padding: 10px 12px 48px; max-width: 1400px; margin: 0 auto; }
     .badge {
@@ -41,20 +41,24 @@
     }
     .badge.branch { color: var(--branch); background: #f9f0ff; border-color: #d3adf7; }
     .badge.src { color: var(--sub); background: #fafafa; border-color: #d9d9d9; font-weight: 400; }
+    .badge.ok { color: var(--ok); background: #f6ffed; border-color: #b7eb8f; }
+    .badge.dirty { color: var(--warn); background: #fff7e6; border-color: #ffd591; }
+    .badge.draft { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
 
     .page-hd {
       background: var(--card); border: 1px solid var(--line); border-radius: 2px;
       padding: 10px 12px; margin-bottom: 8px;
+      display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
     }
+    .page-hd .hd-text { flex: 1; min-width: 240px; }
     .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
     .page-hd p { margin: 0; color: var(--sub); line-height: 1.55; font-size: 12px; }
+    .page-hd .hd-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
-    .rule-box {
-      background: #f9f0ff; border: 1px solid #d3adf7; border-radius: 2px;
-      padding: 10px 12px; margin-bottom: 8px; font-size: 12px; line-height: 1.65;
+    .hint {
+      margin: 0 0 8px; font-size: 12px; color: #0050b3; background: #e6f7ff;
+      border: 1px solid #91d5ff; padding: 6px 10px; border-radius: 2px; line-height: 1.5;
     }
-    .rule-box ol { margin: 0; padding-left: 18px; }
-    .rule-box li { margin-bottom: 4px; }
 
     .tabs {
       display: flex; flex-wrap: wrap; gap: 0; margin-bottom: 8px;
@@ -65,6 +69,7 @@
       font-size: 13px; color: var(--sub); border-right: 1px solid var(--line);
     }
     .tab.on { background: #fff; color: var(--branch); font-weight: 600; box-shadow: inset 0 -2px 0 var(--branch); }
+    .tab small { display: block; font-size: 10px; font-weight: 400; margin-top: 1px; color: var(--sub); }
 
     .panel {
       background: var(--card); border: 1px solid var(--line); border-radius: 2px; margin-bottom: 8px;
@@ -79,32 +84,97 @@
       display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
       padding: 8px 12px; border-bottom: 1px solid var(--line);
     }
-    .toolbar input, .toolbar select {
-      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; min-width: 140px;
+    .toolbar input, .toolbar select, .toolbar label > input, .toolbar label > select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; min-width: 120px;
     }
+    .toolbar label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--sub); }
     .btn {
       height: 28px; padding: 0 12px; border-radius: 2px; border: 1px solid #d9d9d9;
-      background: #fff; cursor: pointer;
+      background: #fff; cursor: pointer; white-space: nowrap;
     }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
     .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { color: #fff; filter: brightness(1.05); }
+    .btn.branch { background: #f9f0ff; border-color: #d3adf7; color: var(--branch); }
+    .btn.danger { color: var(--bad); border-color: #ffa39e; }
+    .btn.sm { height: 24px; padding: 0 8px; font-size: 12px; }
 
     .table-wrap { overflow: auto; max-height: 520px; padding: 0 12px 12px; }
     table.data { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 640px; }
     table.data th, table.data td {
-      border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top;
+      border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: middle;
     }
     table.data th {
       position: sticky; top: 0; z-index: 1; background: #fafafa; color: var(--sub); font-weight: 600;
     }
-    table.data tr:hover td { background: #f5f9ff; }
-    table.data .num { text-align: right; font-family: Consolas, monospace; white-space: nowrap; }
+    table.data tr:hover td { background: #fafafa; }
     table.data .code { font-family: Consolas, monospace; font-weight: 600; color: #08979c; }
     table.data .empty { color: #bfbfbf; text-align: center; }
-    table.data .note { white-space: pre-wrap; max-width: 220px; font-size: 11px; line-height: 1.45; color: #595959; }
-
-    .calc-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px;
+    table.data .note { white-space: pre-wrap; max-width: 240px; font-size: 11px; line-height: 1.45; color: #595959; }
+    table.data input.cell {
+      width: 88px; height: 26px; border: 1px solid transparent; border-radius: 2px;
+      padding: 0 6px; text-align: right; font-family: Consolas, monospace; background: transparent;
     }
+    table.data input.cell:hover, table.data input.cell:focus {
+      border-color: #91d5ff; background: #fff; outline: none;
+    }
+    table.data input.cell.changed { background: #fff7e6; border-color: #ffd591; }
+    table.data input.code-in {
+      width: 72px; height: 26px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 6px; font-family: Consolas, monospace; font-weight: 600; color: #08979c;
+    }
+    table.data .ops { white-space: nowrap; }
+
+    .sub-tabs { display: flex; gap: 4px; padding: 8px 12px 0; }
+    .sub-tab {
+      height: 28px; padding: 0 12px; border: 1px solid var(--line); border-radius: 2px 2px 0 0;
+      background: #fafafa; cursor: pointer; font-size: 12px; color: var(--sub);
+    }
+    .sub-tab.on { background: #fff; color: var(--branch); font-weight: 600; border-bottom-color: #fff; }
+
+    .foot-note { padding: 8px 12px; font-size: 11px; color: var(--sub); border-top: 1px solid var(--line); }
+    .hidden { display: none !important; }
+
+    /* 代理档案 */
+    .prov-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px; padding: 12px;
+    }
+    .prov-card {
+      border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px;
+      background: #fff; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+    }
+    .prov-card:hover { border-color: #d3adf7; box-shadow: 0 2px 8px rgba(83,29,171,.08); }
+    .prov-card .pc-hd { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .prov-card .pc-name { font-weight: 700; font-size: 14px; flex: 1; }
+    .prov-card .pc-meta { font-size: 11px; color: var(--sub); line-height: 1.55; }
+    .prov-card .pc-fees { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .fee-chip {
+      font-size: 11px; padding: 2px 6px; background: #f5f5f5; border-radius: 2px;
+      font-family: Consolas, monospace;
+    }
+
+    /* 算法规则 */
+    .rule-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+    @media (max-width: 900px) { .rule-cards { grid-template-columns: 1fr; } }
+    .rule-card {
+      border: 1px solid var(--line); border-radius: 4px; padding: 12px;
+      background: #fafafa;
+    }
+    .rule-card h3 { margin: 0 0 8px; font-size: 13px; }
+    .rule-card .fg { margin-bottom: 8px; }
+    .rule-card label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 2px; }
+    .rule-card input, .rule-card select, .rule-card textarea {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; background: #fff;
+    }
+    .rule-card textarea { height: 64px; padding: 6px 8px; resize: vertical; }
+    .rule-card .formula {
+      font-size: 11px; color: var(--sub); line-height: 1.55; margin-top: 6px;
+      white-space: pre-wrap; background: #fff; border: 1px dashed #d9d9d9; padding: 6px 8px; border-radius: 2px;
+    }
+
+    /* 试算 */
+    .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
     @media (max-width: 900px) { .calc-grid { grid-template-columns: 1fr; } }
     .calc-form .fg { margin-bottom: 10px; }
     .calc-form label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
@@ -112,15 +182,64 @@
       width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
     }
     .calc-out {
-      border: 1px solid #b7eb8f; background: #f6ffed; border-radius: 4px; padding: 12px;
-      min-height: 200px;
+      border: 1px solid #b7eb8f; background: #f6ffed; border-radius: 4px; padding: 12px; min-height: 200px;
     }
     .calc-out h3 { margin: 0 0 8px; font-size: 14px; }
     .calc-out .big { font-size: 22px; font-weight: 700; color: var(--ok); margin: 8px 0; }
     .calc-out .formula { font-size: 11px; color: var(--sub); line-height: 1.55; white-space: pre-wrap; }
     .calc-out .line { padding: 4px 0; border-bottom: 1px dashed #d9f7be; font-size: 12px; }
-    .hidden { display: none !important; }
-    .foot-note { padding: 8px 12px; font-size: 11px; color: var(--sub); border-top: 1px solid var(--line); }
+
+    /* 抽屉 / 弹层 */
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+      display: none; align-items: stretch; justify-content: flex-end;
+    }
+    .mask.on { display: flex; }
+    .mask.center { justify-content: center; align-items: center; }
+    .drawer {
+      width: min(520px, 100%); background: #fff; height: 100%;
+      display: flex; flex-direction: column; box-shadow: -4px 0 24px rgba(0,0,0,.12);
+    }
+    .drawer-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .drawer-hd h3 { margin: 0; font-size: 15px; flex: 1; }
+    .drawer-bd { flex: 1; overflow: auto; padding: 12px 16px; }
+    .drawer-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-grid label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 2px; }
+    .form-grid input, .form-grid select, .form-grid textarea {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .form-grid textarea { height: 72px; padding: 6px 8px; }
+    .sec-title {
+      grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--branch);
+      margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--line);
+    }
+
+    .modal {
+      width: min(420px, 92vw); background: #fff; border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; font-weight: 600;
+    }
+    .modal-hd button { margin-left: auto; border: 0; background: none; font-size: 18px; cursor: pointer; color: var(--sub); }
+    .modal-bd { padding: 14px 16px; }
+    .modal-ft { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #111827; color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; z-index: 200; display: none;
+    }
+    .toast.on { display: block; }
   </style>
 </head>
 <body>
@@ -128,86 +247,162 @@
     <div class="logo">ESS · 船务</div>
     <nav class="nav">
       <a href="船务组-导航.html">开发测试导航</a>
-      <a class="on" href="#">海外仓预估费用</a>
-      <a href="../船务/船务组-导航.html#s-branch">船务组 · 旁支</a>
+      <a class="on" href="#">海外仓预估费用配置</a>
+      <a href="船务组-导航.html#s-branch">船务组 · 旁支</a>
     </nav>
-    <div class="right">旁支 · 09/10–11 · 示意</div>
+    <div class="right">
+      <span class="badge dirty hidden" id="dirtyBadge">未保存</span>
+      <span>旁支 · 配置示意</span>
+    </div>
   </header>
 
   <div class="main">
     <div class="page-hd">
-      <h1>海外仓 · 预估费用规则 <span class="badge branch">旁支</span></h1>
-      <p>
-        数据源自 <span class="badge src">海外仓2026-06.xlsx</span>
-        + <span class="badge src">计费规则.xlsx</span>。
-        含组合价、散板价、亚马逊卡派直送及代理附加费口径；仅供旁支评审与开发对照，<strong>不进主干 08/31 验收</strong>。
-      </p>
+      <div class="hd-text">
+        <h1>海外仓 · 预估费用配置 <span class="badge branch">旁支</span> <span class="badge ok" id="statusBadge">生效中</span></h1>
+        <p>
+          将 Excel 价目/规则拆成可维护配置：代理档案 → 价目矩阵 → 算法参数 → 试算校验。
+          数据源自 <span class="badge src">海外仓2026-06.xlsx</span> + <span class="badge src">计费规则.xlsx</span>，改动能即时试算，<strong>不进主干验收</strong>。
+        </p>
+      </div>
+      <div class="hd-actions">
+        <button type="button" class="btn" id="btnResetAll">还原示例数据</button>
+        <button type="button" class="btn branch" id="btnImport">导入价目</button>
+        <button type="button" class="btn primary" id="btnSave">保存配置</button>
+      </div>
     </div>
 
-    <div class="rule-box" id="ruleBox"></div>
+    <p class="hint">交互示意：单元格可改价 · 代理卡片可编辑档案 · 算法参数可调 · 试算读取当前内存配置（未点保存也会生效于本页）。</p>
 
     <div class="tabs" id="tabs">
-      <button type="button" class="tab on" data-tab="combo">组合价</button>
-      <button type="button" class="tab" data-tab="pallet">散板价</button>
-      <button type="button" class="tab" data-tab="amz">亚马逊卡派直送</button>
-      <button type="button" class="tab" data-tab="detail">代理明细 · 附加费</button>
-      <button type="button" class="tab" data-tab="calc">预估试算</button>
+      <button type="button" class="tab on" data-tab="prov">代理档案<small>全包价 · 附加费</small></button>
+      <button type="button" class="tab" data-tab="price">价目矩阵<small>组合 · 散板 · 直送</small></button>
+      <button type="button" class="tab" data-tab="rule">算法规则<small>公式 · 特例系数</small></button>
+      <button type="button" class="tab" data-tab="calc">预估试算<small>按当前配置</small></button>
     </div>
 
-    <section class="panel" id="panelCombo">
+    <!-- 代理档案 -->
+    <section class="panel" id="panelProv">
       <div class="panel-hd">
-        <h2>组合价 · FBA 仓点 × 海外仓</h2>
-        <span class="sub" id="comboCnt">—</span>
+        <h2>代理档案 · 全包价与附加费</h2>
+        <span class="sub" id="provCnt">—</span>
+        <button type="button" class="btn primary sm" id="btnAddProv">＋ 新增代理</button>
       </div>
       <div class="toolbar">
-        <label>仓点 <input id="comboQ" placeholder="ONT8 / ABE3" /></label>
-        <label>海外仓
-          <select id="comboProv"><option value="">全部列</option></select>
+        <label>关键字 <input id="provQ" placeholder="代理 / 港口 / 核算方式" /></label>
+        <label>核算方式
+          <select id="provMode">
+            <option value="">全部</option>
+            <option>组合</option>
+            <option>散板</option>
+            <option>私人直送</option>
+            <option>私卡，散板</option>
+          </select>
         </label>
-        <button type="button" class="btn" id="comboReset">重置</button>
+        <label>关系
+          <select id="provRel">
+            <option value="">全部</option>
+            <option>合作</option>
+            <option>不合作</option>
+          </select>
+        </label>
       </div>
-      <div class="table-wrap"><table class="data" id="comboTable"></table></div>
-      <div class="foot-note">组合价计费：方数/柜子总方数 ×（组合价 − 全包价）；VMI ×0.88；美库按重量/方数占比（见规则说明）。</div>
+      <div class="prov-grid" id="provGrid"></div>
+      <div class="foot-note">点击卡片编辑；全包价是组合差额分摊的底座。附加费（超件/超重/超地址等）挂在代理上，正交叠加。</div>
     </section>
 
-    <section class="panel hidden" id="panelPallet">
+    <!-- 价目矩阵 -->
+    <section class="panel hidden" id="panelPrice">
+      <div class="sub-tabs" id="priceSubTabs">
+        <button type="button" class="sub-tab on" data-price="combo">组合价</button>
+        <button type="button" class="sub-tab" data-price="pallet">散板价</button>
+        <button type="button" class="sub-tab" data-price="amz">亚马逊卡派直送</button>
+      </div>
       <div class="panel-hd">
-        <h2>散板价 · 每托 USD</h2>
-        <span class="sub" id="palletCnt">—</span>
+        <h2 id="priceTitle">组合价 · 仓点 × 代理</h2>
+        <span class="sub" id="priceCnt">—</span>
+        <button type="button" class="btn sm" id="btnAddWh">＋ 仓点</button>
+        <button type="button" class="btn sm" id="btnAddCol">＋ 代理列</button>
       </div>
       <div class="toolbar">
-        <label>地址/仓点 <input id="palletQ" placeholder="ABE4 / ONT8" /></label>
-        <label>海外仓 <select id="palletProv"><option value="">全部列</option></select></label>
+        <label>仓点 <input id="priceQ" placeholder="ONT8 / ABE4" /></label>
+        <label>只看代理
+          <select id="priceProv"><option value="">全部列</option></select>
+        </label>
+        <button type="button" class="btn" id="priceReset">重置筛选</button>
       </div>
-      <div class="table-wrap"><table class="data" id="palletTable"></table></div>
-      <div class="foot-note">亚马逊仓点无组合价时，按每托散板价计费；部分代理按 1–5 托 / 6 托及以上分档（表内为示意单价）。</div>
+      <div class="table-wrap"><table class="data" id="priceTable"></table></div>
+      <div class="foot-note" id="priceFoot">空单元格 = 该代理不接此仓。改价后角标「未保存」，试算即时生效。</div>
     </section>
 
-    <section class="panel hidden" id="panelAmz">
+    <!-- 算法规则 -->
+    <section class="panel hidden" id="panelRule">
       <div class="panel-hd">
-        <h2>亚马逊 · 整柜卡派直送</h2>
-        <span class="sub" id="amzCnt">—</span>
+        <h2>算法规则 · 可配置参数</h2>
+        <span class="sub">对应计费规则.xlsx · Sheet1</span>
       </div>
-      <div class="toolbar">
-        <label>仓点 <input id="amzQ" placeholder="ONT8" /></label>
-        <label>海外仓 <select id="amzProv"><option value="">全部列</option></select></label>
+      <div class="rule-cards">
+        <div class="rule-card">
+          <h3>① 形态路由</h3>
+          <div class="fg">
+            <label>优先判定顺序（只读示意）</label>
+            <textarea id="ruleRoute" readonly>1 亚马逊整柜直送 → 直送价表
+2 组合柜 → 全包价 + 组合差额分摊
+3 无组合价 → 散板价 × 托数
+4 私人地址 → 私人直送档案
+5 超出阶梯 / 空价 → 单询</textarea>
+          </div>
+        </div>
+        <div class="rule-card">
+          <h3>② 组合差额分摊</h3>
+          <div class="fg">
+            <label>基础公式</label>
+            <input value="方数 / 柜子总方数 × (组合价 − 全包价)" readonly />
+          </div>
+          <div class="fg">
+            <label>VMI 系数</label>
+            <input type="number" id="ruleVmi" min="0" max="1" step="0.01" value="0.88" />
+          </div>
+          <div class="fg">
+            <label>美库密度阈值（磅/方）</label>
+            <input type="number" id="ruleMeiku" min="0" step="1" value="500" />
+          </div>
+          <div class="formula">美库：密度 ≥ 阈值按重量占比，&lt; 阈值按方数占比。</div>
+        </div>
+        <div class="rule-card">
+          <h3>③ 托数口径</h3>
+          <div class="fg">
+            <label>重量除数（磅）</label>
+            <input type="number" id="ruleLb" value="1000" />
+          </div>
+          <div class="fg">
+            <label>体积除数（方）</label>
+            <input type="number" id="ruleCbm" step="0.1" value="1.8" />
+          </div>
+          <div class="formula">托数 = max(重量磅 ÷ 除数, 体积 ÷ 除数)</div>
+        </div>
+        <div class="rule-card">
+          <h3>④ 柜型附加</h3>
+          <div class="fg">
+            <label>45HQ 额外加收（USD）</label>
+            <input type="number" id="rule45" value="300" />
+          </div>
+          <div class="fg">
+            <label>启用火车柜附加费（取代理档案）</label>
+            <select id="ruleTrain"><option value="1">启用</option><option value="0">关闭</option></select>
+          </div>
+          <div class="fg">
+            <label>启用混装附加费（取代理档案）</label>
+            <select id="ruleMix"><option value="1">启用</option><option value="0">关闭</option></select>
+          </div>
+        </div>
       </div>
-      <div class="table-wrap"><table class="data" id="amzTable"></table></div>
-      <div class="foot-note">整柜直送亚马逊 FBA：按价格表收取，无其他费用（计费规则 §1）。</div>
+      <div class="foot-note">改系数后切到「预估试算」即可验证；正式环境应版本化发布，本页为旁支交互示意。</div>
     </section>
 
-    <section class="panel hidden" id="panelDetail">
-      <div class="panel-hd">
-        <h2>代理明细 · 全包/附加费口径</h2>
-        <span class="sub">摘自计费规则 · 全美表(带明细)</span>
-      </div>
-      <div class="table-wrap" style="max-height:none"><table class="data" id="detailTable"></table></div>
-      <div class="panel-hd" style="border-top:1px solid var(--line)"><h2>私人地址 · 直送参考</h2></div>
-      <div class="table-wrap"><table class="data" id="privateTable"></table></div>
-    </section>
-
+    <!-- 试算 -->
     <section class="panel hidden" id="panelCalc">
-      <div class="panel-hd"><h2>预估试算 · 示意</h2></div>
+      <div class="panel-hd"><h2>预估试算 · 读取当前配置</h2></div>
       <div class="calc-grid">
         <div class="calc-form">
           <div class="fg">
@@ -228,7 +423,7 @@
             <select id="calcProv"></select>
           </div>
           <div class="fg" id="fgPallets">
-            <label>托数</label>
+            <label>托数（可手填，或按规则自动算）</label>
             <input id="calcPallets" type="number" min="1" value="10" />
           </div>
           <div class="fg hidden" id="fgCombo">
@@ -240,93 +435,407 @@
             <input id="calcVolTotal" type="number" min="1" value="68" />
           </div>
           <div class="fg hidden" id="fgCombo3">
-            <label>全包价（USD/柜）</label>
-            <input id="calcFull" type="number" min="0" value="1575" />
+            <label>全包价（USD/柜，默认取代理档案）</label>
+            <input id="calcFull" type="number" min="0" value="" placeholder="自动带入" />
+          </div>
+          <div class="fg hidden" id="fgVmi">
+            <label>是否 VMI（× 规则系数）</label>
+            <select id="calcVmi"><option value="0">否</option><option value="1">是</option></select>
           </div>
           <button type="button" class="btn primary" id="btnCalc">试算</button>
         </div>
         <div class="calc-out" id="calcOut">
           <h3>试算结果</h3>
-          <p class="formula">选择类型、仓点、海外仓后点「试算」。</p>
+          <p class="formula">选择类型、仓点、海外仓后点「试算」。结果反映你刚改过的价与系数。</p>
         </div>
       </div>
-      <div class="foot-note">试算为原型示意：组合价按规则 §3 差额分摊；实际以系统配置 + 业务确认口径为准。</div>
+      <div class="foot-note">组合价：方数占比 ×（组合价 − 全包价）；勾选 VMI 时再 × 配置系数。</div>
     </section>
   </div>
 
+  <!-- 代理编辑抽屉 -->
+  <div class="mask" id="provMask">
+    <div class="drawer">
+      <div class="drawer-hd">
+        <h3 id="provDrawerTitle">编辑代理档案</h3>
+        <button type="button" class="btn sm" id="provDrawerClose">关闭</button>
+      </div>
+      <div class="drawer-bd">
+        <div class="form-grid" id="provForm"></div>
+      </div>
+      <div class="drawer-ft">
+        <button type="button" class="btn danger" id="provDelete">删除</button>
+        <button type="button" class="btn" id="provCancel">取消</button>
+        <button type="button" class="btn primary" id="provSave">保存档案</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导入弹层 -->
+  <div class="mask center" id="importMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <span>导入价目（示意）</span>
+        <button type="button" id="importClose">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="fg" style="margin-bottom:10px">
+          <label style="font-size:11px;color:var(--sub)">价目类型</label>
+          <select id="importType" style="width:100%;height:30px;margin-top:2px">
+            <option value="combo">组合价</option>
+            <option value="pallet">散板价</option>
+            <option value="amz">亚马逊卡派直送</option>
+            <option value="all">全部价目 + 代理档案</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label style="font-size:11px;color:var(--sub)">选择文件</label>
+          <input type="file" accept=".xlsx,.xls" style="width:100%;margin-top:4px" />
+        </div>
+        <p style="font-size:11px;color:var(--sub);margin:10px 0 0;line-height:1.5">
+          正式对接按 Excel 列映射覆盖矩阵；本原型点「导入」模拟刷新示例数据。
+        </p>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="importCancel">取消</button>
+        <button type="button" class="btn primary" id="importOk">导入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增仓点 / 代理列 -->
+  <div class="mask center" id="addMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <span id="addTitle">新增</span>
+        <button type="button" id="addClose">×</button>
+      </div>
+      <div class="modal-bd">
+        <label style="font-size:11px;color:var(--sub)" id="addLabel">名称</label>
+        <input id="addInput" style="width:100%;height:32px;margin-top:4px;padding:0 8px;border:1px solid #d9d9d9;border-radius:2px" />
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="addCancel">取消</button>
+        <button type="button" class="btn primary" id="addOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
   <div class="ess-prd-source" hidden aria-hidden="true">
-    <span class="ess-prd-chip">旁支 · 海外仓预估费用</span>
+    <span class="ess-prd-chip">旁支 · 海外仓预估费用配置</span>
   </div>
   <script src="../../二期/ess-prototype-prd.js"></script>
   <script src="../ess-branch-back.js" defer></script>
   <script src="海外仓预估费用-data.js"></script>
   <script>
   (function () {
-    var D = window.OVERSEAS_WH_FEE;
-    if (!D) {
-      document.body.innerHTML = "<p style='padding:24px'>数据加载失败，请先运行 _gen_overseas_wh_fee_data.py</p>";
+    var SRC = window.OVERSEAS_WH_FEE;
+    if (!SRC) {
+      document.body.innerHTML = "<p style='padding:24px'>数据加载失败，请确认 海外仓预估费用-data.js 存在。</p>";
       return;
     }
+
+    var state = {
+      dirty: false,
+      priceKind: "combo",
+      editProvIdx: -1,
+      addMode: null,
+      rules: { vmi: 0.88, meiku: 500, lb: 1000, cbm: 1.8, hq45: 300, train: true, mix: true }
+    };
+
+    function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+    var D = deepClone(SRC);
 
     function esc(s) {
       return String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    function fmtPrice(v) {
-      if (v == null || v === "") return '<td class="empty">—</td>';
-      return '<td class="num">$' + esc(v) + '</td>';
+    function toast(msg) {
+      var el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("on");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.classList.remove("on"); }, 2200);
     }
 
-    function fillProvSelect(sel, providers) {
+    function markDirty(on) {
+      state.dirty = !!on;
+      document.getElementById("dirtyBadge").classList.toggle("hidden", !state.dirty);
+      document.getElementById("statusBadge").textContent = state.dirty ? "草稿 · 有改动" : "生效中";
+      document.getElementById("statusBadge").className = "badge " + (state.dirty ? "dirty" : "ok");
+    }
+
+    function priceCfg() {
+      return state.priceKind === "amz" ? D.amzDirect
+        : state.priceKind === "pallet" ? D.palletPrice : D.comboPrice;
+    }
+
+    function priceCfgKey() {
+      return state.priceKind === "amz" ? "amzDirect"
+        : state.priceKind === "pallet" ? "palletPrice" : "comboPrice";
+    }
+
+    /* ---------- tabs ---------- */
+    function switchTab(tab) {
+      document.querySelectorAll("#tabs .tab").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-tab") === tab);
+      });
+      ["Prov", "Price", "Rule", "Calc"].forEach(function (s) {
+        document.getElementById("panel" + s).classList.add("hidden");
+      });
+      var map = { prov: "Prov", price: "Price", rule: "Rule", calc: "Calc" };
+      document.getElementById("panel" + map[tab]).classList.remove("hidden");
+      if (tab === "calc") updateCalcForm();
+      if (tab === "price") renderPrice();
+      if (tab === "prov") renderProv();
+    }
+
+    /* ---------- 代理档案 ---------- */
+    function normalizeProviders() {
+      if (!D.providers) {
+        D.providers = (D.providerDetailSample || []).map(function (r, i) {
+          return {
+            id: "p" + i,
+            mode: r["核算方式"] || "组合",
+            address: r["地址"] || "",
+            relation: r["关系"] || "合作",
+            sysName: r["系统名字"] || "",
+            provider: r["代理"] || "",
+            area: r["仓库面积"] || "",
+            fcl40: r["40尺提拆打（带车架）"],
+            fcl45: r["45尺 提拆打 （带车架）"],
+            chassis: r["车架费单价"],
+            pickup: r["自提费/托"],
+            express: r["快递出库费/托"],
+            overAddr: r["超地址费"] || "",
+            overBox: r["超箱费"] || "",
+            storage: r["仓储费"] || "",
+            trainFee: r["火车柜附加费"],
+            mixFee: r["混装附加费"],
+            intercept: r["拦截费"] || "",
+            notes: r["货物类型"] || ""
+          };
+        });
+      }
+      return D.providers;
+    }
+
+    function renderProv() {
+      var list = normalizeProviders();
+      var q = document.getElementById("provQ").value.trim().toLowerCase();
+      var mode = document.getElementById("provMode").value;
+      var rel = document.getElementById("provRel").value;
+      var rows = list.filter(function (p) {
+        if (mode && String(p.mode).indexOf(mode) < 0) return false;
+        if (rel && p.relation !== rel) return false;
+        if (!q) return true;
+        var blob = [p.provider, p.sysName, p.address, p.mode].join(" ").toLowerCase();
+        return blob.indexOf(q) >= 0;
+      });
+      document.getElementById("provCnt").textContent = "显示 " + rows.length + " / " + list.length;
+      document.getElementById("provGrid").innerHTML = rows.map(function (p) {
+        var idx = list.indexOf(p);
+        return '<div class="prov-card" data-idx="' + idx + '">' +
+          '<div class="pc-hd"><span class="pc-name">' + esc(p.provider || "未命名") + "</span>" +
+          '<span class="badge ' + (p.relation === "合作" ? "ok" : "dirty") + '">' + esc(p.relation || "—") + "</span>" +
+          '<span class="badge draft">' + esc(p.mode || "—") + "</span></div>" +
+          '<div class="pc-meta">' + esc(p.sysName || "") +
+          (p.address ? " · " + esc(p.address) : "") +
+          (p.area ? "<br/>仓面积 " + esc(p.area) : "") + "</div>" +
+          '<div class="pc-fees">' +
+          (p.fcl40 != null ? '<span class="fee-chip">40HQ $' + esc(p.fcl40) + "</span>" : "") +
+          (p.fcl45 != null ? '<span class="fee-chip">45HQ $' + esc(p.fcl45) + "</span>" : "") +
+          (p.chassis != null ? '<span class="fee-chip">车架 $' + esc(p.chassis) + "</span>" : "") +
+          "</div></div>";
+      }).join("") || '<p style="padding:24px;color:var(--sub)">无匹配代理，可点「新增代理」</p>';
+
+      document.querySelectorAll(".prov-card").forEach(function (card) {
+        card.onclick = function () { openProvDrawer(+card.getAttribute("data-idx")); };
+      });
+    }
+
+    function openProvDrawer(idx) {
+      state.editProvIdx = idx;
+      var list = normalizeProviders();
+      var p = idx < 0 ? {
+        mode: "组合", relation: "合作", provider: "", sysName: "", address: "",
+        fcl40: "", fcl45: "", chassis: 40, pickup: 10, express: 10,
+        overAddr: "", overBox: "", storage: "", trainFee: "", mixFee: "", intercept: "", notes: "", area: ""
+      } : list[idx];
+      document.getElementById("provDrawerTitle").textContent =
+        idx < 0 ? "新增代理档案" : "编辑 · " + (p.provider || p.sysName);
+      document.getElementById("provDelete").style.display = idx < 0 ? "none" : "";
+      var fields = [
+        ["provider", "代理名称", "text"],
+        ["sysName", "系统名字", "text"],
+        ["mode", "核算方式", "select", ["组合", "散板", "私人直送", "私卡，散板", "快递"]],
+        ["relation", "合作关系", "select", ["合作", "不合作"]],
+        ["address", "港口/地址", "text"],
+        ["area", "仓库面积", "text"],
+        ["sec", "全包价（提拆打）"],
+        ["fcl40", "40尺带车架 USD", "number"],
+        ["fcl45", "45尺带车架 USD", "number"],
+        ["chassis", "车架费单价", "number"],
+        ["pickup", "自提费/托", "number"],
+        ["express", "快递出库费/托", "number"],
+        ["sec", "附加费口径（文案可配）"],
+        ["overAddr", "超地址费", "textarea"],
+        ["overBox", "超箱费", "textarea"],
+        ["storage", "仓储费", "textarea"],
+        ["intercept", "拦截费", "textarea"],
+        ["trainFee", "火车柜附加费", "number"],
+        ["mixFee", "混装附加费", "number"],
+        ["notes", "备注 / 货物类型", "textarea"]
+      ];
+      var html = fields.map(function (f) {
+        if (f[0] === "sec") return '<div class="sec-title">' + esc(f[1]) + "</div>";
+        var v = p[f[0]];
+        if (v == null) v = "";
+        var ctrl;
+        if (f[2] === "select") {
+          ctrl = "<select id='pf_" + f[0] + "'>" + f[3].map(function (o) {
+            return "<option" + (o === v ? " selected" : "") + ">" + esc(o) + "</option>";
+          }).join("") + "</select>";
+        } else if (f[2] === "textarea") {
+          ctrl = "<textarea id='pf_" + f[0] + "'>" + esc(v) + "</textarea>";
+        } else {
+          ctrl = "<input type='" + f[2] + "' id='pf_" + f[0] + "' value='" + esc(v) + "' />";
+        }
+        return '<div class="' + (f[2] === "textarea" ? "full" : "") + '"><label>' + esc(f[1]) +
+          "</label>" + ctrl + "</div>";
+      }).join("");
+      document.getElementById("provForm").innerHTML = html;
+      document.getElementById("provMask").classList.add("on");
+    }
+
+    function readProvForm() {
+      function val(id) {
+        var el = document.getElementById("pf_" + id);
+        return el ? el.value : "";
+      }
+      function num(id) {
+        var v = val(id);
+        if (v === "" || v == null) return null;
+        var n = parseFloat(v);
+        return isNaN(n) ? null : n;
+      }
+      return {
+        provider: val("provider").trim(),
+        sysName: val("sysName").trim(),
+        mode: val("mode"),
+        relation: val("relation"),
+        address: val("address").trim(),
+        area: val("area").trim(),
+        fcl40: num("fcl40"),
+        fcl45: num("fcl45"),
+        chassis: num("chassis"),
+        pickup: num("pickup"),
+        express: num("express"),
+        overAddr: val("overAddr"),
+        overBox: val("overBox"),
+        storage: val("storage"),
+        intercept: val("intercept"),
+        trainFee: num("trainFee"),
+        mixFee: num("mixFee"),
+        notes: val("notes")
+      };
+    }
+
+    function closeProvDrawer() {
+      document.getElementById("provMask").classList.remove("on");
+      state.editProvIdx = -1;
+    }
+
+    /* ---------- 价目矩阵 ---------- */
+    function fillPriceProvSelect() {
+      var cfg = priceCfg();
+      var sel = document.getElementById("priceProv");
+      var cur = sel.value;
       sel.innerHTML = '<option value="">全部列</option>' +
-        providers.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join("");
+        (cfg.providers || []).map(function (p) {
+          return "<option" + (p === cur ? " selected" : "") + ">" + esc(p) + "</option>";
+        }).join("");
     }
 
-    function renderPriceTable(cfg, qId, provId, tableId, cntId) {
-      var q = document.getElementById(qId).value.trim().toUpperCase();
-      var prov = document.getElementById(provId).value;
-      var providers = prov ? [prov] : (cfg.providers || []);
+    function renderPrice() {
+      var cfg = priceCfg();
+      var titles = { combo: "组合价 · 仓点 × 代理", pallet: "散板价 · 每托 USD", amz: "亚马逊卡派直送 · 整柜" };
+      var foots = {
+        combo: "组合差额 = 方数占比 ×（本表价 − 代理全包价）。空 = 无组合价，降级散板。",
+        pallet: "无组合价时按托计费。空 = 该代理不接此仓。",
+        amz: "整柜直送按表收取，无其他费用。空/0 视为未报价。"
+      };
+      document.getElementById("priceTitle").textContent = titles[state.priceKind];
+      document.getElementById("priceFoot").textContent = foots[state.priceKind];
+      fillPriceProvSelect();
+
+      var q = document.getElementById("priceQ").value.trim().toUpperCase();
+      var provFilter = document.getElementById("priceProv").value;
+      var providers = provFilter ? [provFilter] : (cfg.providers || []);
       var rows = (cfg.warehouses || []).filter(function (w) {
         return !q || String(w.code).toUpperCase().indexOf(q) >= 0;
       });
-      document.getElementById(cntId).textContent =
-        "显示 " + rows.length + " / " + (cfg.warehouses || []).length + " 行";
+      document.getElementById("priceCnt").textContent =
+        "显示 " + rows.length + " / " + (cfg.warehouses || []).length + " 行 · " + providers.length + " 列";
+
       var thead = "<thead><tr><th>仓点</th>" +
-        providers.map(function (p) { return "<th>" + esc(p) + "</th>"; }).join("") + "</tr></thead>";
+        providers.map(function (p) { return "<th>" + esc(p) + "</th>"; }).join("") +
+        "<th>操作</th></tr></thead>";
+
       var tbody = rows.map(function (w) {
-        return "<tr><td class='code'>" + esc(w.code) + "</td>" +
-          providers.map(function (p) { return fmtPrice(w.prices[p]); }).join("") + "</tr>";
+        var wi = cfg.warehouses.indexOf(w);
+        return "<tr data-wi='" + wi + "'><td><input class='code-in' data-field='code' value='" +
+          esc(w.code) + "' /></td>" +
+          providers.map(function (p) {
+            var v = w.prices[p];
+            var shown = v == null || v === "" ? "" : v;
+            return "<td><input class='cell' data-prov='" + esc(p) + "' value='" + esc(shown) +
+              "' placeholder='—' /></td>";
+          }).join("") +
+          "<td class='ops'><button type='button' class='btn sm danger btn-del-wh'>删</button></td></tr>";
       }).join("");
-      document.getElementById(tableId).innerHTML = thead + "<tbody>" +
-        (tbody || "<tr><td colspan='20' class='empty'>无匹配</td></tr>") + "</tbody>";
+
+      document.getElementById("priceTable").innerHTML = thead + "<tbody>" +
+        (tbody || "<tr><td colspan='99' class='empty'>无匹配，可「＋ 仓点」</td></tr>") + "</tbody>";
+
+      var table = document.getElementById("priceTable");
+      table.querySelectorAll("input.cell").forEach(function (inp) {
+        inp.onchange = function () {
+          var tr = inp.closest("tr");
+          var wi = +tr.getAttribute("data-wi");
+          var prov = inp.getAttribute("data-prov");
+          var raw = inp.value.trim();
+          var val = raw === "" ? null : parseFloat(raw);
+          if (raw !== "" && isNaN(val)) { toast("请输入数字"); return; }
+          cfg.warehouses[wi].prices[prov] = val;
+          inp.classList.add("changed");
+          markDirty(true);
+        };
+      });
+      table.querySelectorAll("input.code-in").forEach(function (inp) {
+        inp.onchange = function () {
+          var wi = +inp.closest("tr").getAttribute("data-wi");
+          cfg.warehouses[wi].code = inp.value.trim().toUpperCase();
+          markDirty(true);
+          refreshWhList();
+        };
+      });
+      table.querySelectorAll(".btn-del-wh").forEach(function (btn) {
+        btn.onclick = function () {
+          var wi = +btn.closest("tr").getAttribute("data-wi");
+          if (!confirm("删除仓点 " + cfg.warehouses[wi].code + "？")) return;
+          cfg.warehouses.splice(wi, 1);
+          markDirty(true);
+          renderPrice();
+          refreshWhList();
+        };
+      });
     }
 
-    function renderDetail() {
-      var cols = ["核算方式", "地址", "代理", "系统名字", "40尺提拆打（带车架）", "45尺 提拆打 （带车架）",
-        "自提费/托", "快递出库费/托", "超地址费", "仓储费"];
-      var thead = "<thead><tr>" + cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead>";
-      var tbody = (D.providerDetailSample || []).map(function (r) {
-        return "<tr>" + cols.map(function (c) {
-          var v = r[c];
-          if (typeof v === "number") return "<td class='num'>$" + v + "</td>";
-          return "<td class='note'>" + esc(v || "—") + "</td>";
-        }).join("") + "</tr>";
-      }).join("");
-      document.getElementById("detailTable").innerHTML = thead + "<tbody>" + tbody + "</tbody>";
-
-      var pcols = ["核算方式", "地址", "代理", "预提费", "仓储费", "车架费", "等时费"];
-      var pt = "<thead><tr>" + pcols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead>";
-      var pb = (D.privateDirectSample || []).map(function (r) {
-        return "<tr>" + pcols.map(function (c) {
-          var v = r[c];
-          if (typeof v === "number") return "<td class='num'>$" + v + "</td>";
-          return "<td>" + esc(v || "—") + "</td>";
-        }).join("") + "</tr>";
-      }).join("");
-      document.getElementById("privateTable").innerHTML = pt + "<tbody>" + pb + "</tbody>";
-    }
-
+    /* ---------- 试算 ---------- */
     function allWarehouseCodes() {
       var set = {};
       ["comboPrice", "palletPrice", "amzDirect"].forEach(function (k) {
@@ -335,23 +844,34 @@
       return Object.keys(set).sort();
     }
 
+    function refreshWhList() {
+      document.getElementById("whList").innerHTML = allWarehouseCodes()
+        .map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("");
+    }
+
     function lookupPrice(cfg, code, prov) {
       var hit = (cfg.warehouses || []).find(function (w) {
         return String(w.code).toUpperCase() === String(code).toUpperCase();
       });
       if (!hit) return null;
-      return hit.prices[prov];
+      var v = hit.prices[prov];
+      return v == null || v === "" ? null : v;
     }
 
-    function switchTab(tab) {
-      document.querySelectorAll(".tab").forEach(function (b) {
-        b.classList.toggle("on", b.getAttribute("data-tab") === tab);
+    function findProviderFull(prov) {
+      return normalizeProviders().find(function (p) {
+        return p.provider === prov || p.sysName === prov;
       });
-      ["Combo", "Pallet", "Amz", "Detail", "Calc"].forEach(function (s) {
-        document.getElementById("panel" + s).classList.add("hidden");
-      });
-      var map = { combo: "Combo", pallet: "Pallet", amz: "Amz", detail: "Detail", calc: "Calc" };
-      document.getElementById("panel" + map[tab]).classList.remove("hidden");
+    }
+
+    function syncRulesFromForm() {
+      state.rules.vmi = parseFloat(document.getElementById("ruleVmi").value) || 0.88;
+      state.rules.meiku = parseFloat(document.getElementById("ruleMeiku").value) || 500;
+      state.rules.lb = parseFloat(document.getElementById("ruleLb").value) || 1000;
+      state.rules.cbm = parseFloat(document.getElementById("ruleCbm").value) || 1.8;
+      state.rules.hq45 = parseFloat(document.getElementById("rule45").value) || 300;
+      state.rules.train = document.getElementById("ruleTrain").value === "1";
+      state.rules.mix = document.getElementById("ruleMix").value === "1";
     }
 
     function updateCalcForm() {
@@ -360,13 +880,25 @@
       document.getElementById("fgCombo").classList.toggle("hidden", t !== "combo");
       document.getElementById("fgCombo2").classList.toggle("hidden", t !== "combo");
       document.getElementById("fgCombo3").classList.toggle("hidden", t !== "combo");
+      document.getElementById("fgVmi").classList.toggle("hidden", t !== "combo");
       var provSel = document.getElementById("calcProv");
-      var provs = t === "amz" ? D.amzDirect.providers :
-        t === "pallet" ? D.palletPrice.providers : D.comboPrice.providers;
-      provSel.innerHTML = provs.map(function (p) { return "<option>" + esc(p) + "</option>"; }).join("");
+      var prev = provSel.value;
+      var provs = t === "amz" ? D.amzDirect.providers
+        : t === "pallet" ? D.palletPrice.providers : D.comboPrice.providers;
+      provSel.innerHTML = provs.map(function (p) {
+        return "<option" + (p === prev ? " selected" : "") + ">" + esc(p) + "</option>";
+      }).join("");
+      // 自动带全包价
+      if (t === "combo") {
+        var arch = findProviderFull(provSel.value);
+        if (arch && arch.fcl40 != null && !document.getElementById("calcFull").dataset.touched) {
+          document.getElementById("calcFull").value = arch.fcl40;
+        }
+      }
     }
 
     function runCalc() {
+      syncRulesFromForm();
       var type = document.getElementById("calcType").value;
       var wh = document.getElementById("calcWh").value.trim();
       var prov = document.getElementById("calcProv").value;
@@ -382,40 +914,54 @@
       if (type === "amz") {
         var p = lookupPrice(D.amzDirect, wh, prov);
         if (p == null) {
-          out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到 " + esc(wh) + " × " + esc(prov) + " 卡派直送价。</p>";
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到 " + esc(wh) + " × " + esc(prov) +
+            " 直送价（空价 = 单询）。可到「价目矩阵」补录。</p>";
           return;
         }
         total = p;
-        lines.push("亚马逊卡派直送（整柜）：$" + p);
-        formula = "规则：按价格表收取，无其他费用。";
+        lines.push("直送价（当前配置）：$" + p);
+        formula = "规则：按直送价表收取，无其他费用。";
       } else if (type === "pallet") {
         var pp = lookupPrice(D.palletPrice, wh, prov);
         var n = parseInt(document.getElementById("calcPallets").value, 10) || 0;
         if (pp == null || n <= 0) {
-          out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到散板单价或托数无效。</p>";
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到散板单价或托数无效。可到价目矩阵配置。</p>";
           return;
         }
-        total = pp * n;
-        lines.push("散板单价：$" + pp + " / 托");
+        total = Math.round(pp * n * 100) / 100;
+        lines.push("散板单价（当前配置）：$" + pp + " / 托");
         lines.push("托数：" + n);
-        formula = "规则：无组合价时按每托散板价 × 托数。";
+        formula = "托数口径参考：max(磅÷" + state.rules.lb + ", 方÷" + state.rules.cbm + ")";
       } else {
         var cp = lookupPrice(D.comboPrice, wh, prov);
         var vol = parseFloat(document.getElementById("calcVol").value) || 0;
         var volT = parseFloat(document.getElementById("calcVolTotal").value) || 1;
-        var full = parseFloat(document.getElementById("calcFull").value) || 0;
-        if (cp == null || vol <= 0 || volT <= 0) {
-          out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到组合价或方数无效。</p>";
+        var fullRaw = document.getElementById("calcFull").value;
+        var arch = findProviderFull(prov);
+        var full = fullRaw !== "" ? parseFloat(fullRaw) : (arch && arch.fcl40 != null ? arch.fcl40 : NaN);
+        if (cp == null) {
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>无组合价 → 应降级散板。请切散板试算或补录组合价。</p>";
+          return;
+        }
+        if (isNaN(full) || vol <= 0 || volT <= 0) {
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>全包价或方数无效。可在代理档案维护全包价。</p>";
           return;
         }
         var diff = cp - full;
         var share = (vol / volT) * diff;
+        var isVmi = document.getElementById("calcVmi").value === "1";
+        if (isVmi) {
+          share = share * state.rules.vmi;
+          lines.push("VMI 系数 ×" + state.rules.vmi);
+        }
         total = Math.round(share * 100) / 100;
-        lines.push("组合价（表）：$" + cp);
-        lines.push("全包价（输入）：$" + full);
+        lines.push("组合价（配置）：$" + cp);
+        lines.push("全包价" + (arch ? "（档案 " + (arch.provider || "") + "）" : "") + "：$" + full);
         lines.push("差额：$" + diff);
         lines.push("方数占比：" + vol + " / " + volT);
-        formula = "公式：方数/柜子总方数 ×（组合价 − 全包价）\nVMI ×0.88、美库重量占比等特殊情况见规则说明。";
+        formula = "公式：方数/总方数 ×（组合价 − 全包价）" +
+          (isVmi ? " × VMI" + state.rules.vmi : "") +
+          "\n美库阈值 " + state.rules.meiku + " 磅/方（本试算未模拟重量分支）";
       }
 
       out.innerHTML =
@@ -425,44 +971,162 @@
         "<div class='formula'>" + esc(formula) + "</div>";
     }
 
-    // init rules
-    var rules = D.calcRules || [];
-    document.getElementById("ruleBox").innerHTML =
-      "<strong>计费规则摘要</strong>（计费规则.xlsx）<ol>" +
-      rules.slice(1).map(function (r) {
-        return "<li>" + esc(String(r).replace(/\n/g, " ")) + "</li>";
-      }).join("") + "</ol>";
-
-    fillProvSelect(document.getElementById("comboProv"), D.comboPrice.providers || []);
-    fillProvSelect(document.getElementById("palletProv"), D.palletPrice.providers || []);
-    fillProvSelect(document.getElementById("amzProv"), D.amzDirect.providers || []);
-
-    document.getElementById("whList").innerHTML = allWarehouseCodes()
-      .map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("");
-
-    function bindTable(qId, provId, tableId, cntId, cfgKey) {
-      function go() { renderPriceTable(D[cfgKey], qId, provId, tableId, cntId); }
-      document.getElementById(qId).oninput = go;
-      document.getElementById(provId).onchange = go;
-      go();
+    /* ---------- 弹层：新增仓点/列 ---------- */
+    function openAdd(mode) {
+      state.addMode = mode;
+      document.getElementById("addTitle").textContent = mode === "wh" ? "新增仓点" : "新增代理列";
+      document.getElementById("addLabel").textContent = mode === "wh" ? "FBA 仓码" : "代理名称";
+      document.getElementById("addInput").value = "";
+      document.getElementById("addMask").classList.add("on");
+      setTimeout(function () { document.getElementById("addInput").focus(); }, 50);
     }
-    bindTable("comboQ", "comboProv", "comboTable", "comboCnt", "comboPrice");
-    bindTable("palletQ", "palletProv", "palletTable", "palletCnt", "palletPrice");
-    bindTable("amzQ", "amzProv", "amzTable", "amzCnt", "amzDirect");
-    renderDetail();
 
-    document.getElementById("comboReset").onclick = function () {
-      document.getElementById("comboQ").value = "";
-      document.getElementById("comboProv").value = "";
-      renderPriceTable(D.comboPrice, "comboQ", "comboProv", "comboTable", "comboCnt");
+    function confirmAdd() {
+      var v = document.getElementById("addInput").value.trim();
+      if (!v) { toast("请填写名称"); return; }
+      var cfg = priceCfg();
+      if (state.addMode === "wh") {
+        v = v.toUpperCase();
+        if ((cfg.warehouses || []).some(function (w) { return w.code === v; })) {
+          toast("仓点已存在"); return;
+        }
+        var prices = {};
+        (cfg.providers || []).forEach(function (p) { prices[p] = null; });
+        cfg.warehouses.push({ code: v, prices: prices });
+        toast("已新增仓点 " + v);
+      } else {
+        if ((cfg.providers || []).indexOf(v) >= 0) { toast("代理列已存在"); return; }
+        cfg.providers.push(v);
+        (cfg.warehouses || []).forEach(function (w) { w.prices[v] = null; });
+        toast("已新增代理列 " + v);
+      }
+      markDirty(true);
+      document.getElementById("addMask").classList.remove("on");
+      renderPrice();
+      refreshWhList();
+      updateCalcForm();
+    }
+
+    /* ---------- bind ---------- */
+    document.querySelectorAll("#tabs .tab").forEach(function (btn) {
+      btn.onclick = function () { switchTab(btn.getAttribute("data-tab")); };
+    });
+    document.querySelectorAll("#priceSubTabs .sub-tab").forEach(function (btn) {
+      btn.onclick = function () {
+        state.priceKind = btn.getAttribute("data-price");
+        document.querySelectorAll("#priceSubTabs .sub-tab").forEach(function (b) {
+          b.classList.toggle("on", b === btn);
+        });
+        document.getElementById("priceQ").value = "";
+        document.getElementById("priceProv").value = "";
+        renderPrice();
+      };
+    });
+
+    ["provQ", "provMode", "provRel"].forEach(function (id) {
+      document.getElementById(id).oninput = renderProv;
+      document.getElementById(id).onchange = renderProv;
+    });
+    document.getElementById("btnAddProv").onclick = function () { openProvDrawer(-1); };
+    document.getElementById("provDrawerClose").onclick = closeProvDrawer;
+    document.getElementById("provCancel").onclick = closeProvDrawer;
+    document.getElementById("provSave").onclick = function () {
+      var row = readProvForm();
+      if (!row.provider) { toast("请填写代理名称"); return; }
+      var list = normalizeProviders();
+      if (state.editProvIdx < 0) list.push(row);
+      else list[state.editProvIdx] = Object.assign(list[state.editProvIdx], row);
+      markDirty(true);
+      closeProvDrawer();
+      renderProv();
+      toast("代理档案已更新");
+    };
+    document.getElementById("provDelete").onclick = function () {
+      if (state.editProvIdx < 0) return;
+      if (!confirm("确认删除该代理档案？")) return;
+      normalizeProviders().splice(state.editProvIdx, 1);
+      markDirty(true);
+      closeProvDrawer();
+      renderProv();
+      toast("已删除");
     };
 
-    document.querySelectorAll(".tab").forEach(function (btn) {
-      btn.onclick = function () { switchTab(btn.getAttribute("data-tab")); };
+    document.getElementById("priceQ").oninput = renderPrice;
+    document.getElementById("priceProv").onchange = renderPrice;
+    document.getElementById("priceReset").onclick = function () {
+      document.getElementById("priceQ").value = "";
+      document.getElementById("priceProv").value = "";
+      renderPrice();
+    };
+    document.getElementById("btnAddWh").onclick = function () { openAdd("wh"); };
+    document.getElementById("btnAddCol").onclick = function () { openAdd("col"); };
+    document.getElementById("addClose").onclick =
+    document.getElementById("addCancel").onclick = function () {
+      document.getElementById("addMask").classList.remove("on");
+    };
+    document.getElementById("addOk").onclick = confirmAdd;
+    document.getElementById("addInput").onkeydown = function (e) {
+      if (e.key === "Enter") confirmAdd();
+    };
+
+    ["ruleVmi", "ruleMeiku", "ruleLb", "ruleCbm", "rule45", "ruleTrain", "ruleMix"].forEach(function (id) {
+      document.getElementById(id).onchange = function () {
+        syncRulesFromForm();
+        markDirty(true);
+      };
     });
 
     document.getElementById("calcType").onchange = updateCalcForm;
+    document.getElementById("calcProv").onchange = function () {
+      document.getElementById("calcFull").dataset.touched = "";
+      updateCalcForm();
+    };
+    document.getElementById("calcFull").oninput = function () {
+      this.dataset.touched = "1";
+    };
     document.getElementById("btnCalc").onclick = runCalc;
+
+    document.getElementById("btnSave").onclick = function () {
+      syncRulesFromForm();
+      markDirty(false);
+      toast("配置已保存（原型示意 · 未写后端）");
+    };
+    document.getElementById("btnResetAll").onclick = function () {
+      if (!confirm("还原为 Excel 示例数据？未保存改动将丢失。")) return;
+      D = deepClone(SRC);
+      delete D.providers;
+      state.rules = { vmi: 0.88, meiku: 500, lb: 1000, cbm: 1.8, hq45: 300, train: true, mix: true };
+      document.getElementById("ruleVmi").value = "0.88";
+      document.getElementById("ruleMeiku").value = "500";
+      document.getElementById("ruleLb").value = "1000";
+      document.getElementById("ruleCbm").value = "1.8";
+      document.getElementById("rule45").value = "300";
+      markDirty(false);
+      renderProv();
+      renderPrice();
+      refreshWhList();
+      updateCalcForm();
+      toast("已还原示例数据");
+    };
+    document.getElementById("btnImport").onclick = function () {
+      document.getElementById("importMask").classList.add("on");
+    };
+    document.getElementById("importClose").onclick =
+    document.getElementById("importCancel").onclick = function () {
+      document.getElementById("importMask").classList.remove("on");
+    };
+    document.getElementById("importOk").onclick = function () {
+      document.getElementById("importMask").classList.remove("on");
+      markDirty(true);
+      toast("已模拟导入 · 请核对价目矩阵后保存");
+      switchTab("price");
+    };
+
+    // init
+    normalizeProviders();
+    renderProv();
+    renderPrice();
+    refreshWhList();
     updateCalcForm();
   })();
   </script>

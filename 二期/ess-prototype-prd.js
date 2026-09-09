@@ -42,9 +42,52 @@
 
     "数据字典-船公司航运-提单号规则-MVP.html": "m3-bl",
 
-    "船务组-提单管理-按周分组与分配-MVP.html": "m4"
+    "船务组-提单管理-按周分组与分配-MVP.html": "m4",
+
+    "仓位管理-订舱完善提单-整合-MVP.html": "s-filter",
+
+    "报关管理-列表-MVP.html": "s-filter"
 
   };
+
+  /** 旁支计划一：?plan1= 功能 id → 侧栏只展示本分册片段；全量 PRD 见总册 §二 */
+  var BRANCH_PLAN_ONE = {
+    f1: { proto: "船务组-提单管理-按周分组与分配-MVP.html", prd: "船务组-提单管理-按周分组与分配-MVP-PRD.html", scope: "m-dlg", row: "退运", chip: "PRD · #1 提单退运" },
+    "f1-wh": { proto: "仓位管理-订舱完善提单-整合-MVP.html", prd: "仓位管理-订舱完善提单-整合-MVP-PRD.html", scope: "m-bar", row: "退运", chip: "PRD · #1 仓位退运" },
+    f2: { proto: "报关管理-列表-MVP.html", prd: "报关管理-列表-MVP-PRD.html", scope: "m-fee", row: "费用登记", chip: "PRD · #2 报关费用" },
+    f3: { proto: "报关管理-做资料分票核准-MVP.html", prd: "报关管理-做资料分票核准-MVP-PRD.html", chip: "PRD · #3 取消核准改单" },
+    f5: { proto: "船务组-提单管理-按周分组与分配-MVP.html", prd: "船务组-提单管理-按周分组与分配-MVP-PRD.html", scope: "m-dlg", row: "分配抽屉", chip: "PRD · #5 工厂地址" },
+    f7: { proto: "业务数据统计-尾端派送费-MVP.html", prd: "业务数据统计-尾端派送费-MVP-PRD.html", chip: "PRD · #7 私卡尾端费" },
+    "f7-hd": { proto: "海外对接组-主单跟进-MVP.html", prd: "海外对接组-主单跟进-MVP-PRD.html", anchor: "s-fee", chip: "PRD · #7 主单尾端费" },
+    f9a: { proto: "报关管理-列表-MVP.html", prd: "报关管理-列表-MVP-PRD.html", scope: "m-dlg", row: "买单/单证", chip: "PRD · #9a 买单/单证" },
+    f9b: { proto: "报关管理-列表-MVP.html", prd: "报关管理-列表-MVP-PRD.html", scope: "m-dlg", row: "退运运单", chip: "PRD · #9b 退运运单" },
+    f10: { proto: "船务组-提单管理-按周分组与分配-MVP.html", prd: "船务组-提单管理-按周分组与分配-MVP-PRD.html", scope: "m-dlg", row: "提货地点", chip: "PRD · #10 提还箱字典" },
+    f11: { proto: "清关管理-MVP.html", prd: "清关管理-MVP-PRD.html", anchor: "m-bg", chip: "PRD · #11 清关退运" },
+    f12: { proto: "船务组-主单基础费用-批量维护-MVP.html", prd: "船务组-主单基础费用-批量维护-MVP-PRD.html", chip: "PRD · #12 批量维护" },
+    "f-r2": { proto: "风控组-操作查货率报表-MVP.html", prd: "风控组-操作查货率报表-MVP-PRD.html", anchor: "s1", chip: "PRD · 二 查货报表" },
+    "f-r3": { proto: "关务组-查验报表-提单运单维度-MVP.html", prd: "关务组-查验报表-提单运单维度-MVP-PRD.html", anchor: "s-week-outcome", chip: "PRD · 三 查验报表" },
+    "f-r4": { proto: "海外对接组-提柜拆柜时效-MVP.html", prd: "海外对接组-提柜拆柜时效-MVP-PRD.html", anchor: "s-logic", chip: "PRD · 四 提柜拆柜" },
+    "f-r5": { proto: "海外对接组-主单实际费用-MVP.html", prd: "海外对接组-主单实际费用-MVP-PRD.html", anchor: "s-logic", chip: "PRD · 五 实际费用" }
+  };
+
+  function plan1Id() {
+    try { return new URLSearchParams(location.search).get("plan1"); } catch (e) { return null; }
+  }
+
+  function applyPlan1(source, href, anchor) {
+    var id = plan1Id();
+    if (!id || !BRANCH_PLAN_ONE[id]) return { href: href, anchor: anchor, chip: null, autoOpen: false };
+    var c = BRANCH_PLAN_ONE[id];
+    var page = pageFileName();
+    if (c.proto && c.proto !== page) return { href: href, anchor: anchor, chip: null, autoOpen: false };
+    var h = c.prd || href;
+    var a = c.anchor || c.scope || anchor;
+    var qs = [];
+    if (c.scope) qs.push("scope=" + encodeURIComponent(c.scope));
+    if (c.row) qs.push("row=" + encodeURIComponent(c.row));
+    if (qs.length) h += (h.indexOf("?") >= 0 ? "&" : "?") + qs.join("&");
+    return { href: h, anchor: a, chip: c.chip, autoOpen: true };
+  }
 
 
 
@@ -172,6 +215,12 @@
 
     var anchor = resolveAnchor(source, href);
 
+    var plan = applyPlan1(source, href, anchor);
+
+    href = plan.href;
+
+    anchor = plan.anchor;
+
     var frameSrc = buildHref(href, anchor);
 
     var closeBtn = '<button type="button" class="ess-prd-close" id="essPrdClose" aria-label="关闭 PRD">×</button>';
@@ -189,6 +238,16 @@
     if (href) {
 
       var chip = source.querySelector(".ess-prd-chip");
+
+      if (plan.chip) {
+
+        chip = document.createElement("span");
+
+        chip.className = "ess-prd-chip";
+
+        chip.textContent = plan.chip;
+
+      }
 
       aside.innerHTML = closeBtn + (chip ? chip.outerHTML : "") +
 
@@ -311,6 +370,8 @@
 
 
     syncUi();
+
+    if (plan.autoOpen) setOpen(true);
 
   }
 
