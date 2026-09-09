@@ -778,7 +778,7 @@
           <button type="button" class="btn btn-primary" id="btnAdd">新增订舱登记<span class="mark-phase-chg">调</span></button>
           <button type="button" class="btn btn-ghost" id="btnEdit">完善提单 / 编辑舱位<span class="mark-phase-chg">调</span></button>
           <button type="button" class="btn btn-warn" id="btnRollover" title="已放舱舱位更换船名航次/SO，原记录作废并由异人录入新舱">甩柜换船<span class="mark-new">新</span></button>
-          <button type="button" class="btn btn-danger" id="btnReturnShip" title="未放舱/已放舱均可发起退运；未放舱确定后改已退仓并回退运单">退运<span class="mark-new">新</span></button>
+          <button type="button" class="btn btn-danger" id="btnReturnShip" title="仅未放舱可退运；确认后改已退仓，运单回退已预报。已放舱请用甩柜换船">退运<span class="mark-new">新</span></button>
           <button type="button" class="btn" id="btnExportBc">导出放舱 BC<span class="mark-new">新</span></button>
           <button type="button" class="btn" id="btnExportForecast">导出预报模板<span class="mark-new">新</span></button>
           <button type="button" class="btn" id="btnBatchExport" title="按当前查询条件（筛选区+状态页签）导出列表数据">批量导出<span class="mark-new">新</span></button>
@@ -1534,6 +1534,37 @@
       var slotTbody = document.querySelector("#slotTable tbody");
       var drawerTitle = document.getElementById("drawerTitle");
       var drawerMode = "edit";
+      var drawerFormSnapshot = null;
+
+      function captureDrawerFormSnapshot() {
+        var wb = document.getElementById("waybillNo");
+        var parts = [
+          wb ? wb.value.trim() : "",
+          polInput ? polInput.value.trim() : "",
+          podInput ? podInput.value.trim() : "",
+          (document.getElementById("blNo") || {}).value || "",
+          (document.getElementById("vesselName") || {}).value || "",
+          (document.getElementById("voyageNo") || {}).value || "",
+          (document.getElementById("pickupType") || {}).value || "",
+          (document.getElementById("etd") || {}).value || "",
+          (document.getElementById("eta") || {}).value || ""
+        ];
+        var slotRows = document.querySelectorAll("#slotTable tbody tr");
+        for (var i = 0; i < slotRows.length; i++) {
+          var cells = slotRows[i].cells;
+          if (cells[1]) parts.push((cells[1].querySelector("select") || {}).value || "");
+          if (cells[2]) parts.push((cells[2].querySelector("input") || {}).value || "");
+        }
+        drawerFormSnapshot = parts.join("\u0001");
+      }
+
+      function drawerFormChanged() {
+        if (!drawerFormSnapshot) return false;
+        captureDrawerFormSnapshot();
+        var cur = drawerFormSnapshot;
+        captureDrawerFormSnapshot();
+        return cur !== drawerFormSnapshot;
+      }
 
       var WAYBILL_CATALOG = [
         {
@@ -2300,6 +2331,10 @@
         setDrawerMode(mode || "edit");
         document.body.classList.add("bl-form-open");
         drawer.classList.add("open");
+        drawerFormSnapshot = null;
+        if ((mode || "edit") === "edit") {
+          setTimeout(function () { captureDrawerFormSnapshot(); }, 0);
+        }
       }
       function closeDrawer() {
         document.body.classList.remove("bl-form-open");
@@ -3394,7 +3429,22 @@
           alert("SO No 不可重复：" + soCheck.so);
           return;
         }
-        alert("原型演示：保存成功（按 SO 拆分生成 " + collectSlotSoList().length + " 条列表记录）");
+        var wbNo = (document.getElementById("waybillNo") || {}).value.trim();
+        var syncWaybill = false;
+        if (drawerMode === "edit" && wbNo) {
+          var snapBefore = drawerFormSnapshot;
+          captureDrawerFormSnapshot();
+          var changed = snapBefore && snapBefore !== drawerFormSnapshot;
+          if (changed) {
+            syncWaybill = confirm(
+              "已绑定运单 " + wbNo + "。\n\n是否将本次提单/订舱信息变更同步修改到关联运单？\n\n确定 = 保存并同步运单\n取消 = 仅保存舱位/提单，不同步运单"
+            );
+          }
+        }
+        var msg = "原型演示：保存成功（按 SO 拆分生成 " + collectSlotSoList().length + " 条列表记录）";
+        if (syncWaybill) msg += " · 已同步运单 " + wbNo;
+        alert(msg);
+        captureDrawerFormSnapshot();
         closeDrawer();
       });
 
@@ -4170,15 +4220,25 @@
           rolloverToast("请勾选未退运的舱位（按柜/SO）", "warn");
           return;
         }
-        returnShipPending = rows;
-        var hasUn = rows.some(function (tr) { return tr.dataset.release === "unreleased"; });
         var hasRel = rows.some(function (tr) { return tr.dataset.release === "released"; });
+        if (hasRel) {
+          rolloverToast("已放舱不可退运，请使用「甩柜换船」", "warn");
+          return;
+        }
+        var unreleased = rows.filter(function (tr) {
+          return tr.dataset.release === "unreleased" ||
+            (tr.dataset.release !== "released" && tr.dataset.release !== "returned");
+        });
+        if (!unreleased.length) {
+          rolloverToast("仅未放舱舱位可退运", "warn");
+          return;
+        }
+        returnShipPending = unreleased;
         var alertEl = document.getElementById("returnShipAlert");
         var tips = [];
-        tips.push("按柜（SO）退运，共 " + rows.length + " 条。");
-        if (hasUn) tips.push("含未放舱：确认后取消运单绑定 → 舱位「已退仓」→ 运单回退「待订舱」。");
-        if (hasRel) tips.push("含已放舱：结果口径待产品确认（原型暂演示改「已退仓」）。");
-        alertEl.className = "return-alert" + (hasRel ? " warn" : "");
+        tips.push("按柜（SO）退运，共 " + unreleased.length + " 条（仅未放舱）。");
+        tips.push("确认后：取消运单绑定 → 舱位「已退仓」→ 运单回退「已预报」。");
+        alertEl.className = "return-alert";
         alertEl.textContent = tips.join(" ");
         document.getElementById("returnShipMeta").innerHTML = rows.map(function (tr) {
           var blEl = tr.querySelector("[data-open-drawer]");
@@ -4237,7 +4297,7 @@
         if (active) applyStatusFilter(active.getAttribute("data-filter") || "all");
         rolloverToast(
           "已退运 ×" + n +
-            (unN ? " · 未放舱已解绑运单并回退待订舱 ×" + unN : "") +
+            (unN ? " · 已解绑运单并回退已预报 ×" + unN : "") +
             (feeLogged ? " · 已登记亏舱费 " + ccy + " " + amt : " · 未登记亏舱费") +
             (reason ? " · " + reason : ""),
           "ok"
