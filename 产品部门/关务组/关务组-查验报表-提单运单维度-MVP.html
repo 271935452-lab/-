@@ -1823,14 +1823,21 @@
     function countOsPie(kind) {
       return os.filter(function (r) { return osPieKind(r) === kind; }).length;
     }
-    var domExam = dom.filter(function (r) { return domPieKind(r) !== "正常"; }).length;
-    var osExam = os.filter(function (r) { return osPieKind(r) !== "正常"; }).length;
+    var domExam = dom.filter(function (r) {
+      var kind = domPieKind(r);
+      return kind === "查验中" || kind === "查验已放行" || kind === "查验已退运";
+    }).length;
+    var osExam = os.filter(function (r) {
+      var kind = osPieKind(r);
+      return kind === "查验中" || kind === "查验已放行" || kind === "退运";
+    }).length;
     var brokerMap = {};
     dom.forEach(function (r) {
       var k = r.broker ? r.broker : "未分配报关行";
       if (!brokerMap[k]) brokerMap[k] = { name: k, n: 0, exam: 0 };
       brokerMap[k].n++;
-      if (domPieKind(r) !== "正常") brokerMap[k].exam++;
+      var brokerKind = domPieKind(r);
+      if (brokerKind === "查验中" || brokerKind === "查验已放行" || brokerKind === "查验已退运") brokerMap[k].exam++;
     });
     var brokers = Object.keys(brokerMap).map(function (k) {
       var b = brokerMap[k];
@@ -1841,7 +1848,8 @@
       var k = r.importer ? r.importer : "未分配进口商";
       if (!impMap[k]) impMap[k] = { name: k, n: 0, exam: 0 };
       impMap[k].n++;
-      if (osPieKind(r) !== "正常") impMap[k].exam++;
+      var importerKind = osPieKind(r);
+      if (importerKind === "查验中" || importerKind === "查验已放行" || importerKind === "退运") impMap[k].exam++;
     });
     var importers = Object.keys(impMap).map(function (k) {
       var b = impMap[k];
@@ -1931,7 +1939,7 @@
                   "</span><span>" + p.n + " · " + pct(p.n, d.total) + "</span></div>";
               }).join("") +
               '<div class="row"><b>总计</b><b>' + d.total + "</b></div>" +
-              '<div class="row"><span>查验率</span><span class="dur-warn">' + pct(d.ck, d.total) + "</span></div>" +
+              '<div class="row"><span>查验率</span><span class="dur-warn">' + pct(d.examing + d.released + d.returned, d.total || 1) + "</span></div>" +
             "</div></div></div>"
       );
     }
@@ -1954,7 +1962,7 @@
                   "</span><span>" + p.n + " · " + pct(p.n, o.total) + "</span></div>";
               }).join("") +
               '<div class="row"><b>总计</b><b>' + o.total + "</b></div>" +
-              '<div class="row"><span>查验率</span><span class="dur-warn">' + pct(o.ck, o.total) + "</span></div>" +
+              '<div class="row"><span>查验率</span><span class="dur-warn">' + pct(o.examing + o.released + o.returned, o.total || 1) + "</span></div>" +
             "</div></div></div>"
       );
     }
@@ -2071,10 +2079,6 @@
         "<td>" + (r.passAt || "<span class='muted'>未放行</span>") + "</td>" +
         "<td class='num " + durClass(p.total) + "'><b>" + (p.total != null ? p.total : "—") + "</b></td>" +
         "<td class='num'>" + (r.fee ? ("¥" + r.fee) : "—") + "</td>" +
-        "<td>" + (r.custType || "—") + "</td>" +
-        "<td>" + (r.custName || "—") + "</td>" +
-        "<td>" + (r.sales || ownerHtml(r)) + "</td>" +
-        "<td>" + (r.warehouse || "—") + "</td>" +
         "<td class='remark-cell'>" + (r.remark || "—") + "</td>" +
         progOpsHtml(r) + "</tr>";
     }).join("");
@@ -2119,7 +2123,6 @@
     "<th title='轨迹 BG00002 国内查验延期 · 发生时间'>开查</th><th title='轨迹 BG00004 报关查验放行 · 发生时间'>放行</th>" +
     "<th class='num' title='进行中：今天−通知日；已放行：放行−通知日'>天数</th>" +
     "<th class='num' title='登记查验时登记的费用'>费用</th>" +
-    "<th title='取提单'>客户类型</th><th title='取提单'>客户名称</th><th title='取提单'>业务员</th><th title='取提单'>收货仓</th>" +
     "<th title='登记查验时登记的备注'>备注</th><th>操作</th></tr>";
 
   var PROG_OS_HEAD = "<tr>" +
@@ -2142,7 +2145,7 @@
       $("tbody").innerHTML = progOsRows(rows) || empty(24);
     } else {
       $("thead").innerHTML = PROG_DOM_HEAD;
-      $("tbody").innerHTML = progDomRows(rows) || empty(22);
+      $("tbody").innerHTML = progDomRows(rows) || empty(18);
     }
   }
 

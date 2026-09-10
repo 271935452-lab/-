@@ -562,7 +562,7 @@
       </div>
       <div class="modal-bd">
         <div class="alert info" style="margin-bottom:10px">
-          针对目的港查验中的货物登记跟进（对齐业务表「查验统计」Sheet1：送检/开查/放行、海外仓、清关行、系统轨迹、状态进程等）。
+          针对目的港查验中的货物登记跟进：记录清关行、状态进程、查验状态与跟进说明；每次保存写入历史。
           每次保存写入历史，可回溯。周汇总见
           <a href="产品部门/关务组/关务组-查验报表-提单运单维度-MVP.html">查验报表 · 国外</a>。
         </div>
@@ -574,37 +574,16 @@
         </div>
         <div class="form-grid">
           <div class="form-item">
-            <label>查验方式</label>
-            <select id="fuExamParty">
-              <option value="">请选择</option>
-              <option>1H</option>
-              <option>1H前</option>
-              <option>1H后</option>
-              <option>2H前</option>
-              <option>7H后</option>
-              <option>文件查验</option>
-            </select>
-          </div>
-          <div class="form-item">
             <label>查验状态</label>
             <select id="fuExamSt">
               <option value="">进行中</option>
-              <option>放行后查验</option>
               <option>退运</option>
-              <option>HOLD</option>
             </select>
           </div>
-          <div class="form-item"><label>送检时间</label><input id="fuSendAt" type="date" /></div>
-          <div class="form-item"><label>开查时间</label><input id="fuOpenAt" type="date" /></div>
-          <div class="form-item"><label>放行时间</label><input id="fuPassAt" type="date" /></div>
-          <div class="form-item"><label>海外仓</label><input id="fuWh" placeholder="VMI / DrayEasy / 美库…" /></div>
           <div class="form-item"><label>清关行</label><input id="fuClearance" placeholder="精准 / 02B / 赛因…" /></div>
           <div class="form-item"><label>跟进人</label><input id="fuOwner" placeholder="港后客服" /></div>
           <div class="form-item full"><label>状态进程</label>
             <input id="fuStatusProg" placeholder="例：等待检查站重新装柜 / 需提交资料 / READY FOR INSPECTION" />
-          </div>
-          <div class="form-item full"><label>系统轨迹摘要</label>
-            <textarea id="fuTrack" rows="2" placeholder="同步系统轨迹要点，如：查验已放行，等待提柜送火车站"></textarea>
           </div>
           <div class="form-item full"><label>跟进说明 / 备注</label>
             <textarea id="fuNote" rows="2" placeholder="本次跟进动作、卡点、对客/对清关行沟通要点"></textarea>
@@ -621,12 +600,8 @@
               <tr>
                 <th style="width:120px">跟进时间</th>
                 <th style="width:72px">跟进人</th>
-                <th style="width:64px">查验方式</th>
-                <th style="width:88px">送检</th>
-                <th style="width:88px">开查</th>
-                <th style="width:88px">放行</th>
                 <th style="width:90px">状态</th>
-                <th>状态进程 / 轨迹 / 说明</th>
+                <th>状态进程 / 说明</th>
               </tr>
             </thead>
             <tbody id="fuHistBody"></tbody>
@@ -1257,17 +1232,13 @@
           ["起运目的", r.lane || [r.polLabel, r.podLabel].filter(Boolean).join("→") || "—"],
           ["进口商", impCell(r)],
           ["清关行", r.clearance || r.broker || "—"],
-          ["海外仓", r.wh || "—"],
-          ["查验方式", r.examParty || "—"],
           ["查验状态", r.examStatus || r.inspSt || "—"],
-          ["送检 / 开查 / 放行", [r.sendAt || "—", r.openAt || "—", r.passAt || "—"].join(" / ")],
           ["跟进人", r.cs || "—"]
         ];
         var html = cells.map(function (c) {
           return '<div><span class="k">' + c[0] + "</span><span class=\"v\">" + c[1] + "</span></div>";
         }).join("");
         html += '<div class="span2"><span class="k">状态进程</span><span class="v">' + (r.statusProg || "—") + "</span></div>";
-        html += '<div class="span4"><span class="k">系统轨迹</span><span class="v">' + (r.track || "—") + "</span></div>";
         document.getElementById("fuMeta").innerHTML = html;
       }
       function renderFuHist(r) {
@@ -1275,37 +1246,29 @@
         document.getElementById("fuHistCnt").textContent = logs.length + " 条";
         if (!logs.length) {
           document.getElementById("fuHistBody").innerHTML =
-            '<tr><td colspan="8" style="text-align:center;color:#8c8c8c;padding:20px">暂无跟进历史，保存后出现在此</td></tr>';
+            '<tr><td colspan="4" style="text-align:center;color:#8c8c8c;padding:20px">暂无跟进历史，保存后出现在此</td></tr>';
           return;
         }
         document.getElementById("fuHistBody").innerHTML = logs.map(function (log) {
           var detail = [
             log.statusProg ? ("进程：" + log.statusProg) : "",
-            log.track ? ("轨迹：" + log.track) : "",
             log.note ? ("说明：" + log.note) : ""
           ].filter(Boolean).join("<br/>") || "—";
           return "<tr>" +
             "<td>" + (log.at || "—") + "</td>" +
             "<td>" + (log.owner || "—") + "</td>" +
-            "<td>" + (log.examParty || "—") + "</td>" +
-            "<td>" + (log.sendAt || "—") + "</td>" +
-            "<td>" + (log.openAt || "—") + "</td>" +
-            "<td>" + (log.passAt || "—") + "</td>" +
             "<td>" + (log.examStatus || "进行中") + "</td>" +
             "<td>" + detail + "</td></tr>";
         }).join("");
       }
       function fillFuForm(r) {
-        document.getElementById("fuExamParty").value = r.examParty || "";
-        document.getElementById("fuExamSt").value = r.examStatus || "";
-        setDateVal("fuSendAt", r.sendAt);
-        setDateVal("fuOpenAt", r.openAt);
-        setDateVal("fuPassAt", r.passAt);
-        document.getElementById("fuWh").value = r.wh || "";
+        var stEl = document.getElementById("fuExamSt");
+        var st = r.examStatus || "";
+        if (st === "放行后查验" || st === "HOLD") st = "";
+        if (stEl) stEl.value = st;
         document.getElementById("fuClearance").value = r.clearance || r.broker || "";
         document.getElementById("fuOwner").value = r.cs || "港后客服";
         document.getElementById("fuStatusProg").value = r.statusProg || "";
-        document.getElementById("fuTrack").value = r.track || "";
         document.getElementById("fuNote").value = "";
       }
       function openFollow(row) {
@@ -1343,31 +1306,18 @@
         var log = {
           at: trackNow(),
           owner: (document.getElementById("fuOwner").value || row.cs || "港后客服").trim(),
-          examParty: document.getElementById("fuExamParty").value,
-          sendAt: document.getElementById("fuSendAt").value,
-          openAt: document.getElementById("fuOpenAt").value,
-          passAt: document.getElementById("fuPassAt").value,
           examStatus: document.getElementById("fuExamSt").value,
           statusProg: document.getElementById("fuStatusProg").value.trim(),
-          track: document.getElementById("fuTrack").value.trim(),
           note: document.getElementById("fuNote").value.trim(),
-          wh: document.getElementById("fuWh").value.trim(),
           clearance: document.getElementById("fuClearance").value.trim()
         };
-        row.examParty = log.examParty || row.examParty;
-        row.sendAt = log.sendAt || row.sendAt;
-        row.openAt = log.openAt || row.openAt;
-        row.passAt = log.passAt || row.passAt;
-        row.examStatus = log.examStatus || row.examStatus;
+        row.examStatus = log.examStatus || row.examStatus || "进行中";
         row.statusProg = log.statusProg || row.statusProg;
-        row.track = log.track || row.track;
-        row.wh = log.wh || row.wh;
         row.clearance = log.clearance || row.clearance;
-        if (log.passAt) {
-          row.st = "查验放行";
-          row.inspSt = "查验放行";
-          row.inspEnd = log.passAt + " 00:00:00";
-          row.stage = "查验放行";
+        if (log.examStatus === "退运") {
+          row.st = "清关查验";
+          row.inspSt = "退运";
+          row.stage = "退运";
         } else if (row.st !== "查验放行") {
           row.st = "清关查验";
           row.inspSt = "查验中";
