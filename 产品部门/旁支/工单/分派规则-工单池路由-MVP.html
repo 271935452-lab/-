@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>分派规则 · 工单池路由（客户优先）</title>
+  <style>
+    :root { --bg:#f5f7fb; --card:#fff; --text:#111827; --sub:#6b7280; --line:#e5e7eb; --primary:#2563eb; --ok:#047857; --amber:#b45309; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: var(--bg); color: var(--text); }
+    .page { max-width: 1100px; margin: 0 auto; padding: 20px 16px 56px; }
+    .crumb { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+    .crumb a { color: var(--primary); text-decoration: none; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .meta { font-size: 13px; color: var(--sub); line-height: 1.55; margin: 0 0 16px; max-width: 820px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(15,23,42,.04); }
+    .card h2 { font-size: 15px; margin: 0 0 10px; }
+    .prio { list-style: none; padding: 0; margin: 0; counter-reset: p; }
+    .prio li { position: relative; padding: 10px 12px 10px 48px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; background: #fafbfc; font-size: 13px; line-height: 1.5; }
+    .prio li::before { counter-increment: p; content: counter(p); position: absolute; left: 12px; top: 10px; width: 24px; height: 24px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+    .prio li strong { display: block; margin-bottom: 2px; }
+    .prio li.top { border-color: #93c5fd; background: #eff6ff; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f8fafc; font-weight: 600; color: #475569; white-space: nowrap; }
+    .tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 999px; background: #eef2ff; color: #3730a3; margin-right: 4px; }
+    .tag.vip { background: #fef3c7; color: #92400e; }
+    .tag.ok { background: #d1fae5; color: #065f46; }
+    .sim { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 800px) { .sim { grid-template-columns: 1fr; } }
+    label { font-size: 11px; color: var(--sub); display: block; margin-bottom: 4px; }
+    select, input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+    .btn { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .result { margin-top: 10px; padding: 12px; border-radius: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; font-size: 13px; line-height: 1.55; color: #065f46; }
+    .result.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .note { font-size: 12px; color: var(--sub); line-height: 1.55; margin: 8px 0 0; }
+    code { font-size: 12px; background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="crumb">
+      <a href="原型导航-工单模块.html">工单模块</a> /
+      <a href="编辑角色-岗位与数据权限-MVP.html">编辑角色</a> /
+      分派规则 · 客户优先
+    </div>
+    <h1>分派规则 · 工单池路由</h1>
+    <p class="meta">场景、港前/港后、海外仓等维度路由保留，但最前面增加<strong>客户</strong>维度（BR-ROUTE-001）。与「编辑角色」配合：规则引用角色/池；角色页维护成员与数据范围。SLA 拆分见场景配置 Tab B（客户承诺优先于场景默认）。</p>
+
+    <div class="card">
+      <h2>路由优先级（客户优先）</h2>
+      <ol class="prio">
+        <li class="top"><strong>客户专属客服 / VIP 客户 SLA</strong>命中客户主数据上的专属客服、VIP 绑定池或客户专属 SLA 包时，直接路由并套用客户承诺时效。</li>
+        <li class="top"><strong>客户类型或客户分组</strong>直客 / 同行 / 大客户组等分组规则 → 对应客服池或执行池。</li>
+        <li><strong>场景 + 港前/港后 + 海外仓/口岸</strong>现有场景矩阵（如洛杉矶 + 港后 + 换标 + 美库）。</li>
+        <li><strong>默认岗位池</strong>场景配置 Tab B「责任池」兜底。</li>
+        <li><strong>实际执行人</strong>池内认领、转派或海外仓/PDA 接单后落到具体人。</li>
+      </ol>
+      <p class="note">高优先级命中即停。客户 SLA 由<strong>客户管理</strong>维护；生成工单时读取并<strong>固化快照</strong>；未配置客户 SLA 时用场景默认。快照不以客户主数据后续变更为准。</p>
+    </div>
+
+    <div class="card">
+      <h2>SLA 四类拆分</h2>
+      <table>
+        <thead><tr><th>SLA 类型</th><th>作用</th><th>配置位（演示）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag vip">客户承诺 SLA</span></td><td>VIP/大客户约定的首次响应、完成时限</td><td><strong>客户管理</strong>维护；工单生成时固化快照</td></tr>
+          <tr><td><span class="tag">内部考核 SLA</span></td><td>普通客户及内部岗位的处理目标</td><td>场景配置默认首响/闭环</td></tr>
+          <tr><td><span class="tag">节点 SLA</span></td><td>节点时限：如 2h 受理、24h 上传照片、72h 海外仓处理</td><td>状态模板节点 + 场景节点时限</td></tr>
+          <tr><td><span class="tag ok">验收 SLA</span></td><td>客服收到结果后多久必须验收或退回</td><td>场景「验收时限」；挂「待客服验收」</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>规则样例（演示）</h2>
+      <table>
+        <thead><tr><th>优先级</th><th>条件</th><th>指派目标</th><th>SLA 来源</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>客户=VIP-华兴 · 专属客服=王敏</td><td>专属客服·王敏</td><td>客户承诺：首响 1h / 闭环 12h / 验收 2h</td></tr>
+          <tr><td>2</td><td>客户分组=大客户组A</td><td>大客户客服池</td><td>客户分组包：首响 2h / 闭环 24h</td></tr>
+          <tr><td>3</td><td>客户类型=同行 · 港后 · 换标 · 口岸=LA</td><td>港后客服池-LA</td><td>场景默认 + 节点 SLA</td></tr>
+          <tr><td>4</td><td>场景 SC-GH-012（无客户专属）</td><td>场景责任池 after</td><td>场景内部考核 SLA</td></tr>
+          <tr><td>5</td><td>池内认领 / 仓侧接单</td><td>实际执行人</td><td>继承已固化 SLA 快照</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>模拟命中</h2>
+      <div class="sim">
+        <div>
+          <label>客户</label>
+          <select id="simCust">
+            <option value="vip">VIP-华兴（专属客服·王敏）</option>
+            <option value="group">普通·大客户组A</option>
+            <option value="peer">同行·无专属</option>
+            <option value="normal">直客·无专属</option>
+          </select>
+        </div>
+        <div>
+          <label>场景</label>
+          <select id="simScene">
+            <option value="label">换标·港后 · LA · 美库</option>
+            <option value="photo">仓内拍照·港后 · LA</option>
+            <option value="addr">私卡改地址·港后</option>
+          </select>
+        </div>
+      </div>
+      <p style="margin:12px 0 0"><button type="button" class="btn btn-primary" id="btnSim">模拟路由</button></p>
+      <div class="result" id="simOut" hidden></div>
+    </div>
+
+    <div class="card">
+      <h2>与配置中心关系</h2>
+      <ul class="note" style="padding-left:18px;margin:0">
+        <li>场景配置 Tab B：维护<strong>场景默认</strong>内部考核 SLA、节点 SLA、验收 SLA、默认责任池。</li>
+        <li>本页：维护客户专属 / 客户分组 / 场景矩阵的命中顺序与目标池。</li>
+        <li>转单固化 B 快照时写入：最终路由目标 + 生效 SLA 来源（客户专属或场景默认）+ 各节点时限。</li>
+        <li>原型：<a href="SLA数据维护-MVP.html">场景配置</a> · <a href="编辑角色-岗位与数据权限-MVP.html">编辑角色</a> · <a href="工单模块-需求PRD.html#m3-route-sla">PRD §3.8</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const OUTCOMES = {
+      vip: {
+        route: "专属客服·王敏（客户专属命中，停止向下）",
+        sla: "客户承诺 SLA：首响 1h · 闭环 12h · 受理节点 1h · 验收 2h（覆盖场景默认）",
+        level: "ok"
+      },
+      group: {
+        route: "大客户客服池（客户分组命中）→ 池内认领为实际执行人",
+        sla: "客户分组 SLA：首响 2h · 闭环 24h · 验收 4h；节点 SLA 仍读场景（如上传照片 24h）",
+        level: "ok"
+      },
+      peer: {
+        route: "港后客服池-LA（场景+口岸命中）→ 默认岗位池 after → 认领执行人",
+        sla: "无客户专属 → 使用场景内部考核 SLA + 节点/验收 SLA",
+        level: "warn"
+      },
+      normal: {
+        route: "场景责任池（默认岗位池）→ 实际执行人",
+        sla: "无客户专属 → 场景默认 SLA；验收 SLA 挂「待客服验收」",
+        level: "warn"
+      }
+    };
+    const SCENE_HINT = {
+      label: "场景 SC-GH-012 换标·港后",
+      photo: "场景 SC-GH-013 仓内拍照（待客服验收必经）",
+      addr: "场景 SC-GH-001 私卡改地址"
+    };
+    function runSim() {
+      const cust = document.getElementById("simCust").value;
+      const scene = document.getElementById("simScene").value;
+      const o = OUTCOMES[cust];
+      const el = document.getElementById("simOut");
+      el.hidden = false;
+      el.className = "result" + (o.level === "warn" ? " warn" : "");
+      el.innerHTML = "<strong>场景：</strong>" + SCENE_HINT[scene] + "<br/><strong>路由：</strong>" + o.route + "<br/><strong>SLA：</strong>" + o.sla;
+    }
+    document.getElementById("btnSim").addEventListener("click", runSim);
+  </script>
+  <link rel="stylesheet" href="wo-prototype-nav.css" />
+  <script src="wo-prototype-nav.js?v=20260915d" defer></script>
+  <script src="../../ess-branch-back.js?v=20260915" defer></script>
+  <link rel="stylesheet" href="../../../二期/ess-prototype-prd.css" />
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="工单模块-需求PRD.html#m3-route-sla">
+    <span class="ess-prd-chip">PRD · 客户优先路由/SLA</span>
+  </div>
+  <script src="../../../二期/ess-prototype-prd.js"></script>
+</body>
+</html>

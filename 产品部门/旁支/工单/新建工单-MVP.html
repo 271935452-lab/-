@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>新建工单（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --blue-bg: #eff6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .page { max-width: 900px; margin: 0 auto; padding: 20px 16px 80px; }
+    .crumb { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+    .crumb a { color: var(--primary); text-decoration: none; }
+    .top { margin-bottom: 16px; }
+    .top h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+    .meta { font-size: 13px; color: var(--sub); margin: 0; line-height: 1.55; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .sec-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 14px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+      background: var(--blue-bg);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 20px;
+    }
+    @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+    .field-full { grid-column: 1 / -1; }
+    .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .field textarea { min-height: 100px; resize: vertical; }
+    .hint { font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.5; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .check-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      margin-top: 8px;
+    }
+    .entry-mode-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 20px;
+      min-height: 32px;
+    }
+    .entry-mode-opt {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .entry-mode-opt input { width: 16px; height: 16px; accent-color: var(--primary); margin: 0; }
+    .check-line input { margin-top: 3px; }
+    .scene-hint {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      font-size: 12px;
+      color: #92400e;
+      line-height: 1.6;
+      display: none;
+    }
+    .scene-hint.show { display: block; }
+    .fee-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+      display: none; align-items: center; justify-content: center; z-index: 80; padding: 16px;
+    }
+    .fee-backdrop.show { display: flex; }
+    .fee-modal {
+      background: #fff; border-radius: 12px; width: min(560px, 100%);
+      border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(15,23,42,.18);
+      max-height: 90vh; overflow: auto;
+    }
+    .fee-modal-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid var(--line);
+    }
+    .fee-modal-hd h2 { margin: 0; font-size: 16px; }
+    .fee-modal-bd { padding: 14px 16px 8px; }
+    .fee-modal-ft {
+      display: flex; gap: 8px; justify-content: flex-end;
+      padding: 12px 16px 16px; border-top: 1px solid var(--line);
+    }
+    .fee-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .fee-table th, .fee-table td {
+      border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: middle;
+    }
+    .fee-table th { background: #f8fafc; font-size: 12px; color: #64748b; }
+    .fee-table input[type="number"] {
+      width: 88px; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font-size: 13px;
+    }
+    .fee-total {
+      margin: 12px 0 4px; padding: 10px 12px; border-radius: 8px;
+      background: #eff6ff; border: 1px solid #bfdbfe; font-size: 14px;
+    }
+    .fee-total strong { color: #1d4ed8; font-size: 18px; }
+    .fee-readonly {
+      display: inline-block; padding: 6px 10px; border-radius: 8px;
+      background: #f8fafc; border: 1px solid var(--line); font-size: 13px; min-width: 120px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="crumb"><a href="原型导航-工单模块.html">工单模块</a> / <a href="工单提交-入口-MVP.html">工单提交</a> / <a href="工单工作台-MVP.html">工作台</a> / 新建</div>
+    <div class="top">
+      <h1>新建统一工单</h1>
+      <p class="meta"><span class="tag" style="background:#eef2ff;color:#3730a3;padding:2px 7px;border-radius:999px;font-size:11px">BR-ENTRY-001</span> <strong>提交即建母+指令</strong>：命中场景与状态模板后按首节点派岗。点击提交<strong>先弹费用确认</strong>（BR-FEE-002），确认后才发起。资料不全请「保存草稿」（仅本页）。<span class="tag" style="background:#ecfdf5;color:#047857;padding:2px 7px;border-radius:999px;font-size:11px;margin-left:4px">BR-STAGE-001</span> 环节由运单状态自动判定。</p>
+      <div id="sourceBanner" class="scene-hint" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">基础信息</div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label for="title">工单标题 <span style="color:#dc2626">*</span></label>
+          <input id="title" placeholder="例：EMSU1234567 拦截+换标+预报海外仓" />
+        </div>
+        <div class="field">
+          <label for="ref">关联编号（根运单） <span style="color:#dc2626">*</span></label>
+          <input id="ref" placeholder="柜号 / 根运单号 / FBA 货件号 / 主单号" />
+          <div class="hint">填入或从业务页带入后，系统读取运单当前状态自动判定环节。</div>
+        </div>
+        <div class="field">
+          <label for="subWb">子单号 <span id="subWbReq" style="color:#dc2626;display:none">*</span></label>
+          <input id="subWb" placeholder="快递子单 / 货件分票号；重出必填" />
+          <div class="hint" id="subWbHint">重出按<strong>子单</strong>发起（BR-WO-017），不可只填根运单整票重出。</div>
+        </div>
+        <div class="field">
+          <label for="wbStatus">运单当前状态</label>
+          <input id="wbStatus" readonly placeholder="关联运单后自动带出" style="background:#f8fafc;color:#64748b" />
+        </div>
+        <div class="field">
+          <label for="stage">环节（自动）</label>
+          <input id="stage" readonly value="" placeholder="待关联运单后自动判定" style="background:#ecfdf5;color:#047857;font-weight:600" />
+          <div class="hint" id="stageHint">BR-STAGE-001：装柜完成前→装柜完成前；拆柜前→港前；拆柜后→港后。不选手选。</div>
+        </div>
+        <div class="field">
+          <label for="scene">业务场景 <span style="color:#dc2626">*</span></label>
+          <select id="scene">
+            <option value="">请先关联运单以加载场景</option>
+          </select>
+          <div id="sceneHint" class="scene-hint"></div>
+        </div>
+        <div class="field">
+          <label for="parentWo">关联工单</label>
+          <input id="parentWo" list="relatedWoList" placeholder="关联母工单 / 其他在办工单 WO、OP 号" />
+          <datalist id="relatedWoList">
+            <option value="WO-202605-INT"></option>
+            <option value="WO-202605-LABEL"></option>
+            <option value="WO-202605-001"></option>
+          </datalist>
+          <div class="hint">重出/后续指令建议挂母工单；有在办母工单时禁止另开平行主单。</div>
+        </div>
+        <div class="field">
+          <label for="newWb">重出新单号（子单）</label>
+          <input id="newWb" placeholder="腾信按该子单重出后回填；挂母工单根对象条" />
+          <div class="hint">原子单号 + 新单号 + 生效时间；多子单分别回填。</div>
+        </div>
+        <div class="field">
+          <label for="cust">所属客户 / 项目</label>
+          <input id="cust" placeholder="自动带出；允许搜索选择" />
+        </div>
+        <div class="field">
+          <label>费用确认状态</label>
+          <div class="fee-readonly" id="feeStatusLabel">待提交时按配置确认</div>
+          <input type="hidden" id="feeStatus" value="pending" />
+          <div class="hint">提交时<strong>一律先弹费用确认</strong>；有费用配置可改计费量后确认=已确认，无配置确认后记「无费用已确认」。</div>
+        </div>
+        <div class="field">
+          <label for="externalNo">海外仓任务号</label>
+          <input id="externalNo" placeholder="美库/仓任务号；无则留空，推送或回传后系统写入" />
+          <div class="hint">对应海外仓执行单号（如 MK-xxx）；与本系统工单号分开存储。</div>
+        </div>
+        <div class="field field-full">
+          <label for="instruction">操作指令 <span style="color:#dc2626">*</span></label>
+          <textarea id="instruction" placeholder="例：暂停派送；核实实收数量；将新地址通知承运商；换标后上传照片。"></textarea>
+          <div class="hint">指令与问题描述分开保存，便于海外仓/客服执行、回传和审计。</div>
+        </div>
+        <div class="field field-full">
+          <label for="body">问题描述 / 指令说明 <span style="color:#dc2626">*</span></label>
+          <textarea id="body" placeholder="说明诉求、截止时间、已联系客服情况"></textarea>
+          <div class="hint">未上架类：请说明已收集的客户未上架截图、ASIN、到仓时间等，便于一次性转亚马逊客服与海外仓。</div>
+        </div>
+        <div class="field field-full">
+          <label for="files">附件</label>
+          <input id="files" type="file" multiple />
+          <div class="hint">支持截图、标签样例、拆柜照片、客户邮件等。</div>
+        </div>
+        <div id="labelSceneBlock" class="field-full" style="display:none;border:1px solid #c4b5fd;background:#f5f3ff;border-radius:10px;padding:14px;margin-top:4px">
+          <div class="sec-title" style="margin:0 0 10px;color:#5b21b6">换标场景字段 · SC-GQ-011</div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="newLabelFile">新标签 <span style="color:#dc2626">*</span></label>
+              <input id="newLabelFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.zip" />
+              <div class="hint">港前换标：新标签必传，未传不可提交执行。</div>
+            </div>
+            <div class="field">
+              <label for="labelOpsNote">操作说明</label>
+              <input id="labelOpsNote" placeholder="换标范围、时限、特殊要求" />
+            </div>
+            <div class="field">
+              <label for="moveTypeTarget">执行动作 · Move Type</label>
+              <select id="moveTypeTarget" disabled>
+                <option selected>留仓（提交执行时自动写入）</option>
+              </select>
+              <div class="hint">由场景规则配置，客服不可改。</div>
+            </div>
+            <div class="field">
+              <label for="cabNoteTpl">执行动作 · 柜子备注</label>
+              <input id="cabNoteTpl" value="港前换标：按新标签换贴，完成后回传照片" />
+            </div>
+            <div class="field">
+              <label for="wbAddrNew">回写预填 · 修改地址</label>
+              <input id="wbAddrNew" placeholder="无变更可空；有变更填新地址" />
+            </div>
+            <div class="field">
+              <label for="wbChannelNew">回写预填 · 修改渠道</label>
+              <input id="wbChannelNew" placeholder="无变更可空；原渠道默认保留" />
+            </div>
+            <div class="field field-full">
+              <div class="hint" style="margin:0">关联审批流 <strong>AF-LABEL-PRE</strong>（换标港前标准流）· 挂靠处理中 · 费用确认=必须 · 外部执行=需要（API 自动推 / 无 API 待人工发送）。</div>
+            </div>
+          </div>
+        </div>
+        <div class="field-full">
+          <div class="check-line">
+            <input type="checkbox" id="notifyWh" />
+            <label for="notifyWh" style="margin:0;font-size:13px;color:var(--text);cursor:pointer;">
+              <strong>货已接回 / 改发货渠道</strong>：同步通知（系统消息 + 可选消息机器人）
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" id="btnDraft">保存草稿</button>
+        <button type="button" class="btn btn-primary" id="btnSubmit">提交并派给执行岗</button>
+        <a class="btn" href="工单工作台-MVP.html" style="text-decoration:none;display:inline-block;line-height:1.2">取消</a>
+        <a class="btn" href="工单工作台-MVP.html" style="text-decoration:none;display:inline-block;line-height:1.2">返回工作台</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="fee-backdrop" id="feeModal" aria-hidden="true">
+    <div class="fee-modal" role="dialog" aria-labelledby="feeModalTitle">
+      <div class="fee-modal-hd">
+        <h2 id="feeModalTitle">确认费用后发起</h2>
+        <button type="button" class="btn" id="feeModalClose" style="padding:4px 10px">关闭</button>
+      </div>
+      <div class="fee-modal-bd">
+        <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.55" id="feeModalScene">—</p>
+        <table class="fee-table">
+          <thead>
+            <tr>
+              <th>费用项</th>
+              <th>计费方式</th>
+              <th>单价</th>
+              <th>计费量</th>
+              <th>小计</th>
+            </tr>
+          </thead>
+          <tbody id="feeModalBody"></tbody>
+        </table>
+        <div class="fee-total">预估合计（多项相加）：<strong id="feeModalTotal">$0.00</strong> <span id="feeModalCurrency">USD</span></div>
+        <p class="hint" style="margin:0">来源：工单配置 · 费用配置。确认后写入应收预估快照；实际费用仍可按仓回传/模板待费用审核节点处理。</p>
+      </div>
+      <div class="fee-modal-ft">
+        <button type="button" class="btn" id="feeModalCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="feeModalConfirm">确认费用并发起</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const hintEl = document.getElementById("sceneHint");
+    const sceneHints = {
+      "港前·拆柜前找付雪": "业务员先在企业微信同步付雪，付雪在系统里接收或驳回；通过后再进入拦截、换标、共享表与海外仓预报流程。",
+      "港前·柜子计划拦截换标": "对应柜子计划场景，需记录拦截原因、换标要求、共享表更新人和海外仓预报结果。",
+      "港前·拆柜报告异常": "收到海外仓拆柜报告后 24h 内反馈少件/破损；可生成月度异常分析视图（原型后续）。",
+      "港后·私卡改地址": "私卡客服接单后确认地址、线路与客户诉求；如需转派再分流到后续客服。",
+      "港后·私卡预约联系不上": "私卡客服发起反向工单至港后客服池，由客服回电客户或销售协同。",
+      "港后·私卡改尾端方式": "若涉及入仓后改渠道，勾选「同步通知」避免库存与出仓指令冲突。",
+      "港后·FBA改仓": "FBA 客服处理改仓、改发货渠道或仓内指令；涉及出仓可勾选同步通知。",
+      "港后·FBA改原单费用": "原单费用调整需记录原因、原单号、差异金额与复核人；提交后流转财务确认。",
+      "港后·FBA尾端派送": "FBA 客服调整尾端派送方式时，需要明确新渠道、时效与回执要求。",
+      "港后·自提单卡派转自提": "自提客服处理单卡派转自提，系统留痕转派人与接单人。",
+      "港后·自提到仓提货": "自提客服确认到仓提货信息与回执，必要时同步客户补充资料。",
+      "尾端·未上架索赔": "流程：业务提交客户未上架截图与资料 → 亚马逊客服接收 → 线下找海外仓 → 3 日内海外仓反馈 → 核实 → 索赔 → 财务结案。",
+      "异常件·媒体区断更": "接收后 12h 内开查并记录官网反馈时间；系统按周提醒跟进，第 6 天未闭环则标红待跟进，业务员或刘奎林可发起。",
+      "异常件·预约联系不上": "海外仓预约货联系人联系不上时，私卡客服发起反向工单并持续追踪回电结果。",
+      "费用结案·改原单费用": "原单费用调整需记录原单号、差异金额、原因与复核人，完成财务确认后再结案。",
+      "重出": "自动匹配工单流程名「重出」（精确匹配，匹配不到报错）。按<strong>子单</strong>重出；确认费用后腾信新单号挂母工单。",
+      "快递拦截·港前": "港前拦截：费用确认 → 跟踪备注 → 美库改计划 → 结果回传；改令升版本。",
+      "快递拦截·港后": "港后拦截：提交时按费用配置弹确认；确认后建单并派岗。",
+      "拦截·港前": "港前拦截：提交弹费用确认 → 跟踪备注 → 美库改计划 → 结果回传；改令升版本。",
+      "拦截·提柜后": "提柜后拦截：提交时按费用配置弹确认；确认后建单。",
+      "换标·港前": "SC-GQ-011：提交自动弹换标操作费+标签费；确认后建母+指令并派岗；新标签必传。",
+      "换标·港后": "港后换标：提交弹费用确认后建单；须海外仓确认可操作；回写标签版本与执行结果。",
+      "少件核实": "海外仓回传实收/差异/凭证后，业务确认再回写少件标记。",
+      "装柜完成前·订舱协同": "装柜完成前：订舱/装柜计划协同；环节由「装柜完成前」节点自动带出。",
+    };
+
+    /** 演示：关联编号 → 运单/柜子当前节点（实装读主数据） */
+    const DEMO_WB_STATUS = {
+      "EMSU-LOAD-01": "待装柜",
+      "EMSU-LOAD-02": "装柜中",
+      "EMSU-PRE-01": "拆柜前",
+      "EMSU-PRE-02": "在途",
+      "EMSU-POST-01": "拆柜后",
+      "EMSU-POST-02": "到仓",
+      "EMSU-TAIL-01": "拆柜后",
+      "EMSU1234567": "拆柜前",
+      "TRACK-POST": "拆柜后",
+      "TRACK-TAIL": "拆柜后",
+    };
+
+    /**
+     * BR-STAGE-001（已确认）：
+     * 装柜完成前 → 环节「装柜完成前」
+     * 拆柜前 → 环节「港前」
+     * 拆柜后 → 环节「港后」
+     */
+    function mapStatusToStage(status) {
+      var s = String(status || "");
+      // 拆柜后 → 港后（含未上架索赔等场景）
+      if (/拆柜后|已拆柜|到仓|仓内|出库|已签收|未上架|索赔|港后|尾端/.test(s)) return "港后";
+      // 拆柜前 → 港前（已装柜完成至拆柜前）
+      if (/拆柜前|已装柜|装柜完成(?!前)|已开船|在途|到港|待提柜|已提柜|港前/.test(s)) return "港前";
+      // 装柜完成前 → 装柜完成前
+      if (/订舱|待装柜|装柜中|装柜完成前|装柜前/.test(s)) return "装柜完成前";
+      return "";
+    }
+
+    const SCENES_BY_STAGE = {
+      "装柜完成前": [
+        ["装柜完成前·订舱协同", "装柜完成前：订舱 / 装柜计划协同"],
+      ],
+      "港前": [
+        ["港前·拆柜前找付雪", "港前：拆柜前找付雪"],
+        ["港前·柜子计划拦截换标", "港前：柜子计划 / 拦截 / 换标 / 共享表 / 预报"],
+        ["港前·拆柜报告异常", "港前：拆柜报告异常"],
+        ["快递拦截·港前", "快递拦截 · 港前"],
+        ["换标·港前", "换标 · 港前（SC-GQ-011）"],
+        ["少件核实", "少件核实"],
+      ],
+      "港后": [
+        ["港后·私卡改地址", "港后私卡：改地址 / 改收件信息"],
+        ["港后·私卡预约联系不上", "港后私卡：预约联系不上 / 反向工单"],
+        ["港后·私卡改尾端方式", "港后私卡：改尾端派送方式"],
+        ["港后·FBA改仓", "港后FBA：改仓 / 改发货渠道"],
+        ["港后·FBA改原单费用", "港后FBA：改原单费用"],
+        ["港后·FBA尾端派送", "港后FBA：尾端派送方式调整"],
+        ["港后·自提单卡派转自提", "港后自提：单卡派转自提"],
+        ["港后·自提到仓提货", "港后自提：到仓提货 / 回执确认"],
+        ["重出", "重出"],
+        ["快递拦截·港后", "快递拦截 · 港后"],
+        ["换标·港后", "换标 · 港后"],
+        ["少件核实", "少件核实"],
+        ["尾端·未上架索赔", "尾端：未上架索赔"],
+        ["异常件·媒体区断更", "异常件：业务媒体区断更"],
+        ["费用结案·改原单费用", "费用结案：改原单费用"],
+        ["异常件·预约联系不上", "异常件：海外仓预约货联系不上"],
+      ],
+    };
+
+    function fillSceneOptions(stage, preferredScene) {
+      var sel = document.getElementById("scene");
+      var list = SCENES_BY_STAGE[stage] || [];
+      sel.innerHTML = "";
+      if (!stage || !list.length) {
+        var empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = stage ? "当前环节暂无场景" : "请先关联运单以加载场景";
+        sel.appendChild(empty);
+        updateHint();
+        return;
+      }
+      var ph = document.createElement("option");
+      ph.value = "";
+      ph.textContent = "请选择业务场景（已按环节「" + stage + "」过滤）";
+      sel.appendChild(ph);
+      list.forEach(function (row) {
+        var opt = document.createElement("option");
+        opt.value = row[0];
+        opt.textContent = row[1];
+        sel.appendChild(opt);
+      });
+      if (preferredScene) {
+        var hit = list.some(function (row) { return row[0] === preferredScene; });
+        if (hit) sel.value = preferredScene;
+        else {
+          var extra = document.createElement("option");
+          extra.value = preferredScene;
+          extra.textContent = preferredScene + "（来自入口，请确认是否匹配当前环节）";
+          sel.appendChild(extra);
+          sel.value = preferredScene;
+        }
+      }
+      updateHint();
+    }
+
+    function applyWaybillStage(refVal, preferredScene, forcedStatus) {
+      var ref = (refVal || "").trim();
+      var statusEl = document.getElementById("wbStatus");
+      var stageEl = document.getElementById("stage");
+      var hint = document.getElementById("stageHint");
+      var status = forcedStatus || "";
+      if (!status && ref) {
+        status = DEMO_WB_STATUS[ref] || "";
+        if (!status) {
+          // 演示兜底：按号尾启发式，避免空关联无法演示
+          if (/LOAD|装柜/i.test(ref)) status = "待装柜";
+          else if (/TAIL|CLAIM|未上架/i.test(ref)) status = "未上架";
+          else if (/POST|GH|港后/i.test(ref)) status = "到仓";
+          else status = "拆柜前";
+        }
+      }
+      statusEl.value = status || "";
+      var stage = mapStatusToStage(status);
+      stageEl.value = stage || "";
+      if (hint) {
+        hint.textContent = stage
+          ? ("BR-STAGE-001：运单状态「" + status + "」→ 环节「" + stage + "」；场景已按环节过滤，业务不选手选环节。")
+          : "BR-STAGE-001：请先填写关联运单号，系统将读取运单当前状态自动判定环节。";
+      }
+      fillSceneOptions(stage, preferredScene || "");
+      return stage;
+    }
+
+    function updateHint() {
+      const v = document.getElementById("scene").value;
+      const t = sceneHints[v];
+      if (t) {
+        hintEl.textContent = t;
+        hintEl.classList.add("show");
+      } else {
+        hintEl.classList.remove("show");
+      }
+      var isLabel = v === "换标·港前" || v === "换标·港后";
+      document.getElementById("labelSceneBlock").style.display = isLabel ? "block" : "none";
+      setFeeStatusUi("pending");
+      syncReissueUi();
+    }
+
+    /** 演示：工单配置是否存在名为「重出」的已启用流程。URL ?noReissueFlow=1 可模拟匹配失败 */
+    var DEMO_REISSUE_FLOW_ENABLED = new URLSearchParams(window.location.search).get("noReissueFlow") !== "1";
+
+    function matchReissueFlow() {
+      if (!DEMO_REISSUE_FLOW_ENABLED) {
+        return { ok: false, msg: "未匹配到名为「重出」的工单流程，请先在工单配置中启用场景「重出」。" };
+      }
+      return { ok: true, name: "重出", code: "SC-GH-010" };
+    }
+
+    function syncReissueUi() {
+      var isReissue = document.getElementById("scene").value === "重出";
+      var req = document.getElementById("subWbReq");
+      if (req) req.style.display = isReissue ? "" : "none";
+      var hint = document.getElementById("subWbHint");
+      if (hint) {
+        hint.innerHTML = isReissue
+          ? "BR-WO-017：按<strong>子单</strong>重出必填；系统精确匹配流程名「重出」。"
+          : "重出场景下必填子单号；其它场景可选。";
+      }
+      var banner = document.getElementById("sourceBanner");
+      if (isReissue && banner) {
+        var m = matchReissueFlow();
+        banner.style.display = "block";
+        banner.classList.add("show");
+        banner.style.background = m.ok ? "#ecfdf5" : "#fef2f2";
+        banner.style.borderColor = m.ok ? "#99f6e4" : "#fecaca";
+        banner.style.color = m.ok ? "#0f766e" : "#b91c1c";
+        banner.textContent = m.ok
+          ? "已匹配工单流程「重出」（" + m.code + "）。请填写子单号；新单号按子单回填挂母工单。"
+          : m.msg;
+      }
+    }
+    document.getElementById("scene").addEventListener("change", updateHint);
+    document.getElementById("ref").addEventListener("change", function () {
+      applyWaybillStage(this.value, document.getElementById("scene").value || "");
+    });
+    document.getElementById("ref").addEventListener("blur", function () {
+      applyWaybillStage(this.value, document.getElementById("scene").value || "");
+    });
+
+    /** 场景 → 费用配置（与工单配置中心费用项演示一致） */
+    var FEE_CHARGE_LABEL = { piece: "按件", ticket: "按票", chargeable_weight: "按计费重" };
+    var FEE_BY_SCENE = {
+      "换标·港前": [
+        { name: "换标操作费", chargeType: "piece", unitPrice: 1.5, currency: "USD", qty: 10 },
+        { name: "标签费", chargeType: "ticket", unitPrice: 8, currency: "USD", qty: 1 },
+      ],
+      "换标·港后": [
+        { name: "换标操作费", chargeType: "piece", unitPrice: 1.5, currency: "USD", qty: 10 },
+        { name: "标签费", chargeType: "ticket", unitPrice: 8, currency: "USD", qty: 1 },
+      ],
+      "快递拦截·港前": [{ name: "拦截操作费", chargeType: "ticket", unitPrice: 12, currency: "USD", qty: 1 }],
+      "快递拦截·港后": [{ name: "拦截操作费", chargeType: "ticket", unitPrice: 12, currency: "USD", qty: 1 }],
+      "拦截·港前": [{ name: "拦截操作费", chargeType: "ticket", unitPrice: 12, currency: "USD", qty: 1 }],
+      "重出": [
+        { name: "重出操作费", chargeType: "ticket", unitPrice: 15, currency: "USD", qty: 1 },
+        { name: "面单费", chargeType: "piece", unitPrice: 0.8, currency: "USD", qty: 5 },
+      ],
+      "港后·私卡改地址": [{ name: "改址费", chargeType: "ticket", unitPrice: 10, currency: "USD", qty: 1 }],
+      "港后·FBA改原单费用": [{ name: "原单费用差异", chargeType: "ticket", unitPrice: 0, currency: "USD", qty: 1 }],
+      "费用结案·改原单费用": [{ name: "原单费用差异", chargeType: "ticket", unitPrice: 0, currency: "USD", qty: 1 }],
+    };
+
+    function setFeeStatusUi(code) {
+      var el = document.getElementById("feeStatus");
+      var label = document.getElementById("feeStatusLabel");
+      if (el) el.value = code;
+      if (!label) return;
+      if (code === "ok") label.textContent = "已确认";
+      else if (code === "no") label.textContent = "无费用已确认";
+      else label.textContent = "待提交时按配置确认";
+    }
+
+    function getFeeConfig(scene) {
+      var items = FEE_BY_SCENE[scene];
+      return items && items.length ? items.map(function (x) { return Object.assign({}, x); }) : null;
+    }
+
+    function money(n) {
+      return (Math.round(n * 100) / 100).toFixed(2);
+    }
+
+    function recalcFeeModal() {
+      var rows = document.querySelectorAll("#feeModalBody tr");
+      var total = 0;
+      var currency = "USD";
+      rows.forEach(function (tr) {
+        var price = parseFloat(tr.getAttribute("data-price") || "0") || 0;
+        var qtyInput = tr.querySelector("input[data-qty]");
+        var qty = qtyInput ? parseFloat(qtyInput.value || "0") || 0 : 0;
+        var sub = price * qty;
+        total += sub;
+        currency = tr.getAttribute("data-currency") || currency;
+        var subEl = tr.querySelector("[data-sub]");
+        if (subEl) subEl.textContent = "$" + money(sub);
+      });
+      document.getElementById("feeModalTotal").textContent = "$" + money(total);
+      document.getElementById("feeModalCurrency").textContent = currency;
+      return { total: total, currency: currency };
+    }
+
+    function openFeeModal(scene, items) {
+      var modal = document.getElementById("feeModal");
+      var body = document.getElementById("feeModalBody");
+      var list = items && items.length ? items : null;
+      modal.setAttribute("data-has-fee", list ? "1" : "0");
+      if (!list) {
+        document.getElementById("feeModalScene").textContent =
+          "场景：" + scene + " · 当前场景未配置费用项，确认后按「无费用已确认」发起。";
+        body.innerHTML =
+          "<tr><td colspan=\"5\" style=\"text-align:center;color:#64748b;padding:18px 8px\">无应收费用项（工单配置为空）</td></tr>";
+        document.getElementById("feeModalTotal").textContent = "$0.00";
+        document.getElementById("feeModalCurrency").textContent = "USD";
+      } else {
+        document.getElementById("feeModalScene").textContent =
+          "场景：" + scene + " · 费用项来自工单配置，可调整计费量后确认发起。";
+        body.innerHTML = list
+          .map(function (it, i) {
+            var ct = FEE_CHARGE_LABEL[it.chargeType] || it.chargeType;
+            return (
+              "<tr data-price=\"" +
+              it.unitPrice +
+              "\" data-currency=\"" +
+              (it.currency || "USD") +
+              "\">" +
+              "<td>" +
+              it.name +
+              "</td>" +
+              "<td>" +
+              ct +
+              "</td>" +
+              "<td>$" +
+              money(it.unitPrice) +
+              "</td>" +
+              "<td><input type=\"number\" min=\"0\" step=\"1\" value=\"" +
+              (it.qty != null ? it.qty : 1) +
+              "\" data-qty=\"" +
+              i +
+              "\" /></td>" +
+              "<td data-sub>$0.00</td>" +
+              "</tr>"
+            );
+          })
+          .join("");
+        body.querySelectorAll("input[data-qty]").forEach(function (inp) {
+          inp.addEventListener("input", recalcFeeModal);
+          inp.addEventListener("change", recalcFeeModal);
+        });
+        recalcFeeModal();
+      }
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeFeeModal() {
+      var modal = document.getElementById("feeModal");
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function createWorkOrder(feeCode, feeSnapshot) {
+      var scene = document.getElementById("scene").value;
+      var stage = document.getElementById("stage").value;
+      var related = (document.getElementById("parentWo").value || "").trim() || "—";
+      var whTask = (document.getElementById("externalNo").value || "").trim() || "—";
+      var wbStatus = document.getElementById("wbStatus").value || "—";
+      setFeeStatusUi(feeCode);
+      var feeLine =
+        feeCode === "ok"
+          ? "费用已确认 · 预估合计 " +
+            (feeSnapshot ? feeSnapshot.currency + " $" + money(feeSnapshot.total) : "") +
+            "（应收预估快照已写入）"
+          : "费用状态：无费用已确认";
+      var msg =
+        "已创建母工单 + 指令工单（BR-ENTRY-001 / BR-FEE-002）。\n工单号：WO-202609-DEMO · 首节点=待受理\n" +
+        "运单状态：" +
+        wbStatus +
+        " → 环节：" +
+        stage +
+        "（BR-STAGE-001 自动）\n场景：" +
+        scene +
+        "\n" +
+        "已按状态模板首节点派岗（客户优先路由）\n" +
+        "关联工单：" +
+        related +
+        "\n海外仓任务号：" +
+        whTask +
+        "\n" +
+        feeLine;
+      if (scene === "重出") {
+        var sub = (document.getElementById("subWb").value || "").trim();
+        var newNo = (document.getElementById("newWb").value || "").trim() || "（待腾信回填）";
+        var flow = matchReissueFlow();
+        msg +=
+          "\n【重出 BR-WO-017】已匹配流程「" +
+          flow.name +
+          "」· 子单 " +
+          sub +
+          " · 新单号 " +
+          newNo +
+          "（按子单挂母）";
+      }
+      if (scene.indexOf("换标") >= 0) {
+        msg +=
+          "\n执行动作：Move Type→留仓；柜子备注=" +
+          (document.getElementById("cabNoteTpl").value || "换标要求");
+      }
+      if (confirm(msg + "\n\n是否打开换标详情演示？")) {
+        location.href = "工单详情-MVP.html?node=" + encodeURIComponent("待受理") + "#WO-202605-LABEL";
+        return;
+      }
+      if (confirm(msg + "\n\n是否打开履约工作台「我的待办」？")) {
+        location.href = "工单工作台-MVP.html";
+      }
+    }
+
+    document.getElementById("btnDraft").addEventListener("click", function () {
+      alert("已保存草稿（演示）。草稿仅保留在本发起页，不进入履约工作台；不弹费用。");
+    });
+    document.getElementById("btnSubmit").addEventListener("click", function () {
+      var ref = (document.getElementById("ref").value || "").trim();
+      var stage = (document.getElementById("stage").value || "").trim();
+      if (!ref) {
+        alert("请先填写关联运单/根编号，系统才能按运单状态判定环节。");
+        return;
+      }
+      if (!stage) {
+        alert("未能根据运单状态判定环节，请确认运单号是否有效。");
+        return;
+      }
+      var scene = document.getElementById("scene").value;
+      if (!scene) {
+        alert("请选择业务场景（已按当前环节过滤）。");
+        return;
+      }
+      if (scene === "重出") {
+        var m = matchReissueFlow();
+        if (!m.ok) {
+          alert(m.msg);
+          return;
+        }
+        var sub = (document.getElementById("subWb").value || "").trim();
+        if (!sub) {
+          alert("重出须按子单发起：请填写快递子单号（不可只填根运单整票重出）。");
+          document.getElementById("subWb").focus();
+          return;
+        }
+      }
+      if (scene === "换标·港前" && !document.getElementById("newLabelFile").files.length) {
+        alert("换标·港前：新标签必传，请先上传。");
+        return;
+      }
+      var feeItems = getFeeConfig(scene);
+      openFeeModal(scene, feeItems);
+    });
+    document.getElementById("feeModalCancel").addEventListener("click", closeFeeModal);
+    document.getElementById("feeModalClose").addEventListener("click", closeFeeModal);
+    document.getElementById("feeModal").addEventListener("click", function (e) {
+      if (e.target === this) closeFeeModal();
+    });
+    document.getElementById("feeModalConfirm").addEventListener("click", function () {
+      var modal = document.getElementById("feeModal");
+      var hasFee = modal.getAttribute("data-has-fee") === "1";
+      var snap = hasFee ? recalcFeeModal() : null;
+      closeFeeModal();
+      createWorkOrder(hasFee ? "ok" : "no", snap);
+    });
+
+    (function applyQueryPrefill() {
+      var params = new URLSearchParams(window.location.search);
+      var scene = params.get("scene");
+      var source = params.get("source");
+      var wb = params.get("wb");
+      var track = params.get("track");
+      var gw = params.get("gw");
+      var fee = params.get("fee");
+      var ref = params.get("ref");
+      var parentWo = params.get("parentWo") || params.get("relatedWo");
+      var newWb = params.get("newWb");
+      var subWb = params.get("subWb") || params.get("sub") || params.get("childWb");
+      var plan2 = params.get("plan2");
+      var whTask = params.get("whTask") || params.get("externalNo");
+      var wbStatusQ = params.get("wbStatus") || params.get("status");
+      var banner = document.getElementById("sourceBanner");
+      if (plan2 === "f10" && !scene) scene = "重出";
+      if (source === "follow" || source === "express" || source === "gw") {
+        banner.style.display = "block";
+        banner.classList.add("show");
+        banner.textContent =
+          "业务页带入预填 · 环节由运单状态自动判定（BR-STAGE-001）。现网海外跟进/改派 GW 已下线，请在履约工作台继续处理。" +
+          (parentWo ? " 已带入母工单 " + parentWo + "。" : "") +
+          (newWb ? " 重出新单 " + newWb + " 将挂该母工单。" : "");
+        if (source === "gw" && !scene) scene = "重出";
+      } else if (plan2 === "f10" || plan2 === "f11" || plan2 === "f12") {
+        banner.style.display = "block";
+        banner.classList.add("show");
+        banner.textContent =
+          "旁支计划二入口 · " +
+          ({ f10: "改快递重出", f11: "快递拦截·港前", f12: "快递拦截·港后" }[plan2] || "") +
+          "。环节以运单状态为准（BR-STAGE-001）；分类入口场景仅作预填捷径。";
+      }
+      if (ref && !wb && !track) document.getElementById("ref").value = ref;
+      else if (gw && !wb && !track && !ref) document.getElementById("ref").value = gw;
+      if (parentWo) document.getElementById("parentWo").value = parentWo;
+      if (newWb) document.getElementById("newWb").value = newWb;
+      if (subWb) document.getElementById("subWb").value = subWb;
+      else if (plan2 === "f10" || scene === "重出") {
+        if (!document.getElementById("subWb").value) document.getElementById("subWb").value = "PKG-SUB-1001";
+      }
+      if (whTask) document.getElementById("externalNo").value = whTask;
+      if (wb) {
+        document.getElementById("ref").value = wb;
+        document.getElementById("title").value = wb + (newWb ? " · 重出挂母工单" : " · 跟进转统一工单");
+      }
+      if (track) {
+        document.getElementById("ref").value = track;
+        if (!document.getElementById("title").value) {
+          document.getElementById("title").value = track + " · " + (scene || "处置");
+        }
+      }
+      if (fee === "pending" || fee === "ok" || fee === "no") {
+        setFeeStatusUi(fee);
+      }
+      var refNow = (document.getElementById("ref").value || "").trim();
+      if (!refNow && (plan2 === "f11" || (scene || "").indexOf("港前") >= 0 || (scene || "").indexOf("换标·港前") >= 0)) {
+        refNow = "EMSU-PRE-01";
+        document.getElementById("ref").value = refNow;
+      } else if (!refNow && ((scene || "").indexOf("装柜完成前") >= 0 || (scene || "").indexOf("装柜前") >= 0)) {
+        refNow = "EMSU-LOAD-01";
+        document.getElementById("ref").value = refNow;
+      } else if (!refNow && (plan2 === "f12" || plan2 === "f10" || plan2 === "f9" || (scene || "").indexOf("港后") >= 0)) {
+        refNow = "EMSU-POST-01";
+        document.getElementById("ref").value = refNow;
+      } else if (!refNow && (scene || "").indexOf("尾端") >= 0) {
+        refNow = "EMSU-TAIL-01";
+        document.getElementById("ref").value = refNow;
+      }
+      applyWaybillStage(refNow, scene || "", wbStatusQ || "");
+      updateHint();
+    })();
+  </script>
+  <link rel="stylesheet" href="wo-prototype-nav.css" />
+  <script src="wo-prototype-nav.js?v=20260915d" defer></script>
+  <script src="../../ess-branch-back.js?v=20260915" defer></script>
+  <link rel="stylesheet" href="../../../二期/ess-prototype-prd.css" />
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="工单模块-需求PRD.html#m4-dual-entry">
+    <span class="ess-prd-chip">PRD · 发起费用确认 · 环节自动</span>
+  </div>
+  <script src="../../../二期/ess-prototype-prd.js"></script>
+</body>
+</html>

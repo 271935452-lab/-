@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工单模块 · 需求 PRD</title>
+  <link rel="stylesheet" href="../../船务/ess-shipping-prd.css" />
+  <style>
+    .hero { background: linear-gradient(135deg, #0f766e, #14b8a6); }
+    .steps { margin: 0; padding-left: 1.35em; }
+    .steps li { margin: 0 0 6px; line-height: 1.65; }
+  </style>
+</head>
+<body>
+  <script>
+    if (window.self !== window.top) document.documentElement.classList.add("ess-prd-embed");
+    (function () {
+      function scrollToHash() {
+        var id = (location.hash || "").replace(/^#/, "");
+        if (!id) return;
+        var el = document.getElementById(id);
+        if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scrollToHash);
+      else scrollToHash();
+      window.addEventListener("hashchange", scrollToHash);
+    })();
+  </script>
+  <script src="../../../二期/prd-embed-scope.js"></script>
+  <div class="page">
+    <section class="hero">
+      <h1>工单模块 · 需求 PRD</h1>
+      <p>
+        2026-09-16。<strong>本期</strong>覆盖：履约工作台唯一中枢、工单配置中心（场景 + 状态流）、提交入口/详情、状态流转与旁支计划二 #9–#12；现网海外跟进 / 改派重出下线。
+        说明均在本文，<strong>原型页不展示 PRD 长文案</strong>（侧栏 PRD 面板可折叠嵌入）。
+        　<a href="原型导航-工单模块.html" style="color:#fff">← 工单模块导航</a>
+        　· <a href="../../产品部门-旁支计划二-PRD.html#f9" style="color:#fff">旁支计划二总册</a>
+        　· <a href="工单系统-旁支计划二-PRD.html" style="color:#fff">计划二分册</a>
+      </p>
+    </section>
+
+    <section class="card" id="m-bg">
+      <h2>背景与痛点 · 我们解决什么问题</h2>
+      <h3>业务背景</h3>
+      <p>工单入口分散在提单、运单、尾单跟踪、海外仓协同和异常页签；业务不知道从哪里发起，主管难以看全量待办。工单发出后与海外仓缺少统一数据联动，处理完成后关联运单、柜、地址、异常标记和费用往往未同步。</p>
+      <h3>核心痛点</h3>
+      <ul>
+        <li><strong>业务需求轻、执行重</strong>：登记台只记事实与跟进，真正要人办、要协同、要回写的事项缺少统一执行中枢。</li>
+        <li><strong>转单不清</strong>：现网宽表场景配置与统一工单执行字段混杂，A（转单前需求）与 B（统一工单执行）边界模糊，映射规则散落。</li>
+        <li><strong>状态与回写口径分散</strong>：失败是否改状态、母工单与指令版本关系、海外仓完成是否等于结案，开发与验收难对齐。</li>
+        <li><strong>配置重复维护</strong>：场景字典、审批流、SLA、回写白名单多处拷贝，一改多处漏。</li>
+      </ul>
+      <h3>本期要解决什么</h3>
+      <ul>
+        <li><span class="tag chg">改</span> <strong>现网「海外跟进」「改派重出(GW)」功能页下线</strong>：跟进 / 重出一律在<strong>履约工作台</strong>（及提交入口→新建）处理，不再保留平行登记口。</li>
+        <li>快递异常事实若仍需字典登记，仅保留<strong>快递异常件</strong>轻量登记；要人办直接进统一工单，不经海外跟进/GW 中转。</li>
+        <li>用<strong>工单配置中心</strong>维护<strong>场景配置</strong>与<strong>状态流模板</strong>（两页互链），替代现网宽表场景配置与可拖拽全流。</li>
+        <li>母工单 + 指令版本承载拦截、换标、重出等后续要求；失败/拒绝/超时<strong>保持当前状态</strong>（C-09）。</li>
+        <li>旁支计划二 #9–#12（非美库 / 改快递重出 / 港前·港后拦截）纳入同一配置与状态骨架；入口收敛为工作台 / 提交入口。</li>
+      </ul>
+    </section>
+
+    <nav class="toc">
+      <a href="#m-bg">背景与痛点</a>
+      <a href="#m0">〇、约定</a>
+      <a href="#m1">一、关联与交接</a>
+      <a href="#m2">二、现网→To-Be</a>
+      <a href="#m3">三、工单配置中心</a>
+      <a href="#m3-boundary">↳ 配置边界</a>
+      <a href="#m3-stateflow">↳ 状态流模板</a>
+      <a href="#m3-fn-catalog">↳ 可执行功能目录</a>
+      <a href="#m3-route-sla">↳ 客户优先路由/SLA</a>
+      <a href="#m3-guide">↳ 作业指引（挂流转）</a>
+      <a href="#m4">四、工作台/详情/入口</a>
+      <a href="#m4-mainflow">↳ 一期主流程</a>
+      <a href="#m4-reissue">↳ 重出·子单匹配</a>
+      <a href="#m4-stage-auto">↳ 环节·运单状态自动判定</a>
+      <a href="#m4-handoff">↳ 交接·催办·升级</a>
+      <a href="#m4-fee">↳ 费用双轨与审核</a>
+      <a href="#m4-stats">↳ 一期基础履约统计</a>
+      <a href="#m5">五、状态流转</a>
+      <a href="#m5-exec-accept">↳ 执行—验收</a>
+      <a href="#m6">六、计划二 #9–#12</a>
+      <a href="#m8">七、正式清单</a>
+      <a href="#m9">八、待定项</a>
+      <a href="SLA数据维护-MVP.html">↳ 场景配置原型</a>
+      <a href="状态流模板配置-MVP.html">↳ 状态流模板原型</a>
+      <a href="分派规则-工单池路由-MVP.html">↳ 分派规则（客户优先）</a>
+      <a href="统一工单-状态流转-PRD.html">↳ 状态流转分册</a>
+      <a href="工单系统-旁支计划二-PRD.html">↳ 计划二分册</a>
+    </nav>
+
+    <section class="card" id="m0">
+      <h2>〇、文档约定（开发 / 测试必读）</h2>
+      <h3>0.1 原型与 PRD 分工</h3>
+      <ul>
+        <li>原型页只展示 UI 与可点交互；业务规则、字段口径、验收要点以<strong>本 PRD</strong>为准。</li>
+        <li>原型顶栏/列表区<strong>不放</strong>长业务说明；开发联调时对照本文 + 对应原型页。</li>
+        <li>原型右下角/侧边「PRD」芯片可展开本文（<code>ess-prototype-prd.js</code> 嵌入，支持 <code>ess-prd-embed</code> iframe）。</li>
+        <li>历史全文见 <a href="旁支1-工单系统方案-PRD.md">旁支1-工单系统方案-PRD.md（附录）</a>；以本 HTML 主册为权威。</li>
+      </ul>
+      <h3>0.2 变更标记</h3>
+      <ul>
+        <li><span class="tag new">NEW</span> 本次新增能力或字段。</li>
+        <li><span class="tag chg">改</span> 相对现网登记台 / 工单的改动。</li>
+        <li><span class="tag pending">待定</span> 仅占位，<strong>不得</strong>作为开发验收口径。</li>
+        <li><span class="tag pending">二期</span> 规划能力，<strong>不在本期</strong>开发/验收范围。</li>
+      </ul>
+      <h3>0.3 侧栏嵌 PRD、原型不堆长文</h3>
+      <p class="note">各 MVP 通过 <code>data-prd-href</code> 指向本主册锚点；旁支计划二场景另保留 <code>?plan2=f9…f12</code> 短卡分册，细则以本主册第六章 + 计划二分册为准。</p>
+    </section>
+
+    <section class="card" id="m1">
+      <h2>一、关联模块与组间交接</h2>
+      <h3>1.1 分层总览</h3>
+      <table>
+        <thead><tr><th>模块</th><th>定位</th><th>与统一工单关系</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag chg">下线</span> 海外跟进登记台</td><td>现网非快递跟进页</td><td><strong>不再使用</strong>；业务从运单等入口直达履约工作台 / 新建统一工单</td></tr>
+          <tr><td>快递异常件登记台</td><td>快递异常事实 / 类型字典（可选保留）</td><td>仅事实登记；要人办转统一工单，不经海外跟进/GW</td></tr>
+          <tr><td><span class="tag chg">下线</span> 海外改派 GW</td><td>现网重出 / 改派规则页</td><td><strong>不再使用</strong>；重出场景在履约工作台 + 统一工单「改快递·需重出」处理</td></tr>
+          <tr><td><strong>统一工单 / 履约工作台</strong></td><td>发起、待办、执行与回写中枢</td><td><span class="tag chg">改</span> 一期唯一履约入口：提交即创建<strong>母工单 + 指令工单</strong>并按状态模板首节点派岗（BR-ENTRY-001）</td></tr>
+          <tr><td>海外仓工单系统</td><td>仓内执行</td><td>母工单 + 指令版本 + 美库执行单（BR-WO-016）</td></tr>
+        </tbody>
+      </table>
+      <h3>1.2 权威文档链</h3>
+      <ul>
+        <li><a href="工单配置与业务流程-泳道图.html">配置与业务流程泳道图</a> — 总览 A→B 与登记→转单→执行。</li>
+        <li><a href="统一工单-状态流转-PRD.html">统一工单 · 状态流转 PRD</a> — 母工单 + 指令版本四类状态。</li>
+        <li><a href="海外仓操作指令流程-系统设计草案.md">海外仓操作指令流程草案</a> — 下发 / 反馈 / 回写边界。</li>
+        <li><a href="SLA数据维护-MVP.html">工单配置中心 · 场景</a> — 列表+配置弹窗（v13）；说明见 PRD §三。</li>
+        <li><a href="状态流模板配置-MVP.html">工单配置中心 · 状态流模板</a> — 可执行功能目录 / 流转行（BR-STS-010）。</li>
+        <li><a href="工单系统-旁支计划二-PRD.html">旁支计划二场景分册</a> — #9–#12 侧栏短卡 + <strong>测：</strong></li>
+      </ul>
+      <h3>1.3 关键业务规则索引</h3>
+      <table>
+        <thead><tr><th>编号</th><th>要点</th></tr></thead>
+        <tbody>
+          <tr><td>BR-ENTRY-001</td><td><span class="tag chg">改</span> 一期提交即创建母工单+指令工单并按状态模板首节点派岗；资料不全只留发起页草稿，<strong>无「待转业务记录」</strong>。有费用配置时先弹费用确认（BR-FEE-002）。见 <a href="#m4-mainflow">§4.0</a> / <a href="#m4-dual-entry">§4.1.0</a>。</td></tr>
+          <tr><td>BR-FEE-002</td><td><span class="tag chg">新</span> 发起时按工单配置费用项自动弹费用确认；确认后才建母+指令；无费用配置跳过。见 <a href="#m4-dual-entry">§4.1.0</a>。</td></tr>
+          <tr><td>BR-STAGE-001</td><td>环节由运单当前状态自动判定：装柜完成前→装柜完成前、拆柜前→港前、拆柜后→港后；业务不选手选。见 <a href="#m4-stage-auto">§4.1.0b</a>。</td></tr>
+          <tr><td>BR-WB-002</td><td>履约工作台页签：我的待办 / 我的发起 / 我的交接 / 超时与异常 / 通知 / 审批 / 历史查询。七页签同一套数据列，仅筛状态/权限。见 <a href="#m4-workbench">§4.1</a>。</td></tr>
+          <tr><td>BR-WB-003</td><td><span class="tag chg">新</span> 工作台七页签均以<strong>子/指令工单</strong>为一行、同一套列；三层权限（列表数据 / 操作 / 母工单查看）。见 <a href="#m4-workbench">§4.1</a> / <a href="#m4-wb-grain">§4.1c</a>。</td></tr>
+          <tr><td>BR-STS-009</td><td>母工单下无待处理指令、待费用、待回写事项时母工单完成。</td></tr>
+          <tr><td>BR-STS-010</td><td><span class="tag chg">新</span> 状态模板可执行功能目录（12 项）；下发执行单按钮；审批/费用固定页不进功能配置；流转=当前状态+功能+后置+岗位+指引/附件。见 <a href="#m3-stateflow">§3.7</a>。</td></tr>
+          <tr><td>BR-WO-001</td><td>同一柜号/运单号/子单号 + 同一工单类型，未完结只允许一张在办工单；再次发起走追加 / 后续指令。</td></tr>
+          <tr><td>BR-WO-011～014</td><td><span class="tag chg">改</span> 处置档位、提交进列表等仍有效；<strong>不再</strong>依赖海外跟进/GW 双轨登记入口（见附录历史 §5.3，本期以履约工作台为准）。</td></tr>
+          <tr><td>BR-WO-016</td><td>拦截后续指令：母工单 + 指令版本 + 外部执行单三级关联。</td></tr>
+          <tr><td>BR-WO-017</td><td><span class="tag chg">改</span> 重出：按<strong>子单</strong>发起；系统<strong>按名称精确匹配</strong>工单流程/场景「重出」，匹配不到则报错阻断；新单号挂原母工单（原+新+生效时间），禁止平行主单。见 <a href="#s-f10">§#10</a> / <a href="#m4-reissue">§4.1.1</a>。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="m2">
+      <h2>二、现网 → To-Be 对照</h2>
+      <h3>2.1 配置形态</h3>
+      <table>
+        <thead><tr><th>维度</th><th>现网（As-Is）</th><th>To-Be</th></tr></thead>
+        <tbody>
+          <tr><td>场景配置</td><td>宽表一行混排 SLA、业务、推送、入口</td><td><strong>工单配置中心</strong>一行摘要 + 配置弹窗（左模块导航 + 右全部展开）</td></tr>
+          <tr><td>转单</td><td>登记台与工单字段口径不一</td><td>读 A → 命中映射 → 固化 B 快照 → 按 B 执行</td></tr>
+          <tr><td>状态流</td><td>每场景拖拽完整流（建议废弃）</td><td>统一 C-01～C-10 骨架 + 每操作配置前置/后置状态</td></tr>
+          <tr><td>失败处理</td><td>部分场景切「失败」态</td><td><strong>保持当前状态</strong> + 留痕 + 重试/催办（C-09）</td></tr>
+        </tbody>
+      </table>
+      <h3>2.2 业务主链路</h3>
+      <ol class="steps">
+        <li><strong>发起（BR-ENTRY-001）：</strong>客服/业务提交 → <strong>直接创建母工单 + 指令工单</strong>（一期不细分指令子类型）。资料不全只保存发起页<strong>草稿</strong>，不进入履约工作台。</li>
+        <li><strong>配置命中：</strong>工单配置命中场景 → 引用状态模板 → 按模板<strong>首节点</strong>派至责任岗位/工单池。</li>
+        <li><strong>执行链：</strong>受理 → 执行 → 提交结果/附件/实际费用 → 按模板进入待审批 / 待费用审核 / 待客服验收等节点。</li>
+        <li><strong>验收与回写：</strong>海外仓/执行人提交结果<strong>不等于完成</strong>，须客服验收通过后回写业务数据；指令工单完成或关闭。</li>
+        <li><strong>母工单完结（BR-STS-009）：</strong>母下无待处理指令、待费用、待回写事项时母工单完成。处理中可持续<strong>新增指令工单</strong>。</li>
+        <li><strong>失败/超时（C-09）：</strong>失败、超时、回写失败<strong>不改变</strong>业务状态，停留当前状态并增加异常标记。</li>
+      </ol>
+      <p class="ok"><span class="tag chg">已确认</span> 一期<strong>没有</strong>「待转业务记录」页签与转单前阶段。</p>
+    </section>
+
+    <section class="card" id="m3">
+      <h2>三、工单配置中心</h2>
+      <p><span class="tag chg">改</span> 原型页<strong>只保留操作台</strong>（列表 / 筛选 / 配置弹窗）；流程说明、字典、规则样板、启用交互说明统一写在本章，不再堆在页面上方。</p>
+      <p>配置中心<strong>同一菜单组、两页分工</strong>：</p>
+      <ul>
+        <li><a href="SLA数据维护-MVP.html">场景配置</a> — sessionStorage <code>wo-scene-config-v13</code></li>
+        <li><a href="状态流模板配置-MVP.html">状态流模板配置</a> — 画布预览；流转口径见 V2 / BR-STS-010</li>
+        <li><a href="状态流模板配置-V2.html">状态流模板配置 V2</a> — 所需状态 + 流转表（功能/后置/岗位/指引）</li>
+        <li><span class="tag pending">场景弹窗不做</span> 「作业指引」列表 — 指引改挂状态模板流转行</li>
+        <li><a href="工单工作台-MVP.html">履约工作台</a> — 七页签同一套列；待办按节点操作、发起可撤回（BR-WB-002）</li>
+        <li><a href="一期基础履约统计-MVP.html">一期基础履约统计</a> — 主维=发起人/发起场景；履约总表+执行结果；岗位/仓为补充（BR-STAT-001）</li>
+      </ul>
+      <p>两页顶部有互链分页；侧栏「配置与主数据」并列入口。场景弹窗左侧模块导航 + 右侧全部展开；<strong>不</strong>内嵌状态流画布。<strong>转单权限 / A→B 映射 / SLA / 审批流</strong>不在场景配置弹窗维护。</p>
+
+      <h3 id="m3-flow">3.0 流程与交互口径（原页顶说明）</h3>
+      <ul>
+        <li><strong>发起（BR-ENTRY-001）：</strong>提交即建母工单+指令工单 → 命中场景与状态模板 → 首节点派岗 → 执行/审批/费用审核/验收（节点顺序由模板定）→ 验收通过回写 → 指令完成 → 母下无待办事项则母完成。</li>
+        <li><strong>派单：</strong>客户专属/VIP/响应等级 → 客户分组 → 场景+环节+仓/口岸 → 默认池 → 执行人。详见 <a href="分派规则-工单池路由-MVP.html">分派规则</a>。</li>
+        <li><strong>失败/拒绝/超时：</strong>保持当前业务状态（C-09）+ 异常标记；细则见状态流模板 / 状态流转 PRD。</li>
+        <li><strong>启用 / 配置：</strong>列表行仅<strong>复选</strong>；工具栏「启用 / 禁用 / 新增一行」；「配置」打开弹窗保存写入 sessionStorage。</li>
+      </ul>
+
+      <h3 id="m3-boundary">3.0b 配置边界（已确认）</h3>
+      <table>
+        <thead><tr><th>配置位置</th><th>配什么</th></tr></thead>
+        <tbody>
+          <tr><td><strong>工单配置</strong></td><td>阶段、场景、入口/附件要求、状态编码+名称引用、费用、海外仓映射、回写规则</td></tr>
+          <tr><td><strong>状态模板</strong></td><td><span class="tag chg">改</span> 所需状态；每条流转=<strong>当前状态 + 可执行功能 + 后置状态 + 操作岗位 + 作业指引/附件</strong>；节点可引用审批流程；SLA</td></tr>
+          <tr><td><strong>审批流程</strong></td><td>审批流程编码、名称、审批层级、审批人规则（节点引用；通过/驳回由引擎回调，不作工作台按钮）</td></tr>
+          <tr><td><strong>角色/工单池</strong></td><td>成员、数据权限、可执行动作、分配策略</td></tr>
+          <tr><td><strong>阶段字典</strong></td><td>装柜完成前、港前、港后（BR-STAGE-001 三段）；配置/筛选可另有异常件、费用结案等场景分类标签</td></tr>
+        </tbody>
+      </table>
+      <p class="note"><span class="tag chg">改</span> <strong>费用确认</strong>走固定费用页（待预计/待实际费用确认节点）；<strong>审批</strong>在节点引用审批流，由引擎处理。二者均<strong>不</strong>进入「可执行功能」目录。详见 <a href="#m3-stateflow">§3.7</a>。</p>
+
+      <h3 id="m3-abc">3.1 场景配置弹窗模块（当前）</h3>
+      <table>
+        <thead><tr><th>模块</th><th>管什么</th><th>不管什么</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>发起入口</strong></td>
+            <td><span class="tag chg">改</span> 与列表共用<strong>阶段</strong>（装柜完成前/港前/港后）与<strong>业务场景</strong>；另配入口说明。分类入口按阶段分组，卡片标题=业务场景</td>
+            <td>不再单独维护入口分组/入口标签（由阶段与场景推导）</td>
+          </tr>
+          <tr>
+            <td><strong>附件需求</strong></td>
+            <td>需求字段；附件表可编辑<strong>附件名称 / 是否必填 / 首次必填或支持补填</strong>。<span class="tag chg">改</span> 已去掉前置单据、费用预览</td>
+            <td>不配置允许发起位置、不配置转单权限、不配置 A→B 携带字段；费用确认走费用配置（BR-FEE-002）</td>
+          </tr>
+          <tr>
+            <td><strong>状态</strong></td>
+            <td><span class="tag chg">改</span> 仅引用状态主数据的<strong>状态编码 + 状态名称</strong>。流转细则在状态流模板维护。<strong>已去掉</strong>子工单类型/初始状态、运单账单前后置、责任池等字段</td>
+            <td>不在弹窗拖拽完整状态流；不配置母工单状态模板</td>
+          </tr>
+          <tr>
+            <td><strong>费用配置</strong></td>
+            <td>多项费用：<strong>费用类型</strong>下拉取费用类型主数据全部项；按件 / 按票 / 按计费重；多项<strong>相加</strong>；币种。发起提交时按本配置<strong>自动弹费用确认</strong>（BR-FEE-002）。<span class="tag chg">改</span> 已去掉业务联动（联动对象/模式/确认操作名/通知配仓）</td>
+            <td>不维护审批流、不维护 SLA 时效、不配置业务联动</td>
+          </tr>
+          <tr>
+            <td><strong>海外仓映射 · 回写规则</strong></td>
+            <td>对接美库、推送时机/动作/失败处理；<code>writeRules</code> 白名单</td>
+            <td>不重复维护共用字典主数据</td>
+          </tr>
+          <tr>
+            <td><strong>作业指引</strong></td>
+            <td><span class="tag pending">本期不做</span> 一期工单配置弹窗<strong>去掉</strong>按状态指引列表；不作为配置与验收项</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="m3-dict">3.2 共用字典 · 只读引用</h3>
+      <p>以下为主数据只读引用，场景配置页<strong>不重复维护</strong>（原页顶字典栏已迁入 PRD）：</p>
+      <table>
+        <thead><tr><th>字典</th><th>示例 / 说明</th></tr></thead>
+        <tbody>
+          <tr><td>场景与操作类型</td><td>换标、拦截、柜子计划协同、改址、费用结案…</td></tr>
+          <tr><td>角色 / 工单池</td><td>港前（付雪）、港后客服、海外仓、异常件、财务、产品</td></tr>
+          <tr><td>状态编码</td><td>草稿、待接单、处理中、待协同、待业务确认、回写处理中、已结案</td></tr>
+          <tr><td>海外仓 / 口岸</td><td>美库 API 仓、非 API 仓；口岸判定继承轨迹规则</td></tr>
+          <tr><td>回写字段白名单</td><td>柜子计划/柜子数据 Move Type；柜子备注；预报操作标记等</td></tr>
+          <tr><td>禁止覆盖</td><td>如「原渠道」</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="m3-approve">3.3 审批流（不在场景配置弹窗）</h3>
+      <p><strong>BR-WO-018 / BR-WO-019</strong>：审批流编号+名称及节点细则落在审批流主数据；场景配置弹窗本期<strong>已去掉</strong>审批流挂靠。未通过审批不得「提交执行」/推送的业务约束仍成立。</p>
+
+      <h3 id="m3-writerules">3.4 回写白名单 writeRules</h3>
+      <p><strong>BR-WO-017a</strong>（B 侧回写规则）：仅允许配置白名单字段；禁止覆盖项（如原渠道）不可写入。规则项只含<strong>对象 / 字段 / 值或模板</strong>，不另设「模式」。</p>
+      <table>
+        <thead><tr><th>对象</th><th>字段</th><th>值/模板</th></tr></thead>
+        <tbody>
+          <tr><td>柜子计划</td><td>Move Type</td><td>留仓</td></tr>
+          <tr><td>柜子备注</td><td>柜子备注</td><td><code>[{指令版本}/{操作类型}/{操作人}/{时间}]</code></td></tr>
+        </tbody>
+      </table>
+      <p class="note">样板场景 <code>SC-GQ-002</code>（柜子计划协同）与 <code>SC-GQ-011</code>（换标·港前）共用上述种子；提柜后场景在 B 白名单内扩展，仍禁止「原渠道」。</p>
+      <p class="warn"><strong>失败/超时保持状态 C-09：</strong>回写失败、推送失败、审批拒绝、外部超时、首响/执行/验收超时 — <strong>不改变</strong>指令版本当前业务状态；另存失败原因或超时标记、已升级层级、最近催办时间，按权限重试/催办升级（BR-HAND-001）。</p>
+
+      <h3 id="m3-sample">3.5 配置样板（原页顶卡片）</h3>
+      <table>
+        <thead><tr><th>样板</th><th>要点</th></tr></thead>
+        <tbody>
+          <tr><td>港前换标 <code>SC-GQ-011</code></td><td>子类型<strong>换标</strong> · 初始<strong>待接单</strong>；需求含柜号/换标要求 + 新标签附件</td></tr>
+          <tr><td>提柜后快递拦截</td><td>业务场景 → 统一工单<strong>海外仓操作协同</strong> / V1 / 初始<strong>待可行性确认</strong>（可行性口径待业务拍板，不作本期硬验收）</td></tr>
+        </tbody>
+      </table>
+      <p class="ok"><strong>测：</strong>勾选行后上方「启用/禁用」即时写入 <code>wo-scene-config-v13</code>；列表阶段/场景与发起入口同源；配置弹窗按模块导航编辑并保存；禁用行置灰且不参与匹配。</p>
+
+      <h3 id="m3-sample-label">3.6 规则样板 · 换标·港前 <code>SC-GQ-011</code>（原页顶展开卡）</h3>
+      <p>客服前端不选推送；点「提交执行」后系统按本规则 + 目标仓是否支持 API 分支。详情演示：<a href="工单详情-MVP.html#WO-202605-LABEL">#WO-202605-LABEL</a>。</p>
+      <table>
+        <thead><tr><th>块</th><th>配置</th></tr></thead>
+        <tbody>
+          <tr><td>基础条件</td><td>工单类型=换标；阶段=港前；海外仓=全部/可指定；港前港后判定继承轨迹；启用·优先级 10</td></tr>
+          <tr><td>发起入口</td><td>入口分组=<strong>港前</strong>；标签/说明按场景；新标签必传</td></tr>
+          <tr><td>费用配置</td><td>多项相加：换标操作费·按件 $1.5 + 标签费·按票 $8；预估=Σ 单价×计费量</td></tr>
+          <tr><td>前置/后置</td><td>运单/账单本场景不卡；结案期望状态按场景行</td></tr>
+          <tr><td>附件</td><td><strong>新标签必传</strong>；操作说明</td></tr>
+          <tr><td>执行动作</td><td>Move Type→留仓；柜子备注写入换标要求</td></tr>
+          <tr><td>外部执行</td><td>需海外仓执行；API 仓提交后自动推；无 API→待人工发送；失败可重试</td></tr>
+          <tr><td>回写·完结</td><td>处理结果/实际费用/回执附件等；有费用则费用已确认后完结</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="m3-stateflow">3.7 状态流模板配置（配置中心第二页）</h3>
+      <p>原型：<a href="状态流模板配置-V2.html">状态流模板配置-V2.html</a>（流转表） · <a href="状态流模板配置-MVP.html">状态流模板配置-MVP.html</a>（画布预览） · 分册 <a href="统一工单-状态流转-PRD.html">统一工单-状态流转-PRD.html</a></p>
+      <ul>
+        <li>先选<strong>状态对象</strong>（指令工单 / 海外仓），再选模板；两类分开配置保存。<strong>不配母工单对象</strong>（完结按 BR-STS-009）。</li>
+        <li><span class="tag chg">已确认</span> 每条流转配置固定为：<strong>当前状态 + 可执行功能 + 后置状态 + 操作岗位 + 作业指引/附件</strong>（BR-STS-010）。</li>
+        <li><span class="tag chg">已确认</span> <strong>下发执行</strong>为<strong>一个</strong>按钮，不拆「下发海外仓 / 人工登记」；系统按单据、仓库、对接能力决定 API 或人工登记。</li>
+        <li>失败/拒绝/超时：<strong>保持当前状态</strong>（C-09），原因留痕后按权限重试。</li>
+      </ul>
+
+      <h4 id="m3-fn-catalog">3.7.1 可配置到状态模板的功能按钮（BR-STS-010）</h4>
+      <table>
+        <thead><tr><th>功能</th><th>建议适用状态</th><th>操作内容</th><th>执行结果</th></tr></thead>
+        <tbody>
+          <tr><td>确认可行性</td><td>待可行性确认</td><td>填写可行/不可行结论、原因、说明</td><td>按模板进入后置状态</td></tr>
+          <tr><td>要求补充资料</td><td>需要资料的处理状态</td><td>选择缺失资料、填写补充说明和补充人</td><td>进入待补充资料</td></tr>
+          <tr><td>提交补充资料</td><td>待补充资料</td><td>上传附件、填写补充说明</td><td>返回原处理状态、原处理人</td></tr>
+          <tr><td>确认执行准备</td><td>待执行准备</td><td>核对地址、时间、货物和执行资料</td><td>进入下发或内部处理状态</td></tr>
+          <tr><td><strong>下发执行</strong></td><td>待外部下发</td><td>发起执行下发（单一按钮）</td><td>系统按仓库能力走 API 或人工登记；成功后进入后置状态</td></tr>
+          <tr><td>提交处理结果</td><td>执行中</td><td>填处理结果、完成时间、异常说明、结果附件</td><td>进入结果回传/确认状态</td></tr>
+          <tr><td>确认回传结果</td><td>待结果回传</td><td>核对海外仓返回的执行结果</td><td>进入后置状态</td></tr>
+          <tr><td>验收通过</td><td>待结果确认</td><td>确认履约结果符合要求</td><td>进入回写或完成状态</td></tr>
+          <tr><td>退回返工</td><td>待结果确认</td><td>填退回原因、返工要求</td><td>返回指定处理状态</td></tr>
+          <tr><td>确认关闭</td><td>可关闭的处理中状态</td><td>填关闭原因、通知说明</td><td>进入已关闭终态</td></tr>
+          <tr><td>回写重试</td><td>回写异常</td><td>重新发起业务数据回写</td><td>成功完成；失败仍停留当前异常状态</td></tr>
+          <tr><td>改派/重出</td><td>允许改派的执行状态</td><td>填改派/重出原因、新执行方式；重出自动匹配流程名「重出」（按子单）</td><td>原子工单关闭/标记已改派；同一母工单下新建「重出」子指令（匹配失败则报错）</td></tr>
+        </tbody>
+      </table>
+
+      <h4 id="m3-fn-system">3.7.2 不进入功能配置（系统 / 固定页）</h4>
+      <table>
+        <thead><tr><th>项目</th><th>处理方式</th></tr></thead>
+        <tbody>
+          <tr><td>提交审批</td><td>状态节点<strong>引用</strong>审批流程；进入该节点后由审批引擎处理</td></tr>
+          <tr><td>审批通过 / 驳回</td><td>审批引擎回调状态流；<strong>不作</strong>工作台功能按钮</td></tr>
+          <tr><td>预计费用确认</td><td>「待预计费用确认」用<strong>固定费用处理页</strong></td></tr>
+          <tr><td>实际费用确认</td><td>「待实际费用确认」用<strong>固定费用处理页</strong></td></tr>
+          <tr><td>费用审批</td><td>费用状态节点引用审批流程</td></tr>
+          <tr><td>海外仓受理 / 执行 / 结果回传</td><td>API 状态映射或人工登记结果驱动（非模板按钮）</td></tr>
+          <tr><td>系统回写</td><td>系统自动执行；仅失败时显示「回写重试」</td></tr>
+        </tbody>
+      </table>
+
+      <h4 id="m3-fn-common">3.7.3 不配置到状态模板的通用按钮</h4>
+      <p>查看工单与进度 · 查看审批 · 查看附件 · 添加备注 · 查看操作日志 · 催办 · 导出 · 查看关联子工单。</p>
+      <p><span class="tag chg">改</span> <strong>「查看费用」不再作为通用按钮</strong>；费用仅在费用处理节点或工单详情费用区按权限展示。</p>
+
+      <p class="ok"><strong>测：</strong>模板流转行可配上述 12 项功能之一；工作台操作列只出当前状态已配功能；无「下发海外仓」「人工登记」分拆按钮；费用/审批节点无多余功能按钮；详情无「查看费用」通用钮。</p>
+
+      <h3 id="m3-route-sla">3.8 派单与 SLA · 客户优先（BR-ROUTE-001）</h3>
+      <p>原型：<a href="分派规则-工单池路由-MVP.html">分派规则-工单池路由-MVP.html</a> · 场景默认 SLA：<a href="SLA数据维护-MVP.html">场景配置 Tab B</a> · 角色池：<a href="编辑角色-岗位与数据权限-MVP.html">编辑角色</a></p>
+      <p>现有「场景 + 港前/港后 + 海外仓/口岸」路由保留，但最前增加<strong>客户</strong>维度。命中高优先级即停。</p>
+      <ol class="steps">
+        <li><strong>客户专属客服 / VIP 客户 SLA</strong></li>
+        <li><strong>客户类型或客户分组</strong></li>
+        <li><strong>场景 + 港前/港后 + 海外仓/口岸</strong></li>
+        <li><strong>默认岗位池</strong>（场景 Tab B 责任池兜底）</li>
+        <li><strong>实际执行人</strong>（池内认领 / 仓侧接单）</li>
+      </ol>
+      <table>
+        <thead><tr><th>SLA 类型</th><th>作用</th></tr></thead>
+        <tbody>
+          <tr><td>客户承诺 SLA</td><td>VIP/大客户约定的首次响应、完成时限（客户主数据/专属规则包）</td></tr>
+          <tr><td>内部考核 SLA</td><td>普通客户及内部岗位处理目标（场景默认首响/闭环）</td></tr>
+          <tr><td>节点 SLA</td><td>节点时限：如 2h 受理、24h 上传照片、72h 海外仓处理</td></tr>
+          <tr><td>验收 SLA</td><td>客服收到结果后多久必须验收或退回（挂「待客服验收」）</td></tr>
+        </tbody>
+      </table>
+      <p><strong>优先级：</strong><span class="tag chg">改</span> VIP/客户承诺 SLA 由<strong>客户管理</strong>维护。工单生成（直接派单或转单）时<strong>读取并固化客户 SLA 快照</strong>；未配置客户 SLA 时，使用场景默认 SLA（内部考核/节点/验收）。快照一经固化，不以客户主数据后续变更为准。</p>
+      <p class="ok"><strong>测：</strong>有客户 SLA 时快照来源=客户管理；无则来源=场景默认；生成后改客户主数据不影响本单快照。</p>
+
+      <h3 id="m3-guide">3.9 作业指引 / 附件（挂流转行）</h3>
+      <p><span class="tag chg">改</span> 作业指引与附件要求挂在<strong>状态模板每条流转</strong>上（与可执行功能同行），不在场景配置弹窗维护按状态指引列表。场景弹窗「作业指引」模块仍为<span class="tag pending">本期不做</span>。</p>
+      <p class="note">工作台点击功能按钮时，可展示该流转配置的作业指引与必传附件要求。</p>
+    </section>
+
+    <section class="card" id="m4">
+      <h2>四、工作台 / 详情 / 提交入口 / 新建工单</h2>
+      <p>按页写字段与交互；对照 MVP 演示数据，接口口径以本章 + 配置中心为准。</p>
+
+      <h3 id="m4-mainflow">4.0 一期主流程（已确认）</h3>
+      <pre style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.55;overflow:auto">客服 / 业务发起
+→ 命中工单配置（场景 / 状态模板 / 费用配置）
+→ 有费用配置：自动弹费用确认 → 确认后创建母工单 + 指令工单
+→ 无费用配置：直接创建母工单 + 指令工单（记「无费用已确认」）
+→ 按状态模板首节点派至责任岗位 / 工单池
+→ 受理 → 执行 → 提交结果、附件、实际费用
+→ 按模板进入待审批 / 待费用审核 / 待客服验收等节点
+→ 验收通过后回写业务数据
+→ 指令工单完成或关闭
+→ 母工单下无待处理指令、待费用、待回写事项时，母工单完成</pre>
+      <ul>
+        <li><span class="tag chg">已确认</span> 一期<strong>没有</strong>「待转业务记录」；资料不全只保留在发起页草稿，不进入履约工作台。</li>
+        <li><span class="tag chg">改</span> 发起时按费用配置<strong>自动弹费用</strong>，确认后才建单（BR-FEE-002）。</li>
+        <li><span class="tag chg">已确认</span> 同一母工单处理中可持续新增指令工单；一期不细分指令子类型。</li>
+        <li><span class="tag chg">已确认</span> 失败、超时、回写失败不改变业务状态，停留当前状态并增加异常标记（C-09）。</li>
+        <li><span class="tag chg">已确认</span> 海外仓/执行人提交结果不等于完成，仍需客服验收（BR-STS-007）。</li>
+      </ul>
+      <p class="ok"><strong>测：</strong>有费用场景提交先见弹窗再出待办；无费用场景直接建单；草稿仅发起页可见；母下新增指令不新开平行母单；提交结果后仍停在待验收直至客服通过。</p>
+
+      <h3 id="m4-workbench">4.1 履约工作台</h3>
+      <p>原型：<a href="工单工作台-MVP.html">工单工作台-MVP.html</a>（BR-WB-002 / BR-WB-003）</p>
+      <table>
+        <thead><tr><th>页签</th><th>定位</th></tr></thead>
+        <tbody>
+          <tr><td><strong>我的待办</strong></td><td>以<strong>子/指令工单</strong>为一行；操作列<strong>仅出当前状态在模板中配置的可执行功能</strong>（BR-STS-010），<strong>无撤回</strong>。同母下不同岗位指令互不可见。</td></tr>
+          <tr><td><strong>我的发起</strong></td><td><span class="tag chg">改</span> 我发起的<strong>指令工单</strong>（与待办同一套列）；<strong>仅此页签</strong>提供发起人「撤回」（未锁死节点前可撤）。</td></tr>
+          <tr><td><strong>我的交接</strong></td><td>仅展示允许改派场景的人工交接记录；一期只适用于<strong>改快递转其他港后客服</strong></td></tr>
+          <tr><td><strong>超时与异常</strong></td><td>按<strong>指令工单</strong>出数；状态未变但有超时/失败/资料缺失/回写失败等标记</td></tr>
+          <tr><td><strong>通知</strong></td><td>指派、退回、SLA 预警、超时、审批结果、验收结果等提醒（同一套列，状态多为已读/未读）</td></tr>
+          <tr><td><strong>审批</strong></td><td>按<strong>指令工单</strong>节点出数；当前人需审批的快捷入口；<strong>不是</strong>另一套流程</td></tr>
+          <tr><td><strong>历史查询</strong></td><td>已完成、已关闭的指令工单；列与在办页签相同，状态为已结案等终态</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li><span class="tag chg">改</span> 一期<strong>无</strong>「待转业务记录」页签。</li>
+        <li><span class="tag chg">改</span> 七页签<strong>同一套数据列</strong>，不随页签改表头：<strong>指令工单号</strong>、母工单、海外仓任务号、标题/场景、阶段、状态/当前节点、发起人、当前处理、SLA、更新、操作。页签只改变筛选口径与操作按钮。</li>
+        <li>每条待办直达详情处理人视角（<code>?view=handler&amp;instr=</code> + 母工单哈希）。</li>
+        <li>SLA 列可叠展示超时标记 / 已升级层级 / 最近催办时间（业务状态列不变）。</li>
+      </ul>
+      <p class="ok"><strong>测：</strong>切七页签表头列名不变；母工单 M001 下 V1/V2/V3 在待办各占一行；卡派视角只见 V1、快递派只见 V2、仓只见 V3；「我的发起」同列且可撤回；审批/超时按指令过滤。</p>
+
+      <h3 id="m4-wb-grain">4.1c 列表粒度与三层权限（BR-WB-003）</h3>
+      <p>母工单用于详情全貌与追溯；工作台七页签全部按子/指令工单维度出数，列结构相同。示例：</p>
+      <pre style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.55;overflow:auto">母工单 M001：客户改派诉求
+├─ 指令 V1：原卡派停止 / 拦截 → 卡派客服
+├─ 指令 V2：快递重出 → 快递派客服
+└─ 指令 V3：仓库换标 / 打单 → 海外仓操作人员</pre>
+      <table>
+        <thead><tr><th>权限层</th><th>口径</th></tr></thead>
+        <tbody>
+          <tr><td><strong>列表数据权限</strong></td><td>按子/指令工单的当前责任岗位、工单池、实际处理人、客户数据范围判断是否出现在待办/超时/审批列表</td></tr>
+          <tr><td><strong>操作权限</strong></td><td>当前用户是该子工单当前节点的责任人/责任池成员，且开发已关联该状态操作功能</td></tr>
+          <tr><td><strong>母工单查看权限</strong></td><td>发起客服、母工单负责人、具备客户数据权限的主管可查看母工单全貌及全部子工单</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>处理人进入子工单时，可见必要的母工单基础信息与关联单号；<strong>默认不查看</strong>其他子工单的费用、附件和处理详情。</li>
+        <li>每个子工单可有独立的：处理岗位/实际处理人、状态模板与当前状态、SLA/审批/费用/附件要求、数据权限与可操作功能。</li>
+      </ul>
+      <p class="ok"><strong>测：</strong>演示视角切「卡派客服 / 快递派客服 / 海外仓」分别只出对应指令；详情 <code>?view=handler&amp;instr=OP-M001-V1#WO-202609-M001</code> 时其他版本费用/附件显示「无本指令处理权限」。</p>
+
+      <h3 id="m4-dual-entry">4.1.0 发起口径（BR-ENTRY-001）</h3>
+      <p><span class="tag chg">改</span> 一期仅<strong>提交创建母+指令</strong>一条履约路径。资料不齐全时「保存草稿」留在发起页，<strong>不</strong>写入履约工作台、不设「待转」阶段。</p>
+      <p><span class="tag chg">改</span> <strong>发起费用确认（BR-FEE-002）：</strong>点击提交时，若工单配置「费用配置」存在费用项，系统<strong>自动弹出费用确认</strong>；展示配置项、计费量、预估合计（多项相加）。发起人确认费用后才创建母工单+指令工单；取消则停留发起页。无费用配置的场景弹窗提示「无费用已确认」后发起。场景配置已去掉「费用预览」字段。</p>
+      <table>
+        <thead><tr><th>动作</th><th>结果</th></tr></thead>
+        <tbody>
+          <tr><td>保存草稿</td><td>仅发起人可见；可继续编辑后提交；不进工作台；不弹费用</td></tr>
+          <tr><td>提交（有费用配置）</td><td>弹费用确认 → 确认后创建母+指令 → 命中场景/状态模板 → 派至首节点 → 进「我的待办」；费用快照写入指令</td></tr>
+          <tr><td>提交（无费用配置）</td><td>不弹窗；创建母+指令；费用记录=无费用已确认</td></tr>
+          <tr><td>母处理中再发起</td><td>在同一母工单下<strong>新增指令工单</strong>；若该场景有费用配置，同样先弹费用再落指令</td></tr>
+        </tbody>
+      </table>
+      <p class="ok"><strong>测：</strong>换标等有费用项场景点提交必先见费用弹窗，未确认不建单；确认后待办出现且费用状态=已确认；无费用场景直接建单；草稿不弹费用、不进工作台。</p>
+
+      <h3 id="m4-reissue">4.1.1 重出（BR-WO-017）</h3>
+      <p><span class="tag chg">已确认</span> 触发「改派/重出」或业务发起重出时：</p>
+      <ol class="steps">
+        <li><strong>流程匹配：</strong>系统在工单配置（场景/流程）中<strong>按名称精确匹配「重出」</strong>（场景名 / 工单流程名 = <code>重出</code>）。命中则带入该流程的状态模板、费用配置、派单规则；<strong>匹配不到则报错阻断</strong>，文案示例：<code>未匹配到名为「重出」的工单流程，请先在工单配置中启用场景「重出」</code>。不回落「改快递·需重出」等近似名。</li>
+        <li><strong>粒度：按子单重出。</strong>发起对象为<strong>快递子单号</strong>（或货件分票号），不是整票根运单/整柜一键重出。一母工单下可对多个子单分别发起重出指令；每个子单各自回填新单号（原子单号 + 新单号 + 生效时间）挂同一母工单根对象条。</li>
+        <li><strong>关联：</strong>新单号禁止另开平行母工单；须挂原母工单。关联母工单可后补，但已填新单号时不得选「新建母工单」。</li>
+      </ol>
+      <p class="ok"><strong>测：</strong>配置存在「重出」时可发起并自动带入模板；删除/禁用「重出」后发起报匹配不到；选整票根运单不选子单时校验提示须按子单；两子单可各出一条重出指令、新单号分别挂母。</p>
+
+      <h3 id="m4-stage-auto">4.1.0b 环节自动判定（BR-STAGE-001）</h3>
+      <p><span class="tag chg">已确认</span> 业务发起工单时<strong>不选手选环节</strong>。系统按运单/柜子当前节点落在哪一段，自动带出环节：</p>
+      <table>
+        <thead><tr><th>业务节点（口径）</th><th>自动环节</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><strong>装柜完成前</strong></td><td><strong>装柜完成前</strong></td><td>尚未装柜完成（如订舱、待装柜、装柜中）</td></tr>
+          <tr><td><strong>拆柜前</strong></td><td><strong>港前</strong></td><td>已装柜完成至海外仓拆柜之前（如已开船、在途、到港、待提柜、拆柜前）</td></tr>
+          <tr><td><strong>拆柜后</strong></td><td><strong>港后</strong></td><td>海外仓已拆柜及之后（如拆柜后、到仓作业、出库、改派/重出等）</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>从来源业务页发起时带入运单/柜号与当前节点 → 环节只读展示。</li>
+        <li>统一工单直开：填关联编号后系统查状态回写环节；状态缺失则提示补关联，不允许手选环节绕过。</li>
+        <li>可选场景按自动环节过滤（同名操作按港前/港后分支出卡）。</li>
+        <li>运单状态码 → 上述三段的精确码表联调时补全；本期演示按节点关键词映射。</li>
+      </ul>
+      <p class="ok"><strong>测：</strong>待装柜→环节=装柜完成前；拆柜前→港前；拆柜后/到仓→港后；新建页无环节下拉；改关联单后环节与场景刷新。</p>
+
+      <h3 id="m4-biz-phase">4.1.2 关于「业务记录 / 待转」（一期不做）</h3>
+      <p><span class="tag chg">已确认</span> 一期<strong>取消</strong>「待转业务记录」与转单前阶段。历史文档中的草稿→待转→已转等口径<strong>不作为一期验收</strong>；资料不全仅用发起页草稿承载。若二期恢复转单前池，再单独立项。</p>
+
+      <h3 id="m4-detail">4.2 工单详情</h3>
+      <p>原型：<a href="工单详情-MVP.html">工单详情-MVP.html</a> · 拦截版本链 <a href="工单详情-MVP.html#WO-202605-INT">#WO-202605-INT</a></p>
+      <ul>
+        <li>分区：母工单根对象条、<strong>指令版本链</strong>（V1/V2…）、当前指令焦点、海外执行子任务、<strong>客服验收</strong>（通过/退回返工/确认无法执行）、业务回写、费用、场景规则（BR-WO-018 / BR-STS-007）。</li>
+        <li><span class="tag chg">改</span> 处理人视角（<code>?view=handler&amp;instr=</code>）：可见母单基础信息与关联单号；其他子工单费用/附件/处理详情默认脱敏；母单全貌需母工单查看权限（BR-WB-003）。演示：<a href="工单详情-MVP.html?view=handler&amp;instr=OP-M001-V1#WO-202609-M001">#WO-202609-M001 · V1</a>。</li>
+        <li>「新增后续指令」自动带出柜号、原/新运单、上一版结果；已受理旧版不可覆盖，须升版本（验收返工除外，不升 V2）。</li>
+        <li>回写区展示<strong>B 白名单</strong>待写字段；须验收通过后回写；失败保持当前状态，可重试（C-09）。</li>
+        <li>来源业务页摘要可跳转本工单；工具栏按角色与状态显隐。</li>
+        <li><span class="tag chg">改</span> 工具栏「交接/转派」「催办/升级」见 <a href="#m4-handoff">§4.5</a>；SLA 区展示超时标记字段。</li>
+        <li><span class="tag pending">本期不做</span> 作业指引卡片（工单配置已去掉 BR-GUIDE-001）</li>
+      </ul>
+      <p class="ok"><strong>测：</strong>换标单可见场景规则卡与推送时间线；拦截单版本号递增且费用挂对应版本；从工作台 <code>?node=</code> 进入时指引区高亮。</p>
+
+      <h3 id="m4-entry">4.3 工单提交 · 分类入口</h3>
+      <p>原型：<a href="工单提交-入口-MVP.html">工单提交-入口-MVP.html</a></p>
+      <ul>
+        <li>按配置中心「发起入口」分组动态出卡（装柜完成前 / 港前 / 港后 / 索赔与异常，便于浏览；真实环节仍由运单状态判定）。</li>
+        <li><span class="tag chg">改</span> 从运单等业务页发起时<strong>不经分类入口选手选环节</strong>，环节由运单状态自动判定（BR-STAGE-001）；分类入口仅作场景浏览捷径。</li>
+        <li><span class="tag chg">改</span> 选场景后进入新建页；提交即建母+指令（BR-ENTRY-001）；草稿不进工作台。</li>
+        <li>旁支二卡片：非美库 #9、改快递重出 #10、港前拦截 #11、港后拦截 #12（<code>?plan2=</code> 高亮）。</li>
+        <li>点击场景进入新建页；命中查重引导「进入追加」/挂母新增指令。</li>
+      </ul>
+
+      <h3 id="m4-new">4.4 新建统一工单</h3>
+      <p>原型：<a href="新建工单-MVP.html">新建工单-MVP.html</a></p>
+      <table>
+        <thead><tr><th>字段组</th><th>要点</th></tr></thead>
+        <tbody>
+          <tr><td>动作</td><td><span class="tag chg">改</span> 保存草稿（仅发起页）/ 提交创建母+指令并按模板首节点派岗</td></tr>
+          <tr><td>环节</td><td><span class="tag chg">改</span> <strong>不选手选</strong>；由关联运单当前状态自动判定（BR-STAGE-001），只读展示；场景按环节过滤</td></tr>
+          <tr><td>场景</td><td>业务场景字典（随环节过滤）；换标·港前展开 SC-GQ-011 字段块</td></tr>
+          <tr><td>关联</td><td>根编号 / <strong>子单号</strong>；重出按子单；流程名精确匹配「重出」（BR-WO-017）</td></tr>
+          <tr><td>附件/标签</td><td>按场景必传（如港前换标新标签必传）</td></tr>
+        </tbody>
+      </table>
+      <p class="note">换标·港前：Move Type / 柜子备注由 B 规则只读预展；客服不可手改执行动作，仅填换标要求与新标签。</p>
+
+      <h3 id="m4-handoff">4.5 交接 · 催办 · 升级（BR-HAND-001）</h3>
+      <p>原型：<a href="交接催办升级-MVP.html">交接催办升级-MVP.html</a> · 详情演示：<a href="工单详情-MVP.html">工单详情</a></p>
+      <p><span class="tag chg">改</span> <strong>本期范围：</strong>超时催办/升级（首响/执行/验收）+ 通知（站内+企微）。超时<strong>不改变业务状态</strong>（C-09），须写超时标记、已升级层级、最近催办时间。工作台「我的交接」一期<strong>仅</strong>展示允许改派场景的人工交接（当前：<strong>改快递转其他港后客服</strong>）。</p>
+      <p><span class="tag pending">本期不做</span> <strong>夜班交接 / 休假交接</strong>：保留扩展入口与字段位，不进入本期开发与验收；Q-HAND-001 随扩展一并确认。</p>
+      <table>
+        <thead><tr><th>动作</th><th>本期</th><th>规则 / 留痕</th></tr></thead>
+        <tbody>
+          <tr><td>改快递改派（港后客服间）</td><td><span class="tag ok">做</span></td><td>进入「我的交接」；原/新责任人、原因、时间；业务状态不变</td></tr>
+          <tr><td>日常任意转派</td><td><span class="tag pending">受限</span></td><td>默认禁止；仅场景规则允许时（如改快递）可改派</td></tr>
+          <tr><td>催办 / 超时升级</td><td><span class="tag ok">做</span></td><td>首响/执行/验收超时逐级通知；超时标记、升级层级、最近催办时间</td></tr>
+          <tr><td>班次 / 休假交接</td><td><span class="tag pending">后续</span></td><td>原型保留入口说明，不验收批量夜班池/休假定时转交</td></tr>
+        </tbody>
+      </table>
+      <p class="ok"><strong>测：</strong>催办/升级后状态不变且三字段有值；交接页仅见改快递改派演示；企微文案可见；班次/休假入口标注「本期不做」。</p>
+
+      <h3 id="m4-fee">4.5.1 费用双轨与实际费用审核（BR-FEE-001）</h3>
+      <p>原型：<a href="工单详情-MVP.html">工单详情 · 海外仓费用</a> · 场景配置 Tab B「实际费用需审核」</p>
+      <pre style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.55;overflow:auto">海外仓提交实际费用
+  ├─ 场景配置「实际费用需审核」= 是
+  │    → 待审核 → 通过：写入<strong>应付</strong>与<strong>实际成本</strong>
+  │             → 拒绝：退回海外仓补充/修正
+  └─ 未配置审核 → 按实际费用直接写入应付与实际成本</pre>
+      <ul>
+        <li><strong>应收预估</strong>与<strong>应付 / 实际成本</strong>必须分开保存，禁止互相覆盖。</li>
+        <li>海外仓重复回传费用：按「工单指令 + 费用项 + 回传批次/外部单号」防重，避免重复生成应付与成本。</li>
+        <li><span class="tag chg">改</span> <strong>发起侧（BR-FEE-002）：</strong>有费用配置时须在弹窗确认预估费用后才可建单；确认写入应收预估快照。实际费用仍走仓回传 + 模板「待费用审核」节点（若配置）。</li>
+      </ul>
+      <p class="ok"><strong>测：</strong>发起弹窗确认后应收预估有值；仓回传需审核场景进待费用审核；通过写入应付+成本且应收预估不变；拒绝可再回传；同批次重复回传不双记。</p>
+
+      <h3 id="m4-stats">4.6 一期基础履约统计（BR-STAT-001）</h3>
+      <p>原型：<a href="一期基础履约统计-MVP.html">一期基础履约统计-MVP.html</a></p>
+      <p>逐字稿明确<strong>一期就要看基础履约数据</strong>。趋势预测、绩效结算、AI 分析归<span class="tag pending">二期</span>。</p>
+      <p><span class="tag chg">改</span> <strong>主统计维度固定为两个：发起人、发起场景</strong>。发起量、受理/完成及时率、平均处理时长、执行结果均须可按上述两维切换拆行；岗位履约、海外仓履约仅为补充切片，不替代主维度。</p>
+      <table>
+        <thead><tr><th>报表</th><th>口径（一期最小）</th></tr></thead>
+        <tbody>
+          <tr><td>履约总表</td><td>按<strong>发起人</strong>或<strong>发起场景</strong>：发起量、占比、受理及时率、完成及时率、平均处理时长</td></tr>
+          <tr><td>执行结果</td><td>同上两维：完成 / 返工 / 无法执行 / 取消及 TOP 原因</td></tr>
+          <tr><td>受理及时率</td><td>首响是否超时（读超时标记 / 首响时间戳 vs SLA）；总表内按维展示</td></tr>
+          <tr><td>完成及时率</td><td>执行与验收均未超时才算按时；总表内按维展示</td></tr>
+          <tr><td>平均处理时长</td><td>发起到客服验收完成；总表内按维展示</td></tr>
+          <tr><td>补充 · 岗位履约</td><td>各执行部门：收到 / 完成 / 超时（非主维度）</td></tr>
+          <tr><td>补充 · 海外仓履约</td><td>按海外仓：受理时长、执行时长、返工率（非主维度）</td></tr>
+        </tbody>
+      </table>
+      <p><strong>一期必须落库的事实（可后做 UI，不可后补历史）：</strong><strong>发起人、发起场景/场景码</strong>（主维）、客户、执行部门/仓编码；发起·首响·执行·提交结果·验收·关闭时间戳；首响/执行/验收是否超时；终态与原因码、返工次数。</p>
+      <p class="ok"><strong>测：</strong>统计页可切换「按发起人 / 按发起场景」；履约总表与执行结果随维度换行；可按周期/发起人/场景筛选；补充岗位/仓表可见；标明二期不做预测/绩效/AI。</p>
+    </section>
+
+    <section class="card" id="m5">
+      <h2>五、状态流转</h2>
+      <p>分册：<a href="统一工单-状态流转-PRD.html">统一工单-状态流转-PRD.html</a> · 配置原型：<a href="状态流模板配置-MVP.html">状态流模板配置</a>（配置中心第二页） · 共性梳理：<code>工单流程-共性与差异梳理.md</code></p>
+      <h3>5.1 共性规则 C-01～C-10（摘要）</h3>
+      <table>
+        <thead><tr><th>编号</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr><td>C-01</td><td>统一入口与来源留痕（来源、发起人、时间、附件）</td></tr>
+          <tr><td>C-02</td><td>先确定处理范围（单号、柜、货件、整票/部分）</td></tr>
+          <tr><td>C-03</td><td>母工单 + 指令版本；客户新要求建 V2/V3；验收返工不升版</td></tr>
+          <tr><td>C-04</td><td>前置校验：状态、权限、必填、费用、审批/可行性</td></tr>
+          <tr><td>C-05</td><td>每版本须有费用确认记录（含「无费用已确认」）</td></tr>
+          <tr><td>C-06</td><td>操作过程留痕（处理人、外部单号、结果、附件、费用快照）</td></tr>
+          <tr><td>C-07</td><td><strong>客服验收通过后</strong>才回写业务数据；执行侧只能提交结果</td></tr>
+          <tr><td>C-08</td><td>回写可追溯（原值、新值、版本、外部任务号）</td></tr>
+          <tr><td><strong>C-09</strong></td><td><strong>失败/超时不改业务状态</strong>；留失败原因与重试入口；超时另写超时标记、已升级层级、最近催办时间（BR-HAND-001）</td></tr>
+          <tr><td>C-10</td><td><span class="tag chg">改</span> 母工单完结（BR-STS-009）：所有子工单完成且无待确认事项 → 母工单完结。样板：处理中 → V1 拦截 → V2 拍照 → V3 换标 → 全部完成无待确认 → 母工单完结</td></tr>
+        </tbody>
+      </table>
+      <h3 id="m5-exec-accept">5.2 执行—验收双阶段闭环</h3>
+      <p>分册详述：<a href="统一工单-状态流转-PRD.html#exec-accept">统一工单-状态流转 · BR-STS-007</a>。</p>
+      <pre style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.55;overflow:auto">客服/业务发起指令 → 路由执行岗位/海外仓 → 执行人提交结果/照片/费用/无法执行原因 → 客服验收
+  ├─ 通过：完成 / 回写业务数据
+  ├─ 不通过：退回<strong>原执行人</strong>返工（同一指令，不建 V2；不允许任意改派）
+  └─ 无法执行：客服确认原因后<strong>直接关闭当前指令</strong>（不自动生成后续指令）</pre>
+      <ul>
+        <li>海外仓 / PDA <strong>只能提交结果</strong>，不能自行完结母工单或指令工单。</li>
+        <li>客服负责下达与验收，不承担拍照、测量、换标等一线操作。</li>
+        <li><span class="tag chg">改</span> 「无法执行」经客服确认原因后进入<strong>已关闭</strong>；<strong>不</strong>自动生成后续指令。若客户另有新要求，由人工新建后续指令（升版）。</li>
+        <li><span class="tag chg">改</span> 验收不通过：<strong>只能</strong>退回原执行人返工，不允许任意改派。例外：场景规则允许时（如「改快递」需切换港后客服责任范围）可改派至对应港后客服（BR-REWORK-001）。</li>
+        <li>客户新要求（如先拦截再换标）才建 V2；验收返工不建 V2，退回「待执行/执行中」并记原因/次数/附件要求。</li>
+        <li><span class="tag chg">改</span> <strong>母工单完结（C-10 / BR-STS-009）：</strong>
+          <pre style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;margin:8px 0;overflow:auto">母工单处理中
+→ 子工单 V1：拦截
+→ 子工单 V2：拍照
+→ 子工单 V3：换标
+→ 所有子工单完成、无待确认事项
+→ 母工单完结</pre>
+          不以「货物终结」作为关母单前置；详 <a href="统一工单-状态流转-PRD.html#mother-close">状态流转 PRD · BR-STS-009</a>。
+        </li>
+        <li>核心目录与默认岗位见状态流模板页 / <a href="统一工单-状态流转-PRD.html#core-catalog">BR-STS-008</a>。</li>
+      </ul>
+      <p class="ok"><strong>测：</strong>无法执行关闭后无自动 V2；验收退回处理人不变；改快递场景可演示规则改派；仓侧无完结按钮。</p>
+
+      <h3>5.3 四类状态对象边界</h3>
+      <p>母工单状态、指令工单状态、外部执行状态、费用/回写状态 — <strong>分开保存</strong>，禁止混成一个可拖拽大枚举。海外仓「已完成」≠ 指令完成 ≠ 母工单结案。配置中心：工单配置引用状态模板；状态模板内配置节点（含待审批、待费用审核、待客服验收等）及前后置。</p>
+      <p><span class="tag chg">已确认</span> 一期<strong>无</strong>「业务记录阶段 / 待转业务记录」；草稿仅发起页。费用审核与审批均为模板内节点，不是平行流程。</p>
+      <p class="ok"><strong>测：</strong>模拟推送失败/回写失败后状态字不变，时间线追加失败记录与异常标记、重试按钮。</p>
+    </section>
+
+    <section class="card" id="m6">
+      <h2>六、旁支计划二场景 #9–#12</h2>
+      <p>侧栏短卡 + <strong>测：</strong> 见 <a href="工单系统-旁支计划二-PRD.html">计划二分册</a>；总册索引 <a href="../../产品部门-旁支计划二-PRD.html#f9">旁支计划二 #9–#12</a>。</p>
+
+      <h3 id="s-f9">#9 发起类型 · 非美库</h3>
+      <ol class="steps">
+        <li>流程与美库类同（履约工作台 / 统一工单执行），但<strong>不对接美库</strong>。</li>
+        <li>费用、备注、改单须<strong>人工标记</strong>；不推美库仓工单、不自动贴标附件下发。</li>
+      </ol>
+      <p class="ok"><strong>测：</strong>非美库场景提交后工作台可见；无「推美库」自动动作；费用状态可人工改。原型：<a href="工单提交-入口-MVP.html?plan2=f9">提交入口</a> · <a href="新建工单-MVP.html?plan2=f9">新建</a></p>
+
+      <h3 id="s-f10">#10 改快递 · 需重出（美库）</h3>
+      <ol class="steps">
+        <li><span class="tag chg">改</span> <strong>唯一履约入口：</strong>履约工作台 / 分类提交 → 新建；不经海外跟进 / GW。</li>
+        <li><span class="tag chg">改</span> <strong>流程匹配（BR-WO-017）：</strong>自动按名称匹配工单流程/场景 <strong>「重出」</strong>；匹配不到则报错阻断，不模糊匹配其它名称。</li>
+        <li><span class="tag chg">改</span> <strong>按子单重出：</strong>发起粒度为快递<strong>子单</strong>（非子单根运单整票）；多子单分别建指令、分别回填新单号，均挂同一母工单。</li>
+        <li>流程：确认费用 → 下重出费用单 → 腾信按子单重出回填 → 打单/地址确认 → 推美库（贴标附件）→ 状态/费用同步。</li>
+      </ol>
+      <p class="ok"><strong>测：</strong>配置有「重出」可建单；无「重出」报匹配不到；仅填根运单无子单号校验失败；两子单各出指令。原型：<a href="工单提交-入口-MVP.html?plan2=f10">提交入口</a> · <a href="新建工单-MVP.html?plan2=f10&amp;scene=%E9%87%8D%E5%87%BA">新建·重出</a></p>
+
+      <h3 id="s-f11">#11 快递拦截 · 港前</h3>
+      <ol class="steps">
+        <li>入口：港前节点 / 统一工单「快递拦截·港前」/ 履约工作台新建。</li>
+        <li>关联：母工单 + 指令版本 + 美库执行单（BR-WO-016）。</li>
+        <li>流程：母工单处理中 → V1 拦截 →（新要求）V2 拍照 → V3 换标 → <strong>所有子工单完成且无待确认事项 → 母工单完结</strong>（BR-STS-009 / C-10）；费用/附件挂各版本。</li>
+      </ol>
+      <p class="ok"><strong>测：</strong>详情 <a href="工单详情-MVP.html?plan2=f11#WO-202605-INT">#WO-202605-INT</a> 可见指令版本链；改令后版本号递增。</p>
+
+      <h3 id="s-f12">#12 快递拦截 · 港后</h3>
+      <ol class="steps">
+        <li>入口：快递异常件（可选）/ 尾程快递件 / 统一工单「快递拦截·港后」/ 履约工作台新建。<strong>不经</strong>海外跟进。</li>
+        <li>关联：同 #11 三级关系；港后与港前分流，母工单仍按根货件不断链。</li>
+        <li>流程：版本链同 #11；解拦 / 失败 / 已交承运商对齐 Q-WO-004。</li>
+      </ol>
+      <p class="ok"><strong>测：</strong>快递异常件转工单带港后场景；详情版本链与港前同构、入口标签区分港后。</p>
+
+      <h3 id="s-wo-mark">工单异常标记（跨页 · 计划二挂总册）</h3>
+      <ol class="steps">
+        <li>统一工单风险标签回写海外对接列表「工单异常标记」：尾程快递件 / 卡派跟进 / 卡派自提件 / 一件代发。</li>
+        <li>与「异常登记」并列；提交后按派送类型写入；变更实时刷新；结案保留最终态。</li>
+      </ol>
+      <p class="ok"><strong>测：</strong>提交拦截/重出工单后对应列表出现标签；点击进工单。总册：<a href="../../产品部门-旁支计划二-PRD.html#wo-mark">旁支计划二 · 工单异常标记</a></p>
+    </section>
+
+    <section class="card" id="m8">
+      <h2>七、正式清单（可验收项汇总）</h2>
+      <table>
+        <thead><tr><th>编号</th><th>验收要点</th></tr></thead>
+        <tbody>
+          <tr><td>AC-WO-001</td><td>从业务页发起工单自动带入关联对象与当前有效字段</td></tr>
+          <tr><td>AC-WO-002</td><td>查重 BR-WO-001：同键同类型未完结禁止平行新建，引导追加/升版本</td></tr>
+          <tr><td>AC-WO-002b/c</td><td>已受理版本不可撤回替换；单版失败不关闭母工单；验收返工不升 V2</td></tr>
+          <tr><td>AC-WO-003～009</td><td>少件/改址/拦截/费用锁账/回写冲突等异常路径（见附录 §11）</td></tr>
+          <tr><td>AC-STS-006～010</td><td>执行—验收：退回返工不升版；无法执行须客服确认；新要求才建 V2；母工单完结=全部子工单完成且无待确认（V1拦截→V2拍照→V3换标样板）</td></tr>
+          <tr><td>AC-WO-CFG-001</td><td>勾选后上方启用/禁用即时落库；列表仅复选；配置弹窗保存写入 v11；说明见 PRD §三</td></tr>
+          <tr><td>AC-WO-CFG-002</td><td>审批流一次选择带出编号+名称；未通过不可提交执行</td></tr>
+          <tr><td>AC-WO-CFG-003</td><td>writeRules 仅写白名单字段；禁止覆盖原渠道；失败 C-09</td></tr>
+          <tr><td>AC-WO-CFG-004</td><td>配置边界：状态模板流转=当前状态+可执行功能+后置+岗位+指引/附件；费用/审批不进功能目录；下发执行为单按钮</td></tr>
+          <tr><td>AC-WO-ENTRY-001</td><td>提交即建母+指令并按模板首节点派岗；资料不全仅发起页草稿；一期无待转业务记录</td></tr>
+          <tr><td>AC-WO-FEE-002</td><td>有费用配置时提交自动弹费用确认；确认后才建单并写应收预估快照；取消不建单；无费用配置跳过弹窗记「无费用已确认」</td></tr>
+          <tr><td>AC-WO-STAGE-001</td><td>环节由运单状态自动判定（装柜完成前→装柜完成前、拆柜前→港前、拆柜后→港后）；新建页无环节下拉；场景按环节过滤</td></tr>
+          <tr><td>AC-WO-WB-002</td><td>履约工作台七页签同一套列：待办/发起/交接(改快递改派)/超时异常/通知/审批(节点入口)/历史；页签只筛状态；待办直达当前节点；撤回仅在我的发起</td></tr>
+          <tr><td>AC-WO-WB-003</td><td>待办/超时/审批按指令工单一行；同母多指令按岗过滤；三层权限；处理人视角不默认看其他子工单费用附件（BR-WB-003）</td></tr>
+          <tr><td>AC-WO-GUIDE-001</td><td>流转行可配作业指引/附件要求；场景弹窗仍无按状态指引列表</td></tr>
+          <tr><td>AC-WO-ROUTE-001</td><td>派单客户优先；客户 SLA 由客户管理维护，生成时固化快照；无客户 SLA 用场景默认</td></tr>
+          <tr><td>AC-WO-HAND-001</td><td>超时催办/升级（站内+企微）；超时不改状态并写三字段；「我的交接」一期仅改快递改派；班次/休假本期不做</td></tr>
+          <tr><td>AC-WO-FEE-001</td><td>费用双轨：应收预估与应付/实际成本分存；实际费用按场景是否审核；审核拒绝退回仓；指令+费用项+批次/外部单号防重</td></tr>
+          <tr><td>AC-STS-REWORK-001</td><td>验收不通过仅退回原执行人；无法执行确认后关闭指令且不自动生成后续；改快递等可按场景规则改派港后客服</td></tr>
+          <tr><td>AC-WO-STAT-001</td><td>一期基础履约统计：主维=发起人/发起场景；履约总表（发起量·及时率·时长）与执行结果可切维；岗位/仓为补充；事实字段随工单沉淀；不含预测·绩效·AI</td></tr>
+          <tr><td>AC-WO-017</td><td>重出：精确匹配流程名「重出」否则报错；按子单发起；新单号挂母、禁平行主单</td></tr>
+          <tr><td>AC-WO-P2-009～012</td><td>计划二 #9 非美库、#10 重出、#11/#12 拦截场景（见第六章 <strong>测：</strong>）</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="m9">
+      <h2>八、待定项</h2>
+      <p class="warn"><span class="tag pending">待定</span> 下列 Q-WO <strong>不得</strong>作为本期开发/测试验收口径。</p>
+      <table>
+        <thead><tr><th>编号</th><th>级别</th><th>待确认项</th></tr></thead>
+        <tbody>
+          <tr><td>Q-WO-001</td><td>P0</td><td>海外仓可提供能力边界（接单、回传、附件、费用、回调）</td></tr>
+          <tr><td>Q-WO-002</td><td>P0</td><td>各场景自动回写字段与最终确认权</td></tr>
+          <tr><td>Q-WO-003</td><td>P0</td><td>少件实收/差异数量落在哪个货物对象</td></tr>
+          <tr><td>Q-WO-004</td><td>P0</td><td>拦截成功/已交承运商/不可拦截/解拦口径及费用规则</td></tr>
+          <tr><td>Q-WO-005</td><td>P0</td><td>地址变更有效地址主数据与确认方</td></tr>
+          <tr><td>Q-WO-006～009</td><td>P1/P2</td><td>多仓子任务、SLA 节假日、费用先执行、历史迁移</td></tr>
+          <tr><td>Q-WO-010</td><td>P0</td><td>海外仓 API 开放与认证、回调、幂等</td></tr>
+          <tr><td>Q-WO-011～013</td><td>P1</td><td>客户回复同步、费用结案与业务结案分离</td></tr>
+          <tr><td>Q-WO-012</td><td>P0</td><td>海外仓费用回传字段与防重口径</td></tr>
+          <tr><td>Q-HAND-001</td><td>P2</td><td>夜班/休假交接扩展时：休假期间是否暂停客户承诺/内部考核 SLA（本期不做交接，顺延）</td></tr>
+        </tbody>
+      </table>
+      <p class="note">完整描述见附录 <a href="旁支1-工单系统方案-PRD.md#12-当前缺口与需要拍板的事项">§12 待定表</a>。</p>
+    </section>
+
+    <section class="card" id="m-appendix">
+      <h2>附录 · 历史全文</h2>
+      <p>2026-09-11 起稿的完整方案、海外仓对齐、费用分层与 BR 细则见 <a href="旁支1-工单系统方案-PRD.md">旁支1-工单系统方案-PRD.md</a>（<strong>附录 / 历史全文</strong>）。冲突时以<strong>本 HTML 主册</strong>为准。</p>
+    </section>
+
+    <p class="foot">产品部门 · 工单模块 · 需求 PRD 主册 · 2026-09-16</p>
+  </div>
+  <script src="../../ess-branch-back.js?v=20260915" defer></script>
+</body>
+</html>

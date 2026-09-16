@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>统一工单状态流转 PRD</title>
+  <style>
+    :root{--ink:#172033;--sub:#5c667a;--line:#dce3ee;--blue:#1769e0;--bluebg:#eff6ff;--green:#087443;--greenbg:#ecfdf3;--amber:#a75205;--amberbg:#fffaeb;--red:#b42318;--redbg:#fff3f2;--bg:#f4f7fb}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 "Microsoft YaHei",Arial,sans-serif}.page{max-width:1180px;margin:auto;padding:28px 22px 52px}.hero{background:linear-gradient(125deg,#123e7f,#1769e0);color:#fff;border-radius:14px;padding:25px 28px}.hero h1{margin:0 0 5px;font-size:26px}.hero p{margin:2px 0;opacity:.9}.toc,.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-top:16px}.toc a{display:inline-block;color:var(--blue);text-decoration:none;margin:3px 14px 3px 0}.notice{border-left:4px solid var(--amber);background:var(--amberbg);padding:11px 13px;border-radius:4px;margin-top:14px}.ok{border-left-color:var(--green);background:var(--greenbg)}.danger{border-left-color:var(--red);background:var(--redbg)}h2{font-size:19px;margin:0 0 10px}h3{font-size:16px;margin:18px 0 8px}p{margin:7px 0}.tag{display:inline-block;border-radius:12px;padding:1px 8px;font-size:12px;font-weight:700;background:#eef2f7;color:#42526a}.tag.warn{background:#fff1d6;color:#a75205}.tag.ok{background:#dcfae9;color:#087443}.tag.todo{background:#fff1f0;color:#b42318}table{width:100%;border-collapse:collapse;margin:10px 0;overflow:hidden}th,td{border:1px solid var(--line);padding:9px;vertical-align:top;text-align:left}th{background:#f7f9fc;font-size:13px}code{background:#f0f3f7;padding:1px 4px;border-radius:3px}.flow{display:flex;align-items:stretch;gap:7px;overflow-x:auto;padding:10px 0}.node{min-width:126px;padding:10px;border:1px solid #b9d2f5;border-radius:8px;background:var(--bluebg);font-size:12px}.node strong{display:block;font-size:13px}.node.warn{border-color:#f4c76b;background:var(--amberbg)}.node.ok{border-color:#8ed9b4;background:var(--greenbg)}.arrow{align-self:center;color:#7d8da4;font-size:21px}.states{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:8px}.state{border:1px solid var(--line);border-radius:8px;padding:9px;background:#fff}.state b{display:block;color:var(--blue)}ul{padding-left:20px;margin:7px 0}.foot{color:var(--sub);font-size:12px}@media(max-width:760px){.page{padding:12px}.hero,.toc,.card{padding:16px}.states{grid-template-columns:repeat(2,minmax(130px,1fr))}table{font-size:12px}th,td{min-width:120px;padding:7px}}@media print{body{background:#fff}.page{max-width:none;padding:0}.toc{display:none}.hero{border-radius:0}.card{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <h1>统一工单状态流转 PRD</h1>
+    <p>版本 0.1 · 更新 2026-09-15 · 主要读者：业务、客服、港前/港后客服、海外对接、产品、研发、测试</p>
+    <p>文档状态：<strong>需求草稿，可进入评审，暂不可直接进入真实接口开发</strong> · 示例/规则未联调</p>
+  </header>
+
+  <nav class="toc" aria-label="目录">
+    <a href="#summary">结论</a><a href="#boundary">生成边界</a><a href="#model">状态模型</a><a href="#flow">状态流</a><a href="#config">配置边界</a><a href="#mapping">外部映射</a><a href="#acceptance">验收</a><a href="#open">待确认</a>
+  </nav>
+
+  <section class="card" id="summary">
+    <h2>1. 一句话结论</h2>
+    <p><span class="tag ok">已确认</span> 统一工单由“母工单 + 指令版本”组成。每次拦截、换标、重出或仓内操作都是一个指令版本；新要求创建 V2/V3，不能修改已下发或已执行的旧版本。</p>
+    <p><span class="tag ok">BR-STS-000</span> <strong>费用确认和后续执行不是两张平级业务工单。</strong>它们属于同一母工单的同一指令版本：费用确认是内部子任务/独立确认记录；海外仓执行是该版本的执行阶段，并关联外部美库工单或线下指令。实际加收费用仅新增该版本的第二条费用确认记录。</p>
+    <p><span class="tag ok">已确认</span> 每个指令版本必须完成费用确认；“无费用”同样要有确认记录。需要海外仓实际处理、确认可否处理、反馈结果或实际费用时，必须发起统一工单；是否推送美库由海外仓对接能力决定。</p>
+  </section>
+
+  <section class="card" id="boundary">
+    <h2>2. 生成统一工单的边界</h2>
+    <table><thead><tr><th>情况</th><th>是否生成</th><th>系统处理</th></tr></thead><tbody>
+      <tr><td>海外仓需实际处理、确认能否处理、回传结果或实际费用</td><td>是</td><td>API 仓自动下发；无接口仓生成同样的线下操作指令。</td></tr>
+      <tr><td>港前要求到仓后处理，如留仓、换标、拍照</td><td>是</td><td>创建预执行版本，等待海外仓执行。</td></tr>
+      <tr><td>仅内部沟通、费用预判、客户咨询、系统备注或单纯改内部字段</td><td>否</td><td>仅留日志/备注，不创建执行工单。</td></tr>
+      <tr><td>已有工单后收到新的操作要求</td><td>是</td><td>创建关联 V2/V3，不覆盖旧版本。</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="card" id="model">
+    <h2>3. 状态模型：四类状态分开保存</h2>
+    <div class="states">
+      <div class="state"><b>母工单状态</b>草稿、处理中、持续跟进、已完成、已取消</div>
+      <div class="state"><b>指令版本状态</b>待费用确认、执行中、回写中、版本已完成等</div>
+      <div class="state"><b>外部执行状态</b>待人工发送、推送中、已受理、已处理、关闭</div>
+      <div class="state"><b>费用/回写状态</b>预计费用已确认、待实际费用确认、回写失败</div>
+    </div>
+    <div class="notice ok"><strong>BR-STS-001：</strong>外部“已处理”仅代表海外仓动作完成，不等于版本完成；仍需实际费用结果、业务/客服确认以及业务数据回写。</div>
+    <div class="notice danger"><strong>BR-STS-002：</strong>外部“关闭”不等于处理成功。必须保存关闭原因，进入“海外仓关闭待确认”，再决定新建后续版本或“无法执行”结案。</div>
+    <h3>母工单状态</h3>
+    <table><thead><tr><th>状态</th><th>进入条件</th><th>离开条件</th></tr></thead><tbody>
+      <tr><td>草稿</td><td>首次保存草稿</td><td>提交首个版本后进入处理中；未下发时可取消【建议】</td></tr>
+      <tr><td>处理中</td><td>存在任一非终态版本</td><td>全部版本终态后，进入持续跟进或已完成</td></tr>
+      <tr><td>持续跟进</td><td>当前版本已完成/无法执行，但货物尚未终结或仍可能有新要求</td><td>新建 V2/V3 回处理中；货物终结后已完成</td></tr>
+      <tr><td>已完成</td><td>货物终结且无待办版本、待费用确认或回写失败</td><td>终态，只读</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="card" id="flow">
+    <h2>4. 指令版本主状态流</h2>
+    <div class="flow" aria-label="统一工单主状态流程图">
+      <div class="node"><strong>草稿</strong>保存来源、范围、指令、附件</div><span class="arrow">→</span>
+      <div class="node warn"><strong>待可行性确认</strong>港后且需要海外仓先确认时进入</div><span class="arrow">→</span>
+      <div class="node warn"><strong>待经理审批</strong>仅命中审批规则时进入</div><span class="arrow">→</span>
+      <div class="node"><strong>待费用确认</strong>有费用/无费用均须确认</div><span class="arrow">→</span>
+      <div class="node"><strong>待执行准备</strong>校验地址、附件、留仓等动作</div><span class="arrow">→</span>
+      <div class="node"><strong>待外部下发</strong>API 或线下指令</div><span class="arrow">→</span>
+      <div class="node"><strong>海外仓执行中</strong>等待结果、凭证、实际费用</div><span class="arrow">→</span>
+      <div class="node warn"><strong>待实际费用确认</strong>实际加收或无加收均二次确认</div><span class="arrow">→</span>
+      <div class="node"><strong>待结果确认 / 回写中</strong>确认结果并写回业务数据</div><span class="arrow">→</span>
+      <div class="node ok"><strong>版本已完成</strong>版本只读；母工单继续跟进或完成</div>
+    </div>
+    <p class="foot">分支：可行性不通过、经理拒绝、海外仓关闭均进入“无法执行”；API 超时进入“推送失败”；回写异常进入“回写失败”，均不可直接完结。</p>
+    <table><thead><tr><th>当前状态</th><th>触发动作/前置</th><th>下一状态</th><th>关键结果/失败处理</th></tr></thead><tbody>
+      <tr><td>草稿</td><td>业务/客服保存</td><td>待可行性确认 / 待费用确认</td><td>仅保存资料，不下发海外仓。</td></tr>
+      <tr><td>待可行性确认</td><td>港后拦截、港后换标等命中规则</td><td>待经理审批 / 待费用确认 / 无法执行</td><td>保存反馈人、时间、出库情况、证据。</td></tr>
+      <tr><td>待经理审批</td><td>海外仓确认可执行且命中审批规则</td><td>待费用确认 / 无法执行</td><td>拒绝必须填写原因。</td></tr>
+      <tr><td>待费用确认</td><td>每个版本均必经</td><td>待执行准备</td><td>未确认禁止重出、下发或执行。</td></tr>
+      <tr><td>待执行准备</td><td>预计费用确认完成；字段/附件齐全</td><td>待外部下发 / 待结果确认</td><td>执行配置的内部动作；缺资料退回补充。</td></tr>
+      <tr><td>待外部下发</td><td>需要海外仓实际执行</td><td>推送中 / 待人工发送</td><td>按海外仓能力选择 API 或线下。</td></tr>
+      <tr><td>推送中 / 推送失败</td><td>系统调用 API</td><td>待海外仓受理 / 推送失败</td><td>保存幂等键、请求/响应摘要；失败可重试。</td></tr>
+      <tr><td>待人工发送</td><td>无接口海外仓</td><td>待海外仓受理</td><td>保存发送渠道、接收人和凭证。</td></tr>
+      <tr><td>待海外仓受理 / 执行中</td><td>外部受理、处理中</td><td>待结果与实际费用回传 / 海外仓关闭待确认</td><td>状态乱序不能覆盖较新记录。</td></tr>
+      <tr><td>待结果与实际费用回传</td><td>海外仓已处理</td><td>待实际费用确认</td><td>等待实际加收或无加收结论，不得完结。</td></tr>
+      <tr><td>待实际费用确认</td><td>业务/客服二次确认</td><td>待结果确认</td><td>保存第二条费用确认记录。</td></tr>
+      <tr><td>待结果确认 / 回写中</td><td>确认处理结果</td><td>版本已完成 / 回写失败</td><td>保存原值、新值、版本、操作人、时间。</td></tr>
+      <tr><td>海外仓关闭待确认</td><td>外部关闭且有关闭原因</td><td>无法执行 / 新建 V2</td><td>不得显示为处理成功。</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="card" id="config">
+    <h2>5. 配置与状态流的关系</h2>
+    <p><span class="tag">已确认</span> 不单独维护全局状态字典。管理员在状态模板内直接新增、编辑和移除状态名称；系统自动生成状态编号。已发布且已被工单使用的模板不可直接改动，需复制出新版本调整；费用快照、外部日志、回写日志、版本关联和“已执行版本不可覆盖”仍是系统固定能力。</p>
+    <table><thead><tr><th>配置分类</th><th>配置项</th><th>影响状态流</th></tr></thead><tbody>
+      <tr><td>状态节点</td><td>状态名称、系统自动编号、必经/可选、默认责任岗位/工单池</td><td>直接在状态模板内维护，不再从状态字典选择。</td></tr>
+      <tr><td>客户响应等级</td><td>一级、二级</td><td>值来源于客户管理的“客户响应等级”字典；状态模板 SLA 的配置级别直接引用此字典，模板内不另建分级；工单创建时固化客户等级快照。</td></tr>
+      <tr><td>节点 SLA</td><td>客户响应等级：一级 SLA、客户响应等级：二级 SLA；每组包含处理时限、预警提前量、超时升级岗位</td><td>同一状态模板内按客户响应等级维护两组 SLA；工单进入节点时按已固化的客户等级读取对应组，不再按等级拆分状态模板。</td></tr>
+      <tr><td>状态流转</td><td>当前状态、下一状态</td><td>模板只配置允许的前置—后置关系；动作和业务校验由系统固定执行。</td></tr>
+      <tr><td>港前/港后判定</td><td>轨迹节点、运输状态、优先级、人工覆盖</td><td>决定走港前/港后分支及是否先做可行性确认。</td></tr>
+      <tr><td>工单类型流程</td><td>操作类型、阶段、必填字段/附件、是否需外部执行</td><td>决定是否进入待执行准备、待外部下发。</td></tr>
+      <tr><td>费用确认</td><td>是否必需、免收费条件、确认角色、审批阈值</td><td>决定待费用确认能否放行；当前每版本都必须确认。</td></tr>
+      <tr><td>审批</td><td>状态模板选择审批流程编码｜名称；审批流程维护适用条件、审批人和层级</td><td>命中审批时进入引用该审批流程的状态。</td></tr>
+      <tr><td>海外仓能力</td><td>API/无接口、支持动作、回写方式</td><td>决定推送中或待人工发送，不改变工单主流程。</td></tr>
+      <tr><td>外部状态映射/回写</td><td>外部枚举、回写对象/字段/时机</td><td>决定外部状态接入和回写中要写入的业务对象。</td></tr>
+    </tbody></table>
+    <div class="notice ok"><strong>BR-STS-003：</strong>客服不在单票页面选择“是否推送美库”。点击“提交执行/下发”后，系统按“工单类型 + 港前港后 + 海外仓能力”自动决定 API 推送、生成线下指令或无需外部下发。</div>
+  </section>
+
+  <section class="card" id="status-template-fields">
+    <h2>5.3 状态流模板配置页面字段说明</h2>
+    <p class="muted">页面只展示字段名和必要操作提示；字段口径、来源、校验与权限以本节为准。</p>
+    <table><thead><tr><th>页面区域</th><th>字段/动作</th><th>口径与数据来源</th><th>校验与保存规则</th></tr></thead><tbody>
+      <tr><td>模板基本信息</td><td>模板名称</td><td>管理员录入，用于场景选择与页面展示。</td><td>必填；同一生效范围内不可重复。</td></tr>
+      <tr><td>模板基本信息</td><td>模板编码</td><td>管理员录入的模板唯一标识。</td><td>必填；发布后不可直接修改。</td></tr>
+      <tr><td>模板基本信息</td><td>适用工单类型</td><td>管理员从工单类型配置中选择。</td><td>决定可被哪些工单场景引用。</td></tr>
+      <tr><td>状态节点</td><td>状态名称</td><td>管理员在当前模板内直接录入。</td><td>必填；仅在当前模板生效。</td></tr>
+      <tr><td>状态节点</td><td>系统编号</td><td>系统在新增状态时自动生成。</td><td>只读；发布后不可修改。</td></tr>
+      <tr><td>状态节点</td><td>节点要求</td><td>管理员选择必经或可选。</td><td>场景启用可选节点后，该节点在该场景内必须经过。</td></tr>
+      <tr><td>状态节点</td><td>默认责任岗位/池</td><td>管理员从岗位/工单池配置选择。</td><td>生成工单时用于路由；不绑定具体员工。</td></tr>
+      <tr><td>状态节点</td><td>客户响应等级：一级 SLA</td><td>管理员维护处理时限、预警提前量、超时升级岗位。配置级别取客户管理的客户响应等级。</td><td>客户响应等级为一级时生效；系统节点不配置 SLA。</td></tr>
+      <tr><td>状态节点</td><td>客户响应等级：二级 SLA</td><td>管理员维护处理时限、预警提前量、超时升级岗位。配置级别取客户管理的客户响应等级。</td><td>客户响应等级为二级时生效；系统节点不配置 SLA。</td></tr>
+      <tr><td>状态节点</td><td>预警提前量建议</td><td>≤2小时提前30分钟；2–8小时提前1小时；8–24小时提前2小时；＞24小时提前处理时限的20%。</td><td>实际配置必须小于处理时限；预警提前量指距离处理时限还剩多久时触发预警。</td></tr>
+      <tr><td>状态节点</td><td>作业指引与附件要求</td><td>从开发已关联到当前状态的操作功能中选择，配置该操作的指引，以及附件类型、必传/选传、最少数量和填写说明。</td><td>不在模板中配置操作功能本身；必传附件未满足时，不能执行对应操作。附件类型不另建全局字典。</td></tr>
+      <tr><td>状态节点</td><td>引用审批流程</td><td>下拉展示审批流程编码｜审批流程名称。</td><td>为空时不触发审批；审批人、层级和条件由审批流程独立维护。</td></tr>
+      <tr><td>状态流转</td><td>当前状态、下一状态</td><td>从本模板已添加的状态中选择。</td><td>只维护允许的前置—后置关系；页面不配置触发动作/业务条件。</td></tr>
+      <tr><td>发布</td><td>保存、发布、复制</td><td>管理员操作。</td><td>发布前校验起始节点、终态和必经节点可达；已发布模板通过复制生成新版本。</td></tr>
+    </tbody></table>
+    <div class="notice ok"><strong>BR-STF-002：</strong>作业指引随状态模板包保存，但按“状态 + 开发已关联的具体操作”分别配置；工单详情只在用户执行该操作时展示对应指引。</div>
+    <div class="notice ok"><strong>BR-STF-003：</strong>附件要求跟随“状态 + 具体操作”保存。工单进入状态时固化可用操作及其附件要求快照；用户执行操作时，系统校验必传附件的类型和最少数量。发布且已使用的模板通过复制新版本修改指引和附件要求。</div>
+  </section>
+
+  <section class="card" id="mapping">
+    <h2>6. 外部状态映射与回写</h2>
+    <table><thead><tr><th>外部反馈</th><th>统一工单外部状态</th><th>指令版本状态</th><th>下一步</th></tr></thead><tbody>
+      <tr><td>API 下发成功 / 人工确认发送</td><td>已下发</td><td>待海外仓受理</td><td>等待受理。</td></tr>
+      <tr><td>已受理 / 处理中</td><td>海外仓处理中</td><td>海外仓执行中</td><td>等待结果、凭证和实际费用。</td></tr>
+      <tr><td>已处理</td><td>海外仓已处理</td><td>待结果与实际费用回传</td><td>不得自动完结。</td></tr>
+      <tr><td>关闭</td><td>海外仓已关闭</td><td>海外仓关闭待确认</td><td>必须保存关闭原因。</td></tr>
+      <tr><td>接口报错/超时</td><td>推送失败</td><td>推送失败</td><td>保留日志、支持重试。</td></tr>
+      <tr><td>无接口仓人工反馈完成</td><td>人工反馈已处理</td><td>待结果与实际费用回传</td><td>录入处理结果、费用和回执。</td></tr>
+    </tbody></table>
+    <p><strong>港前留仓回写：</strong>柜子计划/柜子数据 <code>Move Type=留仓</code>，并在海派跟踪表<strong>对应柜子备注</strong>登记指令版本；原渠道 TRUCK/自提/UPS/FEDEX/FBA 不直接覆盖。</p>
+  </section>
+
+  <section class="card" id="acceptance">
+    <h2>7. 验收标准</h2>
+    <ul>
+      <li><strong>AC-STS-001：</strong>V1 未确认费用时，尝试 API 推送或标记人工发送，系统阻止，状态保持“待费用确认”。</li>
+      <li><strong>AC-STS-002：</strong>海外仓已处理但未回传实际费用/无加收结论时，尝试完结，系统阻止，状态保持“待结果与实际费用回传”。</li>
+      <li><strong>AC-STS-003：</strong>海外仓配置为无接口时，费用确认后提交执行，系统生成线下操作指令，状态为“待人工发送”，不调用美库接口。</li>
+      <li><strong>AC-STS-004：</strong>V1 已下发后产生新换标/拦截要求，系统创建关联 V2；V1 的状态和费用快照不被修改。</li>
+      <li><strong>AC-STS-005：</strong>港前拦截留仓回写成功后，Move Type 为“留仓”，且对应柜子备注含指令版本、操作人和时间。</li>
+    </ul>
+  </section>
+
+  <section class="card" id="open">
+    <h2>8. P0/P1 待确认</h2>
+    <table><thead><tr><th>编号</th><th>级别</th><th>待确认内容</th><th>影响</th></tr></thead><tbody>
+      <tr><td>Q-STS-001</td><td><span class="tag todo">P0</span></td><td>港前、港后、已提柜、已到海外仓、已出库、货物终结对应哪些轨迹码/业务状态；冲突时谁优先？</td><td>无法可靠自动选择流程分支。</td></tr>
+      <tr><td>Q-STS-002</td><td><span class="tag todo">P0</span></td><td>海外仓真实接口能力、外部状态枚举、回调方式、重试和幂等要求。</td><td>无法真实联调。</td></tr>
+      <tr><td>Q-STS-003</td><td><span class="tag todo">P0</span></td><td>费用由内部业务/客服确认，还是必须附客户确认凭证；实际费用差额如何补充确认？</td><td>影响费用节点权限、附件与放行条件。</td></tr>
+      <tr><td>Q-STS-004</td><td><span class="tag todo">P0</span></td><td>“货物终结”的数据来源及母工单自动/人工完结方式。</td><td>无法进入已完成。</td></tr>
+      <tr><td>Q-STS-005</td><td><span class="tag warn">P1</span></td><td>草稿删除、撤回已下发版本的条件和权限；催办 SLA 与超时升级。</td><td>影响取消、待办和通知设计。</td></tr>
+    </tbody></table>
+    <p class="foot">当前就绪度：可进入业务/产品评审；前端可按草稿出状态页；后端真实接口开发须先确认 Q-STS-001～004；测试可先按 AC-STS-001～005 准备模拟用例。</p>
+  </section>
+</main>
+</body>
+</html>

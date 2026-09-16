@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>快递异常件登记 · 与统一工单打通（MVP）</title>
+  <style>
+    :root {
+      --bg:#f5f7fb; --card:#fff; --text:#111827; --sub:#6b7280; --line:#e5e7eb; --primary:#2563eb;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:"Microsoft YaHei","PingFang SC",sans-serif; }
+    .page { max-width:1180px; margin:0 auto; padding:20px 16px 64px; }
+    .crumb { font-size:12px; color:var(--sub); margin-bottom:8px; }
+    .crumb a { color:var(--primary); text-decoration:none; }
+    h1 { margin:0 0 6px; font-size:22px; }
+    .meta { margin:0 0 14px; font-size:13px; color:var(--sub); line-height:1.55; max-width:820px; }
+    .callout {
+      background:#eff8ff; border:1px solid #b2ddff; border-radius:10px;
+      padding:12px 14px; font-size:13px; line-height:1.65; margin-bottom:14px; color:#194185;
+    }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+    .btn {
+      border:1px solid var(--line); background:#fff; border-radius:8px;
+      padding:7px 12px; font-size:13px; cursor:pointer; font-family:inherit; text-decoration:none; color:inherit;
+    }
+    .btn-primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .tab {
+      border:1px solid var(--line); background:#fff; border-radius:999px;
+      padding:5px 12px; font-size:12px; cursor:pointer; font-family:inherit;
+    }
+    .tab.active { background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700; }
+    .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+    table { width:100%; border-collapse:collapse; font-size:12.5px; }
+    th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:#f8fafc; color:#475569; white-space:nowrap; }
+    .tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+    .tag.biz { background:#f4f3ff; color:#6941c6; }
+    .tag.cs { background:#ecfdf3; color:#067647; }
+    .tag.wait { background:#fffaeb; color:#b54708; }
+    .tag.run { background:#eff8ff; color:#175cd3; }
+    .tag.done { background:#ecfdf3; color:#067647; }
+    .tag.obs { background:#f2f4f7; color:#344054; }
+    .tag.must { background:#fef3f2; color:#b42318; }
+    .tag.only { background:#f2f4f7; color:#475467; }
+    .link { color:var(--primary); font-weight:600; text-decoration:none; background:none; border:0; cursor:pointer; font:inherit; padding:0; }
+    .sub { color:var(--sub); font-size:11px; margin-top:2px; }
+    .drawer-mask {
+      position:fixed; inset:0; background:rgba(15,23,42,.35); display:none; z-index:40;
+      justify-content:flex-end;
+    }
+    .drawer-mask.open { display:flex; }
+    .drawer { width:min(460px,100%); background:#fff; padding:18px; overflow:auto; }
+    .drawer h2 { margin:0 0 12px; font-size:16px; }
+    .field { margin-bottom:12px; }
+    .field label { display:block; font-size:12px; color:var(--sub); margin-bottom:4px; font-weight:600; }
+    .field select, .field input, .field textarea {
+      width:100%; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; font-size:13px;
+    }
+    .hint { font-size:12px; color:var(--sub); line-height:1.5; }
+    .drawer-ft { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="crumb">
+      <a href="原型导航-工单模块.html">工单模块</a> · 登记台 · 快递异常件
+      · <a href="../产品部门/海外对接组/海外对接组-尾程快递件-MVP.html">尾程快递件</a>
+    </div>
+    <h1>快递异常件（子单）登记</h1>
+    <p class="meta">快递异常事实登记（可选）。异常类型字典可在本台维护；需拦截/换标/少件核实等处置时直接转<strong>统一工单</strong>，在<strong>履约工作台</strong>处理。现网海外跟进 / 改派重出已下线，重出走提交入口「改快递·需重出」。</p>
+    <div class="callout">
+      对齐现网：反馈类型（业务/客服）、异常类型、异常单号、附件。
+      新增：<strong>处置档位</strong>、<strong>关联统一工单</strong>、待转工单状态。未扫描天数预警仍在尾程快递件列表。
+    </div>
+
+    <div class="toolbar">
+      <button type="button" class="btn btn-primary" id="btnAdd">+ 新增问题件（业务）</button>
+      <a class="btn" href="工单提交-入口-MVP.html?plan2=f10">去重出（提交入口）</a>
+      <a class="btn" href="工单工作台-MVP.html">履约工作台</a>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button type="button" class="tab active" data-f="all">全部</button>
+      <button type="button" class="tab" data-f="proc">快递处理中</button>
+      <button type="button" class="tab" data-f="wait">待转统一工单</button>
+      <button type="button" class="tab" data-f="done">已处理</button>
+    </div>
+
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>反馈类型</th>
+            <th>异常类型</th>
+            <th>内网/末端单号</th>
+            <th>处置档位</th>
+            <th>状态</th>
+            <th>关联统一工单</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="drawer-mask" id="mask">
+    <div class="drawer">
+      <h2>新增问题件（业务）</h2>
+      <div class="field"><label>登记类型</label><input value="快递异常件" readonly /></div>
+      <div class="field"><label>反馈类型</label>
+        <select id="fb"><option>业务反馈</option><option>客服反馈</option></select>
+      </div>
+      <div class="field"><label>异常类型 *</label>
+        <select id="exType">
+          <option>断壳</option>
+          <option>签收地址错</option>
+          <option>破损</option>
+          <option>整票变更</option>
+          <option>未提取</option>
+          <option>签收未收到</option>
+        </select>
+      </div>
+      <div class="field"><label>处置意图</label>
+        <select id="intent">
+          <option value="must">需仓内/承运商处置 · 必须转统一工单</option>
+          <option value="suggest">待核实 · 建议转</option>
+          <option value="only">仅登记观察</option>
+        </select>
+      </div>
+      <div class="field"><label>异常单号 *</label><textarea id="exNo" rows="2" placeholder="末端/异常单号，可多行"></textarea></div>
+      <p class="hint" id="hint"></p>
+      <div class="drawer-ft">
+        <button type="button" class="btn" id="btnCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="btnSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var rows = [
+      { fb: "业务反馈", ex: "签收地址错", no: "1Z999AA10123456784", tier: "must", st: "wait", wo: "" },
+      { fb: "客服反馈", ex: "未提取", no: "9400136201234567891234", tier: "only", st: "obs", wo: "" },
+      { fb: "业务反馈", ex: "破损", no: "748999999999", tier: "must", st: "run", wo: "WO-202609-092" },
+      { fb: "客服反馈", ex: "断壳", no: "JD014600012345678901", tier: "suggest", st: "wait", wo: "" },
+      { fb: "业务反馈", ex: "整票变更", no: "1Z111EE50999888777", tier: "must", st: "done", wo: "WO-202609-055" }
+    ];
+    var filter = "all";
+    function render() {
+      var tb = document.getElementById("tbody");
+      tb.innerHTML = "";
+      rows.forEach(function (r, i) {
+        if (filter === "wait" && r.st !== "wait") return;
+        if (filter === "done" && r.st !== "done") return;
+        if (filter === "proc" && r.st !== "run" && r.st !== "obs") return;
+        var tier = r.tier === "must" ? ["必须转", "must"] : r.tier === "only" ? ["仅登记", "only"] : ["建议转", "only"];
+        var st = { wait: ["待转工单", "wait"], run: ["处理中", "run"], done: ["已处理", "done"], obs: ["观察中", "obs"] }[r.st];
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td><span class="tag ' + (r.fb.indexOf("业务") >= 0 ? "biz" : "cs") + '">' + r.fb + "</span></td>" +
+          "<td>" + r.ex + "</td>" +
+          "<td>" + r.no + '<div class="sub">登记类型：快递异常件</div></td>' +
+          '<td><span class="tag ' + tier[1] + '">' + tier[0] + "</span></td>" +
+          '<td><span class="tag ' + st[1] + '">' + st[0] + "</span></td>" +
+          "<td>" + (r.wo ? '<a class="link" href="工单详情-MVP.html">' + r.wo + "</a>" : "—") + "</td>" +
+          "<td>" + (r.st === "wait" || (r.st === "obs" && r.tier !== "only")
+            ? '<button type="button" class="link" data-i="' + i + '">转统一工单</button>'
+            : r.wo ? '<a class="link" href="工单详情-MVP.html">看工单</a>' : "—") + "</td>";
+        tb.appendChild(tr);
+      });
+      tb.querySelectorAll("[data-i]").forEach(function (b) {
+        b.onclick = function () {
+          var r = rows[Number(b.getAttribute("data-i"))];
+          location.href = "新建工单-MVP.html?source=express&scene=" + encodeURIComponent(r.ex) + "&track=" + encodeURIComponent(r.no);
+        };
+      });
+    }
+    document.getElementById("tabs").onclick = function (e) {
+      var t = e.target.closest(".tab");
+      if (!t) return;
+      filter = t.getAttribute("data-f");
+      document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("active", x === t); });
+      render();
+    };
+    var mask = document.getElementById("mask");
+    function syncHint() {
+      var v = document.getElementById("intent").value;
+      document.getElementById("hint").textContent = {
+        must: "保存后=待转统一工单；无已提交工单不可标已处理。",
+        suggest: "建议转统一工单，可暂观察。",
+        only: "仅登记，写回尾程「异常登记」列即可。"
+      }[v];
+    }
+    document.getElementById("btnAdd").onclick = function () { mask.classList.add("open"); syncHint(); };
+    document.getElementById("btnCancel").onclick = function () { mask.classList.remove("open"); };
+    document.getElementById("intent").onchange = syncHint;
+    document.getElementById("btnSave").onclick = function () {
+      var intent = document.getElementById("intent").value;
+      rows.unshift({
+        fb: document.getElementById("fb").value,
+        ex: document.getElementById("exType").value,
+        no: document.getElementById("exNo").value || "（未填单号）",
+        tier: intent,
+        st: intent === "only" ? "obs" : "wait",
+        wo: ""
+      });
+      mask.classList.remove("open");
+      if (intent === "must" && confirm("必须转统一工单，现在去新建？")) {
+        location.href = "新建工单-MVP.html?source=express&scene=" + encodeURIComponent(document.getElementById("exType").value);
+        return;
+      }
+      render();
+    };
+    syncHint();
+    render();
+  </script>
+  <link rel="stylesheet" href="wo-prototype-nav.css" />
+  <script src="wo-prototype-nav.js?v=20260915d" defer></script>
+  <link rel="stylesheet" href="../../../二期/ess-prototype-prd.css" />
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="工单模块-需求PRD.html#m1">
+    <span class="ess-prd-chip">PRD · 工单 · 旁支计划二</span>
+  </div>
+  <script src="../../../二期/ess-prototype-prd.js"></script>
+  <script src="../../ess-branch-back.js?v=20260915" defer></script>
+</body>
+</html>

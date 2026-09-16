@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>一期基础履约统计（MVP）</title>
+  <style>
+    :root { --bg:#f5f7fb; --card:#fff; --text:#111827; --sub:#6b7280; --line:#e5e7eb; --primary:#2563eb; --amber:#b45309; --red:#dc2626; --ok:#047857; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: var(--bg); color: var(--text); }
+    .page { max-width: 1180px; margin: 0 auto; padding: 20px 16px 56px; }
+    .crumb { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+    .crumb a { color: var(--primary); text-decoration: none; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .meta { font-size: 13px; color: var(--sub); line-height: 1.55; margin: 0 0 16px; max-width: 960px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(15,23,42,.04); }
+    .card h2 { font-size: 15px; margin: 0 0 10px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 4px; }
+    .filters .f { min-width: 140px; }
+    label { font-size: 11px; color: var(--sub); display: block; margin-bottom: 4px; }
+    select, input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: inherit; }
+    .btn { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; text-decoration: none; color: inherit; display: inline-block; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    @media (max-width: 900px) { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+    .kpi { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+    .kpi .l { font-size: 12px; color: var(--sub); }
+    .kpi .n { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .kpi .h { font-size: 11px; color: #94a3b8; margin-top: 4px; line-height: 1.4; }
+    .kpi.ok .n { color: var(--ok); }
+    .dim-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .dim-bar .lbl { font-size: 12px; color: var(--sub); margin-right: 4px; }
+    .dim-bar button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+    .dim-bar button.on { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; font-weight: 600; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .tabs button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 7px 12px; font-size: 12px; cursor: pointer; }
+    .tabs button.on { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; white-space: nowrap; }
+    .note { font-size: 12px; color: var(--sub); line-height: 1.55; margin: 8px 0 0; }
+    .tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 999px; background: #eef2ff; color: #3730a3; margin-right: 4px; }
+    .tag.warn { background: #fef3c7; color: #92400e; }
+    .tag.ok { background: #d1fae5; color: #065f46; }
+    .tag.out { background: #f1f5f9; color: #64748b; }
+    ul.compact { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+    .panel { display: none; }
+    .panel.on { display: block; }
+    .callout { font-size: 12px; line-height: 1.55; padding: 10px 12px; border-radius: 8px; background: #ecfdf5; border: 1px solid #99f6e4; color: #0f766e; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="crumb">
+      <a href="原型导航-工单模块.html">工单模块</a> /
+      <a href="工单工作台-MVP.html">履约工作台</a> /
+      一期基础履约统计
+    </div>
+    <h1>一期基础履约统计</h1>
+    <p class="meta">BR-STAT-001：一期基础履约<strong>统一按「发起人」「发起场景」两个维度</strong>统计（发起量、及时率、平均时长、执行结果均可切换维度）。岗位/海外仓为补充切片。趋势预测、绩效、AI 归<strong>二期</strong>。</p>
+
+    <div class="card">
+      <div class="filters">
+        <div class="f"><label>统计周期</label>
+          <select id="fPeriod">
+            <option value="2026-05">2026-05（演示）</option>
+            <option value="2026-04">2026-04</option>
+            <option value="2026-W20">2026 第 20 周</option>
+          </select>
+        </div>
+        <div class="f"><label>发起人</label>
+          <select id="fStarter">
+            <option value="">全部</option>
+            <option>张三·业务</option>
+            <option>李四·业务</option>
+            <option>付雪</option>
+            <option>私卡客服-阳</option>
+            <option>周九·产品</option>
+          </select>
+        </div>
+        <div class="f"><label>发起场景</label>
+          <select id="fScene">
+            <option value="">全部</option>
+            <option>换标·港前</option>
+            <option>快递拦截·港后</option>
+            <option>港后·私卡改地址</option>
+            <option>改快递·需重出</option>
+            <option>港后·FBA改仓</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-primary" id="btnRefresh">刷新演示</button>
+        <a class="btn" href="工单工作台-MVP.html">返回履约工作台</a>
+      </div>
+      <p class="note" id="filterHint">口径：统计粒度=指令工单；发起量按创建日；及时率读节点 SLA/超时标记；时长=发起→客服验收通过。主维度=发起人 / 发起场景。</p>
+    </div>
+
+    <div class="kpi-grid" id="kpi">
+      <div class="kpi"><div class="l">工单发起量</div><div class="n" data-k="vol">1,286</div><div class="h">按发起人 · 发起场景双维</div></div>
+      <div class="kpi ok"><div class="l">受理及时率</div><div class="n" data-k="accept">92.4%</div><div class="h">首响未超时 / 应受理</div></div>
+      <div class="kpi ok"><div class="l">完成及时率</div><div class="n" data-k="done">87.1%</div><div class="h">执行+验收均未超时</div></div>
+      <div class="kpi"><div class="l">平均处理时长</div><div class="n" data-k="avg">18.6h</div><div class="h">发起到客服验收完成</div></div>
+    </div>
+
+    <div class="dim-bar" id="dimBar" role="group" aria-label="统计主维度">
+      <span class="lbl">主维度：</span>
+      <button type="button" class="on" data-dim="starter">按发起人</button>
+      <button type="button" data-dim="scene">按发起场景</button>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button type="button" class="on" data-panel="core">履约总表</button>
+      <button type="button" data-panel="result">执行结果</button>
+      <button type="button" data-panel="role">补充 · 岗位</button>
+      <button type="button" data-panel="wh">补充 · 海外仓</button>
+      <button type="button" data-panel="facts">一期沉淀字段</button>
+    </div>
+
+    <div class="card panel on" id="panel-core">
+      <div class="callout" id="dimHint">当前主维度：<strong>发起人</strong>。下列发起量 / 及时率 / 平均时长均按该维拆行。</div>
+      <h2>履约总表 <span class="tag" id="dimTag">按发起人</span></h2>
+      <table>
+        <thead>
+          <tr>
+            <th id="thDim">发起人</th>
+            <th>发起量</th>
+            <th>占比</th>
+            <th>受理及时率</th>
+            <th>完成及时率</th>
+            <th>平均处理时长</th>
+            <th>环比（演示）</th>
+          </tr>
+        </thead>
+        <tbody id="tbCore"></tbody>
+      </table>
+      <p class="note">切换「按发起人 / 按发起场景」即时换表。筛选发起人/场景后仅保留命中行。导出 CSV / 下钻明细属一期报表能力。</p>
+    </div>
+
+    <div class="card panel" id="panel-result">
+      <h2>执行结果 <span class="tag" id="dimTagResult">按发起人</span></h2>
+      <table>
+        <thead>
+          <tr>
+            <th id="thDimResult">发起人</th>
+            <th><span class="tag ok">完成</span></th>
+            <th><span class="tag warn">返工</span></th>
+            <th><span class="tag warn">无法执行</span></th>
+            <th><span class="tag out">取消</span></th>
+            <th>合计</th>
+            <th>TOP 返工原因</th>
+          </tr>
+        </thead>
+        <tbody id="tbResult"></tbody>
+      </table>
+      <p class="note">结果维同样按发起人 / 发起场景拆分；原因码挂指令版本。</p>
+    </div>
+
+    <div class="card panel" id="panel-role">
+      <h2>补充切片 · 岗位履约 <span class="tag out">非主维度</span></h2>
+      <p class="note" style="margin-top:0">主维度仍是发起人/发起场景；本表仅作执行侧补充观察。</p>
+      <table>
+        <thead><tr><th>执行部门 / 岗位</th><th>收到</th><th>完成</th><th>超时</th><th>完成率</th><th>超时率</th></tr></thead>
+        <tbody id="tbRole"></tbody>
+      </table>
+    </div>
+
+    <div class="card panel" id="panel-wh">
+      <h2>补充切片 · 海外仓履约 <span class="tag out">非主维度</span></h2>
+      <table>
+        <thead><tr><th>海外仓</th><th>任务量</th><th>平均受理时长</th><th>平均执行时长</th><th>返工率</th><th>按时完成率</th></tr></thead>
+        <tbody id="tbWh"></tbody>
+      </table>
+      <p class="note">受理时长=推送成功→仓受理；执行时长=受理→提交结果。</p>
+    </div>
+
+    <div class="card panel" id="panel-facts">
+      <h2>一期必须随工单沉淀的事实字段</h2>
+      <p class="note" style="margin-top:0">报表可后做 UI，但字段须一期写入，否则二期无法补历史。</p>
+      <ul class="compact">
+        <li><strong>主统计维（必存）：</strong><strong>发起人</strong>、<strong>发起场景</strong>（场景码 / 场景名）</li>
+        <li><strong>身份维：</strong>工单号、指令版本、客户、执行部门/岗位、海外仓编码</li>
+        <li><strong>时间戳：</strong>发起、首响/受理、开始执行、提交结果、客服验收通过/退回、关闭</li>
+        <li><strong>SLA 结果：</strong>首响/执行/验收是否超时；超时标记、已升级层级、最近催办时间</li>
+        <li><strong>结果维：</strong>终态（完成/返工/无法执行/取消）、原因码与原因文本、返工次数</li>
+        <li><strong>时长派生：</strong>受理/执行/验收/端到端时长（可计算；源时间戳必存）</li>
+      </ul>
+      <p class="note"><span class="tag out">二期不做</span> 趋势预测 · 绩效结算公式 · AI 分析 · 复杂多维自助分析</p>
+    </div>
+  </div>
+
+  <script>
+    let currentDim = "starter";
+
+    const CORE_BY_STARTER = [
+      { name: "张三·业务", vol: 152, pct: "11.8%", accept: "94.1%", done: "89.2%", avg: "16.2h", mom: "+5%" },
+      { name: "李四·业务", vol: 128, pct: "10.0%", accept: "91.8%", done: "86.4%", avg: "17.8h", mom: "+3%" },
+      { name: "付雪", vol: 186, pct: "14.5%", accept: "93.5%", done: "90.1%", avg: "14.5h", mom: "+8%" },
+      { name: "私卡客服-阳", vol: 96, pct: "7.5%", accept: "90.2%", done: "84.0%", avg: "19.4h", mom: "-1%" },
+      { name: "周九·产品", vol: 74, pct: "5.8%", accept: "95.0%", done: "91.5%", avg: "15.1h", mom: "+2%" },
+      { name: "赵六·业务", vol: 88, pct: "6.8%", accept: "89.6%", done: "83.2%", avg: "21.0h", mom: "+4%" },
+      { name: "钱七·业务", vol: 62, pct: "4.8%", accept: "92.0%", done: "88.0%", avg: "18.2h", mom: "+1%" },
+      { name: "其他发起人", vol: 500, pct: "38.8%", accept: "91.8%", done: "86.0%", avg: "19.8h", mom: "+2%" },
+    ];
+
+    const CORE_BY_SCENE = [
+      { name: "换标·港前", vol: 210, pct: "16.3%", accept: "93.8%", done: "90.5%", avg: "15.6h", mom: "+5%" },
+      { name: "快递拦截·港后", vol: 168, pct: "13.1%", accept: "91.2%", done: "85.8%", avg: "20.4h", mom: "+1%" },
+      { name: "港后·私卡改地址", vol: 142, pct: "11.0%", accept: "94.5%", done: "88.9%", avg: "12.8h", mom: "+4%" },
+      { name: "改快递·需重出", vol: 98, pct: "7.6%", accept: "90.0%", done: "84.2%", avg: "22.1h", mom: "+2%" },
+      { name: "港后·FBA改仓", vol: 86, pct: "6.7%", accept: "92.6%", done: "87.0%", avg: "18.0h", mom: "+3%" },
+      { name: "港前·柜子计划拦截换标", vol: 120, pct: "9.3%", accept: "89.5%", done: "83.1%", avg: "24.5h", mom: "+6%" },
+      { name: "异常件·媒体区断更", vol: 54, pct: "4.2%", accept: "88.0%", done: "81.5%", avg: "36.0h", mom: "-2%" },
+      { name: "其他场景", vol: 408, pct: "31.8%", accept: "92.0%", done: "86.8%", avg: "17.5h", mom: "+2%" },
+    ];
+
+    const RESULT_BY_STARTER = [
+      { name: "张三·业务", done: 112, rework: 18, cannot: 12, cancel: 10, top: "照片不齐套" },
+      { name: "李四·业务", done: 94, rework: 16, cannot: 10, cancel: 8, top: "唛头不清" },
+      { name: "付雪", done: 148, rework: 20, cannot: 10, cancel: 8, top: "尺寸缺参照" },
+      { name: "私卡客服-阳", done: 68, rework: 14, cannot: 8, cancel: 6, top: "客户地址不全" },
+      { name: "周九·产品", done: 58, rework: 8, cannot: 4, cancel: 4, top: "方案待确认" },
+    ];
+
+    const RESULT_BY_SCENE = [
+      { name: "换标·港前", done: 168, rework: 22, cannot: 12, cancel: 8, top: "新标签缺失" },
+      { name: "快递拦截·港后", done: 118, rework: 24, cannot: 16, cancel: 10, top: "货已出库" },
+      { name: "港后·私卡改地址", done: 110, rework: 14, cannot: 8, cancel: 10, top: "地址无效" },
+      { name: "改快递·需重出", done: 72, rework: 12, cannot: 8, cancel: 6, top: "面单未回填" },
+      { name: "港后·FBA改仓", done: 64, rework: 10, cannot: 6, cancel: 6, top: "PO 未确认" },
+    ];
+
+    const ROLE_ROWS = [
+      { dept: "港前客服", recv: 420, done: 388, over: 32, cr: "92.4%", or: "7.6%" },
+      { dept: "港后客服", recv: 510, done: 451, over: 47, cr: "88.4%", or: "9.2%" },
+      { dept: "海外仓·美库 LA", recv: 160, done: 142, over: 18, cr: "88.8%", or: "11.3%" },
+      { dept: "海外仓·美库 NJ", recv: 126, done: 109, over: 14, cr: "86.5%", or: "11.1%" },
+      { dept: "异常件", recv: 74, done: 61, over: 9, cr: "82.4%", or: "12.2%" },
+      { dept: "财务", recv: 56, done: 52, over: 3, cr: "92.9%", or: "5.4%" },
+    ];
+    const WH_ROWS = [
+      { wh: "美库-LA", n: 160, acceptH: "1.8h", execH: "14.2h", rework: "9.4%", ontime: "88.8%" },
+      { wh: "美库-NJ", n: 126, acceptH: "2.1h", execH: "16.8h", rework: "11.1%", ontime: "86.5%" },
+      { wh: "无接口仓-A", n: 48, acceptH: "4.5h", execH: "28.0h", rework: "14.6%", ontime: "79.2%" },
+    ];
+
+    function dimLabel() {
+      return currentDim === "starter" ? "发起人" : "发起场景";
+    }
+
+    function filterBySelect(rows) {
+      const starter = (document.getElementById("fStarter").value || "").trim();
+      const scene = (document.getElementById("fScene").value || "").trim();
+      return rows.filter(r => {
+        if (currentDim === "starter" && starter && r.name !== starter) return false;
+        if (currentDim === "scene" && scene && r.name !== scene) return false;
+        if (currentDim === "starter" && scene) return true;
+        if (currentDim === "scene" && starter) return true;
+        return true;
+      });
+    }
+
+    function syncDimUi() {
+      document.querySelectorAll("#dimBar button").forEach(b => {
+        b.classList.toggle("on", b.getAttribute("data-dim") === currentDim);
+      });
+      const lab = dimLabel();
+      document.getElementById("dimHint").innerHTML =
+        "当前主维度：<strong>" + lab + "</strong>。下列发起量 / 及时率 / 平均时长 / 执行结果均按该维拆行。";
+      document.getElementById("dimTag").textContent = "按" + lab;
+      document.getElementById("dimTagResult").textContent = "按" + lab;
+      document.getElementById("thDim").textContent = lab;
+      document.getElementById("thDimResult").textContent = lab;
+    }
+
+    function renderCore() {
+      const rows = filterBySelect(currentDim === "starter" ? CORE_BY_STARTER : CORE_BY_SCENE);
+      document.getElementById("tbCore").innerHTML = rows.length
+        ? rows.map(r =>
+            `<tr>
+              <td>${r.name}</td>
+              <td>${r.vol}</td>
+              <td>${r.pct}</td>
+              <td>${r.accept}</td>
+              <td>${r.done}</td>
+              <td>${r.avg}</td>
+              <td>${r.mom}</td>
+            </tr>`
+          ).join("")
+        : `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">无匹配数据（调整筛选或维度）</td></tr>`;
+    }
+
+    function renderResult() {
+      const rows = filterBySelect(currentDim === "starter" ? RESULT_BY_STARTER : RESULT_BY_SCENE);
+      document.getElementById("tbResult").innerHTML = rows.length
+        ? rows.map(r => {
+            const sum = r.done + r.rework + r.cannot + r.cancel;
+            return `<tr>
+              <td>${r.name}</td>
+              <td>${r.done}</td>
+              <td>${r.rework}</td>
+              <td>${r.cannot}</td>
+              <td>${r.cancel}</td>
+              <td>${sum}</td>
+              <td style="font-size:12px;color:#64748b">${r.top}</td>
+            </tr>`;
+          }).join("")
+        : `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">无匹配数据</td></tr>`;
+    }
+
+    function renderSupp() {
+      document.getElementById("tbRole").innerHTML = ROLE_ROWS.map(r =>
+        `<tr><td>${r.dept}</td><td>${r.recv}</td><td>${r.done}</td><td>${r.over}</td><td>${r.cr}</td><td>${r.or}</td></tr>`
+      ).join("");
+      document.getElementById("tbWh").innerHTML = WH_ROWS.map(r =>
+        `<tr><td>${r.wh}</td><td>${r.n}</td><td>${r.acceptH}</td><td>${r.execH}</td><td>${r.rework}</td><td>${r.ontime}</td></tr>`
+      ).join("");
+    }
+
+    function renderAll() {
+      syncDimUi();
+      renderCore();
+      renderResult();
+      renderSupp();
+    }
+
+    document.getElementById("dimBar").addEventListener("click", e => {
+      const btn = e.target.closest("[data-dim]");
+      if (!btn) return;
+      currentDim = btn.getAttribute("data-dim");
+      renderAll();
+    });
+
+    document.getElementById("tabs").addEventListener("click", e => {
+      const btn = e.target.closest("[data-panel]");
+      if (!btn) return;
+      document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b === btn));
+      document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === "panel-" + btn.getAttribute("data-panel")));
+    });
+
+    document.getElementById("btnRefresh").addEventListener("click", () => {
+      const p = document.getElementById("fPeriod").value;
+      const st = document.getElementById("fStarter").value || "全部发起人";
+      const sc = document.getElementById("fScene").value || "全部场景";
+      document.getElementById("filterHint").textContent =
+        `已刷新演示：周期=${p} · 主维度=${dimLabel()} · 发起人=${st} · 发起场景=${sc}。联库后按双维重算聚合。`;
+      const jitter = () => (Math.random() * 0.6 - 0.3).toFixed(1);
+      document.querySelector("[data-k=accept]").textContent = (92.4 + Number(jitter())).toFixed(1) + "%";
+      document.querySelector("[data-k=done]").textContent = (87.1 + Number(jitter())).toFixed(1) + "%";
+      renderAll();
+    });
+
+    ["fStarter", "fScene", "fPeriod"].forEach(id => {
+      document.getElementById(id).addEventListener("change", renderAll);
+    });
+
+    renderAll();
+  </script>
+  <link rel="stylesheet" href="wo-prototype-nav.css" />
+  <script src="wo-prototype-nav.js?v=20260916a" defer></script>
+  <script src="../../ess-branch-back.js?v=20260915" defer></script>
+  <link rel="stylesheet" href="../../../二期/ess-prototype-prd.css" />
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="工单模块-需求PRD.html#m4-stats">
+    <span class="ess-prd-chip">PRD · 一期基础履约统计</span>
+  </div>
+  <script src="../../../二期/ess-prototype-prd.js"></script>
+</body>
+</html>

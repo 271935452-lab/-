@@ -158,31 +158,36 @@
     <main>
       <h1 class="page-title">工单场景流程图</h1>
       <p class="page-lead">
-        与 <a href="工单提交-入口-MVP.html">工单提交 · 分类入口</a>、<a href="新建工单-MVP.html">新建工单</a>、<a href="工单详情-MVP.html">工单详情</a> 口径一致；下图由 <strong>Mermaid</strong> 渲染（需联网）。状态名与 SLA 以正式配置为准，本页为产品对齐示意。
+        流程口径以
+        <a href="工单配置与业务流程-泳道图.html">工单配置与业务流程 · 泳道图</a>、
+        <a href="工单流程-共性与差异梳理.md">工单流程 · 共性与差异梳理</a>、
+        <a href="统一工单-状态流转-PRD.md">统一工单 · 状态流转 PRD</a>
+        为准；与 <a href="工单提交-入口-MVP.html">工单提交 · 分类入口</a>、<a href="新建工单-MVP.html">新建工单</a>、<a href="工单详情-MVP.html">工单详情</a> 页面一致。
+        下图由 <strong>Mermaid</strong> 渲染（需联网）；场景差异仅补节点，共性骨架不再使用「发起→接单→处理→结案」粗图。
       </p>
 
       <section id="f-common">
         <h2>工单状态机（各场景共性）</h2>
-        <p class="scene-meta">发起 → 分派/接收 → 处理中 → 待协同或待反馈 → 结案；支持驳回、撤回（未进不可逆节点）、转派。</p>
+        <p class="scene-meta">统一工单 = 母工单 + 指令版本；外部「已处理」≠版本完成，须业务/客服确认结果与实际费用后回写。</p>
         <div class="mermaid-wrap">
           <pre class="mermaid">
-flowchart TD
-  A[发起人创建工单] --> B{自动分派 / 待接单}
-  B --> C[处理人接收]
-  B --> R1[驳回 → 发起人修改重提]
-  C --> D[处理中]
-  D --> E{需转派 / 升级?}
-  E -->|是| F[转派至目标池/人]
-  F --> D
-  E -->|否| G{待外部反馈?}
-  G -->|是| H[待海外仓/客户/财务反馈]
-  H --> D
-  G -->|否| I[结案归档]
-  D --> W[发起人撤回]
-  W --> A
+flowchart LR
+  A[业务需求记录] --> B[转统一工单]
+  B --> C[固化配置快照]
+  C --> D[正式确认 费用]
+  D --> E{可行性?}
+  E -->|命中| F[可行性确认]
+  E -->|跳过| G{审批?}
+  F --> G
+  G -->|命中| H[经理审批]
+  G -->|跳过| I[提交执行]
+  H --> I
+  I --> J[外部子任务]
+  J --> K[确认回写]
+  K --> L[版本完成]
           </pre>
         </div>
-        <p class="note">工作台页签：待办、我发起、我处理、超期、已结案；流转记录各节点留痕可审计。</p>
+        <p class="note">〔可行性〕、〔审批〕等括号节点<strong>未命中则跳过</strong>；失败、拒绝、超时<strong>保持当前状态</strong>并留痕重试。母工单在货物未终结前保持处理中/持续跟进，不因单版本完成而关闭。</p>
       </section>
 
       <section id="f-fuxue">
@@ -197,8 +202,9 @@ flowchart TD
   S4 --> S2
   S3 -->|接收| S5[进入拦截换标预报等后续动作]
   S5 --> S6[海外仓提柜拆柜组承接]
-  S6 --> S7[处理完成或异常升级]
-  S7 --> S8[结案]
+  S6 --> S7[外部执行完成]
+  S7 --> S8[确认回写]
+  S8 --> S9[版本完成]
           </pre>
         </div>
         <p class="note teal">SLA：约定时效内完成接收/驳回；驳回须填原因。接收后可拆分为「柜子计划协同」子流程继续跟踪。</p>
@@ -209,19 +215,23 @@ flowchart TD
         <p class="scene-meta">对应场景：港前·柜子计划拦截换标。需记录拦截原因、换标要求、共享表更新人。</p>
         <div class="mermaid-wrap">
           <pre class="mermaid">
-flowchart LR
+flowchart TD
   A[创建工单关联柜号] --> B[付雪接收]
-  B --> C[拦截指令]
-  C --> D[换标与标签确认]
-  D --> E[更新共享表]
-  E --> F[预报海外仓]
-  F --> G[海外仓执行提柜拆柜]
-  G --> H{结果}
-  H -->|成功| I[结案]
-  H -->|Hold/标签错误等| J[工单内升级并抄送客服组]
-  J --> G
+  B --> C[费用确认]
+  C --> D["Move Type=留仓 + 柜子备注追加"]
+  D --> E{已预报美库?}
+  E -->|是| F[推美库改计划]
+  E -->|否| G[登记留仓待执行]
+  F --> G
+  G --> H[待提柜后确认]
+  H --> I[海外仓执行/拆柜反馈]
+  I --> J[结果确认回写]
+  J --> K[版本完成]
+  I --> L{Hold/标签错误等}
+  L --> J
           </pre>
         </div>
+        <p class="note teal"><strong>港前禁止直接完结</strong>；原发货渠道不覆盖。提柜后须再次核实拦截/换标结果，外部完成不等于版本完成。</p>
       </section>
 
       <section id="f-report">
@@ -238,8 +248,9 @@ flowchart TD
   E --> G[更新工单处理记录]
   F --> G
   G --> H[通知业务员与客户口径]
-  H --> I[结案]
-  G --> J[纳入月度异常分析视图]
+  H --> I[确认回写]
+  I --> J[版本完成]
+  G --> K[纳入月度异常分析视图]
           </pre>
         </div>
       </section>
@@ -254,17 +265,20 @@ flowchart TD
   T -->|改地址/收件信息| A1[私卡客服接单]
   A1 --> A2[核对地址线路与客户诉求]
   A2 --> A3[下发海外仓或承运指令]
-  A3 --> Done[结案]
+  A3 --> A4[确认回写]
+  A4 --> Done[版本完成]
   T -->|预约联系不上| B1[私卡客服发起反向工单]
   B1 --> B2[路由至港后客服池]
   B2 --> B3[客服回电客户或协同销售]
-  B3 --> Done
+  B3 --> B4[确认回写]
+  B4 --> Done
   T -->|改尾端派送方式| C1[私卡客服接单]
   C1 --> C2{是否已入仓需改渠道}
   C2 -->|是| C3[勾选通知配仓组]
   C2 -->|否| C4[直接调整派送指令]
   C3 --> C4
-  C4 --> Done
+  C4 --> C5[确认回写运单]
+  C5 --> Done
           </pre>
         </div>
       </section>
@@ -282,10 +296,12 @@ flowchart TD
   F3 -->|是| F4[通知配仓组]
   F3 -->|否| F5[更新仓内/系统指令]
   F4 --> F5
-  F5 --> Done[结案]
+  F5 --> F6[确认回写]
+  F6 --> Done[版本完成]
   T -->|尾端派送调整| G1[FBA 客服明确新渠道时效回执]
   G1 --> G2[同步海外仓执行]
-  G2 --> Done
+  G2 --> G3[确认回写]
+  G3 --> Done
   T -->|改原单费用| H1[见「原单费用调整」流程]
           </pre>
         </div>
@@ -305,8 +321,9 @@ flowchart TD
   B -->|到仓提货| P1[自提客服确认提货信息]
   P1 --> P2[客户补充资料如有]
   P2 --> P3[回执确认]
-  D --> E[结案]
+  D --> E[确认回写]
   P3 --> E
+  E --> F[版本完成]
           </pre>
         </div>
       </section>
@@ -327,15 +344,16 @@ flowchart TD
   G -->|是| H[通知配仓组]
   G -->|否| I[海外仓/承运执行]
   H --> I
-  I --> J[回执确认后结案]
+  I --> J[确认回写]
+  J --> K[版本完成]
           </pre>
         </div>
         <p class="note teal">港后池内「转派处理人」仍可用于换人；改派送方式以确认写回运单为准，见场景配置维护。</p>
       </section>
 
       <section id="f-claim">
-        <h2><span class="stage-tag stage-tag--tail">尾端</span>未上架索赔</h2>
-        <p class="scene-meta">对应场景：尾端·未上架索赔。材料须在首条完整上传。</p>
+        <h2><span class="stage-tag stage-tag--post">港后</span>未上架索赔</h2>
+        <p class="scene-meta">对应场景：尾端·未上架索赔（环节=港后，BR-STAGE-001：拆柜后→港后）。材料须在首条完整上传。</p>
         <div class="mermaid-wrap">
           <pre class="mermaid">
 flowchart TD
@@ -370,10 +388,12 @@ flowchart TD
   M4 --> M5{第 6 天是否闭环}
   M5 -->|否| M6[系统标红推送发起人/主管]
   M6 --> M4
-  M5 -->|是| Done[结案]
+  M5 -->|是| M7[确认回写]
+  M7 --> Done[版本完成]
   T -->|预约联系不上| P1[私卡客服发起反向工单]
   P1 --> P2[追踪回电与客户确认]
-  P2 --> Done
+  P2 --> P3[确认回写]
+  P3 --> Done
           </pre>
         </div>
       </section>
@@ -408,7 +428,8 @@ flowchart TD
   B --> C[按分派规则路由至默认池]
   C --> D[处理人接收并处理]
   D --> E[必要时转派或升级]
-  E --> F[结案]
+  E --> F[确认回写]
+  F --> G[版本完成]
           </pre>
         </div>
         <p class="note">建议运营侧定期将高频「其他」类沉淀为正式场景字典，减少错派。</p>
@@ -429,7 +450,7 @@ flowchart TD
     });
   </script>
   <link rel="stylesheet" href="wo-prototype-nav.css" />
-  <script src="wo-prototype-nav.js?v=20260828b" defer></script>
-  <script src="../产品部门/ess-branch-back.js?v=2" defer></script>
+  <script src="wo-prototype-nav.js?v=20260915d" defer></script>
+  <script src="../../ess-branch-back.js?v=20260915" defer></script>
 </body>
 </html>

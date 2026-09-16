@@ -1,0 +1,2747 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工单详情（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #fff;
+      --text: #111827;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --green: #059669;
+      --teal: #0d9488;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 16px 80px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 960px) { .page { grid-template-columns: 1fr; } }
+    .crumb { grid-column: 1 / -1; font-size: 12px; color: var(--sub); margin-bottom: 0; }
+    .crumb a { color: var(--primary); text-decoration: none; }
+    .hero {
+      grid-column: 1 / -1;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 20px; font-weight: 700; }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .pill {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+    }
+    .pill.ok { border-color: #a7f3d0; background: #ecfdf5; color: #047857; }
+    .pill.doing { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+    .pill.risk { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+    .pill.role { border-color: #99f6e4; background: #f0fdfa; color: #0f766e; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .btn {
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-danger { background: #fff; border-color: #fca5a5; color: #b91c1c; }
+    .btn-ok { background: #ecfdf5; border-color: #6ee7b7; color: #047857; }
+    .btn-teal { background: #f0fdfa; border-color: #5eead4; color: #0f766e; font-weight: 600; }
+    .btn-highlight { background: #fff7ed; border-color: #fdba74; color: #c2410c; font-weight: 600; }
+    .btn-finance { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; font-weight: 600; }
+    .sla-bar.finance {
+      background: linear-gradient(90deg, #eff6ff, #fff);
+      border-color: #bfdbfe;
+    }
+    .sla-bar.finance strong { color: #1d4ed8; }
+    .config-pill {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .main-col .card + .card { margin-top: 12px; }
+    .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+    .sla-bar {
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(90deg, #fff7ed, #fff);
+      border: 1px solid #fed7aa;
+      font-size: 12px;
+      line-height: 1.65;
+      margin-bottom: 14px;
+    }
+    .sla-bar.teal {
+      background: linear-gradient(90deg, #ecfdf5, #fff);
+      border-color: #99f6e4;
+    }
+    .sla-bar strong { color: #c2410c; }
+    .sla-bar.teal strong { color: #0f766e; }
+    .prd-box {
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #475569;
+      margin-bottom: 14px;
+    }
+    .prd-box h3 { margin: 0 0 8px; font-size: 13px; color: #334155; }
+    .prd-box ol { margin: 6px 0 0; padding-left: 18px; }
+    .prd-box li { margin-bottom: 4px; }
+    .timeline { position: relative; padding-left: 18px; border-left: 2px solid #e2e8f0; margin-left: 8px; }
+    .tl-item { position: relative; padding-bottom: 16px; font-size: 13px; line-height: 1.55; }
+    .tl-item::before {
+      content: "";
+      position: absolute;
+      left: -25px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px #cbd5e1;
+    }
+    .tl-item.done::before { background: var(--green); }
+    .tl-item.pending::before { background: #94a3b8; }
+    .tl-item .t { color: var(--sub); font-size: 11px; margin-bottom: 4px; }
+    .dl { display: grid; grid-template-columns: 108px 1fr; gap: 8px 12px; font-size: 13px; }
+    .dl dt { color: var(--sub); margin: 0; }
+    .dl dd { margin: 0; }
+    .biz-snap {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    .biz-snap .box {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+    }
+    .biz-snap .box.after { border-color: #6ee7b7; background: #ecfdf5; }
+    .biz-snap .arrow { color: var(--sub); font-size: 18px; }
+    .biz-snap .lbl { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+    .sync-ok {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      font-size: 12px;
+      color: #047857;
+      display: none;
+    }
+    .sync-ok.show { display: block; }
+    .side .card + .card { margin-top: 12px; }
+    .actor { font-size: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .actor:last-child { border-bottom: none; }
+    .actor strong { display: block; margin-bottom: 2px; color: #334155; }
+    .actor.active { background: #f0fdfa; margin: 0 -8px; padding: 8px; border-radius: 8px; border-bottom: none; }
+    .demo-links { font-size: 12px; color: var(--sub); line-height: 1.7; margin: 0; }
+    .demo-links a { color: var(--primary); }
+    .child-link {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--primary);
+    }
+    .hidden { display: none !important; }
+    .precond-bar {
+      margin-top: 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .precond-bar.ok { border-color: #a7f3d0; background: #ecfdf5; }
+    .precond-bar.block { border-color: #fecaca; background: #fef2f2; }
+    .precond-bar .status-line { font-weight: 700; margin-top: 8px; }
+    .precond-bar.ok .status-line { color: #047857; }
+    .precond-bar.block .status-line { color: #b91c1c; }
+    .precond-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    @media (max-width: 720px) {
+      .precond-split { grid-template-columns: 1fr; }
+    }
+    .precond-mini {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 12px;
+    }
+    .precond-mini strong { display: block; font-size: 11px; color: var(--sub); margin-bottom: 4px; font-weight: 600; }
+    #workGuideCard.focus-node {
+      outline: 2px solid #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal-box {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+      overflow: hidden;
+    }
+    .modal-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .modal-body { padding: 14px 16px; font-size: 13px; }
+    .modal-body label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+    .modal-body select,
+    .modal-body textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      margin-bottom: 10px;
+    }
+    .modal-body textarea { min-height: 72px; resize: vertical; }
+    .modal-foot {
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .toast-msg {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 300;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #065f46;
+      color: #ecfdf5;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    .toast-msg.show { opacity: 1; transform: translateY(0); }
+    .pill.closed { border-color: #cbd5e1; background: #f1f5f9; color: #64748b; }
+    .root-bar {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 720px) { .root-bar { grid-template-columns: 1fr 1fr; } }
+    .root-bar .k { color: var(--sub); display: block; font-size: 11px; margin-bottom: 2px; }
+    .root-bar .v { font-weight: 600; color: var(--text); word-break: break-all; }
+    .ver-hint {
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.6;
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+    }
+    .tree-legend {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #334155;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 0 0 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .tree-rules {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 14px;
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.5;
+      margin: 0 0 14px;
+      padding: 0;
+      list-style: none;
+    }
+    @media (max-width: 720px) { .tree-rules { grid-template-columns: 1fr; } }
+    .tree-rules li::before { content: "· "; color: #2563eb; font-weight: 700; }
+    .ver-list { display: flex; flex-direction: column; gap: 10px; }
+    .ver-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #fff;
+      position: relative;
+    }
+    .ver-card.current { border-color: #93c5fd; box-shadow: 0 0 0 1px #dbeafe; }
+    .ver-card.replaced { opacity: 0.78; background: #f8fafc; }
+    .ver-card.closed-ver { border-color: #e2e8f0; }
+    .ver-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .ver-head .ver-no { font-weight: 700; font-size: 14px; }
+    .ver-head .ver-lvl {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 500;
+      margin-left: 2px;
+    }
+    .osw-nest {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #99f6e4;
+      background: #f0fdfa;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .osw-nest .osw-title {
+      font-weight: 700;
+      color: #0f766e;
+      margin-bottom: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .osw-nest.none {
+      border-color: #e2e8f0;
+      background: #f8fafc;
+    }
+    .osw-nest.none .osw-title { color: #64748b; }
+    .osw-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 12px;
+    }
+    @media (max-width: 640px) { .osw-grid { grid-template-columns: 1fr; } }
+    .osw-grid b { font-weight: 600; color: #111827; }
+    .ver-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 12px;
+      font-size: 12px;
+      color: #374151;
+      line-height: 1.55;
+    }
+    @media (max-width: 640px) { .ver-meta { grid-template-columns: 1fr; } }
+    .ver-meta b { font-weight: 600; color: #111827; }
+    .ver-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      z-index: 220;
+      display: none;
+    }
+    .drawer-backdrop.show { display: block; }
+    .drawer-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(440px, 100%);
+      height: 100%;
+      background: #fff;
+      z-index: 230;
+      box-shadow: -12px 0 40px rgba(15, 23, 42, 0.18);
+      transform: translateX(100%);
+      transition: transform 0.22s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .drawer-panel.show { transform: translateX(0); }
+    .drawer-head {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .drawer-body {
+      flex: 1;
+      overflow: auto;
+      padding: 16px 18px;
+      font-size: 13px;
+    }
+    .drawer-body label {
+      display: block;
+      font-size: 12px;
+      color: var(--sub);
+      margin: 10px 0 6px;
+    }
+    .drawer-body input[type="text"],
+    .drawer-body textarea,
+    .drawer-body select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .drawer-body textarea { min-height: 88px; resize: vertical; }
+    .drawer-readonly {
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+    .drawer-readonly .row { margin: 2px 0; }
+    .drawer-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.45;
+      cursor: pointer;
+    }
+    .drawer-foot {
+      padding: 12px 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .btn-ghost {
+      border: none;
+      background: transparent;
+      color: var(--sub);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 4px 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="crumb">
+      <a href="原型导航-工单模块.html">工单模块</a> /
+      <a href="工单工作台-MVP.html">工作台</a> /
+      <a href="工单提交-入口-MVP.html">工单提交</a> / 详情
+    </div>
+
+    <header class="hero" id="topHero">
+      <h1 id="heroTitle">EMSU1234567 拦截+换标+预报海外仓</h1>
+      <div id="heroMeta" style="font-size:13px;color:var(--sub)">WO-202605-001 · 发起人：张三（业务员）· 创建 2026-05-05 09:12</div>
+      <div id="handlerViewBanner" hidden style="margin-top:8px;font-size:12px;color:#9a3412;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:8px 10px;line-height:1.55"></div>
+      <div style="margin-top:8px;font-size:12px;color:#0f766e;background:#ecfdf5;border:1px solid #99f6e4;border-radius:8px;padding:8px 10px;display:inline-block">
+        履约入口：<a href="工单工作台-MVP.html" style="color:#0f766e;font-weight:700">履约工作台</a>
+        · 费用待确认时禁用「下发执行」
+      </div>
+      <div class="pills" id="pillsRow"></div>
+      <div class="toolbar" id="toolbar"></div>
+    </header>
+
+    <div class="main-col">
+      <div class="card hidden" id="flowPrdCard">
+        <h2 id="flowPrdTitle"></h2>
+        <div class="prd-box" id="flowPrdBody"></div>
+        <p class="config-pill hidden" id="flowPrdConfig"></p>
+      </div>
+
+      <div class="card">
+        <h2>SLA 与跟进规则（本单）</h2>
+        <div class="sla-bar" id="slaBox"></div>
+        <h2 style="margin-top:4px">处理时间轴</h2>
+        <div class="timeline" id="timeline"></div>
+      </div>
+
+      <div class="card hidden" id="precondCard">
+        <h2>前置 / 后置状态校验（运单 · 账单 · 期望状态）</h2>
+        <p style="font-size:12px;color:var(--sub);margin:0 0 10px">
+          <strong>运单状态</strong>管物流节点，<strong>后置禁止</strong>用于拦截改尾程；<strong>锁账/核销</strong>属账单维度，与运单独立校验。发起与确认时会<strong>重读最新状态</strong>。口径见场景配置黄列（BR-WO-019）。
+        </p>
+        <div class="precond-split">
+          <div class="precond-mini">
+            <strong>运单状态（实时）</strong>
+            <span id="precondWbStatus">—</span>
+          </div>
+          <div class="precond-mini">
+            <strong>账单状态（实时）</strong>
+            <span id="precondBillStatus">—</span>
+          </div>
+        </div>
+        <dl class="dl" style="margin-top:12px;margin-bottom:0">
+          <dt>允许运单（前置）</dt><dd id="precondWbAllow">—</dd>
+          <dt>禁止运单（后置）</dt><dd id="precondWbBlock">—</dd>
+          <dt>账单前置</dt><dd id="precondBillPre">—</dd>
+          <dt>结案期望状态</dt><dd id="precondPostWb">—</dd>
+        </dl>
+        <div class="precond-bar ok" id="precondResult">
+          <div class="status-line" id="precondResultText">—</div>
+        </div>
+      </div>
+
+      <div class="card hidden" id="bizCard">
+        <h2 id="bizCardTitle">业务联动示意</h2>
+        <dl class="dl" style="margin-bottom:12px">
+          <dt id="bizDtRef">关联单号</dt><dd id="bizWaybill">—</dd>
+          <dt>当前责任角色</dt><dd id="bizRole">—</dd>
+          <dt>联动配置</dt><dd id="bizConfigLine">—</dd>
+        </dl>
+        <div class="biz-snap">
+          <div class="box">
+            <div class="lbl" id="bizLblBefore">工单记录（改前）</div>
+            <strong id="bizBefore">—</strong>
+          </div>
+          <div class="arrow">→</div>
+          <div class="box after" id="bizAfterWrap">
+            <div class="lbl" id="bizLblAfter">业务系统（改后）</div>
+            <strong id="bizAfter">—</strong>
+          </div>
+        </div>
+        <div class="sync-ok" id="syncOk">已于 <span id="syncTime">—</span> <span id="syncAction">写回</span> · 操作人：<span id="syncUser">—</span></div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer" id="notifyWhWrap">
+          <input type="checkbox" id="notifyWh" />
+          <span>已入仓/涉及出仓：<strong>通知配仓组</strong>（与新建工单口径一致）</span>
+        </label>
+      </div>
+
+      <div class="card hidden" id="versionChainCard" data-ui="UI-WO-016" data-br="BR-WO-016">
+        <h2>协同结构 <span style="font-size:11px;color:#64748b;font-weight:400">UI-WO-016 · 母工单 → 指令工单 → 海外执行子任务</span></h2>
+        <p class="ver-hint">
+          <strong>母工单</strong>管理同一业务对象的一整段协同周期；其下每张<strong>指令工单</strong>等同一次「指令版本」。
+          是否需要海外仓执行，决定是否创建<strong>海外执行子任务</strong>（纯内部处理可没有）。
+          关联键为<strong>根运单 / 柜号 / 货件 ID</strong>；费用、附件、仓结果挂在对应指令工单，不堆在母工单备注。
+        </p>
+        <div class="tree-legend" id="treeLegend" aria-hidden="true">母工单（协同事项）
+└─ 指令工单 / 指令版本 V1
+   └─ 海外执行子任务（可选）
+└─ 指令工单 / 指令版本 V2
+   └─ 海外执行子任务（可选）
+└─ 指令工单 / 指令版本 V3 …</div>
+        <ul class="tree-rules">
+          <li>一张母工单可有多张指令工单</li>
+          <li>指令工单必须隶属母工单，不可独立存在</li>
+          <li>单张指令完成 ≠ 母工单完成</li>
+          <li>已下发/执行的指令不可改；新要求建 V2/V3</li>
+          <li>母工单状态由全部指令工单汇总</li>
+          <li>无需海外执行时可不建孙级子任务</li>
+        </ul>
+        <div class="root-bar" id="rootBar"></div>
+        <div class="ver-list" id="verList"></div>
+      </div>
+
+      <div class="card hidden" id="sceneRuleCard" data-ui="UI-WO-018" data-br="BR-WO-018">
+        <h2>场景规则 · 审批流 / 推送 <span style="font-size:11px;color:#64748b;font-weight:400">SC-GQ-011 · BR-WO-018/019</span></h2>
+        <dl class="dl" style="margin-bottom:12px">
+          <dt>挂靠状态</dt><dd id="srOnStatus">处理中</dd>
+          <dt>费用确认</dt><dd id="srFee">必须</dd>
+          <dt>关联审批流编号</dt><dd id="srFlowCode">AF-LABEL-PRE</dd>
+          <dt>关联审批流名称</dt><dd id="srFlowName">换标港前标准流</dd>
+          <dt>必填附件</dt><dd id="srDocs">新标签必传</dd>
+          <dt>执行动作 · Move Type</dt><dd id="srMoveType">→ 留仓</dd>
+          <dt>执行动作 · 柜子备注</dt><dd id="srCabNote">写入换标要求</dd>
+          <dt>外部执行</dt><dd id="srExt">需要 · API 自动推 / 无 API 待人工发送</dd>
+        </dl>
+        <p style="font-size:12px;color:#64748b;margin:0">场景表关联审批流编号/名称；节点细则在审批流主数据。客服不勾选是否推送，点「提交执行」后按规则 + 仓能力分支。</p>
+      </div>
+
+      <div class="card" id="workGuideCard" data-ui="UI-WO-GUIDE" data-br="BR-GUIDE-001" hidden>
+        <h2>作业指引 <span style="font-size:11px;color:#64748b;font-weight:400">本期不做 · 工单配置已去掉</span></h2>
+        <p style="font-size:12px;color:#64748b;margin:0">一期不在工单配置维护作业指引；本卡片默认隐藏。</p>
+        <dl class="dl" style="margin-bottom:0;display:none" aria-hidden="true">
+          <dt>适用节点</dt><dd id="guideNode">—</dd>
+          <dt>动作说明</dt><dd id="guideAction">—</dd>
+          <dt>必填资料</dt><dd id="guideDocs">—</dd>
+          <dt>附件 / 拍摄标准</dt><dd id="guideAttach">—</dd>
+          <dt>结果填写项</dt><dd id="guideResult">—</dd>
+          <dt>常见无法执行</dt><dd id="guideCannot">—</dd>
+          <dt>SOP / 知识库</dt><dd id="guideSop">—</dd>
+        </dl>
+      </div>
+
+      <div class="card" id="instructionCard" data-ui="UI-WO-DETAIL-001" data-br="BR-WO-001">
+        <h2 id="instructionCardTitle">当前指令工单 <span style="font-size:11px;color:#64748b;font-weight:400">UI-WO-DETAIL-001 · 焦点区</span></h2>
+        <dl class="dl" style="margin-bottom:0">
+          <dt>处理对象</dt><dd id="instructionObject">柜 / 运单 / FBA / 主单（随工单带入）</dd>
+          <dt>执行指令</dt><dd id="instructionText">请按本单场景执行，上传结果凭证；涉及业务字段变更时必须等待客服验收后回写。</dd>
+          <dt>执行限制</dt><dd>海外仓/PDA 只能「提交结果」，不可自助完结指令或母工单；客服验收通过后才算完成。</dd>
+        </dl>
+      </div>
+
+      <div class="card" id="warehouseFeedbackCard" data-ui="UI-WO-DETAIL-002" data-br="BR-WO-002">
+        <h2 id="warehouseFeedbackTitle">海外执行子任务 <span style="font-size:11px;color:#64748b;font-weight:400">UI-WO-DETAIL-002 · 挂当前指令</span></h2>
+        <dl class="dl" style="margin-bottom:12px">
+          <dt>海外仓任务号</dt><dd id="whTaskNo">待海外仓回传</dd>
+          <dt>处理结果</dt><dd id="whResult">待反馈</dd>
+          <dt>实际费用</dt><dd id="whActualFee">—</dd>
+          <dt>回执附件</dt><dd id="whReceipt">—</dd>
+          <dt>实际处理数量</dt><dd id="whActualQty">—</dd>
+          <dt>差异数量 / 原因</dt><dd id="whDiff">—</dd>
+          <dt>凭证</dt><dd id="whProof">照片 / POD / 清点表待回传</dd>
+        </dl>
+        <button type="button" class="btn btn-teal" id="btnDemoWhFeedback">模拟执行人提交结果</button>
+        <span style="font-size:12px;color:#64748b;margin-left:8px">仅提交结果/照片/费用；不能完结工单（演示）。</span>
+      </div>
+
+      <div class="card" id="writebackCard" data-ui="UI-WO-DETAIL-003" data-br="BR-WO-003">
+        <h2>客服验收 · 业务回写 <span style="font-size:11px;color:#64748b;font-weight:400">UI-WO-DETAIL-003 · BR-STS-007</span></h2>
+        <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.5">执行—验收：通过→回写；不通过→<strong>仅退回原执行人</strong>返工（不升 V2，不允许任意改派；改快递等可按场景规则改派港后客服）；无法执行→确认原因后<strong>关闭本指令</strong>（不自动生成后续）。</p>
+        <dl class="dl" style="margin-bottom:12px">
+          <dt>验收 / 回写状态</dt><dd id="writebackState"><span class="pill risk">待客服验收</span></dd>
+          <dt>待回写字段</dt><dd id="writebackFields">按场景写回：少件标记/实收数/差异原因，或拦截状态，或新地址版本及通知结果。</dd>
+          <dt>处理结果</dt><dd id="wbResult">—</dd>
+          <dt>实际费用</dt><dd id="wbFee">—</dd>
+          <dt>回执附件</dt><dd id="wbReceipt">—</dd>
+          <dt>修改地址</dt><dd id="wbAddr">—</dd>
+          <dt>修改渠道</dt><dd id="wbChannel">—</dd>
+          <dt>失败处理</dt><dd>写回失败保留执行反馈，状态进入“回写失败”，可重试；验收退回不新建 V2。</dd>
+        </dl>
+        <button type="button" class="btn btn-primary" id="btnDemoWriteback">验收通过并回写</button>
+        <button type="button" class="btn" id="btnDemoReject" style="margin-left:6px">验收不通过 · 退回返工</button>
+        <button type="button" class="btn" id="btnDemoUnable" style="margin-left:6px">确认无法执行</button>
+        <span style="font-size:12px;color:#64748b;margin-left:8px">客服操作；执行侧无完结按钮。</span>
+      </div>
+
+      <div class="card" id="feeCard" data-ui="UI-WO-DETAIL-004" data-br="BR-FEE-001">
+        <h2>费用双轨 · 实际费用 <span style="font-size:11px;color:#64748b;font-weight:400">BR-FEE-001 · 应收预估 ≠ 应付/成本</span></h2>
+        <dl class="dl" style="margin-bottom:12px">
+          <dt>应收预估（业务侧）</dt><dd id="feeEstimate">USD 25.00（预估，不覆盖应付）</dd>
+          <dt>费用返回状态</dt><dd><span class="pill risk" id="feeStatus">待海外仓反馈</span></dd>
+          <dt>实际费用（仓回传）</dt><dd id="feeActualRaw">—</dd>
+          <dt>审核</dt><dd id="feeAuditLine">场景「实际费用需审核」= 是 → 待审核；否 → 直接写入应付与实际成本</dd>
+          <dt>应付（审核通过后）</dt><dd id="feePayable">—（与应收预估分存）</dd>
+          <dt>实际成本</dt><dd id="feeCost">—（与应收预估分存）</dd>
+          <dt>费用明细</dt><dd id="feeLines">费用名称、币种、金额、数量、单位待回传。</dd>
+          <dt>防重键</dt><dd id="feeDedup">指令号 + 费用项 + 回传批次/外部单号</dd>
+          <dt>外部费用 ID / 版本</dt><dd id="feeExternalId">— / —</dd>
+          <dt>财务同步状态</dt><dd><span class="pill">待二期处理</span>；财务草稿号：—</dd>
+        </dl>
+        <button type="button" class="btn btn-teal" id="btnDemoFeeReturn">模拟仓回传实际费用</button>
+        <button type="button" class="btn btn-primary" id="btnDemoFeeApprove" style="margin-left:6px">审核通过 · 写入应付/成本</button>
+        <button type="button" class="btn" id="btnDemoFeeReject" style="margin-left:6px">审核拒绝 · 退回仓</button>
+        <button type="button" class="btn" id="btnDemoFee" style="margin-left:6px;display:none" aria-hidden="true">模拟费用回传</button>
+        <button type="button" class="btn btn-finance" id="btnConfirmFee" disabled style="margin-left:6px">业务确认（兼容旧演示）</button>
+        <span style="font-size:12px;color:#64748b;margin-left:8px">应收预估与应付/成本分存；同批防重。</span>
+      </div>
+
+      <div class="card">
+        <h2>工单字段</h2>
+        <dl class="dl" id="fieldsDl"></dl>
+        <div class="field-edit" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e2e8f0">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label for="editRelatedWo" style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">关联工单</label>
+              <input id="editRelatedWo" list="detailRelatedList" placeholder="WO / OP 号" style="width:100%;height:32px;border:1px solid #d9d9d9;border-radius:6px;padding:0 8px" />
+              <datalist id="detailRelatedList">
+                <option value="WO-202605-INT"></option>
+                <option value="WO-202605-LABEL"></option>
+                <option value="WO-202605-001"></option>
+              </datalist>
+            </div>
+            <div>
+              <label for="editWhTaskNo" style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">海外仓任务号</label>
+              <input id="editWhTaskNo" placeholder="MK-xxx / 仓任务号" style="width:100%;height:32px;border:1px solid #d9d9d9;border-radius:6px;padding:0 8px" />
+            </div>
+          </div>
+          <button type="button" class="btn" id="btnSaveLinkFields" style="margin-top:8px">保存关联字段</button>
+          <span style="font-size:12px;color:#64748b;margin-left:8px">演示写入本机 runtime；正式版同步母工单/指令版本。</span>
+        </div>
+        <a class="child-link hidden" id="childLink" href="#">查看子工单 WO-202605-014-S1（演示占位）</a>
+      </div>
+
+      <div class="card">
+        <h2>演示切换（地址栏哈希）</h2>
+        <p class="demo-links">
+          <a href="#WO-202605-LABEL">#WO-202605-LABEL</a> 换标·港前 · 提交执行自动推送 ·
+          <a href="#WO-202605-INT">#WO-202605-INT</a> 母工单 · 多指令工单 · 海外执行子任务 ·
+          <a href="#WO-202605-001">#WO-202605-001</a> 港前付雪 ·
+          <a href="#WO-202605-014">#WO-202605-014</a> 私卡处理中 → 可点「转自提处理」 ·
+          <a href="#WO-202605-014-pickup">#WO-202605-014-pickup</a> 已转自提池 · 前置通过 · 待确认联动 ·
+          <a href="#WO-202605-014-blocked">#WO-202605-014-blocked</a> 运单已「移交快递」· 后置拦截 ·
+          <a href="#WO-202605-008">#WO-202605-008</a> 未上架索赔 ·
+          <a href="#WO-202605-009">#WO-202605-009</a> 媒体区断更 ·
+          <a href="#WO-202605-012">#WO-202605-012</a> 原单费用 · 账单未锁 ·
+          <a href="#WO-202605-012-blocked">#WO-202605-012-blocked</a> 原单已锁账 · 账单拦截
+        </p>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <h2>当前参与方</h2>
+        <div id="actorsBox"></div>
+      </div>
+      <div class="card">
+        <h2>附件</h2>
+        <p style="font-size:12px;color:var(--sub);margin:0" id="attachText">标签样例.pdf · 客户授权邮件.eml（演示）</p>
+      </div>
+    </aside>
+  </div>
+
+  <div class="modal-backdrop" id="modalTransfer" role="dialog" aria-modal="true" aria-labelledby="transferTitle">
+    <div class="modal-box">
+      <div class="modal-head" id="transferTitle">交接 / 转派</div>
+      <div class="modal-body">
+        <p style="margin:0 0 10px;color:var(--sub);line-height:1.55">日常转派须保留原责任人、转派人、原因与时间。验收退回仅允许退原执行人（BR-REWORK-001）。夜班/休假交接<strong>本期不做</strong>，入口保留。详见 <a href="交接催办升级-MVP.html">交接·催办·升级</a>。</p>
+        <label for="transferKind">动作类型</label>
+        <select id="transferKind">
+          <option value="transfer">日常转派（指定到人）</option>
+          <option value="shift" disabled>班次交接（本期不做）</option>
+          <option value="leave" disabled>休假交接（本期不做）</option>
+        </select>
+        <label for="transferTarget">指派给 / 接替</label>
+        <select id="transferTarget"></select>
+        <label for="transferNote">原因（必填）</label>
+        <textarea id="transferNote" placeholder="如：夜班交接；客户指定联系该客服"></textarea>
+        <label for="leaveAt" id="leaveAtLabel" style="display:none">休假生效时间</label>
+        <input type="datetime-local" id="leaveAt" style="display:none;width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:4px" value="2026-05-16T09:00" />
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-modal-cancel="transfer">取消</button>
+        <button type="button" class="btn btn-primary" id="transferConfirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modalUrge" role="dialog" aria-modal="true" aria-labelledby="urgeTitle">
+    <div class="modal-box">
+      <div class="modal-head" id="urgeTitle">催办 / 超时升级</div>
+      <div class="modal-body">
+        <p style="margin:0 0 10px;color:var(--sub);line-height:1.55">不改变业务状态（C-09）。写入超时标记、已升级层级、最近催办时间。渠道：站内待办 + 企业微信（一期必需）。</p>
+        <label for="urgeKind">动作</label>
+        <select id="urgeKind">
+          <option value="urge">催办当前处理人</option>
+          <option value="esc1">超时升级 L1 · 通知当前处理人</option>
+          <option value="esc2">超时升级 L2 · +直属主管</option>
+          <option value="esc3">超时升级 L3 · +上级负责人</option>
+        </select>
+        <label for="urgeTimeoutType">超时类型</label>
+        <select id="urgeTimeoutType">
+          <option value="首响超时">首响超时</option>
+          <option value="执行超时">执行超时</option>
+          <option value="验收超时">验收超时</option>
+        </select>
+        <label for="urgeNote">说明（可选）</label>
+        <textarea id="urgeNote" placeholder="如：超首响未受理，请立即处理"></textarea>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-modal-cancel="urge">取消</button>
+        <button type="button" class="btn btn-primary" id="urgeConfirm">确认发送</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modalReject" role="dialog" aria-modal="true" aria-labelledby="rejectTitle">
+    <div class="modal-box">
+      <div class="modal-head" id="rejectTitle">驳回工单</div>
+      <div class="modal-body">
+        <label for="rejectReason">驳回原因（必填）</label>
+        <textarea id="rejectReason" placeholder="如：资料不全，请补充柜号与换标样例"></textarea>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-modal-cancel="reject">取消</button>
+        <button type="button" class="btn btn-danger" id="rejectConfirm">确认驳回</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="drawer-panel" id="followInstrDrawer" aria-hidden="true">
+    <div class="drawer-head">
+      <span id="followDrawerTitle">新建指令工单 / 升版本</span>
+      <button type="button" class="btn-ghost" id="followDrawerClose" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-readonly" id="followAutoFill"></div>
+      <label for="followReq">新要求（必填）</label>
+      <textarea id="followReq" placeholder="例如：改留仓至 LAX-WH02；原拦截改渠道为快递重出"></textarea>
+      <label for="followSla">时限</label>
+      <input type="text" id="followSla" value="24h 内海外仓确认可执行" />
+      <label for="followAttach">附件说明</label>
+      <input type="text" id="followAttach" placeholder="换标样例 / 授权截图（演示填文件名）" />
+      <label for="followFee">费用确认</label>
+      <select id="followFee">
+        <option value="pending">待客户确认费用</option>
+        <option value="ok" selected>费用已确认，可下发</option>
+        <option value="na">本版无费用</option>
+      </select>
+      <label class="drawer-check">
+        <input type="checkbox" id="followReplace" checked />
+        <span id="followReplaceLabel">替代上一版（向海外仓声明「后续指令 / 替代关系」）</span>
+      </label>
+      <p id="followModeHint" style="font-size:12px;color:#64748b;margin:10px 0 0;line-height:1.55"></p>
+    </div>
+    <div class="drawer-foot">
+      <button type="button" class="btn" id="followCancel">取消</button>
+      <button type="button" class="btn btn-primary" id="followSubmit">创建并下发</button>
+    </div>
+  </aside>
+
+  <div class="toast-msg" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const ACTORS = [
+      { key: "starter", label: "业务员 / 产品", desc: "发起人、补充资料、确认结果" },
+      { key: "fu", label: "港前客服（付雪）", desc: "接收 / 驳回、拦截换标、预报海外仓" },
+      { key: "private", label: "港后私卡客服", desc: "改地址、预约联系不上；判断后转自提" },
+      { key: "fba", label: "港后 FBA 客服", desc: "改仓、改原单费用、尾端派送调整" },
+      { key: "pickup", label: "港后自提客服", desc: "确认转自提、联动运单、到仓回执" },
+      { key: "wh", label: "配仓组", desc: "入仓后改渠道时接收通知" },
+      { key: "finance", label: "财务", desc: "费用与索赔结案" },
+    ];
+
+    const scenario = {
+      "WO-202605-001": {
+        title: "EMSU1234567 拦截+换标+预报海外仓",
+        meta: "WO-202605-001 · 发起人：张三（业务员）· 创建 2026-05-05 09:12",
+        relatedWo: "—（本单即母工单）",
+        whTaskNo: "—",
+        pills: [
+          { text: "阶段：港前", cls: "doing" },
+          { text: "场景：港前·柜子计划拦截换标", cls: "" },
+          { text: "状态：待付雪接收", cls: "risk" },
+        ],
+        slaClass: "",
+        sla: "<strong>港前（付雪）：</strong>需在<strong>约定时效内</strong>完成「接收 / 驳回」。<br /><strong>海外仓侧：</strong>预报后由提柜拆柜组承接。",
+        timeline: [
+          { t: "2026-05-05 09:12", text: "张三 创建工单。", done: true },
+          { t: "待记录", text: "付雪 <strong>接收</strong>或<strong>驳回</strong>；接收后执行拦截 / 换标 / 预报。", pending: true },
+        ],
+        fields: [
+          ["关联单号", "EMSU1234567"],
+          ["当前处理人", "付雪（港前）"],
+          ["责任角色", "ROLE_GANGQIAN"],
+          ["工单类型", "港前分流 / 接收驳回"],
+        ],
+        toolbar: ["receive", "reject", "transfer", "urge", "close"],
+        activeActor: "fu",
+        showFlowPrd: false,
+        showBiz: false,
+      },
+      "WO-202605-INT": {
+        title: "EMSU8899001 快递拦截（母工单 · 指令版本链）",
+        meta: "母工单 WO-202605-INT / OP-001 · 发起人：张三（业务员）· 创建 2026-05-08 09:00",
+        relatedWo: "WO-202605-INT（本单）",
+        whTaskNo: "MK-B-2044（当前 V2）",
+        pills: [
+          { text: "阶段：港后", cls: "doing" },
+          { text: "场景：快递拦截 · 后续指令", cls: "" },
+          { text: "状态：V2 执行中", cls: "doing" },
+          { text: "风险：拦截·改留仓", cls: "risk" },
+        ],
+        slaClass: "",
+        sla:
+          "<strong>BR-WO-016：</strong>同票货用母工单持续协同；后续要求升<strong>指令版本</strong>，挂对应<strong>美库工单</strong>。不可只靠运单号串单。<br />" +
+          "V1 已受理 → 改令必须建 V2 并声明替代；「无法拦截」只关该版，母工单可继续发指令。货物完结且无待执行版才可关母工单。",
+        timeline: [
+          { t: "2026-05-08 09:00", text: "张三 创建母工单，根运单 <strong>YD-ROOT-77881</strong>，柜号 EMSU8899001。", done: true },
+          { t: "2026-05-08 09:15", text: "下发 <strong>V1 拦截</strong> → 美库工单 MK-A-1001，仓已受理。", done: true },
+          { t: "2026-05-08 11:40", text: "客户改要求：改留仓。因 V1 已受理，创建 <strong>V2</strong>（替代 V1）→ 美库 MK-B-2044。", done: true },
+          { t: "待操作", text: "可点「<strong>新增后续指令</strong>」升 V3；V1 不可撤回替换（已受理）。", pending: true },
+        ],
+        fields: [
+          ["母工单号", "WO-202605-INT（OP-001）"],
+          ["根关联", "柜 EMSU8899001 · 货件 FBA15ABCDE"],
+          ["当前处理人", "付雪（港前）/ 海外仓协同"],
+          ["责任角色", "ROLE_GANGQIAN + 美库执行"],
+          ["工单类型", "快递拦截 · 指令版本链"],
+        ],
+        toolbar: ["addInstr", "receive", "transfer", "urge", "close"],
+        activeActor: "fu",
+        showFlowPrd: true,
+        flowPrdKey: "instrChain",
+        showBiz: false,
+        showVersionChain: true,
+        attach: "客户改令截图.png · V1拦截授权.pdf",
+        rootObj: {
+          container: "EMSU8899001",
+          rootWaybill: "YD-ROOT-77881",
+          oldWaybill: "YD-OLD-55601",
+          newWaybill: "YD-NEW-90122",
+          waybillEffective: "2026-05-08 14:20（重出生效）",
+          cargoId: "FBA15ABCDE",
+          customer: "演示客户 · 跨境店 A",
+          scope: "整票 · 柜内快递件 12 件",
+          status: "V2 执行中 · 母工单打开",
+        },
+        versions: [
+          {
+            ver: "V1",
+            prev: "—",
+            replace: false,
+            summary: "首次拦截：货物暂扣，等待客户指示",
+            mk: "MK-A-1001",
+            whStatus: "已受理 · 执行中（不可撤回）",
+            fee: "拦截费 $35 · 已确认",
+            attach: "授权邮件.eml",
+            result: "仓已接单，尚未完结",
+            state: "superseded",
+          },
+          {
+            ver: "V2",
+            prev: "V1",
+            replace: true,
+            summary: "改留仓至 LAX-WH02，替代 V1 拦截暂扣",
+            mk: "MK-B-2044",
+            whStatus: "执行中",
+            fee: "留仓费待回传",
+            attach: "改仓确认.pdf",
+            result: "待仓反馈",
+            state: "current",
+          },
+        ],
+      },
+      "WO-202609-M001": {
+        title: "客户改派诉求（母工单 · 三指令并行）",
+        meta: "母工单 WO-202609-M001 · 发起客服/业务：张三 · 创建 2026-09-16 09:00",
+        relatedWo: "WO-202609-M001（本单）",
+        whTaskNo: "MK-REL-0091（仅 V3）",
+        pills: [
+          { text: "阶段：港后", cls: "doing" },
+          { text: "场景：改派重出", cls: "" },
+          { text: "三指令并行", cls: "doing" },
+        ],
+        slaClass: "",
+        sla:
+          "<strong>BR-WB-003：</strong>待办按指令出数。V1 卡派拦截、V2 快递重出、V3 仓内换标打单岗位/状态/SLA/费用均独立。" +
+          "处理人进子工单只带本指令费用与附件；母单基础信息与关联单号可见。",
+        timeline: [
+          { t: "2026-09-16 09:00", text: "张三 创建母工单 <strong>WO-202609-M001</strong>「客户改派诉求」。", done: true },
+          { t: "2026-09-16 09:05", text: "生成 V1 拦截 → 卡派客服池；V2 重出 → 快递派客服池；V3 换标打单 → 海外仓。", done: true },
+        ],
+        fields: [
+          ["母工单号", "WO-202609-M001"],
+          ["根关联", "运单 YD-ROOT-88120 · 柜 EMSU6677002"],
+          ["发起人", "张三（业务）"],
+          ["母单负责人", "张敏（港后客服）"],
+        ],
+        toolbar: ["addInstr", "urge"],
+        activeActor: "after",
+        showFlowPrd: false,
+        showBiz: false,
+        showVersionChain: true,
+        attach: "改派申请.pdf",
+        rootObj: {
+          container: "EMSU6677002",
+          rootWaybill: "YD-ROOT-88120",
+          oldWaybill: "YD-TRUCK-33001",
+          newWaybill: "YD-EXP-99012（待 V2 回填）",
+          waybillEffective: "—",
+          cargoId: "PKG-88120",
+          customer: "演示客户 · 改派",
+          scope: "原卡派改快递",
+          status: "处理中 · 三指令未齐",
+        },
+        versions: [
+          {
+            ver: "V1",
+            instrId: "OP-M001-V1",
+            pool: "卡派客服",
+            handler: "卡派客服-陈",
+            prev: "—",
+            replace: false,
+            summary: "原卡派停止 / 拦截",
+            mk: "—",
+            whStatus: "执行中",
+            fee: "拦截费 $40 · 已确认",
+            attach: "卡派拦截授权.pdf",
+            result: "车队已接停运指令",
+            state: "current",
+          },
+          {
+            ver: "V2",
+            instrId: "OP-M001-V2",
+            pool: "快递派客服",
+            handler: "快递派客服-林",
+            prev: "—",
+            replace: false,
+            summary: "快递重出",
+            mk: "—",
+            whStatus: "待执行",
+            fee: "重出操作费 $15 + 面单费待打单",
+            attach: "新地址.label",
+            result: "待打单",
+            state: "current",
+          },
+          {
+            ver: "V3",
+            instrId: "OP-M001-V3",
+            pool: "海外仓操作",
+            handler: "海外仓操作组",
+            prev: "—",
+            replace: false,
+            summary: "仓库换标 / 打单",
+            mk: "MK-REL-0091",
+            whStatus: "待受理",
+            fee: "换标操作费按件 $1.5 · 标签费 $8",
+            attach: "新标签.pdf",
+            result: "待仓接单",
+            state: "current",
+          },
+        ],
+      },
+      "WO-202605-LABEL": {
+        title: "EMSU7788123 换标 · 港前（推送规则演示）",
+        meta: "WO-202605-LABEL · SC-GQ-011 · 发起人：张三 · 费用已确认 · 新标签已齐",
+        relatedWo: "—（本单即母工单）",
+        whTaskNo: "待提交执行后生成",
+        pills: [
+          { text: "阶段：港前", cls: "doing" },
+          { text: "场景：换标·港前", cls: "" },
+          { text: "规则：提交执行后自动推送", cls: "role" },
+          { text: "状态：待提交执行", cls: "risk" },
+        ],
+        slaClass: "",
+        sla:
+          "<strong>BR-WO-018/019 · SC-GQ-011：</strong>挂靠<strong>处理中</strong> · 费用必须 · 关联审批流 <strong>AF-LABEL-PRE</strong>（换标港前标准流）；<strong>新标签必传</strong>。<br />" +
+          "前置/后置：运单不限制；账单不限。执行动作：Move Type=<strong>留仓</strong>；柜子备注写换标要求。<br />" +
+          "提交执行：API 自动推 / 无 API→待人工发送。回写：处理结果、实际费用、回执附件、修改地址、修改渠道。",
+        timeline: [
+          { t: "2026-05-09 09:00", text: "张三 创建换标指令，关联柜 EMSU7788123。", done: true },
+          { t: "2026-05-09 09:20", text: "费用已确认 · <strong>新标签.pdf</strong> 已上传。", done: true },
+          { t: "待操作", text: "点「<strong>提交执行</strong>」→ 写留仓+备注 → 按仓能力自动推送或待人工发送。", pending: true },
+        ],
+        fields: [
+          ["场景规则", "SC-GQ-011 换标·港前"],
+          ["柜号", "EMSU7788123"],
+          ["原 Move Type", "TRUCK"],
+          ["目标 Move Type", "留仓（提交执行时写入）"],
+          ["柜子备注（预填）", "港前换标：请按新标签.pdf 换贴，完成后回传照片"],
+          ["新标签", "新标签.pdf（必传 ✓）"],
+          ["操作说明", "操作说明.docx"],
+          ["海外仓", "美库（支持 API）· 可切演示无接口仓"],
+          ["推送前条件", "费用已确认 ✓ · 新标签必传 ✓ · 审批流 AF-LABEL-PRE"],
+          ["当前处理人", "付雪（港前）"],
+          ["推送状态", '<span id="fieldPushSt">未提交</span>'],
+        ],
+        toolbar: ["submitExec", "markSent", "retryPush", "transfer", "urge", "close"],
+        activeActor: "fu",
+        showFlowPrd: true,
+        flowPrdKey: "pushRule",
+        showBiz: true,
+        showSceneRule: true,
+        bizMode: "container",
+        biz: {
+          waybill: "EMSU7788123",
+          role: "付雪（港前客服）",
+          config: "SC-GQ-011 · 执行动作：Move Type→留仓；柜子备注←换标要求",
+          before: "Move Type = TRUCK · 备注空",
+          after: "Move Type = 留仓 · 备注=港前换标要求",
+        },
+        writebackList: "B 白名单（writeRules）：柜子计划 Move Type→留仓；柜子备注追加；禁止覆盖原渠道。结果类：处理结果、实际费用、回执附件、修改地址、修改渠道（确需时）",
+        wbDefaults: {
+          result: "待回写",
+          fee: "待回写 / 待确认",
+          receipt: "待上传或 API 回传",
+          addr: "未变更（有变更时填写）",
+          channel: "原渠道保留；确需改渠道时填写",
+        },
+        attach: "新标签.pdf（必传） · 操作说明.docx",
+        pushRule: {
+          code: "SC-GQ-011",
+          apiWh: true,
+          needFee: true,
+          needWhOk: false,
+          needMgr: false,
+          docs: ["新标签（必传）", "操作说明"],
+          actions: ["MoveType=留仓", "柜子备注=换标要求"],
+          writeback: ["处理结果", "实际费用", "回执附件", "修改地址", "修改渠道"],
+        },
+      },
+      "WO-202605-014": {
+        title: "WB-US-88231 客户要求改自提",
+        meta: "WO-202605-014 · 发起人：赵六（业务员）· 创建 2026-05-06 10:05",
+        phase: "private",
+        relatedWo: "—",
+        whTaskNo: "—（本场景不对接海外仓任务）",
+        pills: [
+          { text: "阶段：港后", cls: "doing" },
+          { text: "场景：港后·私卡改尾端方式", cls: "" },
+          { text: "状态：私卡处理中", cls: "doing" },
+          { text: "责任角色：私卡池", cls: "role" },
+        ],
+        slaClass: "",
+        sla:
+          "<strong>私卡（当前）：</strong>核实客户诉求；若确认为<strong>单卡派 → 自提</strong>，请点「<strong>转自提处理</strong>」将母单转至自提池（<strong>不在此步改运单</strong>）。<br /><strong>SLA：</strong>转派后 2h 内自提客服应接单（演示口径）。",
+        timeline: [
+          { t: "2026-05-06 10:05", text: "赵六 发起，关联运单 WB-US-88231，当前派送方式 <strong>单卡派</strong>。", done: true },
+          { t: "2026-05-06 10:18", text: "私卡客服-王敏 <strong>接收</strong>工单。", done: true },
+          { t: "待操作", text: "核实地址/联系客户后，若改自提 → 点击工具栏「<strong>转自提处理</strong>」。", pending: true },
+        ],
+        fields: [
+          ["关联单号", "WB-US-88231"],
+          ["客户", "演示客户 B"],
+          ["当前处理人", "王敏（私卡客服）"],
+          ["责任角色", "ROLE_AFTER_PRIVATE"],
+          ["派送方式（运单）", '<span id="fieldDelivery">单卡派（未变更）</span>'],
+          ["转派类型", "—"],
+        ],
+        toolbar: ["receive", "reject", "toPickup", "childWo", "transfer", "urge", "close"],
+        activeActor: "private",
+        flowPrdKey: "pickup",
+        showFlowPrd: true,
+        showBiz: true,
+        bizMode: "waybill",
+        biz: { waybill: "WB-US-88231", role: "ROLE_AFTER_PRIVATE", config: "联动对象：运单 · 确认时写回", before: "单卡派", after: "待自提确认后写入", synced: false },
+        precond: {
+          wbStatus: "确认报价",
+          billStatus: "未锁账 · 未核销",
+          wbAllow: "确认报价,海外出库",
+          wbBlock: "自提下载,移交快递,已签收",
+          billPre: "未锁账且未核销",
+          postWbStatus: "—",
+        },
+        attach: "客户微信截图.png · 运单面单.pdf",
+      },
+      "WO-202605-014-pickup": {
+        title: "WB-US-88231 客户要求改自提",
+        meta: "WO-202605-014 · 母单 · 已转自提池 · 2026-05-06 10:42 王敏操作",
+        phase: "pickup",
+        pills: [
+          { text: "阶段：港后", cls: "doing" },
+          { text: "场景：港后·自提单卡派转自提", cls: "" },
+          { text: "状态：待自提确认转自提", cls: "risk" },
+          { text: "责任角色：自提池", cls: "role" },
+        ],
+        slaClass: "teal",
+        sla:
+          "<strong>自提（当前）：</strong>核对提货人、仓库与时段；点「<strong>确认转自提</strong>」后<strong>写回运单</strong>（方案二联动点）。<br />私卡王敏已交接，母单由 <strong>ROLE_AFTER_PICKUP</strong> 承接，<strong>未结案</strong>。",
+        timeline: [
+          { t: "2026-05-06 10:05", text: "赵六 发起，运单 WB-US-88231，派送方式 单卡派。", done: true },
+          { t: "2026-05-06 10:18", text: "私卡-王敏 接收并核实，确认需改自提。", done: true },
+          { t: "2026-05-06 10:42", text: "私卡-王敏 执行 <strong>转自提处理</strong>：current_role 私卡 → 自提；scene 更新为「港后·自提单卡派转自提」。", done: true },
+          { t: "待操作", text: "自提客服 <strong>接收</strong> → 填写自提信息 → <strong>确认转自提</strong>（联动运单）→ 仓内回执后结案。", pending: true },
+        ],
+        fields: [
+          ["关联单号", "WB-US-88231"],
+          ["当前处理人", "待自提池接单（可指派李俊）"],
+          ["责任角色", "ROLE_AFTER_PICKUP"],
+          ["派送方式（运单）", '<span id="fieldDelivery">单卡派（待确认后改为自提）</span>'],
+          ["转派类型", "转自提（同单转角色）"],
+          ["协办", "私卡-王敏（已交接）"],
+        ],
+        toolbar: ["receive", "confirmPickup", "notifyWh", "close"],
+        activeActor: "pickup",
+        flowPrdKey: "pickup",
+        showFlowPrd: true,
+        showBiz: true,
+        bizMode: "waybill",
+        biz: { waybill: "WB-US-88231", role: "ROLE_AFTER_PICKUP", config: "联动对象：运单 · 确认时写回", before: "单卡派", after: "待自提确认后写入", synced: false },
+        precond: {
+          wbStatus: "确认报价",
+          billStatus: "未锁账 · 未核销",
+          wbAllow: "确认报价,海外出库",
+          wbBlock: "自提下载,移交快递,已签收",
+          billPre: "未锁账且未核销",
+          postWbStatus: "—",
+        },
+        attach: "客户微信截图.png · 运单面单.pdf",
+      },
+      "WO-202605-014-blocked": {
+        title: "WB-US-88231 客户要求改自提（后置拦截）",
+        meta: "WO-202605-014 · 演示 · 运单已进入后置阶段",
+        phase: "pickup",
+        pills: [
+          { text: "阶段：港后", cls: "doing" },
+          { text: "场景：港后·自提单卡派转自提", cls: "" },
+          { text: "状态：待自提确认", cls: "risk" },
+          { text: "运单：移交快递", cls: "risk" },
+        ],
+        slaClass: "teal",
+        sla:
+          "<strong>演示后置拦截：</strong>运单状态已为「<strong>移交快递</strong>」，命中场景配置「禁止后置」列表，<strong>不可再确认改派送/转自提</strong>（与账单锁账无关）。",
+        timeline: [
+          { t: "2026-05-06 10:05", text: "赵六 发起，运单 WB-US-88231。", done: true },
+          { t: "2026-05-06 10:42", text: "已转自提池，待自提确认。", done: true },
+          { t: "2026-05-06 14:20", text: "业务侧运单状态变更为 <strong>移交快递</strong>（并发/滞后更新演示）。", done: true },
+          { t: "待操作", text: "点「确认转自提」将提示：<code>{运单号} 已进入后置阶段，请核实</code>。", pending: true },
+        ],
+        fields: [
+          ["关联单号", "WB-US-88231"],
+          ["运单状态", '<span style="color:#b91c1c">移交快递</span>'],
+          ["当前处理人", "李俊（自提客服）"],
+          ["责任角色", "ROLE_AFTER_PICKUP"],
+          ["派送方式（运单）", "单卡派（未变更）"],
+        ],
+        toolbar: ["receive", "confirmPickup", "close"],
+        activeActor: "pickup",
+        flowPrdKey: "pickup",
+        showFlowPrd: true,
+        showBiz: true,
+        bizMode: "waybill",
+        biz: { waybill: "WB-US-88231", role: "ROLE_AFTER_PICKUP", config: "联动对象：运单 · 确认时写回", before: "单卡派", after: "—（后置拦截，不可写回）", synced: false },
+        precond: {
+          wbStatus: "移交快递",
+          billStatus: "未锁账 · 未核销",
+          wbAllow: "确认报价,海外出库",
+          wbBlock: "自提下载,移交快递,已签收",
+          billPre: "未锁账且未核销",
+          postWbStatus: "—",
+          blockedReason: "waybill_post",
+        },
+        attach: "客户微信截图.png",
+      },
+      "WO-202605-008": {
+        title: "ASIN 未上架索赔",
+        meta: "WO-202605-008 · 发起人：孙八（业务员）· 创建 2026-05-03 11:20",
+        pills: [
+          { text: "阶段：尾端", cls: "doing" },
+          { text: "场景：尾端·未上架索赔", cls: "" },
+          { text: "状态：待海外仓 3 日内反馈", cls: "risk" },
+        ],
+        sla: "<strong>亚马逊客服</strong>接收 → 线下协调海外仓 → <strong>3 日内</strong>反馈 → 索赔 → <strong>财务</strong>结案。",
+        timeline: [{ t: "2026-05-03 11:20", text: "孙八 上传未上架材料并发起。", done: true }],
+        fields: [["关联单号", "FBA-REF-00921"], ["当前处理人", "亚马逊客服组"]],
+        toolbar: ["receive", "transfer", "urge", "close"],
+        activeActor: "starter",
+        showFlowPrd: false,
+        showBiz: false,
+      },
+      "WO-202605-009": {
+        title: "业务媒体区断更跟进",
+        meta: "WO-202605-009 · 发起人：刘奎林 · 创建 2026-05-04 14:00",
+        pills: [
+          { text: "阶段：异常件", cls: "doing" },
+          { text: "场景：异常件·媒体区断更", cls: "" },
+          { text: "状态：已接收·调查中", cls: "" },
+        ],
+        sla: "<strong>12h 内</strong>开查；<strong>每周</strong>跟进；<strong>第 6 天</strong>未闭环标红。",
+        timeline: [{ t: "2026-05-04 14:00", text: "刘奎林 发起异常件工单。", done: true }],
+        fields: [["关联单号", "—"], ["当前处理人", "异常件督办"]],
+        toolbar: ["receive", "close"],
+        activeActor: "starter",
+        showFlowPrd: false,
+        showBiz: false,
+      },
+      "WO-202605-012": {
+        title: "YD-202604998 原单费用调整",
+        meta: "WO-202605-012 · 发起人：钱七（业务员）· 创建 2026-05-07 09:20",
+        pills: [
+          { text: "阶段：费用结案", cls: "doing" },
+          { text: "场景：费用结案·改原单费用", cls: "" },
+          { text: "状态：待财务确认", cls: "risk" },
+          { text: "责任角色：财务", cls: "role" },
+        ],
+        slaClass: "finance",
+        sla:
+          "<strong>本场景走业务联动（费用/原单）：</strong>业务提报后由财务复核；点「<strong>财务确认（联动费用）</strong>」调用费用模块写回差异并留快照，<strong>不改运单派送字段</strong>。配置见 <a href=\"SLA数据维护-MVP.html\" style=\"color:#1d4ed8\">场景配置维护</a> · SC-FI-001。<br /><strong>SLA：</strong>当日受理，48h 内复核（演示）。",
+        timeline: [
+          { t: "2026-05-07 09:20", text: "钱七 发起，原单 YD-202604998，申请调减运费 <strong>¥320</strong>，已附差异说明。", done: true },
+          { t: "2026-05-07 10:05", text: "财务 接收工单，核对原单应收与调整依据。", done: true },
+          { t: "待操作", text: "财务点「<strong>财务确认（联动费用）</strong>」→ 写回费用系统；<code>biz_sync=success</code> 后方可结案。", pending: true },
+        ],
+        fields: [
+          ["关联原单", "YD-202604998"],
+          ["关联运单", "WB-US-77102（只读，不随本单改派送）"],
+          ["当前处理人", "财务复核组"],
+          ["责任角色", "ROLE_FINANCE"],
+          ["调整前应收", '<span id="fieldFeeBefore">¥ 12,580.00</span>'],
+          ["申请调整后", '<span id="fieldFeeAfter">¥ 12,260.00（待财务确认写入）</span>'],
+          ["联动模式", "费用/原单 · 结案时写回（on_close）"],
+        ],
+        toolbar: ["receive", "reject", "confirmFee", "close"],
+        activeActor: "finance",
+        flowPrdKey: "fee",
+        showFlowPrd: true,
+        showBiz: true,
+        bizMode: "fee",
+        biz: {
+          waybill: "YD-202604998（原单）",
+          role: "ROLE_FINANCE",
+          config: "联动对象：费用/原单 · 结案时写回 · 确认操作：财务确认",
+          before: "应收 ¥12,580.00",
+          after: "待财务确认后写入",
+          synced: false,
+        },
+        attach: "差异说明.docx · 客户确认邮件.pdf · 原单费用截图.png",
+        requireBizSyncToClose: true,
+        precond: {
+          wbStatus: "海外出库（只读）",
+          billStatus: "未锁账 · 未核销",
+          wbAllow: "—",
+          wbBlock: "—",
+          billPre: "未锁账且未核销",
+        },
+      },
+      "WO-202605-012-blocked": {
+        title: "YD-202604998 原单费用调整（账单拦截）",
+        meta: "WO-202605-012 · 演示 · 原单已锁账",
+        pills: [
+          { text: "阶段：费用结案", cls: "doing" },
+          { text: "场景：费用结案·改原单费用", cls: "" },
+          { text: "状态：待财务确认", cls: "risk" },
+          { text: "账单：已锁账", cls: "risk" },
+        ],
+        slaClass: "finance",
+        sla:
+          "<strong>演示账单拦截：</strong>原单已<strong>锁账</strong>，命中「账单前置=未锁账且未核销」，<strong>不可财务确认写回</strong>（与运单状态无关）。",
+        timeline: [
+          { t: "2026-05-07 09:20", text: "钱七 发起费用调整申请。", done: true },
+          { t: "2026-05-07 15:00", text: "财务侧原单已 <strong>锁账</strong>（并发演示）。", done: true },
+          { t: "待操作", text: "点「财务确认」将提示账单状态不满足前置条件。", pending: true },
+        ],
+        fields: [
+          ["关联原单", "YD-202604998"],
+          ["账单状态", '<span style="color:#b91c1c">已锁账 · 未核销</span>'],
+          ["当前处理人", "财务复核组"],
+          ["责任角色", "ROLE_FINANCE"],
+          ["调整前应收", "¥ 12,580.00"],
+        ],
+        toolbar: ["receive", "confirmFee", "close"],
+        activeActor: "finance",
+        flowPrdKey: "fee",
+        showFlowPrd: true,
+        showBiz: true,
+        bizMode: "fee",
+        biz: {
+          waybill: "YD-202604998（原单）",
+          role: "ROLE_FINANCE",
+          config: "联动对象：费用/原单 · 结案时写回",
+          before: "应收 ¥12,580.00",
+          after: "—（账单已锁，不可写回）",
+          synced: false,
+        },
+        precond: {
+          wbStatus: "—（本场景不校验运单）",
+          billStatus: "已锁账 · 未核销",
+          wbAllow: "—",
+          wbBlock: "—",
+          billPre: "未锁账且未核销",
+          blockedReason: "bill_locked",
+        },
+        attach: "差异说明.docx",
+        requireBizSyncToClose: true,
+      },
+    };
+
+    const BTN_MAP = {
+      receive: { label: "接收工单", cls: "btn-ok" },
+      reject: { label: "驳回", cls: "btn-danger" },
+      transfer: { label: "交接 / 转派", cls: "btn" },
+      urge: { label: "催办 / 升级", cls: "btn" },
+      toPickup: { label: "转自提处理", cls: "btn-highlight" },
+      childWo: { label: "生成子工单（转自提）", cls: "btn" },
+      confirmPickup: { label: "确认转自提（联动运单）", cls: "btn-teal" },
+      confirmFee: { label: "财务确认（联动费用）", cls: "btn-finance" },
+      notifyWh: { label: "仅通知配仓（演示）", cls: "btn" },
+      addInstr: { label: "新增后续指令", cls: "btn-highlight" },
+      submitExec: { label: "提交执行", cls: "btn-primary" },
+      markSent: { label: "已发送（无接口仓）", cls: "btn-teal" },
+      retryPush: { label: "重试推送", cls: "btn-highlight" },
+      close: { label: "关闭 / 结案", cls: "btn-primary" },
+    };
+
+    const PRD_TEMPLATES = {
+      pushRule: {
+        title: "PRD · 换标·港前 · 场景规则全量（BR-WO-018）",
+        html:
+          "<h3>客服只点「提交执行」</h3><ol>" +
+          "<li>费用必须；仓可操作/经理审批=否；<strong>新标签必传</strong>。</li>" +
+          "<li>执行动作：Move Type=<strong>留仓</strong>；柜子备注写入换标要求。</li>" +
+          "<li>API 仓自动推送；无 API→待人工发送→「已发送」；失败可重试。</li>" +
+          "<li>回写：处理结果、实际费用、回执附件、修改地址、修改渠道；有费用须费用已确认才完结。</li></ol>",
+        config: "SC-GQ-011 · 场景配置维护 · 样板卡",
+      },
+      instrChain: {
+        title: "PRD · 拦截后续指令（母工单 + 版本 + 美库单）",
+        html:
+          "<h3>三级关系</h3><ol>" +
+          "<li><strong>母工单</strong>挂根运单/柜号/货件 ID，重出不断链。</li>" +
+          "<li><strong>指令版本</strong> V1/V2… 记上一版、是否替代；费用/附件/结果挂本版。</li>" +
+          "<li><strong>美库工单</strong>与本版对应；已受理不可「撤回替换」，须升版并声明替代。</li>" +
+          "<li>单版「无法拦截」只关该版；母工单待货完结且无待执行版再关。</li></ol>",
+        config: "BR-WO-016 · UI-WO-016 · 计划二 #11/#12",
+      },
+      pickup: {
+        title: "PRD · 私卡 → 转自提（业务联动 · 运单）",
+        html:
+          "<h3>流转要点</h3><ol>" +
+          "<li>私卡阶段只交接角色，<strong>不改运单</strong>；自提「确认转自提」时 <code>on_confirm</code> 写回派送方式。</li>" +
+          "<li><strong>前置：</strong>允许运单区间 + 禁止后置（移交快递/已签收等）；<strong>账单</strong>锁账/核销单独校验，与运单无关。</li>" +
+          "<li>配置行见场景配置维护 · <strong>港后·自提单卡派转自提</strong>。</li></ol>",
+        config: "场景配置：联动对象=运单 · 联动模式=确认时写回",
+      },
+      fee: {
+        title: "PRD · 原单费用调整（业务联动 · 费用/原单）",
+        html:
+          "<h3>为何放在「业务联动」维护</h3><ol>" +
+          "<li>与改派送不同：本场景<strong>不写运单尾程字段</strong>，而是调用<strong>费用/原单模块</strong>调整应收。</li>" +
+          "<li><strong>账单前置</strong>：未锁账且未核销；<strong>不依赖运单后置状态</strong>。</li>" +
+          "<li>场景配置维护中：<code>联动对象=费用/原单</code>，<code>联动模式=结案时写回</code>（或财务确认时写回），<code>确认操作名=财务确认</code>。</li>" +
+          "<li>工单负责：提报、附件、SLA、财务复核留痕；<strong>财务确认</strong>节点触发 <code>adjustFee(originalOrderId, …)</code> 并记改前/改后金额快照。</li>" +
+          "<li>结案前校验 <code>biz_sync=success</code>，失败可重试，禁止静默结案。</li>" +
+          "<li>港后·FBA改原单费用 与 费用结案·改原单费用 可共用同一联动模板（以实现为准）。</li></ol>",
+        config: "场景配置 SC-FI-001：费用/原单 · 结案时写回 · 财务确认",
+      },
+    };
+
+    const POOL_MEMBERS = {
+      fu: ["付雪（港前）", "港前-李四"],
+      private: ["王敏（私卡客服）", "陈静（私卡客服）"],
+      pickup: ["李俊（自提客服）", "周婷（自提客服）"],
+      after: ["王敏（私卡客服）", "李俊（自提客服）", "FBA客服-张磊"],
+      finance: ["王敏（财务复核）", "赵会计"],
+      starter: ["亚马逊客服-小张", "异常件督办-小王"],
+      default: ["付雪（港前）", "王敏（私卡客服）", "李俊（自提客服）"],
+    };
+
+    const DEMO_USER = {
+      fu: "付雪（港前）",
+      private: "王敏（私卡客服）",
+      pickup: "李俊（自提客服）",
+      finance: "王敏（财务复核）",
+      starter: "当前用户（演示）",
+    };
+
+    /** 各演示单运行时状态（切换哈希不丢） */
+    const runtime = {};
+    let modalContextId = null;
+    let followDrawerMode = "new"; // new | withdraw
+
+    function demoNow() {
+      return new Date().toLocaleString("zh-CN", { hour12: false }).replace(/\//g, "-");
+    }
+
+    function toast(msg) {
+      var t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(toast._tm);
+      toast._tm = setTimeout(function () { t.classList.remove("show"); }, 2600);
+    }
+
+    function cloneVersions(list) {
+      return (list || []).map(function (x) {
+        return Object.assign({}, x);
+      });
+    }
+
+    function ensureRuntime(id, v) {
+      if (runtime[id]) return runtime[id];
+      var rt = {
+        timeline: [],
+        received: false,
+        rejected: false,
+        closed: false,
+        handler: null,
+        notifyWhSent: false,
+        pickupSynced: false,
+        feeSynced: false,
+        statusText: null,
+        statusCls: null,
+        versions: v.showVersionChain ? cloneVersions(v.versions) : null,
+        pushSt: null, // pending_manual | pushed | failed | sent_manual
+      };
+      (v.timeline || []).forEach(function (it) {
+        if (it.done && /接收/.test(it.text)) rt.received = true;
+      });
+      if (/待.*接收|待付雪接收/.test((v.pills || []).map(function (p) { return p.text; }).join(" "))) {
+        rt.received = false;
+      }
+      if (id === "WO-202605-014" || id === "WO-202605-012" || id === "WO-202605-009" || id === "WO-202605-INT" || id === "WO-202605-LABEL") {
+        rt.received = true;
+      }
+      if (id === "WO-202605-014-pickup" || id === "WO-202605-014-blocked") rt.received = false;
+      runtime[id] = rt;
+      return rt;
+    }
+
+    function pushTimeline(rt, time, html, done) {
+      rt.timeline.push({ t: time, text: html, done: !!done, pending: !done });
+    }
+
+    function poolFor(id, v) {
+      return POOL_MEMBERS[v.activeActor] || POOL_MEMBERS.default;
+    }
+
+    function openModal(name) {
+      var map = { transfer: "modalTransfer", reject: "modalReject", urge: "modalUrge" };
+      var id = map[name];
+      if (id) document.getElementById(id).classList.add("show");
+    }
+
+    function closeModals() {
+      ["modalTransfer", "modalReject", "modalUrge"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove("show");
+      });
+      modalContextId = null;
+    }
+
+    function currentVersions(rt, v) {
+      return rt.versions || v.versions || [];
+    }
+
+    function latestOpenVersion(vers) {
+      for (var i = vers.length - 1; i >= 0; i--) {
+        if (vers[i].state !== "closed" && vers[i].state !== "withdrawn") return vers[i];
+      }
+      return null;
+    }
+
+    function canWithdrawVersion(ver) {
+      if (!ver) return false;
+      if (ver.state === "closed" || ver.state === "withdrawn" || ver.state === "superseded") return false;
+      return !/已受理|执行中|已完成/.test(ver.whStatus || "");
+    }
+
+    function nextVerLabel(vers) {
+      return "V" + (vers.length + 1);
+    }
+
+    function closeFollowDrawer() {
+      document.getElementById("drawerBackdrop").classList.remove("show");
+      document.getElementById("followInstrDrawer").classList.remove("show");
+      document.getElementById("followInstrDrawer").setAttribute("aria-hidden", "true");
+    }
+
+    function openFollowDrawer(mode) {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      if (!v.showVersionChain) return;
+      followDrawerMode = mode || "new";
+      var root = v.rootObj || {};
+      var vers = currentVersions(rt, v);
+      var prev = latestOpenVersion(vers) || vers[vers.length - 1];
+      var auto = document.getElementById("followAutoFill");
+      auto.innerHTML =
+        '<div class="row"><strong>柜号</strong> ' + (root.container || "—") + "</div>" +
+        '<div class="row"><strong>根运单</strong> ' + (root.rootWaybill || "—") +
+        " · <strong>原</strong> " + (root.oldWaybill || "—") +
+        " · <strong>新</strong> " + (root.newWaybill || "—") +
+        "（" + (root.waybillEffective || "—") + "）</div>" +
+        '<div class="row"><strong>客户</strong> ' + (root.customer || "—") +
+        " · <strong>货件</strong> " + (root.cargoId || "—") +
+        " · " + (root.scope || "") + "</div>" +
+        '<div class="row"><strong>当前状态</strong> ' + (root.status || "—") + "</div>" +
+        '<div class="row"><strong>上一版</strong> ' + (prev ? prev.ver + " · " + prev.summary + " · " + prev.whStatus : "无") + "</div>";
+
+      document.getElementById("followReq").value =
+        followDrawerMode === "withdraw" ? "撤回并替换上一版指令（重发）" : "改渠道为快递重出，并换标";
+      document.getElementById("followSla").value = "24h 内海外仓确认可执行";
+      document.getElementById("followAttach").value = "";
+      document.getElementById("followFee").value = "ok";
+      document.getElementById("followReplace").checked = true;
+
+      var title = document.getElementById("followDrawerTitle");
+      var hint = document.getElementById("followModeHint");
+      var replaceLabel = document.getElementById("followReplaceLabel");
+      if (followDrawerMode === "withdraw") {
+        title.textContent = "撤回并替换（上一版未受理）";
+        hint.textContent = "上一版尚未被海外仓受理：关闭该版后以同号重发或升版重发（演示按升版）。";
+        replaceLabel.textContent = "关闭未受理版并以新内容替换下发";
+      } else {
+        title.textContent = "新增后续指令 → " + nextVerLabel(vers);
+        var withdrawOk = canWithdrawVersion(prev);
+        hint.textContent = withdrawOk
+          ? "上一版尚未受理，也可在版本卡上点「撤回并替换」。当前操作为升版新建。"
+          : "上一版已受理或执行中：不可撤回替换，必须创建下一版，并向美库声明替代关系。";
+        replaceLabel.textContent = "替代上一版（向海外仓声明「后续指令 / 替代关系」）";
+      }
+
+      document.getElementById("drawerBackdrop").classList.add("show");
+      document.getElementById("followInstrDrawer").classList.add("show");
+      document.getElementById("followInstrDrawer").setAttribute("aria-hidden", "false");
+    }
+
+    function submitFollowInstr() {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      var req = document.getElementById("followReq").value.trim();
+      if (!req) {
+        alert("请填写新要求");
+        return;
+      }
+      var vers = currentVersions(rt, v);
+      if (!rt.versions) rt.versions = cloneVersions(vers);
+      vers = rt.versions;
+      var prev = latestOpenVersion(vers);
+      var replace = document.getElementById("followReplace").checked;
+      var feeMap = { pending: "费用待客户确认", ok: "费用已确认", na: "本版无费用" };
+      var fee = feeMap[document.getElementById("followFee").value] || "—";
+      var attach = document.getElementById("followAttach").value.trim() || "—";
+      var sla = document.getElementById("followSla").value.trim() || "—";
+
+      if (followDrawerMode === "withdraw" && prev && canWithdrawVersion(prev)) {
+        prev.state = "withdrawn";
+        prev.whStatus = "已撤回（未受理）";
+        prev.result = "被替换撤回";
+      } else if (prev && replace) {
+        if (prev.state === "current") prev.state = "superseded";
+        if (!/已替代|已撤回/.test(prev.whStatus || "")) {
+          prev.whStatus = (prev.whStatus || "") + " · 已被后续版替代";
+        }
+      }
+
+      var newVer = nextVerLabel(vers);
+      var mkNo = "MK-C-" + (3000 + vers.length);
+      vers.push({
+        ver: newVer,
+        prev: prev ? prev.ver : "—",
+        replace: replace,
+        summary: req,
+        mk: mkNo,
+        whStatus: "待海外仓受理",
+        fee: fee + " · 时限 " + sla,
+        attach: attach,
+        result: "刚下发",
+        state: "current",
+      });
+
+      if (v.rootObj) v.rootObj.status = newVer + " 待受理 · 母工单打开";
+      rt.statusText = newVer + " 待受理";
+      rt.statusCls = "doing";
+      pushTimeline(
+        rt,
+        demoNow(),
+        "创建<strong>" + newVer + "</strong>" +
+          (replace && prev ? "（替代 " + prev.ver + "）" : "") +
+          " → 美库 " + mkNo + "：「" + req + "」",
+        true
+      );
+      closeFollowDrawer();
+      toast("已创建 " + newVer + " 并下发美库（演示）");
+      render();
+    }
+
+    function renderVersionChain(v, rt) {
+      var card = document.getElementById("versionChainCard");
+      if (!v.showVersionChain) {
+        card.classList.add("hidden");
+        return;
+      }
+      card.classList.remove("hidden");
+      var root = v.rootObj || {};
+      document.getElementById("rootBar").innerHTML = [
+        ["柜号", root.container],
+        ["根运单", root.rootWaybill],
+        ["原运单", root.oldWaybill],
+        ["新运单", root.newWaybill],
+        ["生效时间", root.waybillEffective],
+        ["货件 ID", root.cargoId],
+        ["客户", root.customer],
+        ["货件范围", root.scope],
+        ["母工单状态", root.status],
+      ].map(function (row) {
+        return '<div><span class="k">' + row[0] + '</span><span class="v">' + (row[1] || "—") + "</span></div>";
+      }).join("");
+
+      var vers = currentVersions(rt, v);
+      var pv = pageView();
+      var handlerView = pv.view === "handler" && !!pv.instr;
+      document.getElementById("verList").innerHTML = vers.map(function (ver) {
+        var cls = "ver-card";
+        if (ver.state === "current") cls += " current";
+        if (ver.state === "superseded" || ver.state === "withdrawn") cls += " replaced";
+        if (ver.state === "closed") cls += " closed-ver";
+        var isFocus = !handlerView || ver.instrId === pv.instr || (!ver.instrId && pv.instr.indexOf(ver.ver) >= 0);
+        if (handlerView && !isFocus) cls += " replaced";
+        var pill =
+          ver.state === "current" ? '<span class="pill doing">当前版</span>' :
+          ver.state === "superseded" ? '<span class="pill closed">已被替代</span>' :
+          ver.state === "withdrawn" ? '<span class="pill closed">已撤回</span>' :
+          ver.state === "closed" ? '<span class="pill closed">本版已关</span>' :
+          '<span class="pill">—</span>';
+        if (handlerView && isFocus) pill += '<span class="pill doing">本指令</span>';
+        var actions = "";
+        var fee = ver.fee;
+        var attach = ver.attach;
+        var result = ver.result;
+        if (handlerView && !isFocus) {
+          fee = attach = result = "无本指令处理权限 · 不展示其他子工单明细";
+          actions = "";
+        } else if (ver.state === "current" && canWithdrawVersion(ver)) {
+          actions =
+            '<div class="ver-actions"><button type="button" class="btn btn-danger" data-ver-action="withdraw" data-ver="' +
+            ver.ver + '">撤回并替换本版</button></div>';
+        } else if (ver.state === "current") {
+          actions =
+            '<div class="ver-actions"><button type="button" class="btn" disabled title="已受理/执行中，须升版">撤回并替换（不可用）</button>' +
+            '<button type="button" class="btn btn-highlight" data-ver-action="new">改为新增后续指令</button></div>';
+        }
+        return (
+          '<div class="' + cls + '">' +
+          '<div class="ver-head"><span class="ver-no">' + ver.ver + "</span>" + pill +
+          (ver.replace ? '<span class="pill risk">替代 ' + ver.prev + "</span>" : "") +
+          "</div>" +
+          '<div class="ver-meta">' +
+          "<div>指令工单：<b>" + (ver.instrId || "—") + "</b>" + (ver.pool ? " · " + ver.pool : "") + "</div>" +
+          "<div>处理人：<b>" + (ver.handler || "—") + "</b></div>" +
+          "<div>上一版本：<b>" + (ver.prev || "—") + "</b></div>" +
+          "<div>美库工单：<b>" + ver.mk + "</b></div>" +
+          "<div>指令：<b>" + ver.summary + "</b></div>" +
+          "<div>仓内状态：<b>" + ver.whStatus + "</b></div>" +
+          "<div>本版费用：<b>" + fee + "</b></div>" +
+          "<div>本版附件：<b>" + attach + "</b></div>" +
+          "<div style=\"grid-column:1/-1\">本版结果：<b>" + result + "</b></div>" +
+          "</div>" + actions + "</div>"
+        );
+      }).join("");
+    }
+
+    function mergedTimeline(v, rt) {
+      var base = (v.timeline || []).slice();
+      var pendingIdx = base.findIndex(function (it) { return it.pending; });
+      if (pendingIdx >= 0 && rt.timeline.length) {
+        base.splice.apply(base, [pendingIdx, 0].concat(rt.timeline));
+      } else {
+        base = base.concat(rt.timeline);
+      }
+      if (rt.pickupSynced || rt.feeSynced) {
+        base = base.filter(function (it) { return !it.pending; });
+        if (!rt.closed && !rt.rejected) {
+          base.push({
+            t: "待操作",
+            text: rt.feeSynced
+              ? "费用已写回，可<strong>关闭/结案</strong>。"
+              : "运单已写回，仓内回执后可<strong>结案</strong>。",
+            pending: true,
+          });
+        }
+      }
+      if (rt.closed) {
+        base = base.filter(function (it) { return !it.pending; });
+        base.push({ t: rt.closedAt || demoNow(), text: "工单<strong>已结案</strong>。", done: true });
+      }
+      if (rt.rejected && !rt.closed) {
+        base = base.filter(function (it) { return !it.pending; });
+      }
+      return base;
+    }
+
+    function mergedPills(v, rt) {
+      var pills = (v.pills || []).map(function (p) { return Object.assign({}, p); });
+      if (rt.closed) {
+        return pills.map(function (p) {
+          if (/状态：/.test(p.text)) return { text: "状态：已结案", cls: "closed" };
+          return p;
+        });
+      }
+      if (rt.rejected) {
+        return pills.map(function (p) {
+          if (/状态：/.test(p.text)) return { text: "状态：已驳回", cls: "risk" };
+          return p;
+        });
+      }
+      if (rt.statusText) {
+        return pills.map(function (p) {
+          if (/状态：/.test(p.text)) return { text: "状态：" + rt.statusText, cls: rt.statusCls || "doing" };
+          return p;
+        });
+      }
+      if (rt.received && !rt.rejected) {
+        return pills.map(function (p) {
+          if (/状态：/.test(p.text) && /待/.test(p.text)) return { text: "状态：处理中", cls: "doing" };
+          return p;
+        });
+      }
+      return pills;
+    }
+
+    function mergedFields(v, rt, id) {
+      var rows = (v.fields || []).slice();
+      var related = rt.relatedWo || v.relatedWo || "—";
+      var whTask = rt.whTaskNo || v.whTaskNo || "—";
+      var hasRelated = rows.some(function (row) { return row[0] === "关联工单"; });
+      var hasWh = rows.some(function (row) { return row[0] === "海外仓任务号"; });
+      if (!hasRelated) rows.unshift(["关联工单", related]);
+      else {
+        rows = rows.map(function (row) {
+          if (row[0] === "关联工单") return [row[0], related !== "—" ? related : row[1]];
+          return row;
+        });
+      }
+      if (!hasWh) {
+        var insertAt = 1;
+        rows.splice(insertAt, 0, ["海外仓任务号", whTask]);
+      } else {
+        rows = rows.map(function (row) {
+          if (row[0] === "海外仓任务号") return [row[0], whTask !== "—" ? whTask : row[1]];
+          return row;
+        });
+      }
+      if (rt.handler) {
+        rows = rows.map(function (row) {
+          if (row[0] === "当前处理人") return [row[0], rt.handler];
+          return row;
+        });
+      }
+      return rows;
+    }
+
+    function toolbarKeys(v, rt, id) {
+      if (rt.closed || rt.rejected) return ["close"];
+      var keys = (v.toolbar || []).slice();
+      if (rt.received) keys = keys.filter(function (k) { return k !== "receive" && k !== "reject"; });
+      if (rt.pickupSynced && keys.indexOf("confirmPickup") >= 0) {
+        keys = keys.filter(function (k) { return k !== "confirmPickup"; });
+      }
+      if (rt.feeSynced && keys.indexOf("confirmFee") >= 0) {
+        keys = keys.filter(function (k) { return k !== "confirmFee"; });
+      }
+      if (rt.notifyWhSent) keys = keys.filter(function (k) { return k !== "notifyWh"; });
+      if (v.pushRule) {
+        if (rt.pushSt === "pushed" || rt.pushSt === "sent_manual") {
+          keys = keys.filter(function (k) { return k !== "submitExec" && k !== "markSent" && k !== "retryPush"; });
+        } else if (rt.pushSt === "pending_manual") {
+          keys = keys.filter(function (k) { return k !== "submitExec" && k !== "retryPush"; });
+        } else if (rt.pushSt === "failed") {
+          keys = keys.filter(function (k) { return k !== "submitExec" && k !== "markSent"; });
+        } else {
+          keys = keys.filter(function (k) { return k !== "markSent" && k !== "retryPush"; });
+        }
+      }
+      return keys;
+    }
+
+    function isPickupSynced(id) {
+      var rt = runtime[id];
+      return rt ? rt.pickupSynced : false;
+    }
+
+    function isFeeSynced(id) {
+      var rt = runtime[id];
+      return rt ? rt.feeSynced : false;
+    }
+
+    function parseList(s) {
+      if (!s || s === "—") return [];
+      return String(s).split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean);
+    }
+
+    function billPreOk(billStatus, billPreLabel) {
+      if (!billPreLabel || billPreLabel === "不限制") return true;
+      var locked = /已锁账/.test(billStatus);
+      var writtenOff = /已核销|部分核销/.test(billStatus);
+      if (/未锁账且未核销/.test(billPreLabel)) return !locked && !writtenOff;
+      if (/未锁账/.test(billPreLabel)) return !locked;
+      if (/未核销/.test(billPreLabel)) return !writtenOff;
+      return true;
+    }
+
+    function evalPrecond(p) {
+      if (!p) return { ok: true, text: "—" };
+      var allow = parseList(p.wbAllow);
+      var block = parseList(p.wbBlock);
+      var wb = p.wbStatus || "";
+      if (p.blockedReason === "waybill_post") {
+        return { ok: false, text: "✗ 运单已进入后置阶段「" + wb + "」，不可确认写回。提示：{运单号} 已进入后置阶段，请核实" };
+      }
+      if (p.blockedReason === "bill_locked") {
+        return { ok: false, text: "✗ 账单状态「" + p.billStatus + "」不满足前置「" + p.billPre + "」，不可财务确认。" };
+      }
+      if (block.length && block.indexOf(wb) >= 0) {
+        return { ok: false, text: "✗ 运单状态「" + wb + "」命中禁止后置列表，不可确认写回。" };
+      }
+      if (allow.length && allow.indexOf(wb) < 0 && wb !== "—（本场景不校验运单）") {
+        return { ok: false, text: "✗ 运单状态「" + wb + "」不在允许区间。" };
+      }
+      if (!billPreOk(p.billStatus, p.billPre)) {
+        return { ok: false, text: "✗ 账单状态「" + p.billStatus + "」不满足「" + p.billPre + "」。" };
+      }
+      return { ok: true, text: "✓ 前置校验通过（确认时将重读最新运单/账单状态）" };
+    }
+
+    function tryConfirmPickup(id, v) {
+      var rt = ensureRuntime(id, v);
+      var chk = evalPrecond(v.precond);
+      if (!chk.ok) {
+        alert("演示拦截：\n\n" + chk.text.replace(/^✗\s*/, ""));
+        return false;
+      }
+      rt.pickupSynced = true;
+      pushTimeline(rt, demoNow(), "李俊（自提客服）执行 <strong>确认转自提</strong>，已写回运单派送方式。", true);
+      rt.statusText = "已确认转自提";
+      rt.statusCls = "ok";
+      document.getElementById("bizAfter").textContent = "自提";
+      document.getElementById("bizAfterWrap").classList.add("after");
+      document.getElementById("syncOk").classList.add("show");
+      document.getElementById("syncTime").textContent = demoNow();
+      document.getElementById("syncUser").textContent = "李俊（自提客服）";
+      document.getElementById("syncAction").textContent = "写回运单";
+      var fd = document.getElementById("fieldDelivery");
+      if (fd) fd.textContent = "自提（已写回运单 · 演示）";
+      toast("已写回运单 · 尾端派送方式=自提");
+      render();
+      return true;
+    }
+
+    function tryConfirmFee(id, v) {
+      var rt = ensureRuntime(id, v);
+      var chk = evalPrecond(v.precond);
+      if (!chk.ok) {
+        alert("演示拦截：\n\n" + chk.text.replace(/^✗\s*/, ""));
+        return false;
+      }
+      rt.feeSynced = true;
+      pushTimeline(rt, demoNow(), "财务执行 <strong>财务确认（联动费用）</strong>，<code>biz_sync=success</code>。", true);
+      rt.statusText = "费用已确认";
+      rt.statusCls = "ok";
+      document.getElementById("bizAfter").textContent = "应收 ¥12,260.00（已写回）";
+      document.getElementById("bizAfterWrap").classList.add("after");
+      document.getElementById("syncOk").classList.add("show");
+      document.getElementById("syncAction").textContent = "写回费用系统";
+      document.getElementById("syncTime").textContent = demoNow();
+      document.getElementById("syncUser").textContent = "王敏（财务复核）";
+      var fb = document.getElementById("fieldFeeAfter");
+      if (fb) fb.textContent = "¥ 12,260.00（已写回 · 演示）";
+      toast("费用模块写回成功");
+      render();
+      return true;
+    }
+
+    function handleAction(key, id) {
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      if (rt.closed && key !== "close") return;
+
+      if (key === "receive") {
+        if (rt.received) return;
+        rt.received = true;
+        var who = DEMO_USER[v.activeActor] || "当前处理人（演示）";
+        rt.handler = who;
+        rt.statusText = "处理中";
+        rt.statusCls = "doing";
+        pushTimeline(rt, demoNow(), who + " <strong>接收</strong>工单。", true);
+        toast("已接收工单");
+        render();
+        return;
+      }
+
+      if (key === "reject") {
+        modalContextId = id;
+        document.getElementById("rejectReason").value = "";
+        openModal("reject");
+        return;
+      }
+
+      if (key === "transfer") {
+        modalContextId = id;
+        var sel = document.getElementById("transferTarget");
+        var members = (poolFor(id, v) || []).concat(["夜班客服池-LA", "夜班·陈晨", "直属主管-赵磊"]);
+        sel.innerHTML = members.map(function (m, i) {
+          return '<option value="' + m + '"' + (i === 0 ? " selected" : "") + ">" + m + "</option>";
+        }).join("");
+        document.getElementById("transferKind").value = "transfer";
+        document.getElementById("transferNote").value = "";
+        syncTransferKindUi();
+        openModal("transfer");
+        return;
+      }
+
+      if (key === "urge") {
+        modalContextId = id;
+        document.getElementById("urgeKind").value = "urge";
+        document.getElementById("urgeTimeoutType").value = "首响超时";
+        document.getElementById("urgeNote").value = "";
+        openModal("urge");
+        return;
+      }
+
+      if (key === "toPickup" && id === "WO-202605-014") {
+        toast("已转至自提池");
+        location.hash = "WO-202605-014-pickup";
+        return;
+      }
+
+      if (key === "confirmPickup") {
+        tryConfirmPickup(id, v);
+        return;
+      }
+
+      if (key === "childWo") {
+        toast("已生成子工单 WO-202605-014-S1（演示）");
+        alert("演示：生成子工单 WO-202605-014-S1\nscene=转自提 · parent_id=WO-202605-014");
+        return;
+      }
+
+      if (key === "confirmFee") {
+        tryConfirmFee(id, v);
+        return;
+      }
+
+      if (key === "notifyWh") {
+        rt.notifyWhSent = true;
+        pushTimeline(rt, demoNow(), "已<strong>通知配仓组</strong>（系统消息 · 演示）。", true);
+        toast("已通知配仓组");
+        render();
+        return;
+      }
+
+      if (key === "addInstr") {
+        openFollowDrawer("new");
+        return;
+      }
+
+      if (key === "submitExec") {
+        var rule = v.pushRule || {};
+        rt.actionDone = true;
+        var useApi = confirm("演示：目标仓是否支持 API？\n\n确定 = API 仓（自动推送）\n取消 = 无接口仓（待人工发送）");
+        if (useApi) {
+          if (Math.random() < 0.15) {
+            rt.pushSt = "failed";
+            rt.statusText = "推送失败";
+            rt.statusCls = "risk";
+            pushTimeline(rt, demoNow(), "已写 Move Type=<strong>留仓</strong> + 柜子备注；自动推送美库<strong>失败</strong>，可重试。", true);
+            toast("推送失败（演示随机）· 可重试");
+          } else {
+            rt.pushSt = "pushed";
+            rt.statusText = "海外仓执行中";
+            rt.statusCls = "doing";
+            pushTimeline(rt, demoNow(), "已写 Move Type=<strong>留仓</strong> + 柜子备注 → 按 SC-GQ-011 <strong>自动推送</strong>美库 MK-LBL-9001。", true);
+            rt.whTaskNo = "MK-LBL-9001";
+            toast("已写留仓并自动推送（演示）");
+          }
+        } else {
+          rt.pushSt = "pending_manual";
+          rt.statusText = "待人工发送";
+          rt.statusCls = "risk";
+          pushTimeline(rt, demoNow(), "已写 Move Type=<strong>留仓</strong> + 柜子备注；仓无接口 → <strong>待人工发送</strong>。", true);
+          toast("已写留仓 · 待人工发送");
+        }
+        render();
+        return;
+      }
+
+      if (key === "markSent") {
+        if (rt.pushSt !== "pending_manual") {
+          toast("仅「待人工发送」可点已发送");
+          return;
+        }
+        rt.pushSt = "sent_manual";
+        rt.statusText = "已发送 · 待回写结果";
+        rt.statusCls = "doing";
+        pushTimeline(rt, demoNow(), "客服确认<strong>已发送</strong>（无接口仓人工渠道）。", true);
+        toast("已标记发送");
+        render();
+        return;
+      }
+
+      if (key === "retryPush") {
+        if (rt.pushSt !== "failed") {
+          toast("仅推送失败可重试");
+          return;
+        }
+        rt.pushSt = "pushed";
+        rt.statusText = "海外仓执行中";
+        rt.statusCls = "doing";
+        rt.whTaskNo = "MK-LBL-9001";
+        pushTimeline(rt, demoNow(), "<strong>重试推送</strong>成功 → 美库 MK-LBL-9001。", true);
+        toast("重试推送成功");
+        render();
+        return;
+      }
+
+      if (key === "close") {
+        if (v.requireBizSyncToClose && !rt.feeSynced) {
+          alert("须先完成「财务确认（联动费用）」后再结案。");
+          return;
+        }
+        if (id.indexOf("014-pickup") >= 0 && v.showBiz && !rt.pickupSynced) {
+          if (!confirm("本单尚未「确认转自提」写回运单，确定仍要结案？（演示）")) return;
+        }
+        if (v.showVersionChain) {
+          var vers = currentVersions(rt, v);
+          var openVer = vers.filter(function (x) {
+            return x.state === "current" || (!x.state && /待|执行中|已受理/.test(x.whStatus || ""));
+          });
+          if (openVer.length) {
+            alert("母工单不可结案：仍有待执行指令版本（" + openVer.map(function (x) { return x.ver; }).join("、") + "）。\n某一版失败只关该版；货物最终完结且无待执行版才可关母工单。");
+            return;
+          }
+        }
+        if (rt.closed) {
+          toast("本单已结案");
+          return;
+        }
+        if (!confirm("确定关闭 / 结案本工单？（演示）")) return;
+        rt.closed = true;
+        rt.closedAt = demoNow();
+        toast("工单已结案");
+        render();
+        return;
+      }
+    }
+
+    function renderPrecond(v) {
+      var card = document.getElementById("precondCard");
+      var p = v && v.precond;
+      if (!p) {
+        card.classList.add("hidden");
+        return;
+      }
+      card.classList.remove("hidden");
+      document.getElementById("precondWbStatus").textContent = p.wbStatus || "—";
+      document.getElementById("precondBillStatus").textContent = p.billStatus || "—";
+      document.getElementById("precondWbAllow").textContent = p.wbAllow || "—";
+      document.getElementById("precondWbBlock").textContent = p.wbBlock || "—";
+      document.getElementById("precondBillPre").textContent = p.billPre || "—";
+      var postEl = document.getElementById("precondPostWb");
+      if (postEl) postEl.textContent = p.postWbStatus || "—";
+      var chk = evalPrecond(p);
+      var bar = document.getElementById("precondResult");
+      bar.classList.remove("ok", "block");
+      bar.classList.add(chk.ok ? "ok" : "block");
+      document.getElementById("precondResultText").textContent = chk.text;
+    }
+
+    function pageView() {
+      var qs = new URLSearchParams(location.search);
+      return { view: qs.get("view") || "mother", instr: qs.get("instr") || "" };
+    }
+
+    function currentId() {
+      const h = (location.hash || "").replace(/^#/, "");
+      return scenario[h] ? h : "WO-202605-001";
+    }
+
+    function renderTimeline(items) {
+      return items
+        .map(function (it) {
+          var cls = "tl-item";
+          if (it.done) cls += " done";
+          if (it.pending) cls += " pending";
+          return '<div class="' + cls + '"><div class="t">' + it.t + '</div><div>' + it.text + "</div></div>";
+        })
+        .join("");
+    }
+
+    function renderToolbar(keys, id, rt, v) {
+      var host = document.getElementById("toolbar");
+      host.innerHTML = "";
+      keys.forEach(function (key) {
+        var b = BTN_MAP[key];
+        if (!b) return;
+        var el = document.createElement("button");
+        el.type = "button";
+        el.className = "btn " + b.cls;
+        el.textContent = b.label;
+        el.setAttribute("data-action", key);
+        if (rt.closed && key !== "close") {
+          el.disabled = true;
+        }
+        if (key === "close" && v.requireBizSyncToClose && !rt.feeSynced) {
+          el.disabled = true;
+          el.title = "须先完成财务确认（联动费用）";
+        }
+        if (rt.closed && key === "close") {
+          el.textContent = "已结案";
+          el.disabled = true;
+        }
+        host.appendChild(el);
+      });
+    }
+
+    function renderActors(active) {
+      document.getElementById("actorsBox").innerHTML = ACTORS.map(function (a) {
+        var cls = "actor" + (a.key === active ? " active" : "");
+        return '<div class="' + cls + '"><strong>' + a.label + "</strong>" + a.desc + "</div>";
+      }).join("");
+    }
+
+    function renderFlowPrd(key) {
+      var card = document.getElementById("flowPrdCard");
+      var tpl = key ? PRD_TEMPLATES[key] : null;
+      if (!tpl) {
+        card.classList.add("hidden");
+        return;
+      }
+      card.classList.remove("hidden");
+      document.getElementById("flowPrdTitle").textContent = tpl.title;
+      document.getElementById("flowPrdBody").innerHTML = tpl.html;
+      var cp = document.getElementById("flowPrdConfig");
+      cp.textContent = tpl.config;
+      cp.classList.remove("hidden");
+    }
+
+    function fillWorkGuide(id, v) {
+      var presets = {
+        "WO-202605-LABEL": {
+          node: "待执行",
+          action: "1.核对新标签与柜号\n2.确认费用已确认\n3.提交执行（系统按仓能力推送）",
+          docs: "新标签必传、操作说明、客户授权",
+          attach: "新标签清晰照片×1（条码可读）；操作说明 PDF×1",
+          result: "推送结果、美库任务号、失败原因",
+          cannot: "新标签缺失、柜子已出库、费用未确认",
+          sop: "SOP-换标港前-v2 · KB/换标验收标准",
+        },
+        "WO-202605-003": {
+          node: "待上传结果",
+          action: "按拍摄标准逐项拍照上传，不得只传一张笼统现场照。",
+          docs: "作业授权、货件清单",
+          attach: "外箱全景×1；破损位置特写×≥2；唛头清晰×1；件数清点×1；尺寸参照物（卷尺）×1",
+          result: "实际件数、破损描述、长宽高、处理结论",
+          cannot: "货已出库、仓内找不到货、标签污损无法识别",
+          sop: "SOP-仓内拍照-v3 · KB/拍照验收",
+        },
+      };
+      var g = presets[id] || {
+        node: (v.pills && v.pills[3] && String(v.pills[3].text || "").replace(/^状态：/, "")) || "待执行",
+        action: "按本场景作业指引完成当前节点动作（配置中心 Tab「作业指引」）。",
+        docs: "按场景必填资料清单",
+        attach: "按场景附件类型/数量/拍摄标准",
+        result: "按场景结果填写项",
+        cannot: "按场景常见无法执行原因",
+        sop: "见场景配置 SOP / 知识库链接",
+      };
+      var qNode = "";
+      try {
+        qNode = new URLSearchParams(location.search).get("node") || "";
+      } catch (_) {}
+      if (qNode) g.node = qNode;
+      document.getElementById("guideNode").textContent = g.node;
+      document.getElementById("guideAction").textContent = g.action;
+      document.getElementById("guideDocs").textContent = g.docs;
+      document.getElementById("guideAttach").textContent = g.attach;
+      document.getElementById("guideResult").textContent = g.result;
+      document.getElementById("guideCannot").textContent = g.cannot;
+      document.getElementById("guideSop").textContent = g.sop;
+      var card = document.getElementById("workGuideCard");
+      if (card) {
+        card.hidden = true;
+        card.classList.remove("focus-node");
+      }
+    }
+
+    function render() {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      var pickupOk = rt.pickupSynced;
+      var feeOk = rt.feeSynced;
+
+      document.getElementById("heroTitle").textContent = v.title;
+      document.getElementById("heroMeta").textContent = v.meta;
+      (function syncHandlerBanner() {
+        var ban = document.getElementById("handlerViewBanner");
+        if (!ban) return;
+        var pv = pageView();
+        var handlerView = pv.view === "handler" && !!pv.instr;
+        if (!handlerView) {
+          ban.hidden = true;
+          ban.innerHTML = "";
+          return;
+        }
+        var vers = v.showVersionChain ? currentVersions(rt, v) : [];
+        var focus = vers.find(function (x) { return x.instrId === pv.instr || (!x.instrId && pv.instr.indexOf(x.ver) >= 0); });
+        ban.hidden = false;
+        ban.innerHTML =
+          "<strong>处理人视角（BR-WB-003）</strong> · 当前指令 <code>" + pv.instr + "</code>" +
+          (focus ? " · " + focus.summary + " · " + (focus.pool || "") + " · " + (focus.handler || "") : "") +
+          "。<br/>可见母工单基础信息与关联单号；其他子工单费用 / 附件 / 处理详情默认隐藏。母单全貌请用发起人/母单负责人/客户主管权限打开。" +
+          ' <a href="?view=mother#' + id + '" style="color:#9a3412;font-weight:700">切换母工单全貌</a>';
+      })();
+      document.getElementById("slaBox").innerHTML = v.sla + (function () {
+        if (!rt.timeoutFlag && !rt.lastUrgeAt) return "";
+        return "<div style='margin-top:8px;padding:8px 10px;border-radius:8px;background:#fff1f2;border:1px dashed #fda4af;font-size:12px;color:#9f1239;line-height:1.5'>" +
+          "<strong>超时/催办标记（状态未变）</strong><br/>" +
+          "超时标记：" + (rt.timeoutFlag || "—") +
+          " · 已升级层级：" + (rt.escalationLevel || "—") +
+          " · 最近催办：" + (rt.lastUrgeAt || "—") +
+          "</div>";
+      })();
+      document.getElementById("slaBox").className = "sla-bar" + (v.slaClass ? " " + v.slaClass : "") + (rt.timeoutFlag ? " risk" : "");
+      document.getElementById("timeline").innerHTML = renderTimeline(mergedTimeline(v, rt));
+
+      document.getElementById("pillsRow").innerHTML = mergedPills(v, rt)
+        .map(function (p) {
+          return '<span class="pill' + (p.cls ? " " + p.cls : "") + '">' + p.text + "</span>";
+        })
+        .join("");
+
+      renderToolbar(toolbarKeys(v, rt, id), id, rt, v);
+
+      renderFlowPrd(v.flowPrdKey || null);
+      renderPrecond(v);
+      fillWorkGuide(id, v);
+      document.getElementById("bizCard").classList.toggle("hidden", !v.showBiz);
+      var srCard = document.getElementById("sceneRuleCard");
+      if (srCard) srCard.classList.toggle("hidden", !v.showSceneRule);
+
+      if (v.showBiz && v.biz) {
+        var isFee = v.bizMode === "fee";
+        var isContainer = v.bizMode === "container";
+        document.getElementById("bizCardTitle").textContent = isFee
+          ? "关联原单 · 费用调整（业务联动示意）"
+          : isContainer
+            ? "关联柜子计划 · 执行动作（业务联动示意）"
+            : "关联运单 · 派送方式（业务联动示意）";
+        document.getElementById("bizDtRef").textContent = isFee ? "关联原单" : isContainer ? "关联柜号" : "关联运单";
+        document.getElementById("bizLblBefore").textContent = isFee
+          ? "工单记录（调整前）"
+          : isContainer
+            ? "柜子计划（改前）"
+            : "工单记录（改前）";
+        document.getElementById("bizLblAfter").textContent = isFee
+          ? "费用系统（调整后）"
+          : isContainer
+            ? "柜子计划（改后）"
+            : "运单系统（改后）";
+        document.getElementById("bizWaybill").textContent = v.biz.waybill;
+        document.getElementById("bizRole").textContent = v.biz.role;
+        document.getElementById("bizConfigLine").textContent = v.biz.config || "—";
+        document.getElementById("bizBefore").textContent = v.biz.before;
+        var after = v.biz.after;
+        if (pickupOk) after = "自提";
+        if (feeOk) after = "应收 ¥12,260.00（已写回）";
+        if (isContainer && rt.actionDone) after = "Move Type = 留仓 · 备注=港前换标要求（已写入）";
+        document.getElementById("bizAfter").textContent = after;
+        document.getElementById("bizAfterWrap").classList.toggle("after", pickupOk || feeOk || (isContainer && rt.actionDone));
+        document.getElementById("syncOk").classList.toggle("show", pickupOk || feeOk || (isContainer && rt.actionDone));
+        if (pickupOk) {
+          document.getElementById("syncAction").textContent = "写回运单";
+          document.getElementById("syncTime").textContent = rt.timeline.length ? rt.timeline[rt.timeline.length - 1].t : demoNow();
+          document.getElementById("syncUser").textContent = "李俊（自提客服）";
+        }
+        if (feeOk) {
+          document.getElementById("syncAction").textContent = "写回费用系统";
+          document.getElementById("syncTime").textContent = rt.timeline.length ? rt.timeline[rt.timeline.length - 1].t : demoNow();
+          document.getElementById("syncUser").textContent = "王敏（财务复核）";
+        }
+        if (isContainer && rt.actionDone) {
+          document.getElementById("syncAction").textContent = "写回柜子计划";
+          document.getElementById("syncTime").textContent = rt.timeline.length ? rt.timeline[rt.timeline.length - 1].t : demoNow();
+          document.getElementById("syncUser").textContent = "付雪（港前）/ 系统";
+        }
+        document.getElementById("notifyWhWrap").classList.toggle("hidden", id !== "WO-202605-014-pickup");
+        if (rt.notifyWhSent) document.getElementById("notifyWh").checked = true;
+      }
+
+      if (v.writebackList) {
+        document.getElementById("writebackFields").textContent = v.writebackList;
+      } else {
+        document.getElementById("writebackFields").textContent =
+          "按场景写回：少件标记/实收数/差异原因，或拦截状态，或新地址版本及通知结果。";
+      }
+      var wbd = v.wbDefaults || {};
+      document.getElementById("wbResult").textContent = rt.wbResult || wbd.result || "—";
+      document.getElementById("wbFee").textContent = rt.wbFee || wbd.fee || "—";
+      document.getElementById("wbReceipt").textContent = rt.wbReceipt || wbd.receipt || "—";
+      document.getElementById("wbAddr").textContent = rt.wbAddr || wbd.addr || "—";
+      document.getElementById("wbChannel").textContent = rt.wbChannel || wbd.channel || "—";
+      document.getElementById("whActualFee").textContent = rt.whActualFee || "—";
+      document.getElementById("whReceipt").textContent = rt.whReceipt || "—";
+      if (rt.whResult) document.getElementById("whResult").textContent = rt.whResult;
+
+      document.getElementById("fieldsDl").innerHTML = mergedFields(v, rt, id)
+        .map(function (row) {
+          return "<dt>" + row[0] + "</dt><dd>" + row[1] + "</dd>";
+        })
+        .join("");
+
+      var editRel = document.getElementById("editRelatedWo");
+      var editWh = document.getElementById("editWhTaskNo");
+      if (editRel) editRel.value = rt.relatedWo || v.relatedWo || "";
+      if (editWh) {
+        var whVal = rt.whTaskNo || v.whTaskNo || "";
+        if (whVal === "—" || (whVal && whVal.indexOf("待") === 0) || (whVal && whVal.indexOf("本场景") === 0)) editWh.value = "";
+        else editWh.value = whVal;
+      }
+
+      var pushEl = document.getElementById("fieldPushSt");
+      if (pushEl) {
+        var map = {
+          pending_manual: "待人工发送",
+          pushed: "已自动推送 · 执行中",
+          failed: "推送失败 · 可重试",
+          sent_manual: "已人工发送 · 待回写",
+        };
+        pushEl.textContent = rt.pushSt ? map[rt.pushSt] || rt.pushSt : "未提交";
+      }
+
+      var pvAttach = pageView();
+      var handlerFocus = null;
+      if (pvAttach.view === "handler" && pvAttach.instr && v.showVersionChain) {
+        handlerFocus = currentVersions(rt, v).find(function (x) {
+          return x.instrId === pvAttach.instr || (!x.instrId && pvAttach.instr.indexOf(x.ver) >= 0);
+        }) || null;
+      }
+      document.getElementById("attachText").textContent =
+        handlerFocus ? (handlerFocus.attach || "—") : (v.attach || "—");
+      document.getElementById("childLink").classList.toggle("hidden", id !== "WO-202605-014");
+      renderActors(v.activeActor || "starter");
+      renderVersionChain(v, rt);
+
+      if (v.showVersionChain) {
+        var cur = handlerFocus || latestOpenVersion(currentVersions(rt, v));
+        if (cur) {
+          document.getElementById("instructionObject").textContent =
+            (v.rootObj && v.rootObj.container ? "柜 " + v.rootObj.container + " / " : "") +
+            (v.rootObj && v.rootObj.rootWaybill ? "根运单 " + v.rootObj.rootWaybill : "根对象");
+          document.getElementById("instructionText").textContent =
+            "【" + cur.ver + "】" + cur.summary +
+            (cur.instrId ? " · " + cur.instrId : "") +
+            (cur.mk && cur.mk !== "—" ? " → 美库 " + cur.mk : "") +
+            "（" + cur.whStatus + "）";
+          document.getElementById("whTaskNo").textContent = cur.mk || "—";
+          document.getElementById("whResult").textContent = cur.result;
+          document.getElementById("feeStatus").textContent = cur.fee;
+          document.getElementById("feeLines").textContent =
+            (handlerFocus ? "处理人视角：仅本指令费用。 " : "") +
+            "本版费用挂 " + cur.ver + "，不混入母工单备注。";
+        }
+      } else {
+        document.getElementById("instructionObject").textContent = "柜 / 运单 / FBA / 主单（随工单带入）";
+        document.getElementById("instructionText").textContent =
+          "请按本单场景执行，上传结果凭证；涉及业务字段变更时必须等待回写结果。";
+        document.getElementById("whTaskNo").textContent = "待海外仓回传";
+        if (!rt.whResult) document.getElementById("whResult").textContent = "待反馈";
+        document.getElementById("feeStatus").textContent = "待海外仓反馈";
+        document.getElementById("feeLines").textContent = "费用名称、币种、金额、数量、单位待回传。";
+      }
+      if (id === "WO-202605-LABEL") {
+        document.getElementById("instructionObject").textContent = "柜 EMSU7788123 · 换标·港前";
+        document.getElementById("instructionText").textContent =
+          "【SC-GQ-011】费用已确认后：柜子计划 Move Type→留仓；柜子备注写入换标要求；新标签必传；提交执行按仓 API 自动推送或待人工发送。";
+        if (rt.actionDone) {
+          document.getElementById("srMoveType").textContent = "已写入 → 留仓";
+          document.getElementById("srCabNote").textContent = "已写入换标要求";
+        }
+      }
+      var showWh = rt.whTaskNo || v.whTaskNo;
+      if (showWh && showWh !== "—" && document.getElementById("whTaskNo")) {
+        if (!(v.showVersionChain && latestOpenVersion(currentVersions(rt, v)))) {
+          document.getElementById("whTaskNo").textContent = showWh;
+        }
+      }
+    }
+
+    document.getElementById("toolbar").addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-action]");
+      if (!btn || btn.disabled) return;
+      handleAction(btn.getAttribute("data-action"), currentId());
+    });
+
+    document.getElementById("verList").addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-ver-action]");
+      if (!btn || btn.disabled) return;
+      var act = btn.getAttribute("data-ver-action");
+      if (act === "withdraw") openFollowDrawer("withdraw");
+      if (act === "new") openFollowDrawer("new");
+    });
+
+    document.getElementById("followDrawerClose").addEventListener("click", closeFollowDrawer);
+    document.getElementById("followCancel").addEventListener("click", closeFollowDrawer);
+    document.getElementById("drawerBackdrop").addEventListener("click", closeFollowDrawer);
+    document.getElementById("followSubmit").addEventListener("click", submitFollowInstr);
+
+    function syncTransferKindUi() {
+      var kind = document.getElementById("transferKind").value;
+      var showLeave = kind === "leave";
+      document.getElementById("leaveAt").style.display = showLeave ? "block" : "none";
+      document.getElementById("leaveAtLabel").style.display = showLeave ? "block" : "none";
+    }
+
+    document.getElementById("transferKind").addEventListener("change", syncTransferKindUi);
+
+    document.getElementById("transferConfirm").addEventListener("click", function () {
+      if (!modalContextId) return;
+      var id = modalContextId;
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      var kind = document.getElementById("transferKind").value;
+      var target = document.getElementById("transferTarget").value;
+      var note = document.getElementById("transferNote").value.trim();
+      if (!note) {
+        alert("请填写交接/转派原因");
+        return;
+      }
+      var prevHandler = rt.handler || (v.fields && v.fields.find(function (f) { return f[0] === "当前处理人"; }) || [])[1] || "原责任人";
+      var actor = DEMO_USER[v.activeActor] || "当前用户（演示）";
+      if (kind === "transfer") {
+        rt.handler = target;
+        pushTimeline(rt, demoNow(), "<strong>日常转派</strong>：" + prevHandler + " → " + target + "；转派人=" + actor + "；原因=" + note + "。业务状态不变。", true);
+        toast("已转派给 " + target);
+      } else if (kind === "shift") {
+        rt.handler = target;
+        pushTimeline(rt, demoNow(), "<strong>班次交接</strong>：未完成工单交接至 " + target + "；原责任人=" + prevHandler + "；原因=" + note + "。已通知站内待办+企业微信。", true);
+        toast("班次交接已生效（演示）");
+      } else {
+        var leaveAt = document.getElementById("leaveAt").value || "—";
+        pushTimeline(rt, demoNow(), "<strong>休假交接已预约</strong>：生效 " + leaveAt + " 自动转交 " + target + "；原责任人=" + prevHandler + "；原因=" + note + "。SLA 是否暂停待确认（Q-HAND-001）。", true);
+        toast("休假交接已预约");
+      }
+      closeModals();
+      render();
+    });
+
+    document.getElementById("urgeConfirm").addEventListener("click", function () {
+      if (!modalContextId) return;
+      var id = modalContextId;
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      var kind = document.getElementById("urgeKind").value;
+      var tType = document.getElementById("urgeTimeoutType").value;
+      var note = document.getElementById("urgeNote").value.trim();
+      var level = kind === "urge" ? "—" : kind === "esc1" ? "L1" : kind === "esc2" ? "L2" : "L3";
+      var who = kind === "urge" ? "当前处理人" : kind === "esc1" ? "当前处理人" : kind === "esc2" ? "当前处理人+直属主管" : "当前处理人+直属主管+上级负责人";
+      rt.timeoutFlag = tType;
+      rt.escalationLevel = level === "—" ? (rt.escalationLevel || "—") : level;
+      rt.lastUrgeAt = demoNow();
+      var label = kind === "urge" ? "催办" : "超时升级 " + level;
+      pushTimeline(rt, demoNow(), "<strong>" + label + "</strong>：" + tType + "；通知=" + who + "；最近催办=" + rt.lastUrgeAt + (note ? "；" + note : "") + "。<em>业务状态不变</em>。渠道：站内+企微。", true);
+      toast(label + "已发送（状态未变）");
+      closeModals();
+      render();
+    });
+
+    document.getElementById("rejectConfirm").addEventListener("click", function () {
+      if (!modalContextId) return;
+      var reason = document.getElementById("rejectReason").value.trim();
+      if (!reason) {
+        alert("请填写驳回原因");
+        return;
+      }
+      var id = modalContextId;
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      rt.rejected = true;
+      rt.statusText = "已驳回";
+      rt.statusCls = "risk";
+      pushTimeline(rt, demoNow(), "处理人<strong>驳回</strong>：「" + reason + "」", true);
+      toast("已驳回，退回发起人");
+      closeModals();
+      render();
+    });
+
+    document.querySelectorAll("[data-modal-cancel]").forEach(function (btn) {
+      btn.addEventListener("click", closeModals);
+    });
+
+    document.getElementById("modalTransfer").addEventListener("click", function (e) {
+      if (e.target === this) closeModals();
+    });
+    document.getElementById("modalUrge").addEventListener("click", function (e) {
+      if (e.target === this) closeModals();
+    });
+    document.getElementById("modalReject").addEventListener("click", function (e) {
+      if (e.target === this) closeModals();
+    });
+
+    document.getElementById("btnSaveLinkFields").addEventListener("click", function () {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      var rel = (document.getElementById("editRelatedWo").value || "").trim();
+      var wh = (document.getElementById("editWhTaskNo").value || "").trim();
+      rt.relatedWo = rel || "—";
+      rt.whTaskNo = wh || "—";
+      if (wh) document.getElementById("whTaskNo").textContent = wh;
+      pushTimeline(
+        rt,
+        demoNow(),
+        "更新字段：关联工单=<strong>" + (rel || "空") + "</strong>；海外仓任务号=<strong>" + (wh || "空") + "</strong>。",
+        true
+      );
+      toast("关联字段已保存（演示）");
+      render();
+    });
+
+    document.getElementById("btnDemoWhFeedback").addEventListener("click", function () {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      rt.whResult = "换标完成（演示）";
+      rt.whActualFee = "USD 18.00";
+      rt.whReceipt = "换标后照片.zip · 回执.pdf";
+      document.getElementById("whResult").textContent = rt.whResult;
+      document.getElementById("whActualFee").textContent = rt.whActualFee;
+      document.getElementById("whReceipt").textContent = rt.whReceipt;
+      document.getElementById("whTaskNo").textContent = "MK-LBL-9001";
+      document.getElementById("whProof").textContent = "换标后照片.zip";
+      pushTimeline(rt, demoNow(), "执行人提交结果：处理结果/实际费用/回执附件（待客服验收）。", true);
+      toast("已模拟执行人提交结果（未完结）");
+      render();
+    });
+
+    document.getElementById("btnDemoWriteback").addEventListener("click", function () {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      rt.wbResult = "换标成功 · 标签版本 LBL-202605-09";
+      rt.wbFee = "USD 18.00（已确认）";
+      rt.wbReceipt = "回执.pdf";
+      rt.wbAddr = "未变更";
+      rt.wbChannel = "原渠道保留（TRUCK）";
+      rt.actionDone = true;
+      document.getElementById("writebackState").innerHTML = '<span class="pill doing">验收通过 · 已回写</span>';
+      pushTimeline(rt, demoNow(), "客服验收通过并回写：处理结果、实际费用、回执附件、修改地址、修改渠道。", true);
+      toast("验收通过并回写（演示）");
+      render();
+    });
+
+    document.getElementById("btnDemoReject").addEventListener("click", function () {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      var reason = prompt("验收不通过原因（将退回原执行人，不新建 V2）：", "照片不符合标准 / 结果不完整");
+      if (reason == null) return;
+      document.getElementById("writebackState").innerHTML = '<span class="pill risk">已退回返工</span>';
+      rt.actionDone = false;
+      pushTimeline(rt, demoNow(), "客服验收不通过，退回原执行人返工（同一指令，不升 V2）：" + (reason || "未填原因"), true);
+      toast("已退回原执行人返工 · 不改派 · 不新建 V2");
+      render();
+    });
+
+    document.getElementById("btnDemoUnable").addEventListener("click", function () {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      var reason = prompt("确认无法执行原因（确认后关闭当前指令，不自动生成后续）：", "货已出库，无法换标");
+      if (reason == null) return;
+      document.getElementById("writebackState").innerHTML = '<span class="pill">无法执行 · 指令已关闭</span>';
+      rt.actionDone = true;
+      pushTimeline(rt, demoNow(), "客服确认无法执行：" + (reason || "未填原因") + "；<strong>关闭当前指令</strong>，不自动生成后续指令。若有新要求请人工新建。", true);
+      toast("指令已关闭 · 无自动后续");
+      render();
+    });
+
+    document.getElementById("btnDemoFeeReturn").addEventListener("click", function () {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      if (rt.feeBatchId === "BATCH-9001") {
+        toast("同批次已回传，防重跳过（指令+费用项+批次）");
+        return;
+      }
+      rt.feeBatchId = "BATCH-9001";
+      document.getElementById("feeActualRaw").textContent = "USD 18.00（仓回传）";
+      document.getElementById("feeLines").textContent = "换标费 USD 18.00 × 1";
+      document.getElementById("feeExternalId").textContent = "FEE-MK-9001 / V1";
+      document.getElementById("feeDedup").textContent = id + " · 换标费 · BATCH-9001 / FEE-MK-9001";
+      document.getElementById("feeStatus").textContent = "待审核（场景需审核）";
+      document.getElementById("feeStatus").className = "pill risk";
+      document.getElementById("feeEstimate").textContent = "USD 25.00（预估，未改）";
+      document.getElementById("btnConfirmFee").disabled = false;
+      pushTimeline(rt, demoNow(), "海外仓回传实际费用 USD 18.00；进入待审核。应收预估仍为 USD 25.00（分存）。", true);
+      toast("已回传 · 待审核");
+    });
+
+    document.getElementById("btnDemoFeeApprove").addEventListener("click", function () {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      document.getElementById("feeStatus").textContent = "审核通过";
+      document.getElementById("feeStatus").className = "pill doing";
+      document.getElementById("feePayable").textContent = "USD 18.00（应付）";
+      document.getElementById("feeCost").textContent = "USD 18.00（实际成本）";
+      document.getElementById("feeEstimate").textContent = "USD 25.00（预估，仍分存未覆盖）";
+      rt.wbFee = "应付/成本 USD 18.00";
+      document.getElementById("btnConfirmFee").disabled = true;
+      pushTimeline(rt, demoNow(), "实际费用审核通过：写入应付与实际成本；应收预估未覆盖。", true);
+      toast("已写入应付/成本");
+      render();
+    });
+
+    document.getElementById("btnDemoFeeReject").addEventListener("click", function () {
+      var id = currentId();
+      var v = scenario[id];
+      var rt = ensureRuntime(id, v);
+      document.getElementById("feeStatus").textContent = "审核拒绝 · 退回仓补充";
+      document.getElementById("feeStatus").className = "pill risk";
+      rt.feeBatchId = "";
+      pushTimeline(rt, demoNow(), "实际费用审核拒绝，退回海外仓补充/修正；应付与成本未写入。", true);
+      toast("已退回海外仓");
+    });
+
+    document.getElementById("btnDemoFee").addEventListener("click", function () {
+      document.getElementById("btnDemoFeeReturn").click();
+    });
+
+    document.getElementById("btnConfirmFee").addEventListener("click", function () {
+      document.getElementById("btnDemoFeeApprove").click();
+    });
+
+    window.addEventListener("hashchange", function () {
+      render();
+    });
+    render();
+  </script>
+  <link rel="stylesheet" href="wo-prototype-nav.css" />
+  <script src="wo-prototype-nav.js?v=20260915d" defer></script>
+  <script src="../../ess-branch-back.js?v=20260915" defer></script>
+  <link rel="stylesheet" href="../../../二期/ess-prototype-prd.css" />
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="工单模块-需求PRD.html#m4-detail">
+    <span class="ess-prd-chip">PRD · 工单 · 旁支计划二</span>
+  </div>
+  <script src="../../../二期/ess-prototype-prd.js"></script>
+</body>
+</html>
