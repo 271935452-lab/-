@@ -265,11 +265,24 @@
       font-size: 10px; font-weight: 700; color: #d48806;
       vertical-align: middle; line-height: 1;
     }
+    .unit-row { display: flex; gap: 6px; align-items: center; min-width: 0; }
+    .unit-row input { flex: 1; min-width: 0; }
+    .unit-row select { width: 72px; flex-shrink: 0; }
+    .echo-box {
+      margin-top: 6px; padding: 8px 10px; border-radius: 2px;
+      background: #f6ffed; border: 1px solid #b7eb8f; font-size: 12px; line-height: 1.55; color: #389e0d;
+    }
+    .echo-box .echo-k { color: rgba(0,0,0,.45); }
+    .echo-box .echo-v { font-weight: 700; color: #135200; font-variant-numeric: tabular-nums; }
+    .echo-box a { color: #096dd9; }
+    .field.bad #orderTotalAmt { border-color: var(--req); }
+    .field .field-err { display: none; color: var(--req); font-size: 11px; margin-top: 4px; }
+    .field.bad .field-err { display: block; }
   </style>
 </head>
 <body data-fcl-page="order" data-fcl-nav="core-flow">
   <div class="app">
-    <div class="demo-bar"><strong>本次更新 2026-07-08</strong> · 计划装柜时间 · 去掉堆场/提柜点、拖车费、报关联系人、报关费 · 额外服务联动报关/拖车方式 · <a href="整柜本次更新-MVP.html">完整变更说明</a></div>
+    <div class="demo-bar"><strong>本次更新</strong> · 总价*→申报价值 · 额外服务<strong>关联费用</strong>（默认杂费包「整柜」）· <a href="整柜下单-订单录入-MVP-PRD.html#extra-fee">PRD</a> · <a href="整柜本次更新-MVP.html">完整变更说明</a></div>
 
     <header class="top-header">
       <div class="logo">腾信物流</div>
@@ -316,13 +329,14 @@
                 <div class="field full">
                   <div class="extra-chassis-split">
                     <div class="extra-chassis-services">
-                      <label>额外服务</label>
+                      <label>额外服务 <span class="mark-phase-new">新</span></label>
                       <div class="check-row">
                         <label><input type="checkbox" id="chkExtraCustoms" checked /> 报关</label>
                         <label><input type="checkbox" /> 保险</label>
                         <label><input type="checkbox" /> 带电</label>
                         <label><input type="checkbox" id="chkExtraTruck" /> 拖车<span class="mark-phase-new">新</span></label>
                       </div>
+                      <span class="field-hint" style="display:block;margin-top:4px">关联费用 · 默认杂费包「整柜」（勾选落预估，见 PRD）</span>
                     </div>
                     <div class="extra-chassis-flag">
                       <label>车架备注<span class="mark-phase-new">新</span></label>
@@ -390,6 +404,23 @@
                   <div class="radio-row">
                     <label><input type="radio" name="containerMode" value="oneOne" checked /> 一票一柜</label>
                     <label><input type="radio" name="containerMode" value="oneMany" /> 一票多柜</label>
+                  </div>
+                </div>
+                <div class="field" id="fieldOrderTotal">
+                  <label>总价<span class="req">*</span><span class="mark-phase-new">新</span></label>
+                  <div class="unit-row">
+                    <input type="number" id="orderTotalAmt" min="0" step="0.01" placeholder="请输入总价" value="24000" aria-required="true" />
+                    <select id="orderTotalCcy" aria-label="总价币种">
+                      <option value="USD" selected>USD</option>
+                      <option value="CNY">CNY</option>
+                    </select>
+                  </div>
+                  <span class="field-hint">同发票「总价」字段；提交预报后回写业务数据统计 · 申报价值</span>
+                  <div class="field-err">请填写总价</div>
+                  <div class="echo-box" id="declValueEcho" aria-live="polite">
+                    <span class="echo-k">业务数据统计 · 申报价值回显：</span>
+                    <span class="echo-v" id="declValueEchoVal">24,000.00 USD</span>
+                    · <a href="../二期/业务数据统计-尾端派送费-MVP.html#declValue">查看统计页字段</a>
                   </div>
                 </div>
               </div>
@@ -816,15 +847,78 @@
         }
         syncExtraServiceModes();
 
+        function fmtMoney(n) {
+          var x = Number(n);
+          if (!isFinite(x)) return "—";
+          return x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function syncDeclValueEcho() {
+          var amtEl = document.getElementById("orderTotalAmt");
+          var ccyEl = document.getElementById("orderTotalCcy");
+          var out = document.getElementById("declValueEchoVal");
+          if (!out) return;
+          var amt = amtEl ? String(amtEl.value || "").trim() : "";
+          var ccy = ccyEl ? ccyEl.value : "USD";
+          if (!amt || Number(amt) <= 0) {
+            out.textContent = "—（提交后写入）";
+            return;
+          }
+          out.textContent = fmtMoney(amt) + " " + ccy;
+          try {
+            sessionStorage.setItem("fclOrderTotalAmt", amt);
+            sessionStorage.setItem("fclOrderTotalCcy", ccy);
+          } catch (e) {}
+        }
+        function validateOrderTotal() {
+          var wrap = document.getElementById("fieldOrderTotal");
+          var amtEl = document.getElementById("orderTotalAmt");
+          var amt = amtEl ? String(amtEl.value || "").trim() : "";
+          var ok = !!amt && Number(amt) > 0;
+          if (wrap) wrap.classList.toggle("bad", !ok);
+          return ok;
+        }
+        ["orderTotalAmt", "orderTotalCcy"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("input", function () {
+            var wrap = document.getElementById("fieldOrderTotal");
+            if (wrap) wrap.classList.remove("bad");
+            syncDeclValueEcho();
+          });
+          el.addEventListener("change", syncDeclValueEcho);
+        });
+        syncDeclValueEcho();
+
         var btnSubmit = document.getElementById("btnOrderSubmit");
         if (btnSubmit) {
           btnSubmit.addEventListener("click", function () {
-            if (!validateLoadAddr()) {
+            var addrOk = validateLoadAddr();
+            var totalOk = validateOrderTotal();
+            if (!totalOk) {
+              if (window.FclCore && typeof FclCore.toast === "function") {
+                FclCore.toast("请填写总价（同发票总价，将回显业务数据统计·申报价值）", "warn");
+              } else {
+                alert("请填写总价（同发票总价，将回显业务数据统计·申报价值）");
+              }
+              var focusEl = document.getElementById("orderTotalAmt");
+              if (focusEl) focusEl.focus();
+              return;
+            }
+            if (!addrOk) {
               if (window.FclCore && typeof FclCore.toast === "function") {
                 FclCore.toast("请完善装柜地址（省 / 市 / 详细）", "warn");
               } else {
                 alert("请完善装柜地址（省 / 市 / 详细）");
               }
+              return;
+            }
+            var amt = document.getElementById("orderTotalAmt").value.trim();
+            var ccy = document.getElementById("orderTotalCcy").value;
+            var msg = "原型演示：提交预报成功 · 总价 " + fmtMoney(amt) + " " + ccy + " 已回写业务数据统计·申报价值";
+            if (window.FclCore && typeof FclCore.toast === "function") {
+              FclCore.toast(msg, "ok");
+            } else {
+              alert(msg);
             }
           });
         }
@@ -849,5 +943,6 @@
       }
     })();
   </script>
+  <script src="../产品部门/ess-branch-back.js?v=20260915" defer></script>
 </body>
 </html>

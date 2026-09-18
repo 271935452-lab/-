@@ -627,9 +627,19 @@
     }
     .hb-modal-hd {
       padding: 12px 16px; border-bottom: 1px solid var(--line);
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
     }
     .hb-modal-hd h3 { margin: 0; font-size: 15px; }
+    .isf-provider-corner {
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+      font-size: 12px; color: var(--sub);
+    }
+    .isf-provider-corner label { margin: 0; white-space: nowrap; }
+    .isf-provider-corner select {
+      min-width: 110px; height: 28px; border: 1px solid var(--line);
+      border-radius: 2px; padding: 0 8px; font-size: 12px; background: #fff;
+    }
+    .isf-provider-corner .star { color: #f5222d; font-style: normal; margin-right: 2px; }
     .hb-modal-bd { padding: 14px 16px; overflow: auto; flex: 1; }
     .hb-modal-ft {
       padding: 10px 16px; border-top: 1px solid var(--line);
@@ -931,7 +941,7 @@
             <div class="tool-group" data-g="declare" data-show="declare">
               <button type="button" class="tool-btn outline">报关信息修改</button>
               <button type="button" class="tool-btn outline" id="btnManifest" title="推海管家直推：发送成功自动打「舱单已发送」（线上以发送为准）">发舱单 <span class="badge-new">NEW</span></button>
-              <button type="button" class="tool-btn outline" id="btnIsf" title="关务发送 ISF：发送成功自动打「ISF」标">发 ISF <span class="badge-new">NEW</span></button>
+              <button type="button" class="tool-btn outline" id="btnIsf" title="关务发送 ISF：服务商默认信号旗，可选海管家；发送成功自动打「ISF」标">发 ISF <span class="badge-new">NEW</span></button>
               <button type="button" class="tool-btn outline" id="btnDlManifest" title="推代理：下载舱单表格，下载即打「舱单已发送」（非线上下载为准）">下载舱单 <span class="badge-new">NEW</span></button>
               <button type="button" class="tool-btn outline">箱单导出</button>
               <button type="button" class="tool-btn outline" id="btnBindHouse" title="舱单用：手填/申请池绑定分单号">绑定分单号</button>
@@ -2344,13 +2354,20 @@
     <div class="hb-modal" role="dialog" aria-labelledby="filingTitle" style="width:min(1180px,96vw)">
       <div class="hb-modal-hd">
         <h3 id="filingTitle">发舱单 <span class="badge-new">NEW</span></h3>
+        <div id="isfProviderWrap" class="isf-provider-corner" hidden>
+          <label for="isfProvider"><i class="star">*</i>服务商 <span class="badge-new">NEW</span></label>
+          <select id="isfProvider" title="ISF 报文发送通道">
+            <option value="信号旗" selected>信号旗</option>
+            <option value="海管家">海管家</option>
+          </select>
+        </div>
       </div>
       <div class="hb-modal-bd">
         <div class="hb-alert warn" id="filingReviewWarn" hidden>
           本票仍为<strong>预录待复审</strong>。弹窗可预填核对；正式连报文网关需核准后。本期保存只打业务标记，不回写提单管理。
         </div>
 
-        <!-- ISF：按船务现网「新增ISF」，不另加字段 -->
+        <!-- ISF：现网「新增ISF」；服务商在标题栏右上角 -->
         <div id="filingIsfPanel" hidden>
           <div class="filing-sec">
             <h4>ISF基本信息</h4>
@@ -4301,6 +4318,7 @@
         var fileType = document.querySelector('input[name="isfFileType"][value="ISF-10"]');
         if (fileType) fileType.checked = true;
         setVal("isfImpType", "Importer of Record");
+        setVal("isfProvider", "信号旗");
         var shipper = (d && d.shipper) || {};
         var imp = (d && d.imp) || {};
         setVal("isfImpId", imp.ein);
@@ -4481,8 +4499,10 @@
         if (titleEl) titleEl.innerHTML = (isIsf ? "新增ISF" : "发舱单") + ' <span class="badge-new">NEW</span>';
         var isfPanel = document.getElementById("filingIsfPanel");
         var mfPanel = document.getElementById("filingMfPanel");
+        var isfProvWrap = document.getElementById("isfProviderWrap");
         if (isfPanel) isfPanel.hidden = !isIsf;
         if (mfPanel) mfPanel.hidden = isIsf;
+        if (isfProvWrap) isfProvWrap.hidden = !isIsf;
         var reviewEl = document.getElementById("filingReviewWarn");
         if (reviewEl) {
           reviewEl.hidden = String(d.status || "").indexOf("预录待复审") < 0;
@@ -4497,7 +4517,7 @@
         var ft = document.getElementById("filingFtHint");
         if (ft) {
           ft.innerHTML = isIsf
-            ? "发送成功自动打「ISF」标。弹窗按现网「新增ISF」，不另加字段。AMS 仍在船务提单管理发送。"
+            ? "发送成功自动打「ISF」标。服务商可选<strong>信号旗</strong>（默认）或<strong>海管家</strong>。AMS 仍在船务提单管理发送。"
             : "弹窗按现网「新增上海舱单」：无顶部模板按钮；货物数据含货主箱标记，右键删行、右侧新增行。发送成功自动打「舱单已发送」。";
         }
         try {
@@ -4519,7 +4539,7 @@
           return;
         }
         var msg = kind === "isf"
-          ? "系统已发送 ISF 并自动打「ISF」标"
+          ? "系统已发送 ISF（服务商：" + ((document.getElementById("isfProvider") || {}).value || "信号旗") + "）并自动打「ISF」标"
           : "系统已发送舱单（海管家直推）并自动打「舱单」标";
         markSend(kind, filingCtx.rows, msg, "sys");
         closeFiling();
@@ -5263,5 +5283,6 @@
       }
     })();
   </script>
+  <script src="../产品部门/ess-branch-back.js?v=20260915" defer></script>
 </body>
 </html>

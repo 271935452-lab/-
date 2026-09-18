@@ -70,23 +70,110 @@
     "f-r5": { proto: "海外对接组-主单实际费用-MVP.html", prd: "海外对接组-主单实际费用-MVP-PRD.html", anchor: "s-logic", chip: "PRD · 五 实际费用" }
   };
 
+  /** 旁支计划二：?plan2= 功能 id → 侧栏只展示本分册片段（proto 可为多页） */
+  var BRANCH_PLAN_TWO = {
+    f1: { proto: "业务数据统计-尾端派送费-MVP.html", prd: "业务数据统计-尾端派送费-MVP-PRD.html", anchor: "s-fcl", chip: "PRD · 计划二 #1 配送模式/计费重" },
+    f2: { proto: "整柜下单-订单录入-MVP.html", prd: "整柜下单-订单录入-MVP-PRD.html", anchor: "order-total", chip: "PRD · 计划二 #2 总价→申报价值" },
+    f3: {
+      proto: ["整柜下单-订单录入-MVP.html", "传统订单管理-MVP.html"],
+      prdByProto: {
+        "整柜下单-订单录入-MVP.html": "整柜下单-订单录入-MVP-PRD.html",
+        "传统订单管理-MVP.html": "传统订单管理-MVP-PRD.html"
+      },
+      anchorByProto: { "整柜下单-订单录入-MVP.html": "extra-fee" },
+      chip: "PRD · 计划二 #3 杂费包"
+    },
+    f4: { proto: "仓位管理-订舱完善提单-整合-MVP.html", prd: "仓位管理-订舱完善提单-整合-MVP-PRD.html", scope: "m-edit", row: "分配类型", chip: "PRD · 计划二 #4 分配类型" },
+    f5: {
+      proto: [
+        "客户管理-编辑-权限配置-MVP.html",
+        "整柜客户岗位绑定-MVP.html",
+        "员工管理-整柜岗位与客户默认-MVP.html"
+      ],
+      prdByProto: {
+        "客户管理-编辑-权限配置-MVP.html": "客户管理-编辑-权限配置-MVP-PRD.html",
+        "整柜客户岗位绑定-MVP.html": "整柜客户岗位绑定-MVP-PRD.html",
+        "员工管理-整柜岗位与客户默认-MVP.html": "员工管理-整柜岗位与客户默认-MVP-PRD.html"
+      },
+      anchorByProto: { "客户管理-编辑-权限配置-MVP.html": "role-matrix" },
+      chip: "PRD · 计划二 #5 整柜权限"
+    },
+    f6: { proto: "报关管理-列表-MVP.html", prd: "报关管理-列表-MVP-PRD.html", scope: "m-bar", row: "发 ISF", chip: "PRD · 计划二 #6 信号旗 ISF" },
+    f7: { proto: "海外对接组-主单跟进-MVP.html", prd: "海外对接组-主单跟进-MVP-PRD.html", anchor: "s-dray", chip: "PRD · 计划二 #7 DrayEasy 主单跟进预报" },
+    f8: { proto: "海外对接组-卡派跟进新-MVP.html", prd: "海外对接组-卡派跟进新-MVP-PRD.html", anchor: "s-pro", chip: "PRD · 计划二 #8 17TRACK" },
+    f9: {
+      proto: ["新建工单-MVP.html", "工单提交-入口-MVP.html"],
+      prd: "../计划二/05-工单/工单系统-旁支计划二-PRD.html",
+      anchor: "s-f9",
+      chip: "PRD · 计划二 #9 非美库"
+    },
+    f10: {
+      proto: ["登记-海外跟进-MVP.html", "登记-海外改派重出-MVP.html", "工单提交-入口-MVP.html", "新建工单-MVP.html"],
+      prd: "../计划二/05-工单/工单系统-旁支计划二-PRD.html",
+      anchor: "s-f10",
+      chip: "PRD · 计划二 #10 改快递重出"
+    },
+    f11: {
+      proto: ["工单提交-入口-MVP.html", "工单详情-MVP.html", "登记-海外跟进-MVP.html"],
+      prd: "../计划二/05-工单/工单系统-旁支计划二-PRD.html",
+      anchor: "s-f11",
+      chip: "PRD · 计划二 #11 港前拦截"
+    },
+    f12: {
+      proto: ["登记-快递异常件-MVP.html", "工单详情-MVP.html", "登记-海外跟进-MVP.html", "工单提交-入口-MVP.html"],
+      prd: "../计划二/05-工单/工单系统-旁支计划二-PRD.html",
+      anchor: "s-f12",
+      chip: "PRD · 计划二 #12 港后拦截"
+    },
+    f13: {
+      proto: "客户管理-编辑-权限配置-MVP.html",
+      prd: "客户管理-编辑-权限配置-MVP-PRD.html",
+      anchor: "resp-level",
+      chip: "PRD · 计划二 #13 客户响应等级"
+    }
+  };
+
   function plan1Id() {
     try { return new URLSearchParams(location.search).get("plan1"); } catch (e) { return null; }
   }
 
-  function applyPlan1(source, href, anchor) {
-    var id = plan1Id();
-    if (!id || !BRANCH_PLAN_ONE[id]) return { href: href, anchor: anchor, chip: null, autoOpen: false };
-    var c = BRANCH_PLAN_ONE[id];
+  function plan2Id() {
+    try { return new URLSearchParams(location.search).get("plan2"); } catch (e) { return null; }
+  }
+
+  function protoMatches(c, page) {
+    if (!c.proto) return true;
+    if (Object.prototype.toString.call(c.proto) === "[object Array]") {
+      return c.proto.indexOf(page) >= 0;
+    }
+    return c.proto === page;
+  }
+
+  function applyBranchPlan(map, id, href, anchor) {
+    if (!id || !map[id]) return null;
+    var c = map[id];
     var page = pageFileName();
-    if (c.proto && c.proto !== page) return { href: href, anchor: anchor, chip: null, autoOpen: false };
-    var h = c.prd || href;
-    var a = c.anchor || c.scope || anchor;
+    if (!protoMatches(c, page)) return null;
+    var h = href;
+    if (c.prdByProto && c.prdByProto[page]) h = c.prdByProto[page];
+    else if (c.prd) h = c.prd;
+    var a = anchor;
+    if (c.anchorByProto && c.anchorByProto[page]) a = c.anchorByProto[page];
+    else if (c.anchor) a = c.anchor;
+    else if (c.scope) a = c.scope;
     var qs = [];
     if (c.scope) qs.push("scope=" + encodeURIComponent(c.scope));
     if (c.row) qs.push("row=" + encodeURIComponent(c.row));
     if (qs.length) h += (h.indexOf("?") >= 0 ? "&" : "?") + qs.join("&");
     return { href: h, anchor: a, chip: c.chip, autoOpen: true };
+  }
+
+  function applyPlan1(source, href, anchor) {
+    var p2 = applyBranchPlan(BRANCH_PLAN_TWO, plan2Id(), href, anchor);
+    if (p2) return p2;
+    var p1 = applyBranchPlan(BRANCH_PLAN_ONE, plan1Id(), href, anchor);
+    if (p1) return p1;
+    return { href: href, anchor: anchor, chip: null, autoOpen: false };
   }
 
 
@@ -439,5 +526,4 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
   else mount();
 })();
-
 

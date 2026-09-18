@@ -353,6 +353,7 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px 8px;
     }
+    .drawer .form-grid .field.full { grid-column: 1 / -1; }
     .drawer .form-grid.cols3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .drawer .form-grid.cols4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .drawer .field label {
@@ -696,7 +697,8 @@
 <body data-fcl-page="booking" data-fcl-nav="core-flow">
   <div class="app">
     <div class="demo-bar">
-      <strong>本次更新 2026-07-10</strong> · 导出模板 PRD（放舱资料导出 / 放舱联系人 / 仓位预报 / 未放舱字段映射）·
+      <strong>本次更新</strong> · 完善提单 · 业务分配：分配类型「客户自拖 / 我司拖车 / 我司装柜」；后两项必录<strong>拖车费 / 装柜费</strong> ·
+      <strong>2026-07-10</strong> · 导出模板 PRD（放舱资料导出 / 放舱联系人 / 仓位预报 / 未放舱字段映射）·
       <strong>2026-07-09</strong> · 侧栏布局对调 · 补充信息<strong>航线</strong> · <strong>已放舱编辑锁定</strong> · 列表<strong>甩柜换船</strong> ·
       <a href="整柜流程V2.0-原型导航.html#changelog">V2.0 本次更新</a>
       · <a href="整柜本次更新-MVP.html">完整变更记录</a>
@@ -1485,6 +1487,27 @@
         <div class="sec-hd booking-hd">完善提单 · 业务分配</div>
         <div class="sec-bd">
           <div class="form-grid compact-inline">
+            <div class="field field-stack full" id="fieldAllocType">
+              <label>分配类型<span class="req">*</span><span class="mark-new">新</span></label>
+              <div class="radio-row" id="allocTypeRow">
+                <label><input type="radio" name="allocType" value="self" checked /> 客户自拖</label>
+                <label><input type="radio" name="allocType" value="truck" /> 我司拖车</label>
+                <label><input type="radio" name="allocType" value="load" /> 我司装柜</label>
+              </div>
+              <p class="field-hint" id="allocTypeHint">客户自拖无需录费用；我司拖车必录拖车费；我司装柜必录装柜费</p>
+            </div>
+            <div class="field field-stack" id="fieldAllocFee" hidden>
+              <label id="allocFeeLabel">拖车费<span class="req">*</span></label>
+              <div class="unit-row" style="display:flex;gap:6px;align-items:center;min-width:0">
+                <input type="number" id="allocFeeAmt" min="0" step="0.01" placeholder="请输入金额" style="flex:1;min-width:0;height:28px" />
+                <select id="allocFeeCcy" style="width:72px;flex-shrink:0;height:28px">
+                  <option value="CNY" selected>CNY</option>
+                  <option value="USD">USD</option>
+                </select>
+                <span id="allocFeeUnit" style="flex-shrink:0;font-size:12px;color:var(--sub);white-space:nowrap">/ 柜</span>
+              </div>
+              <p class="field-hint" id="allocFeeHint">单价按柜 · 挂提单预估 · 每个柜子各写一条相同金额</p>
+            </div>
             <div class="field" id="fieldBranchCompany">
               <label>分公司<span class="req" id="branchCompanyReq">*</span></label>
               <select id="branchCompany">
@@ -2142,6 +2165,81 @@
         return mode === "company" ? "我司统一安排拖车" : "客户自拖车";
       }
 
+      function getAllocType() {
+        var el = document.querySelector('input[name="allocType"]:checked');
+        return el ? el.value : "self";
+      }
+
+      function setAllocType(value) {
+        var radios = document.querySelectorAll('input[name="allocType"]');
+        var hit = false;
+        for (var i = 0; i < radios.length; i++) {
+          if (radios[i].value === value) {
+            radios[i].checked = true;
+            hit = true;
+            break;
+          }
+        }
+        if (!hit && radios[0]) radios[0].checked = true;
+        syncAllocTypeUI();
+      }
+
+      function syncAllocTypeUI() {
+        var type = getAllocType();
+        var feeField = document.getElementById("fieldAllocFee");
+        var feeLabel = document.getElementById("allocFeeLabel");
+        var feeHint = document.getElementById("allocFeeHint");
+        var feeAmt = document.getElementById("allocFeeAmt");
+        var typeHint = document.getElementById("allocTypeHint");
+        var truckSupplier = document.getElementById("truckSupplierSelect");
+        var loadingAddr = document.getElementById("loadingAddressInput");
+        var loadingHint = document.getElementById("loadingAddressHint");
+        if (!feeField || !feeLabel) return;
+        if (type === "truck") {
+          feeField.hidden = false;
+          feeLabel.innerHTML = '拖车费<span class="req">*</span>';
+          if (feeHint) feeHint.textContent = "分配类型=我司拖车 · 必录单价（/柜）· 挂提单预估（拖车费，每柜一条）";
+          if (typeHint) typeHint.textContent = "我司拖车：须录入拖车费（单位 / 柜）后才能保存";
+        } else if (type === "load") {
+          feeField.hidden = false;
+          feeLabel.innerHTML = '装柜费<span class="req">*</span>';
+          if (feeHint) feeHint.textContent = "分配类型=我司装柜 · 必录单价（/柜）· 挂提单预估（装柜费，每柜一条）";
+          if (typeHint) typeHint.textContent = "我司装柜：须录入装柜费（单位 / 柜）后才能保存";
+        } else {
+          feeField.hidden = true;
+          if (feeAmt) feeAmt.value = "";
+          if (typeHint) typeHint.textContent = "客户自拖：车队供应商、装柜地址置灰不可选；无需录费用";
+        }
+        /* 客户自拖：车队供应商 + 装柜地址置灰不可选 */
+        var isSelf = type === "self";
+        if (truckSupplier) {
+          if (isSelf) {
+            truckSupplier.disabled = true;
+            truckSupplier.selectedIndex = 0;
+          } else {
+            var addrVal = loadingAddr && (loadingAddr.value || "").trim();
+            truckSupplier.disabled = !addrVal;
+            if (!addrVal) truckSupplier.selectedIndex = 0;
+          }
+        }
+        if (loadingAddr) {
+          loadingAddr.disabled = isSelf;
+          if (isSelf) {
+            loadingAddr.title = "客户自拖时无需选择装柜地址";
+            if (loadingHint) loadingHint.textContent = "客户自拖：装柜地址置灰不可选";
+          } else {
+            loadingAddr.title = loadingAddr.value
+              ? "来自订单录入 · " + loadingAddr.value
+              : "下单需拖车时带入装柜地址（只读）";
+            if (loadingHint && !loadingAddr.value) {
+              loadingHint.textContent = "下单需拖车且已填装柜地址时自动带入，只读";
+            } else if (loadingHint && loadingAddr.value) {
+              loadingHint.textContent = "来自订单录入 · 只读带入";
+            }
+          }
+        }
+      }
+
       function syncTruckSupplierState(canSelect) {
         var truckSupplier = document.getElementById("truckSupplierSelect");
         if (!truckSupplier) return;
@@ -2161,6 +2259,7 @@
           input.title = "下单未勾选拖车，无需装柜地址";
           if (hint) hint.textContent = "下单为客户自拖车时，装柜地址留空";
           syncTruckSupplierState(false);
+          setAllocType("self");
           return;
         }
         var addr = (item.loadingAddress || "").trim();
@@ -2175,6 +2274,9 @@
             : "下单需拖车，但运单未填装柜地址 · 车队供应商不可选";
         }
         syncTruckSupplierState(!!addr);
+        /* 下单我司拖车时，业务分配默认「我司拖车」（可改选我司装柜） */
+        if (getAllocType() === "self") setAllocType("truck");
+        else syncAllocTypeUI();
       }
 
       function applyWaybillToForm(item) {
@@ -3399,6 +3501,14 @@
       });
       if (feituoSearchDate) feituoSearchDate.addEventListener("change", queryFeituoSchedules);
 
+      var allocTypeRow = document.getElementById("allocTypeRow");
+      if (allocTypeRow) {
+        allocTypeRow.addEventListener("change", function (e) {
+          if (e.target && e.target.name === "allocType") syncAllocTypeUI();
+        });
+      }
+      syncAllocTypeUI();
+
       document.querySelector(".drawer-ft .btn-primary").addEventListener("click", function () {
         var agent = document.getElementById("bookingAgent").value.trim();
         var pol = polInput && polInput.value.trim();
@@ -3445,6 +3555,14 @@
             }
           }
         }
+        var allocType = getAllocType();
+        if (allocType === "truck" || allocType === "load") {
+          var feeAmtEl = document.getElementById("allocFeeAmt");
+          var feeVal = feeAmtEl ? feeAmtEl.value.trim() : "";
+          if (!feeVal || Number(feeVal) <= 0) {
+            missing.push(allocType === "truck" ? "拖车费" : "装柜费");
+          }
+        }
         if (missing.length) {
           alert("请填写必填项：" + missing.join("、"));
           return;
@@ -3467,6 +3585,13 @@
           }
         }
         var msg = "原型演示：保存成功（按 SO 拆分生成 " + collectSlotSoList().length + " 条列表记录）";
+        if (allocType === "truck") {
+          msg += " · 分配类型=我司拖车 · 拖车费 " + document.getElementById("allocFeeAmt").value + " " + document.getElementById("allocFeeCcy").value + " / 柜";
+        } else if (allocType === "load") {
+          msg += " · 分配类型=我司装柜 · 装柜费 " + document.getElementById("allocFeeAmt").value + " " + document.getElementById("allocFeeCcy").value + " / 柜";
+        } else {
+          msg += " · 分配类型=客户自拖";
+        }
         if (syncWaybill) msg += " · 已同步运单 " + wbNo;
         alert(msg);
         captureDrawerFormSnapshot();
@@ -4347,5 +4472,6 @@
   <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
   <script src="fcl-core-interactions.js" defer></script>
   <script src="fcl-core-flow-nav.js" defer></script>
+  <script src="../产品部门/ess-branch-back.js?v=20260915" defer></script>
 </body>
 </html>

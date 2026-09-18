@@ -88,6 +88,7 @@
     .tag-empty { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
     .tag-ok { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
     .tag-priv { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .tag-chg { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
     .view { display: none; }
     .view.on { display: block; }
     .summary {
@@ -173,7 +174,7 @@
       <header class="topbar">
         <div>
           <div class="title" id="pageTitle">业务数据统计</div>
-          <div class="crumb">本期：尾端派送费字段 · 新增业务成本 · 柜子计划取数</div>
+          <div class="crumb">本期：申报价值（整柜下单总价回写）· 尾端派送费 · 新增业务成本</div>
         </div>
         <div class="role-switch">
           <span>入口</span>
@@ -183,10 +184,12 @@
       </header>
 
       <div class="page">
-        <div class="hint">
-          <strong>口径：</strong>私卡组绑运单时，尾端派送费自动写入本字段，柜子计划导出取此值。
-          未绑运单须在「新增业务成本」手工补录；柜子计划仍取本字段。
-          销售产品为<strong>私卡</strong>时必填，非私卡非必填。业务 / 财务两入口字段与校验一致。
+        <div class="hint" id="declValue">
+          <strong>申报价值：</strong>取自整柜下单「总价」（同发票总价）；提交预报后回显本列。
+          <strong>整柜配送模式 / 计费重：</strong>配送模式取运单；收货计费重=下单重；出货计费重=过磅重（无则取下单）。
+          可在 <a href="../整柜下单/整柜下单-订单录入-MVP.html">整柜下单</a> 录入。　
+          <strong>尾端派送费：</strong>私卡绑运单自动写入；未绑须手工补录。业务 / 财务两入口字段与校验一致。
+          · <a href="../产品部门/产品部门-旁支计划二-PRD.html#f1">旁支计划二 #1</a>
         </div>
 
         <!-- 列表 -->
@@ -224,8 +227,12 @@
                     <th><input type="checkbox" checked /></th>
                     <th>运单号</th>
                     <th>销售产品</th>
+                    <th>整柜配送模式 <span class="tag tag-priv">NEW</span></th>
                     <th>柜号</th>
-                    <th>尾端派送费 <span class="tag tag-priv">NEW</span></th>
+                    <th id="colDeclValue">申报价值 <span class="tag tag-chg">改</span></th>
+                    <th>收货计费重 <span class="tag tag-chg">改</span></th>
+                    <th>出货计费重 <span class="tag tag-chg">改</span></th>
+                    <th>尾端派送费 <span class="tag tag-chg">改</span></th>
                     <th>来源</th>
                     <th>业务员成本</th>
                     <th>应收</th>
@@ -246,6 +253,7 @@
               <div><span class="k">销售产品</span><span class="v" id="dProd">—</span></div>
               <div><span class="k">应收合计</span><span class="v" id="dRecv">0</span></div>
               <div><span class="k">业务员成本</span><span class="v" id="dCost">0</span></div>
+              <div><span class="k">申报价值</span><span class="v" id="dDecl">—</span></div>
               <div><span class="k">尾端派送费</span><span class="v" id="dLastmile">—</span></div>
               <div style="margin-left:auto">
                 <button type="button" class="btn" id="btnBackList">返回列表</button>
@@ -372,27 +380,40 @@
   var ROWS = [
     {
       id: 1, awb: "TXZG00000001781", prod: "私卡", cntr: "FFAU2425199",
-      lastmile: "", source: "empty", cost: 0, recv: 0, costs: []
+      lastmile: "", source: "empty", cost: 0, recv: 0, decl: "", declCcy: "USD",
+      fclMode: "—", orderWt: 1860, scaleWt: "", costs: []
     },
     {
       id: 2, awb: "ICBU88291001", prod: "私卡", cntr: "CSNU7788102",
-      lastmile: "186", source: "bind", cost: 1280, recv: 3200,
+      lastmile: "186", source: "bind", cost: 1280, recv: 3200, decl: "8500", declCcy: "USD",
+      fclMode: "—", orderWt: 2460, scaleWt: 2500,
       costs: [
         { code: "LM01", name: "尾端派送成本", amt: 186, ccy: "USD", rate: 7.2, rmb: 1339.2, st: "未核销", lm: "186", note: "私卡绑单同步 · 柜子计划可导出" }
       ]
     },
     {
       id: 3, awb: "ICBU88291088", prod: "整柜直送", cntr: "WHSU5725801",
-      lastmile: "95", source: "manual", cost: 680, recv: 2100,
+      lastmile: "95", source: "manual", cost: 680, recv: 2100, decl: "24000", declCcy: "USD",
+      fclMode: "整柜直送", orderWt: 12500, scaleWt: 13020,
       costs: [
         { code: "LM01", name: "尾端派送成本", amt: 95, ccy: "USD", rate: 7.2, rmb: 684, st: "未核销", lm: "95", note: "无绑单 · 手工补录" }
       ]
     },
     {
       id: 4, awb: "ICBU88300112", prod: "快递", cntr: "NYKU4455788",
-      lastmile: "", source: "empty", cost: 0, recv: 880, costs: []
+      lastmile: "", source: "empty", cost: 0, recv: 880, decl: "", declCcy: "USD",
+      fclMode: "—", orderWt: 880, scaleWt: "", costs: []
     }
   ];
+
+  try {
+    var ssAmt = sessionStorage.getItem("fclOrderTotalAmt");
+    var ssCcy = sessionStorage.getItem("fclOrderTotalCcy") || "USD";
+    if (ssAmt && Number(ssAmt) > 0) {
+      ROWS[2].decl = ssAmt;
+      ROWS[2].declCcy = ssCcy;
+    }
+  } catch (e) {}
 
   function $(id) { return document.getElementById(id); }
   function toast(msg) {
@@ -422,6 +443,22 @@
     $("navFin").classList.toggle("on", fin);
   }
 
+  function fmtDecl(r) {
+    if (!r.decl || Number(r.decl) <= 0) return "—";
+    var n = Number(r.decl);
+    var s = n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return s + " " + (r.declCcy || "USD");
+  }
+  function shipWt(r) {
+    /* 出货计费重 = 过磅重；无过磅取下单重 */
+    if (r.scaleWt !== "" && r.scaleWt != null && Number(r.scaleWt) > 0) return Number(r.scaleWt);
+    return Number(r.orderWt) || 0;
+  }
+  function recvWt(r) {
+    /* 收货计费重 = 下单重 */
+    return Number(r.orderWt) || 0;
+  }
+
   function renderList() {
     $("listBody").innerHTML = ROWS.map(function (r) {
       var lm = r.lastmile ? ("USD " + r.lastmile) : "—";
@@ -429,7 +466,11 @@
         "<td><input type=\"checkbox\" class=\"row-chk\" data-id=\"" + r.id + "\" " + (r.id === 1 ? "checked" : "") + " /></td>" +
         "<td><a data-open=\"" + r.id + "\">" + r.awb + "</a></td>" +
         "<td>" + (isPrivate(r.prod) ? '<span class="tag tag-priv">' + r.prod + "</span>" : r.prod) + "</td>" +
+        "<td>" + (r.fclMode || "—") + "</td>" +
         "<td>" + r.cntr + "</td>" +
+        "<td>" + fmtDecl(r) + "</td>" +
+        "<td>" + recvWt(r) + "</td>" +
+        "<td>" + shipWt(r) + "</td>" +
         "<td>" + lm + "</td>" +
         "<td>" + sourceTag(r.source) + "</td>" +
         "<td>" + r.cost + "</td>" +
@@ -453,6 +494,7 @@
       : r.prod;
     $("dRecv").textContent = r.recv;
     $("dCost").textContent = r.cost;
+    if ($("dDecl")) $("dDecl").textContent = fmtDecl(r);
     $("dLastmile").textContent = r.lastmile ? ("USD " + r.lastmile) : "—";
     $("recvSum").textContent = r.recv + " CNY";
     $("costSum").textContent = r.cost + " CNY";
@@ -589,5 +631,6 @@
   }
 })();
   </script>
+  <script src="../产品部门/ess-branch-back.js?v=20260915" defer></script>
 </body>
 </html>

@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>预估费用 · 8/7 评审需求跟踪</title>
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8; --text: rgba(0,0,0,.85);
+      --sub: rgba(0,0,0,.45); --blue: #1890ff; --ok: #389e0d; --warn: #d46b08;
+      --bad: #cf1322; --purple: #531dab;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .top {
+      height: 44px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 14px; padding: 0 16px;
+    }
+    .top .logo { font-weight: 700; }
+    .top nav { display: flex; gap: 12px; font-size: 12px; }
+    .top nav a { color: rgba(255,255,255,.72); }
+    .top .right { margin-left: auto; font-size: 11px; color: rgba(255,255,255,.55); }
+
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 12px 14px 48px; }
+    .hd {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+      padding: 12px 14px; margin-bottom: 10px;
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start;
+    }
+    .hd h1 { margin: 0 0 4px; font-size: 17px; }
+    .hd p { margin: 0; color: var(--sub); line-height: 1.55; font-size: 12px; }
+    .hd .meta { flex: 1; min-width: 240px; }
+    .hd .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+    .btn {
+      height: 30px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { color: #fff; filter: brightness(1.05); }
+    .btn.danger { color: var(--bad); border-color: #ffa39e; }
+
+    .stats {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
+    }
+    .stat {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+      padding: 8px 14px; min-width: 88px;
+    }
+    .stat b { display: block; font-size: 18px; line-height: 1.2; }
+    .stat span { font-size: 11px; color: var(--sub); }
+
+    .toolbar {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+      padding: 8px 12px; margin-bottom: 8px;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .toolbar label { font-size: 12px; color: var(--sub); display: inline-flex; align-items: center; gap: 4px; }
+    .toolbar select, .toolbar input {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .save-tip { font-size: 11px; color: var(--sub); margin-left: auto; }
+    .save-tip.ok { color: var(--ok); }
+    .save-tip.warn { color: var(--warn); }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+    }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 280px); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 980px; }
+    th, td {
+      border-bottom: 1px solid var(--line); padding: 8px 10px;
+      text-align: left; vertical-align: top;
+    }
+    th {
+      position: sticky; top: 0; z-index: 2; background: #fafafa;
+      color: var(--sub); font-weight: 600; white-space: nowrap;
+    }
+    tr:hover td { background: #fafafa; }
+    .id { font-family: Consolas, monospace; color: #08979c; font-weight: 600; white-space: nowrap; }
+    .group { white-space: nowrap; }
+    .tag {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; font-size: 11px; border: 1px solid; font-weight: 600;
+    }
+    .g1 { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .g2 { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+    .g3 { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .g4 { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .g5 { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+    .pend { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
+
+    select.st {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; min-width: 100px;
+    }
+    select.st.s0 { background: #fafafa; }
+    select.st.s1 { background: #e6f7ff; border-color: #91d5ff; }
+    select.st.s2 { background: #f6ffed; border-color: #b7eb8f; }
+    select.st.s3 { background: #fff7e6; border-color: #ffd591; }
+    select.st.s4 { background: #fff0f6; border-color: #ffadd2; }
+
+    textarea.note {
+      width: 100%; min-width: 180px; min-height: 52px; resize: vertical;
+      border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px; line-height: 1.45;
+    }
+    textarea.note:focus { border-color: #91d5ff; outline: none; }
+    .src { color: var(--sub); font-size: 11px; line-height: 1.45; max-width: 220px; }
+    .owner {
+      width: 88px; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px;
+    }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #111827; color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 13px; display: none; z-index: 50;
+    }
+    .toast.on { display: block; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="logo">ESS · 船务</div>
+    <nav>
+      <a href="船务组-导航.html">船务导航</a>
+      <a href="船务组-卡单预估费用-通用配置-MVP.html">卡单预估通用配置</a>
+      <a href="船务组-海外仓预估费用规则-MVP.html">海外仓预估配置</a>
+    </nav>
+    <div class="right">卢慧恒 8/7 评审 · 本地保存</div>
+  </header>
+
+  <div class="wrap">
+    <div class="hd">
+      <div class="meta">
+        <h1>预估费用 · 8/7 评审需求跟踪</h1>
+        <p>
+          来源：卢慧恒 8/7 09:25–10:23 对话整理。可改<strong>状态 / 负责人 / 备注</strong>，点「保存」写入本机浏览器（localStorage）。
+          换电脑或清缓存会丢，可「导出 JSON / CSV」备份。
+        </p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" id="btnExportCsv">导出 CSV</button>
+        <button type="button" class="btn" id="btnExportJson">导出 JSON</button>
+        <button type="button" class="btn" id="btnImport">导入 JSON</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden />
+        <button type="button" class="btn danger" id="btnReset">还原清单</button>
+        <button type="button" class="btn primary" id="btnSave">保存</button>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="toolbar">
+      <label>分组
+        <select id="fGroup">
+          <option value="">全部</option>
+          <option>头程配置</option>
+          <option>拖车链路</option>
+          <option>港前杂费</option>
+          <option>实际与差异</option>
+          <option>查验清关海外</option>
+          <option>待拍板</option>
+        </select>
+      </label>
+      <label>状态
+        <select id="fStatus">
+          <option value="">全部</option>
+          <option>未开始</option>
+          <option>进行中</option>
+          <option>已完成</option>
+          <option>暂缓</option>
+          <option>待拍板</option>
+        </select>
+      </label>
+      <label>关键字 <input id="fKw" placeholder="编号 / 需求 / 备注" style="min-width:160px" /></label>
+      <span class="save-tip" id="saveTip">尚未保存</span>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:52px">编号</th>
+              <th style="width:100px">分组</th>
+              <th style="width:220px">需求点</th>
+              <th style="width:200px">原文要点</th>
+              <th style="width:110px">状态</th>
+              <th style="width:100px">负责人</th>
+              <th>备注</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    var STORE_KEY = "ess_fee_estimate_0807_tracker_v1";
+    var dirty = false;
+
+    var BASE = [
+      { id: "R01", group: "头程配置", title: "仓位表不做人员预估", src: "人员预估不了", decide: false },
+      { id: "R02", group: "头程配置", title: "头程价按 4 条件维护", src: "代理 × 船司 × 始发港 × 柜型", decide: false },
+      { id: "R03", group: "头程配置", title: "固定费按标准差异维护", src: "标准一样共用；不一样单独配", decide: false },
+      { id: "R04", group: "头程配置", title: "配置交互优化", src: "价目/规则维护体验", decide: false },
+      { id: "R05", group: "拖车链路", title: "拖车/堆场分类维价", src: "按分类维护价格", decide: false },
+      { id: "R06", group: "拖车链路", title: "工厂地址 → 必出预计拖车费", src: "有地址就有预计拖车费", decide: false },
+      { id: "R07", group: "拖车链路", title: "拖车增加省市区维度", src: "用省市区辅助估成本", decide: false },
+      { id: "R08", group: "待拍板", title: "按船司+港口预分配拖车", src: "「有没有可能」— 可行性待拍", decide: true },
+      { id: "R09", group: "拖车链路", title: "船司拖车可固定：代理×船司", src: "船司拖车相对固定", decide: false },
+      { id: "R10", group: "拖车链路", title: "改拖车行 → 同步改预估", src: "拖车变更驱动预估重算", decide: false },
+      { id: "R11", group: "港前杂费", title: "装柜、卸柜进预估", src: "装柜卸柜要进预估", decide: false },
+      { id: "R12", group: "港前杂费", title: "报关改合票数据偏差处理", src: "改合后数据会差一点", decide: false },
+      { id: "R13", group: "待拍板", title: "EDI/舱单费规则", src: "一舱单收几个 × 约10元，规则待确认", decide: true },
+      { id: "R14", group: "港前杂费", title: "买单件漏登补齐/防漏", src: "漏了一份买单件", decide: false },
+      { id: "R15", group: "实际与差异", title: "主单实际费用差异处理", src: "与账单有差额 → 多因代理出错 · 见海外对接组-主单实际费用-MVP", decide: false },
+      { id: "R16", group: "查验清关海外", title: "查验费用登记", src: "支持登记查验费", decide: false },
+      { id: "R17", group: "待拍板", title: "查验费是否进预估确认", src: "进 / 不进预估确认，待拍板", decide: true },
+      { id: "R18", group: "查验清关海外", title: "清关：税金单+查验费维护", src: "税金、查验费可维护", decide: false },
+      { id: "R19", group: "查验清关海外", title: "取消 IT 操作费", src: "去掉该项", decide: false },
+      { id: "R20", group: "待拍板", title: "关税进体系（口径）", src: "进预估 / 进实际 / 仅清关维护", decide: true },
+      { id: "R21", group: "查验清关海外", title: "海外仓费用录入进预估", src: "海外仓费进预估", decide: false },
+      { id: "R22", group: "查验清关海外", title: "海外仓按运单进预估", src: "维度=运单，不单挂柜/主单", decide: false },
+      { id: "R23", group: "实际与差异", title: "主单实际费用支持改费用", src: "实际段可改 · MVP：海外对接组-主单实际费用-MVP.html", decide: false }
+    ];
+
+    var STATUSES = ["未开始", "进行中", "已完成", "暂缓", "待拍板"];
+    var GROUP_CLS = {
+      "头程配置": "g1", "拖车链路": "g2", "港前杂费": "g3",
+      "实际与差异": "g4", "查验清关海外": "g5", "待拍板": "pend"
+    };
+
+    var rows = [];
+
+    function toast(msg) {
+      var el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("on");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.classList.remove("on"); }, 2000);
+    }
+
+    function defaultRow(b) {
+      return {
+        id: b.id,
+        group: b.group,
+        title: b.title,
+        src: b.src,
+        decide: b.decide,
+        status: b.decide ? "待拍板" : "未开始",
+        owner: "",
+        note: ""
+      };
+    }
+
+    function load() {
+      try {
+        var raw = localStorage.getItem(STORE_KEY);
+        if (!raw) {
+          rows = BASE.map(defaultRow);
+          return;
+        }
+        var saved = JSON.parse(raw);
+        var map = {};
+        (saved.rows || []).forEach(function (r) { map[r.id] = r; });
+        rows = BASE.map(function (b) {
+          var d = defaultRow(b);
+          var s = map[b.id];
+          if (!s) return d;
+          return {
+            id: b.id,
+            group: b.group,
+            title: b.title,
+            src: b.src,
+            decide: b.decide,
+            status: STATUSES.indexOf(s.status) >= 0 ? s.status : d.status,
+            owner: s.owner || "",
+            note: s.note || ""
+          };
+        });
+      } catch (e) {
+        rows = BASE.map(defaultRow);
+      }
+    }
+
+    function markDirty(on) {
+      dirty = !!on;
+      var tip = document.getElementById("saveTip");
+      if (dirty) {
+        tip.textContent = "有未保存改动";
+        tip.className = "save-tip warn";
+      } else {
+        var at = localStorage.getItem(STORE_KEY + "_at");
+        tip.textContent = at ? ("已保存 · " + at) : "已保存";
+        tip.className = "save-tip ok";
+      }
+    }
+
+    function save() {
+      var payload = {
+        updated: new Date().toISOString(),
+        source: "卢慧恒 8/7 09:25–10:23",
+        rows: rows.map(function (r) {
+          return { id: r.id, status: r.status, owner: r.owner, note: r.note };
+        })
+      };
+      localStorage.setItem(STORE_KEY, JSON.stringify(payload));
+      var at = new Date().toLocaleString("zh-CN", { hour12: false });
+      localStorage.setItem(STORE_KEY + "_at", at);
+      markDirty(false);
+      toast("已保存到本机");
+    }
+
+    function filtered() {
+      var g = document.getElementById("fGroup").value;
+      var st = document.getElementById("fStatus").value;
+      var kw = document.getElementById("fKw").value.trim().toLowerCase();
+      return rows.filter(function (r) {
+        if (g && r.group !== g) return false;
+        if (st && r.status !== st) return false;
+        if (!kw) return true;
+        var blob = [r.id, r.title, r.src, r.owner, r.note, r.group].join(" ").toLowerCase();
+        return blob.indexOf(kw) >= 0;
+      });
+    }
+
+    function renderStats() {
+      var all = rows.length;
+      var done = rows.filter(function (r) { return r.status === "已完成"; }).length;
+      var doing = rows.filter(function (r) { return r.status === "进行中"; }).length;
+      var pend = rows.filter(function (r) { return r.status === "待拍板"; }).length;
+      var todo = rows.filter(function (r) { return r.status === "未开始"; }).length;
+      document.getElementById("stats").innerHTML =
+        '<div class="stat"><b>' + all + "</b><span>全部</span></div>" +
+        '<div class="stat"><b style="color:#096dd9">' + todo + "</b><span>未开始</span></div>" +
+        '<div class="stat"><b style="color:#1890ff">' + doing + "</b><span>进行中</span></div>" +
+        '<div class="stat"><b style="color:#389e0d">' + done + "</b><span>已完成</span></div>" +
+        '<div class="stat"><b style="color:#c41d7f">' + pend + "</b><span>待拍板</span></div>";
+    }
+
+    function stClass(st) {
+      if (st === "未开始") return "s0";
+      if (st === "进行中") return "s1";
+      if (st === "已完成") return "s2";
+      if (st === "暂缓") return "s3";
+      return "s4";
+    }
+
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function render() {
+      renderStats();
+      var list = filtered();
+      document.getElementById("tbody").innerHTML = list.map(function (r) {
+        var opts = STATUSES.map(function (s) {
+          return '<option value="' + s + '"' + (s === r.status ? " selected" : "") + ">" + s + "</option>";
+        }).join("");
+        return '<tr data-id="' + r.id + '">' +
+          '<td class="id">' + r.id + "</td>" +
+          '<td class="group"><span class="tag ' + (GROUP_CLS[r.group] || "") + '">' + esc(r.group) + "</span></td>" +
+          "<td><b>" + esc(r.title) + "</b></td>" +
+          '<td class="src">' + esc(r.src) + "</td>" +
+          '<td><select class="st ' + stClass(r.status) + '" data-f="status">' + opts + "</select></td>" +
+          '<td><input class="owner" data-f="owner" value="' + esc(r.owner) + '" placeholder="姓名" /></td>' +
+          '<td><textarea class="note" data-f="note" placeholder="进度、结论、阻塞…">' + esc(r.note) + "</textarea></td>" +
+          "</tr>";
+      }).join("") ||
+        '<tr><td colspan="7" style="text-align:center;color:#999;padding:28px">无匹配</td></tr>';
+    }
+
+    function findRow(id) {
+      return rows.find(function (r) { return r.id === id; });
+    }
+
+    function bindTable() {
+      var tb = document.getElementById("tbody");
+      tb.onchange = function (e) {
+        var el = e.target.closest("[data-f]");
+        if (!el) return;
+        var tr = el.closest("tr[data-id]");
+        var row = findRow(tr.getAttribute("data-id"));
+        if (!row) return;
+        var f = el.getAttribute("data-f");
+        row[f] = el.value;
+        if (f === "status") {
+          el.className = "st " + stClass(el.value);
+        }
+        markDirty(true);
+        renderStats();
+      };
+      tb.oninput = function (e) {
+        var el = e.target.closest("[data-f]");
+        if (!el || el.tagName === "SELECT") return;
+        var tr = el.closest("tr[data-id]");
+        var row = findRow(tr.getAttribute("data-id"));
+        if (!row) return;
+        row[el.getAttribute("data-f")] = el.value;
+        markDirty(true);
+      };
+    }
+
+    function exportJson() {
+      var payload = {
+        updated: new Date().toISOString(),
+        source: "卢慧恒 8/7 预估费用评审",
+        rows: rows
+      };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "预估费用-0807需求跟踪.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("已导出 JSON");
+    }
+
+    function exportCsv() {
+      var head = ["编号", "分组", "需求点", "原文要点", "状态", "负责人", "备注"];
+      var lines = [head.join(",")].concat(rows.map(function (r) {
+        return [r.id, r.group, r.title, r.src, r.status, r.owner, r.note].map(function (c) {
+          var s = String(c == null ? "" : c).replace(/"/g, '""');
+          return '"' + s + '"';
+        }).join(",");
+      }));
+      var blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "预估费用-0807需求跟踪.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("已导出 CSV");
+    }
+
+    function importJson(file) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var data = JSON.parse(reader.result);
+          var list = data.rows || data;
+          if (!Array.isArray(list)) throw new Error("格式不对");
+          var map = {};
+          list.forEach(function (r) { if (r && r.id) map[r.id] = r; });
+          rows.forEach(function (r) {
+            var s = map[r.id];
+            if (!s) return;
+            if (STATUSES.indexOf(s.status) >= 0) r.status = s.status;
+            if (s.owner != null) r.owner = s.owner;
+            if (s.note != null) r.note = s.note;
+          });
+          markDirty(true);
+          render();
+          toast("已导入，请点保存写入本机");
+        } catch (e) {
+          toast("导入失败：JSON 无效");
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    document.getElementById("btnSave").onclick = save;
+    document.getElementById("btnExportJson").onclick = exportJson;
+    document.getElementById("btnExportCsv").onclick = exportCsv;
+    document.getElementById("btnImport").onclick = function () {
+      document.getElementById("importFile").click();
+    };
+    document.getElementById("importFile").onchange = function () {
+      var f = this.files && this.files[0];
+      if (f) importJson(f);
+      this.value = "";
+    };
+    document.getElementById("btnReset").onclick = function () {
+      if (!confirm("还原为初始清单？本机已保存的状态/备注会丢（需再点保存才覆盖存储）。")) return;
+      rows = BASE.map(defaultRow);
+      markDirty(true);
+      render();
+      toast("已还原清单 · 记得保存");
+    };
+    ["fGroup", "fStatus", "fKw"].forEach(function (id) {
+      document.getElementById(id).oninput = render;
+      document.getElementById(id).onchange = render;
+    });
+
+    window.addEventListener("beforeunload", function (e) {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
+
+    load();
+    bindTable();
+    render();
+    markDirty(false);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>客户管理 · 编辑 MVP</title>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45); --blue: #1890ff; --req: #ff4d4f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+
+    .page { min-height: 100vh; padding: 16px; }
+    .demo-bar {
+      max-width: 1200px; margin: 0 auto 12px; padding: 8px 12px;
+      background: #fffbe6; border: 1px solid #ffe58f; font-size: 12px; color: #ad6800;
+    }
+
+    .mask {
+      max-width: 1200px; margin: 0 auto; background: rgba(0,0,0,.45);
+      border-radius: 2px; padding: 20px 12px;
+    }
+    .modal {
+      background: var(--card); border-radius: 2px; box-shadow: 0 4px 24px rgba(0,0,0,.15);
+      max-width: 1160px; margin: 0 auto; display: flex; flex-direction: column;
+      max-height: calc(100vh - 48px);
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+    }
+    .modal-hd h1 { margin: 0; font-size: 15px; font-weight: 600; }
+    .modal-close { border: none; background: none; font-size: 20px; color: var(--sub); cursor: pointer; }
+
+    .modal-bd { padding: 12px 16px; overflow: auto; flex: 1; }
+    .form-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 14px;
+    }
+    @media (max-width: 960px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .section-title {
+      grid-column: 1 / -1; margin: 6px 0 2px; padding-top: 10px;
+      border-top: 1px dashed #f0f0f0; font-size: 13px; font-weight: 600;
+    }
+    .section-title:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+    .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .req { color: var(--req); margin-right: 2px; }
+    .field-hint { font-size: 11px; color: var(--sub); margin-top: 4px; line-height: 1.45; }
+    .field input, .field select, .field textarea {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .field textarea { height: auto; min-height: 56px; padding: 6px 8px; resize: vertical; }
+    .field.span-2 { grid-column: span 2; }
+    .field.span-4 { grid-column: 1 / -1; }
+    .field input[readonly] { background: #fafafa; color: var(--sub); }
+
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
+    }
+    .btn {
+      height: 32px; padding: 0 16px; border-radius: 2px; cursor: pointer;
+      border: 1px solid #d9d9d9; background: #fff;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    /* UI-CUST-FCL-001：客户主档内维护整柜协同角色，示例数据，未联调 */
+    .fcl-config-box { display:flex; gap:10px; align-items:center; min-height:32px; }
+    .fcl-config-summary { flex:1; min-height:32px; padding:7px 8px; border:1px solid #d9d9d9; border-radius:2px; background:#fafafa; color:var(--sub); line-height:1.45; }
+    .fcl-modal-mask { position:fixed; inset:0; z-index:1000; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,.45); }
+    .fcl-modal-mask.open { display:flex; }
+    .fcl-modal { width:min(900px,100%); max-height:calc(100vh - 32px); display:flex; flex-direction:column; background:#fff; border-radius:2px; box-shadow:0 4px 24px rgba(0,0,0,.18); }
+    .fcl-modal-hd { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line); }
+    .fcl-modal-hd h2 { margin:0; font-size:15px; font-weight:600; }
+    .fcl-modal-close { border:0; background:transparent; color:var(--sub); font-size:20px; line-height:1; cursor:pointer; }
+    .fcl-modal-bd { padding:14px 16px; overflow:auto; }
+    .fcl-context { margin:0 0 14px; padding:8px 10px; border:1px solid #bae7ff; border-radius:2px; background:#e6f7ff; color:#0050b3; font-size:12px; }
+    .fcl-role-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px; }
+    .fcl-role-grid .field label { color:var(--text); }
+    .fcl-source { display:block; margin-top:4px; color:var(--sub); font-size:11px; }
+    .fcl-modal-ft { display:flex; justify-content:flex-end; gap:8px; padding:10px 16px; border-top:1px solid var(--line); }
+    @media (max-width:640px) { .fcl-role-grid { grid-template-columns:1fr; } .fcl-config-box { align-items:stretch; flex-direction:column; } }
+  </style>
+</head>
+<body data-fcl-nav="core-flow-v3">
+  <div class="page">
+    <div class="demo-bar">
+      <strong>客户主档</strong>含隐私/财务字段 · 整柜协同角色与客户响应等级在本弹窗内维护（示例数据 / 未联调）。
+    </div>
+
+    <div class="mask">
+      <div class="modal" role="dialog" aria-labelledby="modalTitle">
+        <div class="modal-hd">
+          <h1 id="modalTitle">编辑数据</h1>
+          <button type="button" class="modal-close" aria-label="关闭">×</button>
+        </div>
+        <div class="modal-bd">
+          <div class="form-grid">
+            <div class="section-title">基本信息</div>
+            <div class="field">
+              <label><span class="req">*</span>客户简称</label>
+              <input type="text" value="宁波乐生" />
+            </div>
+            <div class="field span-2">
+              <label><span class="req">*</span>客户全称</label>
+              <input type="text" value="宁波乐生国际贸易有限公司" />
+            </div>
+            <div class="field">
+              <label>客户电话</label>
+              <input type="text" value="0574-88888888" />
+            </div>
+            <div class="field">
+              <label>客户类别</label>
+              <select><option selected>直客</option><option>同行</option></select>
+            </div>
+            <div class="field">
+              <label>客户属性</label>
+              <select><option>正式客户</option></select>
+            </div>
+            <div class="field">
+              <label>客户状态</label>
+              <select><option selected>启用</option><option>停用</option></select>
+            </div>
+            <div class="field">
+              <label>所在地区</label>
+              <input type="text" value="浙江省宁波市" />
+            </div>
+            <div class="field span-4">
+              <label>详细地址</label>
+              <textarea>浙江省宁波市鄞州区某某路 88 号</textarea>
+            </div>
+
+            <div class="section-title">系统信息</div>
+            <div class="field">
+              <label>客户代码</label>
+              <input type="text" readonly value="CUST-NB-001" />
+            </div>
+            <div class="field">
+              <label>登录帐号</label>
+              <input type="text" value="nblesheng" />
+            </div>
+            <div class="field">
+              <label>登录密码</label>
+              <input type="password" value="******" />
+            </div>
+            <div class="field">
+              <label>产品组</label>
+              <select><option>海运+整柜</option></select>
+            </div>
+            <div class="field">
+              <label>业务员<span class="req">*</span></label>
+              <select id="custSalesperson"><option selected>任杰</option><option>王敏</option></select>
+            </div>
+            <div class="field">
+              <label>客服</label>
+              <select><option>Olaf(青)</option></select>
+            </div>
+            <div class="field span-2">
+              <label class="hint-inline" style="font-size:11px;color:var(--sub)">散货客服仍用主档；整柜四岗（客服/订舱员/报关员/海外对接）见「整柜客户岗位绑定」，<strong>默认跟随业务员团队</strong>。</label>
+            </div>
+
+            <div class="section-title">整柜协同配置</div>
+            <div class="field span-4">
+              <label>整柜角色与响应等级 <span style="font-size:11px;color:var(--sub)">UI-CUST-FCL-001</span></label>
+              <div class="fcl-config-box">
+                <div id="fclConfigSummary" class="fcl-config-summary">客服：Olaf（青） · 订舱：王订舱 · 关务：未配置 · 海外：未配置 · 响应等级：一级</div>
+                <button type="button" class="btn btn-primary" id="openFclConfig">配置整柜协同</button>
+              </div>
+              <p class="field-hint">配置仅作用于当前客户的整柜业务；工单创建时读取并固化客户响应等级与角色快照。角色人员来自员工管理对应岗位，响应等级取客户管理字典。</p>
+            </div>
+
+            <div class="section-title">财务信息</div>
+            <div class="field">
+              <label>结算模式</label>
+              <select><option>月结</option></select>
+            </div>
+            <div class="field">
+              <label>结算周期</label>
+              <select><option>30 天</option></select>
+            </div>
+            <div class="field">
+              <label>信用额度</label>
+              <input type="text" value="500000" />
+            </div>
+            <div class="field">
+              <label>币种</label>
+              <select><option>CNY</option><option>USD</option></select>
+            </div>
+            <div class="field">
+              <label>开户名</label>
+              <input type="text" />
+            </div>
+            <div class="field">
+              <label>开户行</label>
+              <input type="text" />
+            </div>
+            <div class="field span-2">
+              <label>银行账号</label>
+              <input type="text" />
+            </div>
+          </div>
+        </div>
+        <footer class="modal-ft">
+          <button type="button" class="btn">取消</button>
+          <button type="button" class="btn btn-primary">确定</button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <div class="fcl-modal-mask" id="fclConfigMask" aria-hidden="true">
+    <section class="fcl-modal" role="dialog" aria-modal="true" aria-labelledby="fclConfigTitle" aria-describedby="fclConfigHint">
+      <header class="fcl-modal-hd">
+        <h2 id="fclConfigTitle">整柜协同配置</h2>
+        <button type="button" class="fcl-modal-close" id="closeFclConfig" aria-label="关闭">×</button>
+      </header>
+      <div class="fcl-modal-bd">
+        <p class="fcl-context">当前客户：<strong>CUST-NB-001 · 宁波乐生</strong>。以下配置仅用于整柜业务；示例人员为脱敏演示数据。</p>
+        <p class="field-hint" id="fclConfigHint">角色可分别配置。保存后，后续新建的整柜工单带出该客户当前配置；已创建工单保持原角色快照，不被覆盖。</p>
+        <div class="fcl-role-grid">
+          <div class="field">
+            <label for="fclCs">客服</label>
+            <select id="fclCs"><option value="">未配置</option><option selected>Olaf（青）</option><option>林客服</option></select>
+            <span class="fcl-source">数据来源：员工管理 · 客服岗位</span>
+          </div>
+          <div class="field">
+            <label for="fclBooking">订舱</label>
+            <select id="fclBooking"><option value="">未配置</option><option selected>王订舱</option><option>赵订舱</option></select>
+            <span class="fcl-source">数据来源：员工管理 · 订舱岗位</span>
+          </div>
+          <div class="field">
+            <label for="fclCustoms">关务</label>
+            <select id="fclCustoms"><option value="" selected>未配置</option><option>吴关务</option><option>陈关务</option></select>
+            <span class="fcl-source">数据来源：员工管理 · 关务岗位</span>
+          </div>
+          <div class="field">
+            <label for="fclOverseas">海外</label>
+            <select id="fclOverseas"><option value="" selected>未配置</option><option>陈海外</option><option>李海外</option></select>
+            <span class="fcl-source">数据来源：员工管理 · 海外岗位</span>
+          </div>
+          <div class="field">
+            <label for="fclResponse">客户响应等级</label>
+            <select id="fclResponse"><option selected>一级</option><option>二级</option></select>
+            <span class="fcl-source">数据来源：客户管理 · 响应等级字典（一级、二级）</span>
+          </div>
+        </div>
+      </div>
+      <footer class="fcl-modal-ft">
+        <button type="button" class="btn" id="cancelFclConfig">取消</button>
+        <button type="button" class="btn btn-primary" id="saveFclConfig">保存配置</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="客户管理-编辑-权限配置-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD · 客户管理 · 与整柜岗位子表关系</span>
+  </div>
+  <script src="../二期/ess-prototype-prd.js"></script>
+  <script>
+    (function () {
+      var mask = document.getElementById('fclConfigMask');
+      var trigger = document.getElementById('openFclConfig');
+      var close = document.getElementById('closeFclConfig');
+      var cancel = document.getElementById('cancelFclConfig');
+      var save = document.getElementById('saveFclConfig');
+      var summary = document.getElementById('fclConfigSummary');
+      var firstField = document.getElementById('fclCs');
+      var fields = [
+        ['客服', 'fclCs'], ['订舱', 'fclBooking'], ['关务', 'fclCustoms'], ['海外', 'fclOverseas'], ['响应等级', 'fclResponse']
+      ];
+      function selectedText(id) { var el = document.getElementById(id); return el.options[el.selectedIndex].text; }
+      function closeModal() { mask.classList.remove('open'); mask.setAttribute('aria-hidden', 'true'); trigger.focus(); }
+      function openModal() { mask.classList.add('open'); mask.setAttribute('aria-hidden', 'false'); firstField.focus(); }
+      trigger.addEventListener('click', openModal);
+      close.addEventListener('click', closeModal);
+      cancel.addEventListener('click', closeModal);
+      mask.addEventListener('click', function (event) { if (event.target === mask) closeModal(); });
+      document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && mask.classList.contains('open')) closeModal(); });
+      save.addEventListener('click', function () {
+        summary.textContent = fields.map(function (item) { return item[0] + '：' + selectedText(item[1]); }).join(' · ');
+        closeModal();
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="../二期/ess-prototype-nav.css" />
+  <script src="fcl-core-flow-v3-nav.js" defer></script>
+</body>
+</html>

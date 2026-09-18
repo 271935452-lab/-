@@ -139,9 +139,9 @@
       bondDate: "2025-01-10",
       bondExpireDate: "2025-04-10",
       bondNo: "",
-      bondFace: 50000,
-      bondUsed: 228,
-      bondTimesLimit: 250,
+      bondFace: 90000,
+      bondUsed: 410,
+      bondTimesLimit: 450,
       legalName: "Lisa Wang",
       birth: "1991-08-20",
       idType: "护照",
@@ -332,24 +332,28 @@
     var alertEl = $("dlgQuotaAlert");
     var textEl = $("dlgQuotaAlertText");
     if (!usedEl || !limitEl || !alertEl || !textEl) return { level: "ok" };
+    var face = Number(faceEl && faceEl.value ? faceEl.value : 0);
+    if (!face || face < 0) face = 0;
+    // 总次数 = 总额度 / 200（如 5万→250、9万→450）
+    var limit = face > 0 ? Math.floor(face / 200) : Number(limitEl.value || 0);
+    if (!limit || limit < 1) limit = 1;
+    if (limitEl.value !== String(limit)) limitEl.value = String(limit);
     var used = Number(usedEl.value || 0);
-    var limit = Number(limitEl.value || 250);
-    var face = Number(faceEl && faceEl.value ? faceEl.value : 50000);
-    if (!limit || limit < 1) limit = 250;
+    if (used < 0) used = 0;
     var remain = Math.max(0, limit - used);
     var level = "ok";
     var msg = "";
-    if (used >= limit) {
+    if (remain <= 0 || used >= limit) {
       level = "out";
       msg =
         "额度已用尽：已用 " +
         used +
         " / " +
         limit +
-        " 次（面额 USD " +
+        " 次（额度 USD " +
         face.toLocaleString() +
-        "）。须提额或换证后才能继续绑柜。";
-    } else if (used >= 240) {
+        "，总次数=额度÷200）。须提额或换证后才能继续绑柜。";
+    } else if (remain < 10) {
       level = "danger";
       msg =
         "额度紧急：已用 " +
@@ -358,8 +362,8 @@
         limit +
         " 次，仅剩 " +
         remain +
-        " 次。请立即提额。";
-    } else if (used >= 200) {
+        " 次（剩余<10）。请立即提额。";
+    } else if (remain < 50) {
       level = "warn";
       msg =
         "额度预警：已用 " +
@@ -368,7 +372,7 @@
         limit +
         " 次，剩余 " +
         remain +
-        " 次（规则：5万可用250次）。建议安排提额。";
+        " 次（剩余<50）。建议安排提额。";
     } else {
       level = "ok";
       msg =
@@ -378,9 +382,9 @@
         limit +
         " 次，剩余 " +
         remain +
-        " 次 · 面额 USD " +
+        " 次 · 额度 USD " +
         face.toLocaleString() +
-        "。";
+        "（总次数=额度÷200）。";
     }
     alertEl.hidden = false;
     alertEl.className =
@@ -777,7 +781,7 @@
             quota.used +
             "/" +
             quota.limit +
-            " 次，面额规则 5万/250次）。确定仍保存？正式版应强制提额。"
+            " 次，总次数=额度÷200）。确定仍保存？正式版应强制提额。"
         )
       )
         return;
@@ -790,7 +794,7 @@
             quota.limit +
             "，剩余 " +
             quota.remain +
-            " 次）。建议提额，是否继续保存？"
+            " 次；剩余<50黄、<10红）。建议提额，是否继续保存？"
         )
       )
         return;

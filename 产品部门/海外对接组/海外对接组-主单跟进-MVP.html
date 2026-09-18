@@ -444,6 +444,7 @@
           <button type="button" class="tool">生成卡派单</button>
           <button type="button" class="tool">操作日志</button>
           <button type="button" class="tool" id="btnExportDoc">导出资料</button>
+          <button type="button" class="tool" id="btnDrayPrealert">DrayEasy 海外仓预报 <span class="new">NEW</span></button>
           <span class="sep"></span>
           <button type="button" class="tool">启用飞驼轨迹自动抓取</button>
           <button type="button" class="tool danger">禁用飞驼轨迹自动抓取</button>
@@ -496,6 +497,7 @@
                 <th>票数</th>
                 <th>件数</th>
                 <th>备注信息</th>
+                <th>DrayEasy 预报</th>
                 <th>飞驼自动抓取</th>
               </tr>
             </thead>
@@ -597,10 +599,35 @@
     </div>
   </div>
 
+  <div class="modal-mask" id="drayPrealertMask" aria-hidden="true">
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="drayPrealertTitle">
+      <div class="modal-hd">
+        <h2 id="drayPrealertTitle">DrayEasy 海外仓预报 <span class="new">UI-DE-001</span></h2>
+        <button type="button" class="modal-close" id="drayPrealertClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <p class="hint" id="drayPrealertHint">已选 0 柜</p>
+        <p class="hint" style="color:#ad6800;background:#fff7e6;border:1px solid #ffd591;padding:7px 8px;border-radius:2px"><strong>演示口径：</strong>系统按主提单号（MBL）分组创建 DrayEasy 订单，柜子作为同一订单的 containers 发送。真实发送前仍需校验有效费率、目的港/仓库外部 ID、ETA、重量及鉴权配置；本原型仅模拟预报和逐柜返回结果。</p>
+        <div class="prev-wrap">
+          <table class="prev-tbl">
+            <thead><tr><th>主提单号</th><th>柜号</th><th>柜型</th><th>预计到港</th><th>预校验</th><th>预报结果</th><th>DrayEasy 订单号</th></tr></thead>
+            <tbody id="drayPrealertBody"></tbody>
+          </table>
+        </div>
+        <p class="hint" id="drayPrealertResult" aria-live="polite" style="margin-top:10px">未发起预报。</p>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="drayPrealertCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="drayPrealertSubmit">预报并返回结果</button>
+      </div>
+    </div>
+  </div>
+
   <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="海外对接组-主单跟进-MVP-PRD.html" data-prd-anchor="s-logic">
     <span class="ess-prd-chip">PRD · 主单跟进</span>
   </div>
   <script src="../../二期/ess-prototype-prd.js"></script>
+  <script src="../ess-branch-back.js?v=20260915" defer></script>
   <script>
 (function () {
   var tab = "all";
@@ -696,6 +723,22 @@
     return '<span class="tag">' + st + "</span>";
   }
 
+  function drayTag(r) {
+    if (r.deState === "success") return '<span class="tag tag-ok">预报成功</span>';
+    if (r.deState === "failed") return '<span class="tag tag-bad">预报失败</span>';
+    return '<span class="tag">未预报</span>';
+  }
+
+  function drayPrecheck(r) {
+    var missing = [];
+    if (!r.bl) missing.push("主提单号");
+    if (!r.cntr) missing.push("柜号");
+    if (!r.box || r.box === "—") missing.push("柜型");
+    if (!r.pcs || !r.tickets) missing.push("件数/票数");
+    if (r.mode !== "海运") missing.push("仅支持海运整柜");
+    return missing;
+  }
+
   function typeCell(types, selected) {
     return types.map(function (t) {
       var cls = selected.indexOf(t) !== -1 ? "type-pill match" : "type-pill";
@@ -760,9 +803,10 @@
         "<td>" + r.tickets + "</td>" +
         "<td>" + r.pcs + "</td>" +
         "<td class='muted'>" + (r.note || "—") + "</td>" +
+        "<td>" + drayTag(r) + "</td>" +
         "<td>" + (r.auto ? '<span class="tag tag-ok">启用</span>' : '<span class="tag tag-bad">禁用</span>') + "</td>" +
         "</tr>";
-    }).join("") || "<tr><td colspan='20' style='text-align:center;color:#999;padding:28px'>无匹配数据 · 可放宽货柜类型勾选</td></tr>";
+    }).join("") || "<tr><td colspan='21' style='text-align:center;color:#999;padding:28px'>无匹配数据 · 可放宽货柜类型勾选</td></tr>";
   }
 
   function selectedRows() {
@@ -815,7 +859,7 @@
     toast("示意：打开主单轨迹 · " + btn.textContent.trim());
   });
 
-  document.querySelectorAll(".toolbar .tool:not(#btnQuery2):not(#btnRemark):not(#btnEditType):not(#btnJumpTail):not(#btnJumpCard):not(#btnExportDoc)").forEach(function (b) {
+  document.querySelectorAll(".toolbar .tool:not(#btnQuery2):not(#btnRemark):not(#btnEditType):not(#btnJumpTail):not(#btnJumpCard):not(#btnExportDoc):not(#btnDrayPrealert)").forEach(function (b) {
     b.addEventListener("click", function () { toast("演示：" + b.textContent.trim()); });
   });
 
@@ -946,6 +990,74 @@
       : ("已按「" + tpl + "」导出 " + n + " 柜（原型演示）"));
   };
   exportMask.addEventListener("click", function (e) { if (e.target === exportMask) closeExport(); });
+
+  /* DrayEasy 海外仓预报：按主提单号分组，逐柜展示返回结果 */
+  var drayPrealertMask = $("drayPrealertMask");
+  var drayPrealertTargets = [];
+  var drayOrderSeq = 90001;
+  function drayPreviewResult(r) {
+    if (r.deState === "success") return '<span class="tag tag-ok">已预报</span>';
+    if (r.deState === "failed") return '<span class="tag tag-bad">' + (r.deMessage || "预报失败") + "</span>";
+    return '<span style="color:#999">待发送</span>';
+  }
+  function renderDrayPrealertRows() {
+    $("drayPrealertBody").innerHTML = drayPrealertTargets.map(function (r) {
+      var missing = drayPrecheck(r);
+      var check = missing.length
+        ? '<span style="color:#cf1322">缺：' + missing.join("、") + "</span>"
+        : '<span style="color:#389e0d">基础柜数据齐全</span>';
+      return "<tr><td>" + r.bl + "</td><td><b>" + r.cntr + "</b></td><td>" + r.box + "</td><td>" + r.eta +
+        "</td><td>" + check + "</td><td>" + drayPreviewResult(r) + "</td><td>" + (r.deOrderNo || "—") + "</td></tr>";
+    }).join("");
+  }
+  function openDrayPrealert() {
+    drayPrealertTargets = selectedRows();
+    if (!drayPrealertTargets.length) { toast("请先勾选需要预报的柜子"); return; }
+    var bls = [];
+    drayPrealertTargets.forEach(function (r) { if (bls.indexOf(r.bl) < 0) bls.push(r.bl); });
+    $("drayPrealertHint").textContent = "已选 " + drayPrealertTargets.length + " 柜 · " + bls.length + " 个主提单号 · 将按主提单号分别创建 DrayEasy 订单";
+    $("drayPrealertResult").textContent = "未发起预报。已成功预报的柜再次操作时只返回已有外部订单号，不重复创建。";
+    renderDrayPrealertRows();
+    drayPrealertMask.classList.add("open");
+    drayPrealertMask.setAttribute("aria-hidden", "false");
+  }
+  function closeDrayPrealert() {
+    drayPrealertMask.classList.remove("open");
+    drayPrealertMask.setAttribute("aria-hidden", "true");
+    drayPrealertTargets = [];
+  }
+  $("btnDrayPrealert").onclick = openDrayPrealert;
+  $("drayPrealertClose").onclick = $("drayPrealertCancel").onclick = closeDrayPrealert;
+  $("drayPrealertSubmit").onclick = function () {
+    var ordersByBl = {};
+    var success = 0, reused = 0, failed = 0;
+    drayPrealertTargets.forEach(function (r) {
+      var missing = drayPrecheck(r);
+      if (missing.length) {
+        r.deState = "failed";
+        r.deMessage = "资料不全";
+        failed++;
+        return;
+      }
+      if (r.deState === "success" && r.deOrderNo) {
+        reused++;
+        return;
+      }
+      if (!ordersByBl[r.bl]) ordersByBl[r.bl] = "DE-DEMO-" + (drayOrderSeq++);
+      r.deState = "success";
+      r.deOrderNo = ordersByBl[r.bl];
+      r.deExternalStatus = "in review";
+      r.deUpdatedAt = "刚刚";
+      r.deMessage = "DrayEasy 已受理";
+      success++;
+    });
+    var orderCount = Object.keys(ordersByBl).length;
+    $("drayPrealertResult").innerHTML = "<strong>预报返回结果（演示）</strong>：新建 " + orderCount + " 个 DrayEasy 订单，成功 " + success + " 柜" + (reused ? "，已存在未重复创建 " + reused + " 柜" : "") + (failed ? "，资料不全失败 " + failed + " 柜" : "") + "。外部状态为 <code>in review</code>；真实响应字段、状态映射与失败码待联调。";
+    renderDrayPrealertRows();
+    render();
+    toast(failed ? "预报已返回：存在资料不全柜" : "DrayEasy 预报成功（演示）");
+  };
+  drayPrealertMask.addEventListener("click", function (e) { if (e.target === drayPrealertMask) closeDrayPrealert(); });
 
   render();
 })();
