@@ -13,7 +13,9 @@
         { file: "原型导航-工单模块.html", label: "本导航页" },
         { file: "工单提交-入口-MVP.html", label: "工单提交 · 分类入口" },
         { file: "工单场景流程-MVP.html", label: "工单场景流程图" },
-        { file: "工单工作台-MVP.html", label: "履约工作台" },
+        { file: "工单工作台-MVP.html?portal=cs", label: "对客工作台" },
+        { file: "工单工作台-MVP.html?portal=ops", label: "履约工作台 · 海外客服" },
+        { file: "国内仓工单-PDA-MVP.html", label: "国内仓 · PDA" },
         { file: "一期基础履约统计-MVP.html", label: "一期基础履约统计" },
         { file: "新建工单-MVP.html", label: "新建统一工单" },
         { file: "工单详情-MVP.html", label: "工单详情" },
@@ -70,7 +72,7 @@
     brand.className = "wo-nav-brand";
     brand.innerHTML =
       "<h1>工单模块</h1>" +
-      "<p>登记台保留；要人办进<strong>统一工单</strong>。<code style=\"font-size:11px\">旁支/工单/</code></p>";
+      "<p>两个入口、同一张工单。对客客服走对客工作台，海外客服走履约工作台，国内仓操作在 PDA。</p>";
     aside.appendChild(brand);
 
     var scroll = document.createElement("nav");
@@ -92,7 +94,17 @@
         a.href = item.file;
         a.textContent = item.label;
         var base = (item.file.split("#")[0].split("?")[0].split("/").pop()) || "";
-        if (base === active || item.file === active) {
+        var itemPortal = "";
+        if (item.file.indexOf("portal=cs") >= 0) itemPortal = "cs";
+        else if (item.file.indexOf("portal=ops") >= 0) itemPortal = "ops";
+        var herePortal = "";
+        try {
+          herePortal = new URLSearchParams(location.search).get("portal") || "";
+        } catch (_) {}
+        if (!herePortal && active === "工单工作台-MVP.html") herePortal = "ops";
+        var hit = base === active || item.file === active;
+        if (itemPortal) hit = base === active && itemPortal === herePortal;
+        if (hit) {
           a.classList.add("is-active");
           a.setAttribute("aria-current", "page");
         }

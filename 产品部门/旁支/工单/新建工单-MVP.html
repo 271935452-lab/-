@@ -172,6 +172,40 @@
       display: none;
     }
     .scene-hint.show { display: block; }
+    .demo-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding: 6px 8px;
+      border: 1px dashed #d97706;
+      border-radius: 8px;
+      background: #fffbeb;
+    }
+    .demo-badge {
+      display: inline-flex; align-items: center; height: 20px; padding: 0 7px;
+      border-radius: 999px; background: #c2410c; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+      flex: 0 0 auto;
+    }
+    .form-real-label {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .demo-picks { display: flex; flex-wrap: wrap; gap: 6px; }
+    .demo-pick {
+      border: 1px solid #fdba74;
+      background: #fff;
+      border-radius: 999px;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #9a3412;
+    }
+    .demo-pick.on { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
     .fee-backdrop {
       position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
       display: none; align-items: center; justify-content: center; z-index: 80; padding: 16px;
@@ -216,9 +250,17 @@
     <div class="crumb"><a href="原型导航-工单模块.html">工单模块</a> / <a href="工单提交-入口-MVP.html">工单提交</a> / <a href="工单工作台-MVP.html">工作台</a> / 新建</div>
     <div class="top">
       <h1>新建统一工单</h1>
-      <p class="meta"><span class="tag" style="background:#eef2ff;color:#3730a3;padding:2px 7px;border-radius:999px;font-size:11px">BR-ENTRY-001</span> <strong>提交即建独立工单</strong>：命中场景与状态模板后按首节点派岗。点击提交<strong>先弹费用确认</strong>（BR-FEE-002），确认后才发起。资料不全请「保存草稿」（仅本页）。<span class="tag" style="background:#ecfdf5;color:#047857;padding:2px 7px;border-radius:999px;font-size:11px;margin-left:4px">BR-STAGE-001</span> 环节由运单状态自动判定。</p>
+      <p class="meta"><span class="tag" style="background:#eef2ff;color:#3730a3;padding:2px 7px;border-radius:999px;font-size:11px">BR-ENTRY-001</span> <strong>提交即建独立工单</strong>：命中场景与状态模板后按首节点派岗。提交前先做费用校验（BR-FEE-002），通过后才发起，不单独占状态。资料不全请「保存草稿」（仅本页）。<span class="tag" style="background:#ecfdf5;color:#047857;padding:2px 7px;border-radius:999px;font-size:11px;margin-left:4px">BR-STAGE-001</span> 环节由运单状态自动判定。</p>
       <div id="sourceBanner" class="scene-hint" style="display:none;margin-top:10px"></div>
     </div>
+
+    <div class="demo-strip" id="demoPickCard">
+      <span class="demo-badge">演示</span>
+      <div class="demo-picks" id="demoPicks"></div>
+      <input type="hidden" id="demoSceneId" value="" />
+    </div>
+
+    <div class="form-real-label">正式发起表单</div>
 
     <div class="card">
       <div class="sec-title-row">
@@ -232,7 +274,7 @@
               <li><strong>环节：</strong>装柜完成前→装柜完成前；拆柜前→港前；拆柜后→港后。不选手选。</li>
               <li><strong>关联工单：</strong>续办/升版时填写；同根对象有在办同类型单时禁止无关联平行单。</li>
               <li><strong>重出新单号：</strong>原子单号 + 新单号 + 生效时间；多子单分别回填。</li>
-              <li><strong>费用确认：</strong>提交时一律先弹费用确认；有配置可改计费量，无配置记「无费用已确认」。</li>
+              <li><strong>费用校验：</strong>提交前弹出。有收费须确认客户可接受；无费用须选择「无需收费」。都不占工单状态。</li>
               <li><strong>海外仓任务号：</strong>美库/仓任务号（如 MK-xxx），与本系统工单号分开；无则留空。</li>
               <li><strong>操作指令 / 问题描述：</strong>分开保存，便于执行、回传与审计；未上架类请写清截图、ASIN、到仓时间等。</li>
               <li><strong>附件：</strong>支持截图、标签样例、拆柜照片、客户邮件等。</li>
@@ -251,14 +293,18 @@
           <input id="title" placeholder="例：EMSU1234567 拦截+换标+预报海外仓" />
         </div>
         <div class="field">
-          <label for="ref">关联编号（根运单） <span style="color:#dc2626">*</span></label>
+          <label for="ref" id="refLabel">关联编号（根运单） <span style="color:#dc2626">*</span></label>
           <input id="ref" placeholder="柜号 / 根运单号 / FBA 货件号 / 主单号" />
         </div>
-        <div class="field">
+        <div class="field" id="slotSubWb">
           <label for="subWb">子单号 <span id="subWbReq" style="color:#dc2626;display:none">*</span></label>
           <input id="subWb" placeholder="快递子单 / 货件分票号；重出必填" />
         </div>
-        <div class="field">
+        <div class="field" id="slotAddr" hidden>
+          <label for="reissueAddr">要修改的地址</label>
+          <input id="reissueAddr" placeholder="客户提供的新地址；履约制单时带入" />
+        </div>
+        <div class="field" id="slotWbStatus">
           <label for="wbStatus">运单当前状态</label>
           <input id="wbStatus" readonly placeholder="关联运单后自动带出" style="background:#f8fafc;color:#64748b" />
         </div>
@@ -266,7 +312,7 @@
           <label for="stage">环节（自动）</label>
           <input id="stage" readonly value="" placeholder="待关联运单后自动判定" style="background:#ecfdf5;color:#047857;font-weight:600" />
         </div>
-        <div class="field">
+        <div class="field" id="slotScene">
           <label for="scene">业务场景 <span style="color:#dc2626">*</span></label>
           <select id="scene">
             <option value="">请先关联运单以加载场景</option>
@@ -282,7 +328,7 @@
             <option value="WO-202605-001"></option>
           </datalist>
         </div>
-        <div class="field">
+        <div class="field" id="slotNewWb">
           <label for="newWb">重出新单号（子单）</label>
           <input id="newWb" placeholder="腾信按该子单重出后回填；回填本单/关联工单" />
         </div>
@@ -291,8 +337,8 @@
           <input id="cust" placeholder="自动带出；允许搜索选择" />
         </div>
         <div class="field">
-          <label>费用确认状态</label>
-          <div class="fee-readonly" id="feeStatusLabel">待提交时按配置确认</div>
+          <label>发起前费用校验</label>
+          <div class="fee-readonly" id="feeStatusLabel">待提交时校验</div>
           <input type="hidden" id="feeStatus" value="pending" />
         </div>
         <div class="field">
@@ -363,10 +409,11 @@
   <div class="fee-backdrop" id="feeModal" aria-hidden="true">
     <div class="fee-modal" role="dialog" aria-labelledby="feeModalTitle">
       <div class="fee-modal-hd">
-        <h2 id="feeModalTitle">确认费用后发起</h2>
+        <h2 id="feeModalTitle">确认发起</h2>
         <button type="button" class="btn" id="feeModalClose" style="padding:4px 10px">关闭</button>
       </div>
       <div class="fee-modal-bd">
+        <div id="feeModalSummary" style="margin:0 0 12px;padding:10px 12px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12px;color:#334155;line-height:1.65"></div>
         <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.55" id="feeModalScene">—</p>
         <table class="fee-table">
           <thead>
@@ -381,19 +428,21 @@
           <tbody id="feeModalBody"></tbody>
         </table>
         <div class="fee-total">预估合计（多项相加）：<strong id="feeModalTotal">$0.00</strong> <span id="feeModalCurrency">USD</span></div>
-        <p class="hint" style="margin:0">来源：工单配置 · 费用配置。确认后写入应收预估快照；实际费用仍可按仓回传/模板待费用审核节点处理。</p>
+        <div id="feeChoice" style="margin-top:12px;font-size:13px;line-height:1.6"></div>
+        <p class="hint" style="margin:8px 0 0">发起前须确认以上信息与费用。确认结果写入费用记录，不占工单状态；实际费用以后由仓回写，不一致时才另开费用差异待办。</p>
       </div>
       <div class="fee-modal-ft">
         <button type="button" class="btn" id="feeModalCancel">取消</button>
-        <button type="button" class="btn btn-primary" id="feeModalConfirm">确认费用并发起</button>
+        <button type="button" class="btn btn-primary" id="feeModalConfirm">确认并发起</button>
       </div>
     </div>
   </div>
 
+  <script src="wo-scene-flow.js?v=20260920a"></script>
   <script>
     const hintEl = document.getElementById("sceneHint");
     const sceneHints = {
-      "港前·拆柜前找付雪": "业务员先在企业微信同步付雪，付雪在系统里接收或驳回；通过后再进入拦截、换标、共享表与海外仓预报流程。",
+      "港前·拆柜前找港前客服": "业务员先在企业微信同步港前客服，港前客服在系统里接收或驳回；通过后再进入拦截、换标、共享表与海外仓预报流程。",
       "港前·柜子计划拦截换标": "对应柜子计划场景，需记录拦截原因、换标要求、共享表更新人和海外仓预报结果。",
       "港前·拆柜报告异常": "收到海外仓拆柜报告后 24h 内反馈少件/破损；可生成月度异常分析视图（原型后续）。",
       "港后·私卡改地址": "私卡客服接单后确认地址、线路与客户诉求；如需转派再分流到后续客服。",
@@ -460,7 +509,7 @@
         ["装柜完成前·订舱协同", "装柜完成前：订舱 / 装柜计划协同"],
       ],
       "港前": [
-        ["港前·拆柜前找付雪", "港前：拆柜前找付雪"],
+        ["港前·拆柜前找港前客服", "港前：拆柜前找港前客服"],
         ["港前·柜子计划拦截换标", "港前：柜子计划 / 拦截 / 换标 / 共享表 / 预报"],
         ["港前·拆柜报告异常", "港前：拆柜报告异常"],
         ["快递拦截·港前", "快递拦截 · 港前"],
@@ -534,6 +583,9 @@
     }
 
     function applyWaybillStage(refVal, preferredScene, forcedStatus, urlStage) {
+      if (document.getElementById("demoSceneId") && document.getElementById("demoSceneId").value) {
+        return document.getElementById("stage").value;
+      }
       var ref = (refVal || "").trim();
       var statusEl = document.getElementById("wbStatus");
       var stageEl = document.getElementById("stage");
@@ -637,9 +689,19 @@
         { name: "换标操作费", chargeType: "piece", unitPrice: 1.5, currency: "USD", qty: 10 },
         { name: "标签费", chargeType: "ticket", unitPrice: 8, currency: "USD", qty: 1 },
       ],
+      "装柜完成前·贴标": [
+        { name: "贴标操作费", chargeType: "piece", unitPrice: 1.2, currency: "USD", qty: 10 },
+        { name: "标签费", chargeType: "ticket", unitPrice: 5, currency: "USD", qty: 1 },
+      ],
+      "贴标": [
+        { name: "贴标操作费", chargeType: "piece", unitPrice: 1.2, currency: "USD", qty: 10 },
+        { name: "标签费", chargeType: "ticket", unitPrice: 5, currency: "USD", qty: 1 },
+      ],
       "快递拦截·港前": [{ name: "拦截操作费", chargeType: "ticket", unitPrice: 12, currency: "USD", qty: 1 }],
       "快递拦截·港后": [{ name: "拦截操作费", chargeType: "ticket", unitPrice: 12, currency: "USD", qty: 1 }],
       "拦截·港前": [{ name: "拦截操作费", chargeType: "ticket", unitPrice: 12, currency: "USD", qty: 1 }],
+      "美库拦截": [{ name: "拦截操作费", chargeType: "ticket", unitPrice: 12, currency: "USD", qty: 1 }],
+      "私仓拦截": [{ name: "拦截操作费", chargeType: "ticket", unitPrice: 12, currency: "USD", qty: 1 }],
       "重出": [
         { name: "重出操作费", chargeType: "ticket", unitPrice: 15, currency: "USD", qty: 1 },
         { name: "面单费", chargeType: "piece", unitPrice: 0.8, currency: "USD", qty: 5 },
@@ -649,14 +711,45 @@
       "费用结案·改原单费用": [{ name: "原单费用差异", chargeType: "ticket", unitPrice: 0, currency: "USD", qty: 1 }],
     };
 
+    function feeSceneKey(sceneLabel, stage) {
+      if (!sceneLabel) return "";
+      if (FEE_BY_SCENE[sceneLabel]) return sceneLabel;
+      var joined = (stage ? stage + "·" : "") + sceneLabel;
+      if (FEE_BY_SCENE[joined]) return joined;
+      if (/贴标|换标/.test(sceneLabel)) return stage === "装柜完成前" ? "装柜完成前·贴标" : "换标·港前";
+      if (/拦截/.test(sceneLabel)) return /港后|尾程/.test(stage || "") ? "快递拦截·港后" : "拦截·港前";
+      if (/重出/.test(sceneLabel)) return "重出";
+      return sceneLabel;
+    }
+
+    function buildSubmitSummary(opts) {
+      opts = opts || {};
+      var rows = [
+        ["标题", opts.title || "—"],
+        ["场景", opts.scene || "—"],
+        ["环节", opts.stage || "—"],
+        ["关联单号", opts.ref || "—"],
+      ];
+      if (opts.sub) rows.push(["子单号", opts.sub]);
+      if (opts.addr) rows.push(["要修改的地址", opts.addr]);
+      if (opts.instruction) rows.push(["操作内容", opts.instruction]);
+      if (opts.pushText) rows.push(["推送规则", opts.pushText]);
+      if (opts.fileName) rows.push(["新标签", opts.fileName]);
+      return rows
+        .map(function (r) {
+          return "<div><span style=\"color:#64748b\">" + r[0] + "：</span><strong>" + r[1] + "</strong></div>";
+        })
+        .join("");
+    }
+
     function setFeeStatusUi(code) {
       var el = document.getElementById("feeStatus");
       var label = document.getElementById("feeStatusLabel");
       if (el) el.value = code;
       if (!label) return;
-      if (code === "ok") label.textContent = "已确认";
-      else if (code === "no") label.textContent = "无费用已确认";
-      else label.textContent = "待提交时按配置确认";
+      if (code === "ok") label.textContent = "客户已接受费用";
+      else if (code === "no") label.textContent = "无需收费";
+      else label.textContent = "待提交时校验";
     }
 
     function getFeeConfig(scene) {
@@ -687,21 +780,26 @@
       return { total: total, currency: currency };
     }
 
-    function openFeeModal(scene, items) {
+    function openFeeModal(scene, items, summaryHtml) {
       var modal = document.getElementById("feeModal");
       var body = document.getElementById("feeModalBody");
       var list = items && items.length ? items : null;
       modal.setAttribute("data-has-fee", list ? "1" : "0");
+      var sumEl = document.getElementById("feeModalSummary");
+      if (sumEl) sumEl.innerHTML = summaryHtml || "<div>请确认发起信息与费用后提交。</div>";
       if (!list) {
         document.getElementById("feeModalScene").textContent =
-          "场景：" + scene + " · 当前场景未配置费用项，确认后按「无费用已确认」发起。";
+          "场景：" + scene + " · 未配置收费项。选择「无需收费」后即可发起，不进入费用状态。";
         body.innerHTML =
-          "<tr><td colspan=\"5\" style=\"text-align:center;color:#64748b;padding:18px 8px\">无应收费用项（工单配置为空）</td></tr>";
+          "<tr><td colspan=\"5\" style=\"text-align:center;color:#64748b;padding:18px 8px\">本场景无需收费</td></tr>";
         document.getElementById("feeModalTotal").textContent = "$0.00";
         document.getElementById("feeModalCurrency").textContent = "USD";
+        document.getElementById("feeChoice").innerHTML =
+          "<label><input type=\"radio\" name=\"feeGate\" value=\"none\" /> 无需收费</label>" +
+          "<div style=\"font-size:12px;color:#64748b\">无费用场景必须点选此项才能发起。</div>";
       } else {
         document.getElementById("feeModalScene").textContent =
-          "场景：" + scene + " · 费用项来自工单配置，可调整计费量后确认发起。";
+          "场景：" + scene + " · 有收费。业务客服确认客户可接受后才能提交。";
         body.innerHTML = list
           .map(function (it, i) {
             var ct = FEE_CHARGE_LABEL[it.chargeType] || it.chargeType;
@@ -735,6 +833,9 @@
           inp.addEventListener("change", recalcFeeModal);
         });
         recalcFeeModal();
+        document.getElementById("feeChoice").innerHTML =
+          "<label><input type=\"radio\" name=\"feeGate\" value=\"accept\" /> 客户可接受此费用</label>" +
+          "<div style=\"font-size:12px;color:#64748b\">有收费场景必须确认客户可接受，才能提交。这不是工单状态。</div>";
       }
       modal.classList.add("show");
       modal.setAttribute("aria-hidden", "false");
@@ -755,10 +856,10 @@
       setFeeStatusUi(feeCode);
       var feeLine =
         feeCode === "ok"
-          ? "费用已确认 · 预估合计 " +
+          ? "费用校验：客户已接受 · 预估合计 " +
             (feeSnapshot ? feeSnapshot.currency + " $" + money(feeSnapshot.total) : "") +
-            "（应收预估快照已写入）"
-          : "费用状态：无费用已确认";
+            "（发起前校验，已写入费用记录，不占状态）"
+          : "费用校验：无需收费";
       var msg =
         "已创建独立工单（BR-ENTRY-001 / BR-FEE-002）。\n工单号：WO-202609-DEMO · 首节点=待受理\n" +
         "运单状态：" +
@@ -825,10 +926,181 @@
       });
     })();
 
+    function demoScenes() {
+      return window.WoSceneFlow ? window.WoSceneFlow.scenes() : [];
+    }
+
+    function currentDemo() {
+      var id = document.getElementById("demoSceneId").value;
+      var list = demoScenes();
+      for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+      return null;
+    }
+
+    function selectDemo(id) {
+      var scene = null;
+      var list = demoScenes();
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].id === id || list[i].name === id) scene = list[i];
+      }
+      if (!scene) return;
+      document.getElementById("demoSceneId").value = scene.id;
+      document.querySelectorAll(".demo-pick").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-demo") === scene.id);
+      });
+      var entry = scene.entry || {};
+      document.getElementById("stage").value = scene.stage;
+      document.getElementById("refLabel").innerHTML = (entry.refLabel || "单号") + ' <span style="color:#dc2626">*</span>';
+      document.getElementById("instruction").placeholder = entry.ask || "按当前场景填写要执行的内容";
+      document.getElementById("slotSubWb").hidden = !entry.needSub;
+      document.getElementById("slotAddr").hidden = !entry.showAddr;
+      document.getElementById("slotNewWb").hidden = true;
+      document.getElementById("slotScene").hidden = true;
+      document.getElementById("slotWbStatus").hidden = true;
+      var labelBlock = document.getElementById("labelSceneBlock");
+      labelBlock.style.display = entry.showLabel ? "block" : "none";
+      var labelTitle = labelBlock.querySelector(".sec-title");
+      if (labelTitle && entry.showLabel) labelTitle.textContent = "贴标资料 · 新标签";
+      labelBlock.querySelectorAll(".form-grid > .field").forEach(function (el, idx) {
+        el.hidden = !!(entry.showLabel && idx > 0);
+      });
+      var subReq = document.getElementById("subWbReq");
+      if (subReq) subReq.style.display = entry.needSub ? "" : "none";
+      var title = document.getElementById("title");
+      if (!title.value || title.dataset.auto === "1") {
+        title.value = scene.stage + " · " + scene.name;
+        title.dataset.auto = "1";
+      }
+      document.getElementById("btnSubmit").textContent = "按当前场景发起";
+    }
+
+    function validateDemoSubmit() {
+      var scene = currentDemo();
+      if (!scene) {
+        alert("请先选择场景。");
+        return null;
+      }
+      var ref = (document.getElementById("ref").value || "").trim();
+      var instruction = (document.getElementById("instruction").value || "").trim();
+      var body = (document.getElementById("body").value || "").trim();
+      var entry = scene.entry || {};
+      if (!ref) {
+        alert("请填写" + (entry.refLabel || "单号") + "。");
+        document.getElementById("ref").focus();
+        return null;
+      }
+      if (!instruction && !body) {
+        alert("请填写这一场景要执行的内容。");
+        document.getElementById("instruction").focus();
+        return null;
+      }
+      var sub = (document.getElementById("subWb").value || "").trim();
+      if (entry.needSub && !sub) {
+        alert("重出须填写子单号。");
+        document.getElementById("subWb").focus();
+        return null;
+      }
+      if (entry.showLabel) {
+        var fileEl = document.getElementById("newLabelFile");
+        if (!fileEl || !fileEl.files || !fileEl.files.length) {
+          alert("贴标/换标：请先上传新标签。");
+          return null;
+        }
+      }
+      return scene;
+    }
+
+    function openDemoSubmitModal() {
+      var scene = validateDemoSubmit();
+      if (!scene) return;
+      var feeKey = feeSceneKey(scene.name, scene.stage);
+      var feeItems = getFeeConfig(feeKey);
+      var instruction = [(document.getElementById("instruction").value || "").trim(), (document.getElementById("body").value || "").trim()].filter(Boolean).join("；");
+      var fileEl = document.getElementById("newLabelFile");
+      var summary = buildSubmitSummary({
+        title: (document.getElementById("title").value || "").trim(),
+        scene: scene.stage + " · " + scene.name,
+        stage: scene.stage,
+        ref: (document.getElementById("ref").value || "").trim(),
+        sub: (document.getElementById("subWb").value || "").trim(),
+        addr: (document.getElementById("reissueAddr") && document.getElementById("reissueAddr").value || "").trim(),
+        instruction: instruction,
+        pushText: scene.pushText || "",
+        fileName: fileEl && fileEl.files && fileEl.files[0] ? fileEl.files[0].name : ""
+      });
+      openFeeModal(feeKey || (scene.stage + "·" + scene.name), feeItems, summary);
+    }
+
+    function saveDemo(asDraft, feeCode, feeSnapshot) {
+      var scene = asDraft ? currentDemo() : validateDemoSubmit();
+      if (!scene) {
+        if (asDraft && !currentDemo()) alert("请先选择场景。");
+        return;
+      }
+      if (asDraft) {
+        var ref0 = (document.getElementById("ref").value || "").trim();
+        if (!ref0) {
+          alert("请填写" + ((scene.entry || {}).refLabel || "单号") + "。");
+          return;
+        }
+      }
+      var ref = (document.getElementById("ref").value || "").trim();
+      var instruction = (document.getElementById("instruction").value || "").trim();
+      var body = (document.getElementById("body").value || "").trim();
+      var entry = scene.entry || {};
+      var sub = (document.getElementById("subWb").value || "").trim();
+      var addrEl = document.getElementById("reissueAddr");
+      var fileEl = document.getElementById("newLabelFile");
+      var fileName = fileEl && fileEl.files && fileEl.files[0] ? fileEl.files[0].name : "";
+      var feeLine =
+        feeCode === "ok"
+          ? "客户已接受 · 预估 " + (feeSnapshot ? feeSnapshot.currency + " $" + money(feeSnapshot.total) : "")
+          : feeCode === "no"
+            ? "无需收费"
+            : "";
+      window.WoSceneFlow.create({
+        sceneId: scene.id,
+        refNo: ref,
+        note: [instruction, body, feeLine ? "费用：" + feeLine : ""].filter(Boolean).join("；"),
+        asDraft: asDraft,
+        subNo: sub,
+        address: addrEl ? addrEl.value.trim() : "",
+        fileName: fileName
+      });
+      if (asDraft) {
+        location.href = "工单工作台-MVP.html?portal=cs";
+        return;
+      }
+      setFeeStatusUi(feeCode || "no");
+      location.href = "工单工作台-MVP.html?portal=ops";
+    }
+
+    (function buildDemoPicks() {
+      var host = document.getElementById("demoPicks");
+      if (!host || !window.WoSceneFlow) return;
+      host.innerHTML = demoScenes().map(function (s) {
+        return '<button type="button" class="demo-pick" data-demo="' + s.id + '">' + s.stage + " · " + s.name + "</button>";
+      }).join("");
+      host.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-demo]");
+        if (b) selectDemo(b.getAttribute("data-demo"));
+      });
+      var title = document.getElementById("title");
+      title.addEventListener("input", function () { title.dataset.auto = ""; });
+    })();
+
     document.getElementById("btnDraft").addEventListener("click", function () {
+      if (document.getElementById("demoSceneId").value) {
+        saveDemo(true);
+        return;
+      }
       alert("已保存草稿（演示）。草稿仅保留在本发起页，不进入履约工作台；不弹费用。");
     });
     document.getElementById("btnSubmit").addEventListener("click", function () {
+      if (document.getElementById("demoSceneId").value) {
+        openDemoSubmitModal();
+        return;
+      }
       var ref = (document.getElementById("ref").value || "").trim();
       var stage = (document.getElementById("stage").value || "").trim();
       if (!ref) {
@@ -861,8 +1133,20 @@
         alert("换标·港前：新标签必传，请先上传。");
         return;
       }
-      var feeItems = getFeeConfig(scene);
-      openFeeModal(scene, feeItems);
+      var feeKey = feeSceneKey(scene, stage);
+      var feeItems = getFeeConfig(feeKey);
+      var instruction = [(document.getElementById("instruction").value || "").trim(), (document.getElementById("body").value || "").trim()].filter(Boolean).join("；");
+      var summary = buildSubmitSummary({
+        title: (document.getElementById("title").value || "").trim(),
+        scene: scene,
+        stage: stage,
+        ref: ref,
+        sub: (document.getElementById("subWb").value || "").trim(),
+        addr: (document.getElementById("reissueAddr") && document.getElementById("reissueAddr").value || "").trim(),
+        instruction: instruction,
+        fileName: document.getElementById("newLabelFile").files.length ? document.getElementById("newLabelFile").files[0].name : ""
+      });
+      openFeeModal(feeKey || scene, feeItems, summary);
     });
     document.getElementById("feeModalCancel").addEventListener("click", closeFeeModal);
     document.getElementById("feeModalClose").addEventListener("click", closeFeeModal);
@@ -872,9 +1156,19 @@
     document.getElementById("feeModalConfirm").addEventListener("click", function () {
       var modal = document.getElementById("feeModal");
       var hasFee = modal.getAttribute("data-has-fee") === "1";
+      var picked = document.querySelector("#feeChoice input[name=\"feeGate\"]:checked");
+      if (!picked) {
+        alert(hasFee ? "请确认客户可接受此费用后再发起" : "请选择「无需收费」后再发起");
+        return;
+      }
       var snap = hasFee ? recalcFeeModal() : null;
+      var feeCode = hasFee ? "ok" : "no";
       closeFeeModal();
-      createWorkOrder(hasFee ? "ok" : "no", snap);
+      if (document.getElementById("demoSceneId").value) {
+        saveDemo(false, feeCode, snap);
+        return;
+      }
+      createWorkOrder(feeCode, snap);
     });
 
     (function applyQueryPrefill() {
@@ -963,6 +1257,8 @@
       }
       applyWaybillStage(refNow, scene || "", wbStatusQ || "", stageQ);
       updateHint();
+      var demo = params.get("demo");
+      if (demo) selectDemo(demo);
     })();
   </script>
   <link rel="stylesheet" href="wo-prototype-nav.css" />

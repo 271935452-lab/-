@@ -425,6 +425,80 @@
     }
     .prd-note strong { color: #389e0d; }
     .prd-note ul { margin: 6px 0 0; padding-left: 18px; }
+
+    /* ── 我的工单待办 / 抽屉 / 行内发起 ── */
+    .view-panel { display: none; flex-direction: column; flex: 1; min-height: 0; }
+    .view-panel.show { display: flex; }
+    .main { display: flex; flex-direction: column; min-height: 0; }
+    .wo-todo-head {
+      padding: 12px 14px 8px; background: var(--card); border-bottom: 1px solid var(--line);
+    }
+    .wo-todo-head h2 { margin: 0 0 4px; font-size: 16px; }
+    .wo-todo-head p { margin: 0; font-size: 12px; color: var(--sub); line-height: 1.5; }
+    .wo-todo-filters {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px;
+      background: #fafafa; border-bottom: 1px solid var(--line);
+    }
+    .wo-todo-chip {
+      height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #d9d9d9;
+      background: #fff; font-size: 12px; cursor: pointer; color: var(--text);
+    }
+    .wo-todo-chip.on { border-color: var(--blue); color: var(--blue); background: #e6f4ff; font-weight: 600; }
+    .wo-todo-chip .n { margin-left: 4px; color: #8c8c8c; }
+    .wo-todo-chip.on .n { color: var(--blue); }
+    .kind-tag {
+      display: inline-flex; align-items: center; height: 20px; padding: 0 7px;
+      border-radius: 3px; font-size: 11px; font-weight: 600;
+    }
+    .kind-tag.supp { background: #fff7e6; color: #d46b08; }
+    .kind-tag.fee { background: #e6f4ff; color: #0958d9; }
+    .kind-tag.accept { background: #f6ffed; color: #389e0d; }
+    .kind-tag.reject { background: #fff1f0; color: #cf1322; }
+    .row-act-btn {
+      height: 24px; padding: 0 8px; border-radius: 2px; border: 1px solid var(--blue);
+      background: #fff; color: var(--blue); font-size: 12px; cursor: pointer; white-space: nowrap;
+    }
+    .row-act-btn:hover { background: #e6f4ff; }
+    .drawer-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 1200;
+      display: none; justify-content: flex-end;
+    }
+    .drawer-mask.open { display: flex; }
+    .drawer-panel {
+      width: min(440px, 100vw); height: 100%; background: #fff;
+      box-shadow: -8px 0 24px rgba(0,0,0,.12); display: flex; flex-direction: column;
+      animation: drawerIn .22s ease;
+    }
+    @keyframes drawerIn { from { transform: translateX(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+    .drawer-hd {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 14px 16px; border-bottom: 1px solid var(--line);
+    }
+    .drawer-hd h3 { margin: 0 0 4px; font-size: 15px; }
+    .drawer-hd .sub { margin: 0; font-size: 12px; color: var(--sub); line-height: 1.45; }
+    .drawer-bd { flex: 1; overflow: auto; padding: 14px 16px; font-size: 13px; }
+    .drawer-ft {
+      padding: 12px 16px; border-top: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end;
+    }
+    .drawer-kv { display: grid; grid-template-columns: 88px 1fr; gap: 8px 10px; margin-bottom: 14px; }
+    .drawer-kv .k { color: var(--sub); font-size: 12px; }
+    .drawer-kv .v { color: var(--text); word-break: break-all; }
+    .drawer-ask {
+      padding: 10px 12px; border-radius: 6px; background: #fffbe6; border: 1px solid #ffe58f;
+      font-size: 12px; line-height: 1.55; color: #874d00; margin-bottom: 12px;
+    }
+    .drawer-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin: -4px 0 12px; }
+    .drawer-tab {
+      padding: 8px 12px; border: none; background: none; font-size: 13px; color: var(--sub);
+      cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .drawer-tab.on { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .wb-hist-item {
+      padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px;
+      font-size: 12px; line-height: 1.5;
+    }
+    .wb-hist-item strong { display: block; margin-bottom: 2px; }
   </style>
 </head>
 <body>
@@ -457,6 +531,10 @@
         <button type="button" class="nav-tab" id="tabMyTodo">
           我的待办 <span class="close-x">×</span>
           <span class="badge-dot" id="badgeTabMyTodo" aria-label="我的待办未读数">0</span>
+        </button>
+        <button type="button" class="nav-tab" id="tabWoTodo" title="业务员工单一级入口：待补资料 / 待确认费用 / 待验收 / 被打回">
+          我的工单待办 <span class="close-x">×</span>
+          <span class="badge-dot show" id="badgeTabWoTodo" aria-label="我的工单待办数">4</span>
         </button>
       </nav>
       <div class="header-right">
@@ -510,6 +588,7 @@
       </aside>
 
       <main class="main">
+        <div class="view-panel show" id="viewWaybillList">
         <section class="filter-panel">
           <div class="filter-grid">
             <div class="filter-item"><label>到货时间</label><input type="text" value="2026-05-01 ~ 2026-05-23" /></div>
@@ -584,6 +663,7 @@
                 <th>报关行 <span class="badge-new">NEW</span></th>
                 <th>预录单已确认 <span class="badge-new">NEW</span></th>
                 <th>放行单</th>
+                <th>操作 <span class="badge-new">NEW</span></th>
               </tr>
             </thead>
             <tbody id="wbBody">
@@ -616,6 +696,7 @@
                   </div>
                 </td>
                 <td><span class="tag ck-none">未上传</span></td>
+                <td><button type="button" class="row-act-btn" data-wo-create>发起工单</button></td>
               </tr>
               <tr class="waybill-ck" data-ck="查验挂票" data-cabin="final" data-pre-issued="1" data-released="0">
                 <td class="col-index">
@@ -651,6 +732,7 @@
                   </div>
                 </td>
                 <td><span class="tag ck-none">未上传</span></td>
+                <td><button type="button" class="row-act-btn" data-wo-create>发起工单</button></td>
               </tr>
               <tr data-ck="查验中" data-cabin="final" data-pre-issued="1" data-released="1">
                 <td class="col-index">
@@ -684,6 +766,7 @@
                   </div>
                 </td>
                 <td><span class="tag pre-yes">已上传</span></td>
+                <td><button type="button" class="row-act-btn" data-wo-create>发起工单</button></td>
               </tr>
               <tr data-ck="无" data-cabin="wait" data-pre-issued="1" data-released="0">
                 <td class="col-index">
@@ -713,6 +796,7 @@
                   </div>
                 </td>
                 <td><span class="tag ck-none">未上传</span></td>
+                <td><button type="button" class="row-act-btn" data-wo-create>发起工单</button></td>
               </tr>
               <tr data-ck="无" data-cabin="wait" data-pre-issued="0" data-released="0">
                 <td class="col-index">
@@ -742,6 +826,7 @@
                   </div>
                 </td>
                 <td><span class="tag ck-none">未上传</span></td>
+                <td><button type="button" class="row-act-btn" data-wo-create>发起工单</button></td>
               </tr>
             </tbody>
           </table>
@@ -754,25 +839,98 @@
         </div>
 
         <div class="prd-note">
-          <strong>PRD · 签入代办 + 查验标记 + 配舱拆分 / 预录标识</strong>
+          <strong>PRD · 签入代办 + 工单一级入口 + 查验 / 配舱</strong>
           <ul>
-            <li><strong>触发条件：</strong>运单已签入，且<strong>报关资料未上传</strong> → 在对应<strong>业务员</strong>、<strong>客服</strong>的待办列表各生成一条代办。</li>
-            <li><strong>3.1 弹窗：</strong>右下角弹出「您有一件代办事项，请及时处理：<em>流程名称</em>」（如：签入后上传报关资料）。</li>
-            <li><strong>3.2 角标：</strong>「运单管理」「我的待办」顶栏 Tab、左侧「运单」模块菜单、<strong>列表运单行（序号列）</strong>展示未读角标；<strong>服务端推送/WebSocket 或轮询</strong>更新，<strong>无需手动刷新</strong>页面。</li>
-            <li><strong>运单行角标：</strong>该运单存在未处理代办（如签入后报关资料未上传）时，<strong>序号列（复选框+序号合并列）</strong>右上角显示红色角标「1」，整行浅橙底色提示；上传报关资料或处理完成后清除。</li>
-            <li><strong>消息铃铛：</strong>右上角铃铛角标展示三类未读总和（与 Tab/侧栏同步）；点击下拉：<strong>我的消息</strong>、<strong>我的代办</strong>、<strong>我的审批</strong>，各分类独立角标。</li>
-            <li><strong>查验挂票（NEW）：</strong>单票责任标打在<strong>运单列表</strong>（本页可筛、可见）。提单管理只提供「查验挂票」入口，<strong>提单业务标记列不展示</strong>挂票/运单号。查验中/查验放行仍在提单侧按轨迹编号打标。</li>
-            <li><strong>待配舱 / 终配舱（NEW）：</strong>原「待终配舱」拆成两个独立状态；页签与筛选分开，禁止再写合并态。系统按自动配舱规则终配落成的票，配舱阶段旁打「自动配舱」；手配或手改后再终配不打。关务预录作业见 <a href="产品部门/关务组/关务组-签入即预报资料-MVP.html">预录工作台</a>。</li>
-            <li><strong>预录标识（NEW）：</strong>列表展示<strong>报关行</strong>、<strong>预录单已确认</strong>（手动勾选，允许取消/修改）。<strong>上传放行单后锁定</strong>，不可再取消/修改。只看报关件的预录进度在关务独立页。</li>
-            <li><strong>运单报关编号 / 报关编号：</strong>同一套逻辑的两层。运单报关编号 + 运单上的单独/合并/拆分标记 = 客户<strong>原始需求</strong>，关务<strong>不改这层记录</strong>。报关编号 + 关务标记 = <strong>实际执行</strong>（推送、放行、内部作业、报关费都跟这层）。关务调整后续编新报关单号。例：客户合并 10 件 <code>ICBU00001-1(10)</code> 预估 1×300；关务拆成 <code>-2(3) -3(3) -4(4)</code> 收 3×300。详见 <a href="产品部门/关务组/关务组-签入即预报资料-MVP-PRD.html#m3-two">预录工作台 PRD §三</a>。</li>
-            <li><strong>发起工单（NEW）：</strong>勾选运单后点「发起工单」，弹出与整柜订单相同的分类场景列表；环节按配舱/出库状态自动判定，确认后进入新建统一工单（<code>source=waybill</code>）。</li>
+            <li><strong>我的工单待办（NEW · 业务员一级入口）：</strong>顶栏「我的工单待办」聚合<strong>待补资料 / 待确认费用 / 待验收 / 被打回</strong>。路径：运单管理 → 我的工单待办 → 右侧抽屉（或详情）→ 操作，最多两步完成。后续处理<strong>不必</strong>逐票进运单详情。</li>
+            <li><strong>列表行「发起工单」（NEW）：</strong>每行一键打开分类场景弹窗，带入本行运单；工具栏「发起工单」仍支持勾选后批量选场景。新建后回待办处理，不依赖进详情。</li>
+            <li><strong>运单详情「工单」页签：</strong>只回溯本票历史工单 + 发起新工单；日常补资料/确认费用/验收走「我的工单待办」。</li>
+            <li><strong>触发条件（报关资料代办）：</strong>运单已签入且报关资料未上传 → 业务员/客服「我的待办」各一条（与工单待办分开）。</li>
+            <li><strong>3.1 / 3.2 角标：</strong>签入代办仍打「运单管理」「我的待办」与行序号角标；工单待办单独打「我的工单待办」角标。</li>
+            <li><strong>查验挂票 / 配舱拆分 / 预录标识：</strong>口径同前；关务预录见 <a href="产品部门/关务组/关务组-签入即预报资料-MVP.html">预录工作台</a>。</li>
           </ul>
+        </div>
+        </div><!-- /viewWaybillList -->
+
+        <div class="view-panel" id="viewWoTodo">
+          <div class="wo-todo-head">
+            <h2>我的工单待办</h2>
+            <p>业务员日常一级入口。只看待我处理的工单：待补资料、待确认费用、待验收、被打回。点行打开右侧抽屉，最多两步完成；无需先开运单详情。</p>
+          </div>
+          <div class="wo-todo-filters" id="woTodoFilters">
+            <button type="button" class="wo-todo-chip on" data-kind="all">全部 <span class="n" id="woCntAll">4</span></button>
+            <button type="button" class="wo-todo-chip" data-kind="supp">待补资料 <span class="n">1</span></button>
+            <button type="button" class="wo-todo-chip" data-kind="fee">待确认费用 <span class="n">1</span></button>
+            <button type="button" class="wo-todo-chip" data-kind="accept">待验收 <span class="n">1</span></button>
+            <button type="button" class="wo-todo-chip" data-kind="reject">被打回 <span class="n">1</span></button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>工单号</th>
+                  <th>运单号</th>
+                  <th>场景</th>
+                  <th>待办类型</th>
+                  <th>当前节点</th>
+                  <th>待我做什么</th>
+                  <th>更新时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="woTodoBody"></tbody>
+            </table>
+          </div>
+          <div class="prd-note">
+            <strong>路径验收</strong>
+            <ul>
+              <li>运单管理 → 我的工单待办 → 抽屉操作（补资料 / 确认费用 / 验收 / 重提）→ 完成。</li>
+              <li>运单列表行「发起工单」→ 分类场景 → 新建页；处理回本页待办，不逐票进详情。</li>
+            </ul>
+          </div>
         </div>
       </main>
     </div>
   </div>
 
   <div class="todo-toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
+
+  <div class="drawer-mask" id="woHandleMask" aria-hidden="true">
+    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="woHandleTitle">
+      <div class="drawer-hd">
+        <div>
+          <h3 id="woHandleTitle">工单处理</h3>
+          <p class="sub" id="woHandleSub">—</p>
+        </div>
+        <button type="button" class="tool-btn outline" id="woHandleClose" aria-label="关闭">×</button>
+      </div>
+      <div class="drawer-bd" id="woHandleBody"></div>
+      <div class="drawer-ft" id="woHandleFt"></div>
+    </aside>
+  </div>
+
+  <div class="drawer-mask" id="wbDetailMask" aria-hidden="true">
+    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="wbDetailTitle">
+      <div class="drawer-hd">
+        <div>
+          <h3 id="wbDetailTitle">运单详情</h3>
+          <p class="sub" id="wbDetailSub">「工单」页签仅回溯本票历史并发起新工单</p>
+        </div>
+        <button type="button" class="tool-btn outline" id="wbDetailClose" aria-label="关闭">×</button>
+      </div>
+      <div class="drawer-bd">
+        <div class="drawer-tabs" id="wbDetailTabs">
+          <button type="button" class="drawer-tab on" data-tab="base">概要</button>
+          <button type="button" class="drawer-tab" data-tab="wo">工单</button>
+        </div>
+        <div id="wbDetailBase"></div>
+        <div id="wbDetailWo" hidden></div>
+      </div>
+      <div class="drawer-ft">
+        <button type="button" class="tool-btn outline" id="wbDetailClose2">关闭</button>
+        <button type="button" class="tool-btn warn" id="wbDetailCreateWo">发起工单</button>
+      </div>
+    </aside>
+  </div>
 
   <div class="wo-mask" id="woEntryMask" aria-hidden="true">
     <div class="wo-dialog" role="dialog" aria-modal="true" aria-labelledby="woEntryTitle">
@@ -1282,9 +1440,10 @@
           listEl.innerHTML = html;
           btnOk.disabled = !selectedScene;
         }
-        function open() {
-          var row = pickRow();
+        function openFromRow(row) {
           if (!row) { alert("请先勾选至少一条运单后再发起工单。"); return; }
+          var ck = row.querySelector(".wb-ck");
+          if (ck) ck.checked = true;
           ctx = readRowCtx(row);
           selectedScene = null;
           if (qEl) qEl.value = "";
@@ -1295,6 +1454,7 @@
           mask.classList.add("open");
           mask.setAttribute("aria-hidden", "false");
         }
+        function open() { openFromRow(pickRow()); }
         function close() {
           mask.classList.remove("open");
           mask.setAttribute("aria-hidden", "true");
@@ -1328,6 +1488,14 @@
         });
         if (qEl) qEl.addEventListener("input", renderList);
         if (showAllEl) showAllEl.addEventListener("change", renderList);
+        document.getElementById("wbBody").addEventListener("click", function (e) {
+          var btn = e.target.closest("[data-wo-create]");
+          if (!btn) return;
+          e.preventDefault();
+          openFromRow(btn.closest("tr"));
+        });
+        window.__openWoEntryFromRow = openFromRow;
+        window.__woEntryEsc = esc;
         (function bindHelp() {
           var wrap = document.getElementById("woEntryHelp");
           var btn = document.getElementById("woEntryHelpBtn");
@@ -1344,6 +1512,237 @@
             btn.setAttribute("aria-expanded", "false");
           });
         })();
+      })();
+
+      (function wireWoTodoEntry() {
+        var KIND_LABEL = { supp: "待补资料", fee: "待确认费用", accept: "待验收", reject: "被打回" };
+        var DETAIL_HREF = "产品部门/旁支/工单/工单详情-MVP.html";
+        var items = [
+          { id: "WO-202609-D01", wb: "FBA19DFXK542", scene: "换标·港前", kind: "supp", node: "待业务/客服补充", ask: "请补传新标签清晰照片（条码可读）", time: "05-21 09:12" },
+          { id: "WO-202609-D02", wb: "TX-20260806-009", scene: "港后·私卡改地址", kind: "fee", node: "费用差异待确认", ask: "改址费 $10.00，请确认客户可接受", time: "05-21 10:05" },
+          { id: "WO-202609-D03", wb: "TX-20260820-031", scene: "重出", kind: "accept", node: "待结果确认", ask: "海外仓已处理并回传面单，请验收", time: "05-21 11:20" },
+          { id: "WO-202609-D04", wb: "TX-20260820-044", scene: "快递拦截·港前", kind: "reject", node: "待业务/客服补充", ask: "验收退回：标签模糊，请重传后提交", time: "05-21 14:02" }
+        ];
+        var filterKind = "all";
+        var active = null;
+        var wbCtx = { wb: "", status: "", stage: "" };
+
+        function showView(which) {
+          document.getElementById("viewWaybillList").classList.toggle("show", which === "list");
+          document.getElementById("viewWoTodo").classList.toggle("show", which === "wo");
+          document.getElementById("tabWaybillMgmt").classList.toggle("active", which === "list");
+          document.getElementById("tabWoTodo").classList.toggle("active", which === "wo");
+        }
+        function renderTodoList() {
+          var body = document.getElementById("woTodoBody");
+          var rows = items.filter(function (x) { return filterKind === "all" || x.kind === filterKind; });
+          body.innerHTML = rows.map(function (x) {
+            return "<tr data-wo-id=\"" + x.id + "\">" +
+              "<td><a href=\"#\" data-open-drawer=\"" + x.id + "\">" + x.id + "</a></td>" +
+              "<td>" + x.wb + "</td><td>" + x.scene + "</td>" +
+              "<td><span class=\"kind-tag " + x.kind + "\">" + KIND_LABEL[x.kind] + "</span></td>" +
+              "<td>" + x.node + "</td><td>" + x.ask + "</td><td>" + x.time + "</td>" +
+              "<td><button type=\"button\" class=\"row-act-btn\" data-open-drawer=\"" + x.id + "\">处理</button></td></tr>";
+          }).join("") || "<tr><td colspan=\"8\" style=\"text-align:center;color:#8c8c8c;padding:24px\">暂无此类待办</td></tr>";
+          var badge = document.getElementById("badgeTabWoTodo");
+          if (badge) {
+            badge.textContent = String(items.length);
+            badge.classList.toggle("show", items.length > 0);
+            badge.classList.toggle("empty", items.length === 0);
+          }
+          var cnt = document.getElementById("woCntAll");
+          if (cnt) cnt.textContent = String(items.length);
+        }
+        function closeHandle() {
+          var m = document.getElementById("woHandleMask");
+          m.classList.remove("open");
+          m.setAttribute("aria-hidden", "true");
+          active = null;
+        }
+        function openHandle(id) {
+          var item = null;
+          for (var i = 0; i < items.length; i++) if (items[i].id === id) item = items[i];
+          if (!item) return;
+          active = item;
+          document.getElementById("woHandleTitle").textContent = KIND_LABEL[item.kind] + " · " + item.id;
+          document.getElementById("woHandleSub").textContent = item.wb + " · " + item.scene + " · " + item.node;
+          var body = document.getElementById("woHandleBody");
+          var ft = document.getElementById("woHandleFt");
+          var kv =
+            "<div class=\"drawer-kv\">" +
+            "<div class=\"k\">工单号</div><div class=\"v\">" + item.id + "</div>" +
+            "<div class=\"k\">运单号</div><div class=\"v\">" + item.wb + "</div>" +
+            "<div class=\"k\">场景</div><div class=\"v\">" + item.scene + "</div>" +
+            "<div class=\"k\">节点</div><div class=\"v\">" + item.node + "</div></div>" +
+            "<div class=\"drawer-ask\">" + item.ask + "</div>";
+          if (item.kind === "supp" || item.kind === "reject") {
+            body.innerHTML = kv +
+              "<label style=\"display:block;font-size:12px;color:#8c8c8c;margin-bottom:6px\">上传补充资料</label>" +
+              "<input type=\"file\" id=\"woDrawerFile\" />" +
+              "<p style=\"margin:8px 0 0;font-size:12px;color:#8c8c8c\">提交后回到待确认执行，海外客服继续处理。</p>";
+            ft.innerHTML =
+              "<a class=\"tool-btn outline\" href=\"" + DETAIL_HREF + "?" + "portal=cs&node=" + encodeURIComponent(item.node) + "#" + item.id + "\">打开详情</a>" +
+              "<button type=\"button\" class=\"tool-btn\" data-wo-act=\"cancel\">取消</button>" +
+              "<button type=\"button\" class=\"tool-btn warn\" data-wo-act=\"submit-supp\">提交补充</button>";
+          } else if (item.kind === "fee") {
+            body.innerHTML = kv +
+              "<label style=\"display:flex;align-items:center;gap:8px;font-size:13px\"><input type=\"radio\" name=\"woFeeGate\" value=\"accept\" /> 客户可接受此费用</label>" +
+              "<label style=\"display:flex;align-items:center;gap:8px;font-size:13px;margin-top:8px\"><input type=\"radio\" name=\"woFeeGate\" value=\"none\" /> 无需收费 / 承担差额</label>";
+            ft.innerHTML =
+              "<a class=\"tool-btn outline\" href=\"" + DETAIL_HREF + "?portal=cs#" + item.id + "\">打开详情</a>" +
+              "<button type=\"button\" class=\"tool-btn\" data-wo-act=\"cancel\">取消</button>" +
+              "<button type=\"button\" class=\"tool-btn warn\" data-wo-act=\"submit-fee\">确认费用</button>";
+          } else {
+            body.innerHTML = kv +
+              "<p style=\"margin:0;font-size:12px;color:#595959\">确认履约结果。通过后触发回写；退回则回到补充/重做。</p>";
+            ft.innerHTML =
+              "<a class=\"tool-btn outline\" href=\"" + DETAIL_HREF + "?portal=cs#" + item.id + "\">打开详情</a>" +
+              "<button type=\"button\" class=\"tool-btn\" data-wo-act=\"reject-acc\">退回返工</button>" +
+              "<button type=\"button\" class=\"tool-btn warn\" data-wo-act=\"pass-acc\">验收通过</button>";
+          }
+          var m = document.getElementById("woHandleMask");
+          m.classList.add("open");
+          m.setAttribute("aria-hidden", "false");
+        }
+        function doneItem(msg) {
+          if (!active) return;
+          items = items.filter(function (x) { return x.id !== active.id; });
+          closeHandle();
+          renderTodoList();
+          alert(msg || "已完成（演示）");
+        }
+        document.getElementById("tabWoTodo").addEventListener("click", function () {
+          showView("wo");
+          renderTodoList();
+        });
+        document.getElementById("tabWaybillMgmt").addEventListener("click", function () {
+          showView("list");
+        });
+        document.getElementById("sideWaybill").addEventListener("click", function () {
+          showView("list");
+        });
+        document.getElementById("woTodoFilters").addEventListener("click", function (e) {
+          var chip = e.target.closest("[data-kind]");
+          if (!chip) return;
+          filterKind = chip.getAttribute("data-kind");
+          document.querySelectorAll("#woTodoFilters .wo-todo-chip").forEach(function (c) {
+            c.classList.toggle("on", c === chip);
+          });
+          renderTodoList();
+        });
+        document.getElementById("woTodoBody").addEventListener("click", function (e) {
+          var open = e.target.closest("[data-open-drawer]");
+          if (!open) return;
+          e.preventDefault();
+          openHandle(open.getAttribute("data-open-drawer"));
+        });
+        document.getElementById("woHandleClose").addEventListener("click", closeHandle);
+        document.getElementById("woHandleMask").addEventListener("click", function (e) {
+          if (e.target === this) closeHandle();
+        });
+        document.getElementById("woHandleFt").addEventListener("click", function (e) {
+          var act = e.target.getAttribute("data-wo-act");
+          if (!act) return;
+          if (act === "cancel") { closeHandle(); return; }
+          if (act === "submit-supp") {
+            var f = document.getElementById("woDrawerFile");
+            if (f && (!f.files || !f.files.length)) { alert("请先选择补充附件"); return; }
+            doneItem("补充资料已提交，工单回到待确认执行（演示）");
+            return;
+          }
+          if (act === "submit-fee") {
+            var picked = document.querySelector("input[name=\"woFeeGate\"]:checked");
+            if (!picked) { alert("请先确认费用选项"); return; }
+            doneItem("费用已确认（演示）");
+            return;
+          }
+          if (act === "pass-acc") { doneItem("验收通过，已触发回写（演示）"); return; }
+          if (act === "reject-acc") { doneItem("已退回返工（演示）"); return; }
+        });
+
+        /* 运单详情抽屉：工单页签 = 历史 + 发起 */
+        function closeWbDetail() {
+          var m = document.getElementById("wbDetailMask");
+          m.classList.remove("open");
+          m.setAttribute("aria-hidden", "true");
+        }
+        function openWbDetail(wb) {
+          wbCtx = { wb: wb, status: "待配舱", stage: "装柜完成前" };
+          var row = null;
+          document.querySelectorAll("#wbBody tr").forEach(function (tr) {
+            var a = tr.querySelector(".waybill-no");
+            if (a && a.textContent.trim() === wb) row = tr;
+          });
+          if (row && window.__openWoEntryFromRow) {
+            /* keep row for create */
+          }
+          if (row) {
+            var cabin = row.cells[10] ? row.cells[10].textContent.replace(/\s+/g, " ").trim() : "";
+            wbCtx.status = cabin || "待配舱";
+            if (/终配舱|待出库|在途|已开船/.test(wbCtx.status)) wbCtx.stage = "港前";
+            else if (/已出库|港后|签收/.test(wbCtx.status)) wbCtx.stage = "港后";
+            else wbCtx.stage = "装柜完成前";
+          }
+          document.getElementById("wbDetailTitle").textContent = "运单 " + wb;
+          document.getElementById("wbDetailBase").innerHTML =
+            "<div class=\"drawer-kv\">" +
+            "<div class=\"k\">运单号</div><div class=\"v\">" + wb + "</div>" +
+            "<div class=\"k\">配舱阶段</div><div class=\"v\">" + wbCtx.status + "</div>" +
+            "<div class=\"k\">自动环节</div><div class=\"v\">" + wbCtx.stage + "</div>" +
+            "<div class=\"k\">说明</div><div class=\"v\">日常补资料/确认费用/验收请走顶栏「我的工单待办」，不必在此处理。</div></div>";
+          var hist = items.filter(function (x) { return x.wb === wb; });
+          var histHtml = hist.length
+            ? hist.map(function (x) {
+                return "<div class=\"wb-hist-item\"><strong>" + x.id + " · " + x.scene + "</strong>" +
+                  KIND_LABEL[x.kind] + " · " + x.node + "<br/>" + x.ask + "</div>";
+              }).join("")
+            : "<p style=\"font-size:12px;color:#8c8c8c\">本票暂无在办工单。可点下方发起新工单。</p>";
+          document.getElementById("wbDetailWo").innerHTML =
+            "<p style=\"margin:0 0 10px;font-size:12px;color:#595959\">本页签只用于<strong>回溯本票工单历史</strong>与<strong>发起新工单</strong>。</p>" + histHtml;
+          document.querySelectorAll("#wbDetailTabs .drawer-tab").forEach(function (t) {
+            t.classList.toggle("on", t.getAttribute("data-tab") === "base");
+          });
+          document.getElementById("wbDetailBase").hidden = false;
+          document.getElementById("wbDetailWo").hidden = true;
+          var m = document.getElementById("wbDetailMask");
+          m.classList.add("open");
+          m.setAttribute("aria-hidden", "false");
+        }
+        document.getElementById("wbBody").addEventListener("click", function (e) {
+          var a = e.target.closest("a.waybill-no");
+          if (!a) return;
+          e.preventDefault();
+          openWbDetail(a.textContent.trim());
+        });
+        document.getElementById("wbDetailTabs").addEventListener("click", function (e) {
+          var tab = e.target.closest("[data-tab]");
+          if (!tab) return;
+          var which = tab.getAttribute("data-tab");
+          document.querySelectorAll("#wbDetailTabs .drawer-tab").forEach(function (t) {
+            t.classList.toggle("on", t === tab);
+          });
+          document.getElementById("wbDetailBase").hidden = which !== "base";
+          document.getElementById("wbDetailWo").hidden = which !== "wo";
+        });
+        document.getElementById("wbDetailClose").addEventListener("click", closeWbDetail);
+        document.getElementById("wbDetailClose2").addEventListener("click", closeWbDetail);
+        document.getElementById("wbDetailMask").addEventListener("click", function (e) {
+          if (e.target === this) closeWbDetail();
+        });
+        document.getElementById("wbDetailCreateWo").addEventListener("click", function () {
+          closeWbDetail();
+          var row = null;
+          document.querySelectorAll("#wbBody tr").forEach(function (tr) {
+            var a = tr.querySelector(".waybill-no");
+            if (a && a.textContent.trim() === wbCtx.wb) row = tr;
+          });
+          if (window.__openWoEntryFromRow) window.__openWoEntryFromRow(row);
+        });
+
+        renderTodoList();
+        if (/[?&]woTodo=1/.test(location.search) || location.hash === "#woTodo") {
+          showView("wo");
+        }
       })();
     })();
   </script>

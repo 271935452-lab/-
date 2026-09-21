@@ -44,6 +44,34 @@
       box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
     }
     .hero h1 { margin: 0 0 8px; font-size: 20px; font-weight: 700; }
+    .exec-band {
+      grid-column: 1 / -1;
+      background: linear-gradient(180deg, #eff6ff 0%, #f8fbff 42%, #fff 100%);
+      border: 1px solid #93c5fd;
+      border-radius: 12px;
+      padding: 14px 16px 16px;
+    }
+    .zone-label, .info-zone-label {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .zone-label { color: #1e40af; margin-bottom: 10px; }
+    .zone-label span, .info-zone-label span { font-weight: 400; font-size: 12px; color: #64748b; }
+    .info-zone-label { grid-column: 1 / -1; color: #475569; margin: 2px 2px -4px; }
+    .exec-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .exec-band .action-dock { margin-top: 0; background: #fff; }
+    .exec-band .card { margin: 0; box-shadow: none; }
+    @media (max-width: 960px) { .exec-grid { grid-template-columns: 1fr; } }
     .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .pill {
       font-size: 12px;
@@ -78,13 +106,20 @@
     }
     .action-dock-head strong { font-size: 13px; color: #1e40af; }
     .action-dock-head span { font-size: 12px; color: #64748b; }
+    .action-dock-btns {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .action-dock .toolbar { width: auto; margin: 0; }
     .action-dock .toolbar-sec {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px dashed #dbeafe;
+      margin: 0;
+      padding: 0;
+      border: none;
     }
     .action-dock .toolbar-sec::before {
       content: "次要";
@@ -619,13 +654,16 @@
       line-height: 1;
       padding: 4px 8px;
     }
+    body.portal-cs .portal-ops-only { display: none !important; }
+    body.portal-cs .exec-grid { grid-template-columns: 1fr; }
+    body.portal-ops .portal-cs-only { display: none !important; }
   </style>
 </head>
 <body>
   <div class="page">
     <div class="crumb">
       <a href="原型导航-工单模块.html">工单模块</a> /
-      <a href="工单工作台-MVP.html">工作台</a> /
+      <a href="工单工作台-MVP.html?portal=ops" id="crumbBench">工作台</a> /
       <a href="工单提交-入口-MVP.html">工单提交</a> / 详情
     </div>
 
@@ -633,24 +671,52 @@
       <h1 id="heroTitle">EMSU1234567 拦截+换标+预报海外仓</h1>
       <div id="heroMeta" style="font-size:13px;color:var(--sub)">WO-202605-001 · 发起人：张三（业务员）· 创建 2026-05-05 09:12</div>
       <div id="handlerViewBanner" hidden style="margin-top:8px;font-size:12px;color:#9a3412;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:8px 10px;line-height:1.55"></div>
-      <div style="margin-top:8px;font-size:12px;color:#0f766e;background:#ecfdf5;border:1px solid #99f6e4;border-radius:8px;padding:8px 10px;display:inline-block">
-        履约入口：<a href="工单工作台-MVP.html" style="color:#0f766e;font-weight:700">履约工作台</a>
-        · 费用待确认时禁用「下发执行」
-        · 本页保留<strong>处理时间轴 / 操作日志</strong>；系统消息与催办提醒在通知模块（可跳回本详情），不在此重复做通知栏目
+      <div id="portalEntryBanner" style="margin-top:8px;font-size:12px;color:#0f766e;background:#ecfdf5;border:1px solid #99f6e4;border-radius:8px;padding:8px 10px;line-height:1.55">
+        当前入口：<strong>履约工作台 · 海外客服</strong>。同一张工单，操作区只放确认执行（含接单）、推送、回写。
       </div>
       <div class="pills" id="pillsRow"></div>
-      <div class="action-dock" id="actionDock">
-        <div class="action-dock-head">
-          <strong>当前可操作</strong>
-          <span id="actionDockHint">按当前状态仅展示本节点主操作；下方模块只读，不重复放执行钮</span>
-        </div>
-        <div class="toolbar" id="toolbarPrimary"></div>
-        <div class="toolbar toolbar-sec" id="toolbarSecondary"></div>
-      </div>
       <div class="toolbar" id="toolbar" hidden aria-hidden="true"></div>
     </header>
 
+    <section class="exec-band" aria-label="当前执行">
+      <div class="zone-label">当前执行 <span>本节点要做的事放这里。下面信息区只读，不重复放按钮。</span></div>
+      <div class="action-dock" id="actionDock">
+        <div class="action-dock-head">
+          <strong>当前可操作</strong>
+          <span id="actionDockHint">按当前状态仅展示本节点主操作</span>
+        </div>
+        <div class="action-dock-btns">
+          <div class="toolbar" id="toolbarPrimary"></div>
+          <div class="toolbar toolbar-sec" id="toolbarSecondary"></div>
+        </div>
+      </div>
+      <div class="exec-grid">
+        <div class="card portal-ops-only" id="workGuideCard" data-ui="UI-WO-GUIDE" data-br="BR-STS-010">
+          <h2>作业指引 <span style="font-size:11px;color:#64748b;font-weight:400">挂当前节点可执行功能 · BR-STS-010</span></h2>
+          <p style="font-size:12px;color:#64748b;margin:0 0 10px;line-height:1.5">
+            来自状态模板流转行配置；当前节点有哪些功能，就展示对应指引。点功能名可对照工作台操作弹窗（演示）。
+          </p>
+          <div id="workGuideList" class="guide-fn-list"></div>
+        </div>
+        <div class="card" id="instructionCard" data-ui="UI-WO-DETAIL-001" data-br="BR-WO-001">
+          <h2 id="instructionCardTitle">当前关联工单 <span style="font-size:11px;color:#64748b;font-weight:400">UI-WO-DETAIL-001 · 焦点区</span></h2>
+          <dl class="dl" style="margin-bottom:0">
+            <dt>处理对象</dt><dd id="instructionObject">柜 / 运单 / FBA / 主单（随工单带入）</dd>
+            <dt>执行指令</dt><dd id="instructionText">请按本单场景执行，上传结果凭证；涉及业务字段变更时必须等待客服验收后回写。</dd>
+            <dt>执行限制</dt><dd>国内仓在 PDA 提交结果，海外仓在仓系统回传；都不能自助完结本工单，客服验收通过后才算完成。</dd>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <div class="info-zone-label">工单信息 <span>查阅用。执行只在上方「当前执行」。</span></div>
+
     <div class="main-col">
+      <div class="card portal-cs-only" id="csNoteCard">
+        <h2>对客沟通备注</h2>
+        <p style="margin:0;font-size:13px;line-height:1.55;color:#334155">仅对客工作台可见。记客户诉求和待反馈话术，不进入履约执行日志，海外客服入口不展示。</p>
+      </div>
+
       <div class="card hidden" id="flowPrdCard">
         <h2 id="flowPrdTitle"></h2>
         <div class="prd-box" id="flowPrdBody"></div>
@@ -740,7 +806,7 @@
         <div class="ver-list" id="verList"></div>
       </div>
 
-      <div class="card hidden" id="sceneRuleCard" data-ui="UI-WO-018" data-br="BR-WO-018">
+      <div class="card hidden portal-ops-only" id="sceneRuleCard" data-ui="UI-WO-018" data-br="BR-WO-018">
         <h2>场景规则 · 审批流 / 推送 <span style="font-size:11px;color:#64748b;font-weight:400">SC-GQ-011 · BR-WO-018/019</span></h2>
         <dl class="dl" style="margin-bottom:12px">
           <dt>挂靠状态</dt><dd id="srOnStatus">处理中</dd>
@@ -764,23 +830,6 @@
           <dt>审批实例</dt><dd id="apvInst">—</dd>
         </dl>
         <p style="font-size:12px;color:#64748b;margin:0;line-height:1.5">工单侧仅体现<strong>审批中 / 通过 / 驳回</strong>等摘要及本单放行结果；详细审批节点、审批人、意见以现有审批系统为准。</p>
-      </div>
-
-      <div class="card" id="workGuideCard" data-ui="UI-WO-GUIDE" data-br="BR-STS-010">
-        <h2>作业指引 <span style="font-size:11px;color:#64748b;font-weight:400">挂当前节点可执行功能 · BR-STS-010</span></h2>
-        <p style="font-size:12px;color:#64748b;margin:0 0 10px;line-height:1.5">
-          来自状态模板流转行配置；当前节点有哪些功能，就展示对应指引。点功能名可对照工作台操作弹窗（演示）。
-        </p>
-        <div id="workGuideList" class="guide-fn-list"></div>
-      </div>
-
-      <div class="card" id="instructionCard" data-ui="UI-WO-DETAIL-001" data-br="BR-WO-001">
-        <h2 id="instructionCardTitle">当前指令工单 <span style="font-size:11px;color:#64748b;font-weight:400">UI-WO-DETAIL-001 · 焦点区</span></h2>
-        <dl class="dl" style="margin-bottom:0">
-          <dt>处理对象</dt><dd id="instructionObject">柜 / 运单 / FBA / 主单（随工单带入）</dd>
-          <dt>执行指令</dt><dd id="instructionText">请按本单场景执行，上传结果凭证；涉及业务字段变更时必须等待客服验收后回写。</dd>
-          <dt>执行限制</dt><dd>海外仓/PDA 只能「提交结果」，不可自助完结本工单；客服验收通过后才算完成。</dd>
-        </dl>
       </div>
 
       <div class="card" id="warehouseFeedbackCard" data-ui="UI-WO-DETAIL-002" data-br="BR-WO-002">
@@ -817,19 +866,19 @@
       </div>
 
       <div class="card" id="feeCard" data-ui="UI-WO-DETAIL-004" data-br="BR-FEE-001">
-        <h2>费用确认 <span style="font-size:11px;color:#64748b;font-weight:400">BR-FEE-001 · 快照只读</span></h2>
+        <h2>费用记录 <span style="font-size:11px;color:#64748b;font-weight:400">BR-FEE-001 · 回写展示</span></h2>
         <p class="module-hint" id="hintFee" hidden></p>
-        <p style="font-size:12px;color:#64748b;margin:0 0 10px;line-height:1.5">展示费用快照、确认人、依据与历史；仓回传默认追加运单应付。确认操作仅在上方工具栏。</p>
+        <p style="font-size:12px;color:#64748b;margin:0 0 10px;line-height:1.5">预计费用在发起前校验，不占状态。海外仓回写的实际费用在这里做记录和对账。只有与已确认费用不一致，或新增费用项，才生成「费用差异待确认」。</p>
         <dl class="dl" style="margin-bottom:0">
           <dt>关联运单</dt><dd id="feeWaybill">关联运单 · 仓回传费用默认追加应付</dd>
           <dt>应收预估（业务侧）</dt><dd id="feeEstimate">USD 25.00（预估，不覆盖应付）</dd>
           <dt>费用返回状态</dt><dd><span class="pill risk" id="feeStatus">待海外仓反馈</span></dd>
           <dt>实际费用（仓回传）</dt><dd id="feeActualRaw">—</dd>
-          <dt>审核</dt><dd id="feeAuditLine">场景「实际费用需审核」= 是 → 待审核；否 → 直接追加到运单应付 + 实际成本</dd>
+          <dt>审核</dt><dd id="feeAuditLine">一致则只展示，不生成待办。不一致或新增费用项 → 费用差异待确认（向客户加收 / 承担差额 / 关闭差额）</dd>
           <dt>运单应付（审核通过后）</dt><dd id="feePayable">—（追加仓回传金额；与应收预估分存）</dd>
           <dt>实际成本</dt><dd id="feeCost">—（与应收预估分存）</dd>
           <dt>费用明细</dt><dd id="feeLines">费用名称、币种、金额、数量、单位待回传。</dd>
-          <dt>防重键</dt><dd id="feeDedup">指令号 + 费用项 + 回传批次/外部单号</dd>
+          <dt>防重键</dt><dd id="feeDedup">工单号 + 费用项 + 回传批次/外部单号</dd>
           <dt>外部费用 ID / 版本</dt><dd id="feeExternalId">— / —</dd>
           <dt>财务同步状态</dt><dd><span class="pill">待二期处理</span>；财务草稿号：—</dd>
         </dl>
@@ -843,7 +892,7 @@
       <div class="card">
         <h2>工单字段</h2>
         <dl class="dl" id="fieldsDl"></dl>
-        <div class="field-edit" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e2e8f0">
+        <div class="field-edit portal-ops-only" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e2e8f0">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div>
               <label for="editRelatedWo" style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">关联工单</label>
@@ -979,7 +1028,7 @@
       </select>
       <label class="drawer-check">
         <input type="checkbox" id="followReplace" checked />
-        <span id="followReplaceLabel">替代上一版（向海外仓声明「后续指令 / 替代关系」）</span>
+        <span id="followReplaceLabel">替代上一版（向海外仓声明「关联续办 / 替代关系」）</span>
       </label>
       <p id="followModeHint" style="font-size:12px;color:#64748b;margin:10px 0 0;line-height:1.55"></p>
     </div>
@@ -994,7 +1043,7 @@
   <script>
     const ACTORS = [
       { key: "starter", label: "业务员 / 产品", desc: "发起人、补充资料、确认结果" },
-      { key: "fu", label: "港前客服（付雪）", desc: "接收 / 驳回、拦截换标、预报海外仓" },
+      { key: "fu", label: "港前客服", desc: "接收 / 驳回、拦截换标、预报海外仓" },
       { key: "private", label: "港后私卡客服", desc: "改地址、预约联系不上；判断后转自提" },
       { key: "fba", label: "港后 FBA 客服", desc: "改仓、改原单费用、尾端派送调整" },
       { key: "pickup", label: "港后自提客服", desc: "确认转自提、联动运单、到仓回执" },
@@ -1011,17 +1060,17 @@
         pills: [
           { text: "阶段：港前", cls: "doing" },
           { text: "场景：港前·柜子计划拦截换标", cls: "" },
-          { text: "状态：待付雪接收", cls: "risk" },
+          { text: "状态：待港前客服接收", cls: "risk" },
         ],
         slaClass: "",
-        sla: "<strong>港前（付雪）：</strong>需在<strong>约定时效内</strong>完成「接收 / 驳回」。<br /><strong>海外仓侧：</strong>预报后由提柜拆柜组承接。",
+        sla: "<strong>港前客服：</strong>需在<strong>约定时效内</strong>完成「接收 / 驳回」。<br /><strong>海外仓侧：</strong>预报后由提柜拆柜组承接。",
         timeline: [
           { t: "2026-05-05 09:12", text: "张三 创建工单。", done: true },
-          { t: "待记录", text: "付雪 <strong>接收</strong>或<strong>驳回</strong>；接收后执行拦截 / 换标 / 预报。", pending: true },
+          { t: "待记录", text: "港前客服 <strong>接收</strong>或<strong>驳回</strong>；接收后执行拦截 / 换标 / 预报。", pending: true },
         ],
         fields: [
           ["关联单号", "EMSU1234567"],
-          ["当前处理人", "付雪（港前）"],
+          ["当前处理人", "港前客服"],
           ["责任角色", "ROLE_GANGQIAN"],
           ["工单类型", "港前分流 / 接收驳回"],
         ],
@@ -1056,7 +1105,7 @@
           ["工单号", "WO-202605-INT"],
           ["关联工单", "—（本链路首单）"],
           ["根关联", "柜 EMSU8899001 · 货件 FBA15ABCDE"],
-          ["当前处理人", "付雪（港前）/ 海外仓协同"],
+          ["当前处理人", "港前客服 / 海外仓协同"],
           ["责任角色", "ROLE_GANGQIAN + 美库执行"],
           ["工单类型", "快递拦截 · 港后"],
         ],
@@ -1212,7 +1261,7 @@
           "前置/后置：运单不限制；账单不限。执行动作：Move Type=<strong>留仓</strong>；柜子备注写换标要求。<br />" +
           "提交执行：须审批<strong>通过放行</strong>后；API 自动推 / 无 API→待人工发送。回写：处理结果、实际费用、回执附件、修改地址、修改渠道。",
         timeline: [
-          { t: "2026-05-09 09:00", text: "张三 创建换标指令，关联柜 EMSU7788123。", done: true },
+          { t: "2026-05-09 09:00", text: "张三 创建换标工单，关联柜 EMSU7788123。", done: true },
           { t: "2026-05-09 09:20", text: "费用已确认 · <strong>新标签.pdf</strong> 已上传。", done: true },
           { t: "2026-05-09 09:25", text: "已引用现网审批实例 <strong>AP-202605-01</strong>（AF-LABEL-PRE）· 工单仅展示审批摘要。", done: true },
           { t: "待操作", text: "审批通过放行后，点「<strong>提交执行</strong>」→ 写留仓+备注 → 按仓能力自动推送或待人工发送。", pending: true },
@@ -1228,7 +1277,7 @@
           ["海外仓", "美库（支持 API）· 可切演示无接口仓"],
           ["推送前条件", "费用已确认 ✓ · 新标签必传 ✓ · 审批摘要通过放行"],
           ["审批摘要", "审批中 · 实例 AP-202605-01（详情见审批系统）"],
-          ["当前处理人", "付雪（港前）"],
+          ["当前处理人", "港前客服"],
           ["推送状态", '<span id="fieldPushSt">未提交</span>'],
         ],
         toolbar: ["viewApprove", "submitExec", "markSent", "retryPush", "submitResult", "acceptPass", "acceptReject", "acceptUnable", "transfer", "urge", "close"],
@@ -1250,7 +1299,7 @@
         bizMode: "container",
         biz: {
           waybill: "EMSU7788123",
-          role: "付雪（港前客服）",
+          role: "港前客服",
           config: "SC-GQ-011 · 执行动作：Move Type→留仓；柜子备注←换标要求",
           before: "Move Type = TRUCK · 备注空",
           after: "Move Type = 留仓 · 备注=港前换标要求",
@@ -1584,15 +1633,20 @@
     const BTN_MAP = {
       editDraft: { label: "编辑", cls: "btn" },
       submitWo: { label: "提交工单", cls: "btn-primary" },
-      feasibilityOk: { label: "确认可执行", cls: "btn-ok" },
+      confirmExec: { label: "确认执行", cls: "btn-primary" },
+      askSupp: { label: "要求补充资料", cls: "btn" },
+      execVoid: { label: "不可执行/关闭", cls: "btn-danger" },
+      execMgr: { label: "提交经理确认", cls: "btn" },
+      uploadSupp: { label: "上传补充资料", cls: "btn-primary" },
       feasibilityNo: { label: "不可执行", cls: "btn-danger" },
       viewApprove: { label: "查看审批", cls: "btn-primary" },
       addDocs: { label: "补充资料", cls: "btn" },
       confirmDispatch: { label: "确认下发", cls: "btn-primary" },
-      pushWh: { label: "推送海外仓", cls: "btn-primary" },
-      markSent: { label: "登记已发送", cls: "btn-teal" },
+      dispatchExec: { label: "下发执行", cls: "btn-primary" },
+      pushWh: { label: "下发执行", cls: "btn-primary" },
+      markSent: { label: "下发执行", cls: "btn-primary" },
       submitResult: { label: "登记处理结果", cls: "btn-primary" },
-      confirmActualFee: { label: "确认实际费用", cls: "btn-finance" },
+      confirmFeeDiff: { label: "确认费用差异", cls: "btn-finance" },
       acceptPass: { label: "验收通过", cls: "btn-ok" },
       acceptReject: { label: "退回返工", cls: "btn-danger" },
       acceptUnable: { label: "确认无法执行", cls: "btn" },
@@ -1616,12 +1670,12 @@
     /** 正式状态 → 顶部唯一主操作（次要：交接/催办另区） */
     const FORMAL_STATUS = [
       { id: "draft", label: "草稿", primary: ["editDraft", "submitWo"], hint: "打开发起或编辑弹窗", module: null },
-      { id: "feasibility", label: "待可行性确认", primary: ["feasibilityOk", "feasibilityNo"], hint: "可行性确认弹窗", module: null },
-      { id: "approval", label: "待经理审批", primary: ["viewApprove"], hint: "跳转或打开现有审批流摘要", module: null },
-      { id: "prepare", label: "待执行准备", primary: ["addDocs", "confirmDispatch"], hint: "附件与指令弹窗", module: null },
-      { id: "dispatch", label: "待外部下发", primary: ["pushWh", "markSent"], hint: "二次确认弹窗", module: "warehouse" },
-      { id: "executing", label: "海外仓执行中", primary: ["submitResult"], hint: "结果录入弹窗", module: "warehouse" },
-      { id: "actualFee", label: "待实际费用确认", primary: ["confirmActualFee"], hint: "费用确认弹窗", module: "fee" },
+      { id: "execConfirm", label: "待确认执行", primary: ["confirmExec", "askSupp", "execVoid", "execMgr"], hint: "接单与确认执行准备已合并；另有要求补充资料、不可执行/关闭；拦截场景可提交经理确认", module: null },
+      { id: "bizSupp", label: "待业务/客服补充", primary: ["uploadSupp"], hint: "业务客服上传后自动回到待确认执行", module: null },
+      { id: "approval", label: "待经理审批", primary: ["viewApprove"], hint: "通过后回到待确认执行", module: null },
+      { id: "dispatch", label: "待外部下发", primary: ["dispatchExec"], hint: "单一按钮；系统按仓能力走 API 或人工登记", module: "warehouse" },
+      { id: "executing", label: "海外仓执行中", primary: ["submitResult"], hint: "结果录入弹窗；推送失败时另出重试推送", module: "warehouse" },
+      { id: "actualFee", label: "费用差异待确认", primary: ["confirmFeeDiff"], hint: "仅差额或新增费用项", module: "fee" },
       { id: "accept", label: "待结果确认", primary: ["acceptPass", "acceptReject"], hint: "结果确认弹窗", module: "writeback" },
       { id: "wbFail", label: "回写失败", primary: ["retryWriteback", "manualHandle"], hint: "重试或异常处理弹窗", module: "writeback" },
       { id: "done", label: "待结案", primary: ["close"], hint: "本单终态关闭（验收 ≠ 结案）", module: null },
@@ -1677,17 +1731,17 @@
     };
 
     const POOL_MEMBERS = {
-      fu: ["付雪（港前）", "港前-李四"],
+      fu: ["港前客服", "港前-李四"],
       private: ["王敏（私卡客服）", "陈静（私卡客服）"],
       pickup: ["李俊（自提客服）", "周婷（自提客服）"],
       after: ["王敏（私卡客服）", "李俊（自提客服）", "FBA客服-张磊"],
       finance: ["王敏（财务复核）", "赵会计"],
       starter: ["亚马逊客服-小张", "异常件督办-小王"],
-      default: ["付雪（港前）", "王敏（私卡客服）", "李俊（自提客服）"],
+      default: ["港前客服", "王敏（私卡客服）", "李俊（自提客服）"],
     };
 
     const DEMO_USER = {
-      fu: "付雪（港前）",
+      fu: "港前客服",
       private: "王敏（私卡客服）",
       pickup: "李俊（自提客服）",
       finance: "王敏（财务复核）",
@@ -1717,8 +1771,37 @@
       });
     }
 
+    function statusBlob(v) {
+      return ((v && v.pills) || []).map(function (p) { return p.text; }).join(" ") + " " + String((v && v.title) || "") + " " + String((v && v.meta) || "");
+    }
+
+    /** 按演示单 pills/文案推断正式状态，避免一律落到「待外部下发」 */
+    function inferFormalStatus(v) {
+      var text = statusBlob(v);
+      if (/草稿/.test(text)) return "draft";
+      if (/待业务\/客服补充|待业务补充|待客服补充|待补充资料/.test(text)) return "bizSupp";
+      if (/费用差异/.test(text)) return "actualFee";
+      if (/回写失败/.test(text)) return "wbFail";
+      if (/待结果确认|待客服验收|待验收/.test(text)) return "accept";
+      if (/待外部下发|待人工发送|待推送/.test(text)) return "dispatch";
+      if (/待经理|审批中|待审批/.test(text) && /审批|经理/.test(text)) return "approval";
+      if (/已结案|已完成|待结案|已关闭/.test(text)) return "done";
+      if (/执行中|已推送|已接收|调查中|待海外仓|私卡处理中|处理中/.test(text) && !/待确认执行|待受理|待接收|待执行|待提交/.test(text)) return "executing";
+      if (/待确认执行|待受理|待接收|待港前客服接收|待执行|待提交执行|待自提确认|待财务确认/.test(text)) return "execConfirm";
+      return "execConfirm";
+    }
+
+    function warehouseHasApi(v, rt) {
+      if (rt && rt.hasWhApi != null) return !!rt.hasWhApi;
+      var blob = statusBlob(v) + " " + ((v && v.fields) || []).map(function (f) { return f[1]; }).join(" ") + " " + String((v && v.sla) || "");
+      if (/无接口|待人工发送|线下指令/.test(blob) && !/支持 API|美库（支持/.test(blob)) return false;
+      if (/支持 API|API 仓|美库（支持|自动推送/.test(blob)) return true;
+      return null;
+    }
+
     function ensureRuntime(id, v) {
       if (runtime[id]) return runtime[id];
+      var inferred = inferFormalStatus(v);
       var rt = {
         timeline: [],
         received: false,
@@ -1732,12 +1815,13 @@
         statusCls: null,
         versions: v.showVersionChain ? cloneVersions(v.versions) : null,
         pushSt: null, // pending_manual | pushed | failed | sent_manual
-        formalStatus: "dispatch",
+        formalStatus: inferred,
       };
+      if (inferred === "done") rt.closed = true;
       (v.timeline || []).forEach(function (it) {
         if (it.done && /接收/.test(it.text)) rt.received = true;
       });
-      if (/待.*接收|待付雪接收/.test((v.pills || []).map(function (p) { return p.text; }).join(" "))) {
+      if (/待.*接收|待港前客服接收/.test(statusBlob(v))) {
         rt.received = false;
       }
       if (id === "WO-202605-014" || id === "WO-202605-012" || id === "WO-202605-009" || id === "WO-202605-INT" || id === "WO-202605-LABEL") {
@@ -1820,7 +1904,7 @@
         '<div class="row"><strong>上一版</strong> ' + (prev ? prev.ver + " · " + prev.summary + " · " + prev.whStatus : "无") + "</div>";
 
       document.getElementById("followReq").value =
-        followDrawerMode === "withdraw" ? "撤回并替换上一版指令（重发）" : "改渠道为快递重出，并换标";
+        followDrawerMode === "withdraw" ? "撤回并替换上一版工单（重发）" : "改渠道为快递重出，并换标";
       document.getElementById("followSla").value = "24h 内海外仓确认可执行";
       document.getElementById("followAttach").value = "";
       document.getElementById("followFee").value = "ok";
@@ -1839,7 +1923,7 @@
         hint.textContent = withdrawOk
           ? "上一版尚未受理，也可在版本卡上点「撤回并替换」。当前操作为升版新建。"
           : "上一版已受理或执行中：不可撤回替换，必须创建下一版，并向美库声明替代关系。";
-        replaceLabel.textContent = "替代上一版（向海外仓声明「后续指令 / 替代关系」）";
+        replaceLabel.textContent = "替代上一版（向海外仓声明「关联续办 / 替代关系」）";
       }
 
       document.getElementById("drawerBackdrop").classList.add("show");
@@ -1946,13 +2030,13 @@
           ver.state === "withdrawn" ? '<span class="pill closed">已撤回</span>' :
           ver.state === "closed" ? '<span class="pill closed">本版已关</span>' :
           '<span class="pill">—</span>';
-        if (handlerView && isFocus) pill += '<span class="pill doing">本指令</span>';
+        if (handlerView && isFocus) pill += '<span class="pill doing">本工单</span>';
         var actions = "";
         var fee = ver.fee;
         var attach = ver.attach;
         var result = ver.result;
         if (handlerView && !isFocus) {
-          fee = attach = result = "无本指令处理权限 · 不展示其他子工单明细";
+          fee = attach = result = "无本工单处理权限 · 不展示其他关联工单明细";
           actions = "";
         } else if (ver.state === "current" && canWithdrawVersion(ver)) {
           actions =
@@ -1969,11 +2053,11 @@
           (ver.replace ? '<span class="pill risk">替代 ' + ver.prev + "</span>" : "") +
           "</div>" +
           '<div class="ver-meta">' +
-          "<div>指令工单：<b>" + (ver.instrId || "—") + "</b>" + (ver.pool ? " · " + ver.pool : "") + "</div>" +
+          "<div>关联工单：<b>" + (ver.instrId || "—") + "</b>" + (ver.pool ? " · " + ver.pool : "") + "</div>" +
           "<div>处理人：<b>" + (ver.handler || "—") + "</b></div>" +
           "<div>上一版本：<b>" + (ver.prev || "—") + "</b></div>" +
           "<div>美库工单：<b>" + ver.mk + "</b></div>" +
-          "<div>指令：<b>" + ver.summary + "</b></div>" +
+          "<div>执行指令：<b>" + ver.summary + "</b></div>" +
           "<div>仓内状态：<b>" + ver.whStatus + "</b></div>" +
           "<div>本版费用：<b>" + fee + "</b></div>" +
           "<div>本版附件：<b>" + attach + "</b></div>" +
@@ -2120,13 +2204,52 @@
     function formalStatusOf(rt) {
       if (rt && rt.closed) return "done";
       if (rt && rt.formalStatus && FORMAL_STATUS_MAP[rt.formalStatus]) return rt.formalStatus;
-      return "dispatch";
+      return "execConfirm";
     }
 
+    function pagePortal() {
+      try {
+        return new URLSearchParams(location.search).get("portal") === "cs" ? "cs" : "ops";
+      } catch (_) {
+        return "ops";
+      }
+    }
+
+    var PORTAL_ACTIONS = {
+      cs: ["editDraft", "submitWo", "addDocs", "uploadSupp", "confirmFeeDiff", "confirmActualFee", "confirmFee", "acceptPass", "acceptReject", "close", "urge"],
+      ops: ["receive", "reject", "confirmExec", "askSupp", "execVoid", "execMgr", "feasibilityNo", "viewApprove", "confirmDispatch", "dispatchExec", "pushWh", "markSent", "submitResult", "retryWriteback", "manualHandle", "retryPush", "submitExec", "transfer", "acceptUnable", "toPickup", "childWo", "confirmPickup", "addInstr", "notifyWh"],
+    };
+
+    var SCENE_ONLY_KEYS = ["toPickup", "childWo", "confirmPickup", "confirmFee", "notifyWh", "addInstr", "reject", "acceptUnable"];
+
     function toolbarKeys(v, rt) {
-      var st = FORMAL_STATUS_MAP[formalStatusOf(rt)] || FORMAL_STATUS_MAP.dispatch;
-      var primary = st.primary.slice();
-      var secondary = st.id === "done" || (rt && rt.closed) ? [] : SECONDARY_ALWAYS.slice();
+      var st = FORMAL_STATUS_MAP[formalStatusOf(rt)] || FORMAL_STATUS_MAP.execConfirm;
+      var allow = PORTAL_ACTIONS[pagePortal()] || PORTAL_ACTIONS.ops;
+      var primary = st.primary.filter(function (k) { return allow.indexOf(k) >= 0; });
+      if (st.id === "execConfirm" && !/拦截/.test(String((v && v.title) || "") + " " + String((v && v.scene) || ""))) {
+        primary = primary.filter(function (k) { return k !== "execMgr"; });
+      }
+      if (st.id === "executing" && rt && rt.pushSt === "failed" && allow.indexOf("retryPush") >= 0) {
+        primary = ["retryPush"].concat(primary.filter(function (k) { return k !== "retryPush"; }));
+      }
+      if (st.id === "dispatch" && rt && rt.pushSt === "failed" && allow.indexOf("retryPush") >= 0) {
+        primary = ["retryPush"].concat(primary.filter(function (k) { return k !== "retryPush"; }));
+      }
+      if (rt && rt.feeDiffPending && primary.indexOf("confirmFeeDiff") < 0 && allow.indexOf("confirmFeeDiff") >= 0) {
+        primary.push("confirmFeeDiff");
+      }
+      if (st.id !== "actualFee" && !(rt && rt.feeDiffPending)) {
+        primary = primary.filter(function (k) { return k !== "confirmFeeDiff"; });
+      }
+      (v && v.toolbar || []).forEach(function (k) {
+        if (SCENE_ONLY_KEYS.indexOf(k) < 0) return;
+        if (allow.indexOf(k) < 0) return;
+        if (primary.indexOf(k) >= 0) return;
+        primary.push(k);
+      });
+      var secondary = (st.id === "done" || (rt && rt.closed) ? [] : SECONDARY_ALWAYS.slice()).filter(function (k) {
+        return allow.indexOf(k) >= 0;
+      });
       return { primary: primary, secondary: secondary, status: st };
     }
 
@@ -2271,7 +2394,40 @@
       }
       if (key === "submitWo") {
         if (!confirm("提交工单？（演示）")) return;
-        goStatus("feasibility", "发起人<strong>提交工单</strong>，进入待可行性确认。", "已提交 · 待可行性确认");
+        goStatus("execConfirm", "发起人<strong>提交工单</strong>，进入待确认执行。", "已提交 · 待确认执行");
+        return;
+      }
+      if (key === "confirmExec") {
+        if (!confirm("确认执行？须已核对可行性与执行准备。接单已并入此步。（演示）")) return;
+        goStatus("executing", "确认执行（含接单）：可行性与执行准备已核对。已按配置更新头程并推送海外仓/生成线下执行指令。", "已进入执行中");
+        return;
+      }
+      if (key === "askSupp") {
+        var miss = prompt("缺失项（标签/地址/客户指令/费用凭证）", "地址");
+        if (miss == null || !String(miss).trim()) return;
+        goStatus("bizSupp", "要求补充资料：<strong>" + miss + "</strong>。状态变为待业务/客服补充，业务客服上传后自动回到待确认执行。", "待业务/客服补充");
+        return;
+      }
+      if (key === "uploadSupp") {
+        if (!confirm("已补充，回到待确认执行？（演示）")) return;
+        goStatus("execConfirm", "业务客服已补充，自动回到待确认执行。", "待确认执行");
+        return;
+      }
+      if (key === "execVoid") {
+        var why = prompt("不可执行原因（必填）", "货已出发，无法拦截");
+        if (why == null || !String(why).trim()) return;
+        goStatus("done", "不可执行/关闭：" + why, "已关闭");
+        return;
+      }
+      if (key === "execMgr") {
+        var blob = ((v && (v.title || "")) + " " + (v && v.scene || "") + " " + document.body.innerText).slice(0, 4000);
+        if (!/拦截/.test(blob)) {
+          alert("提交经理确认仅限港后拦截等高影响场景");
+          return;
+        }
+        var mgrWhy = prompt("提交经理确认的原因", "港后拦截，需经理确认");
+        if (mgrWhy == null || !String(mgrWhy).trim()) return;
+        goStatus("approval", "提交经理确认：" + mgrWhy + "。通过后回到待确认执行。", "待经理确认");
         return;
       }
       if (key === "feasibilityOk") {
@@ -2286,7 +2442,7 @@
         return;
       }
       if (key === "addDocs") {
-        alert("打开附件与指令弹窗（演示）。资料补齐后点「确认下发」。");
+        alert("打开附件弹窗（演示）。资料补齐后点「确认下发」。");
         return;
       }
       if (key === "confirmDispatch" || key === "submitExec") {
@@ -2294,21 +2450,41 @@
         goStatus("dispatch", "执行准备完成，<strong>确认下发</strong>。", "已确认下发 · 待外部下发");
         return;
       }
-      if (key === "pushWh") {
-        if (!confirm("确认推送海外仓？（演示）")) return;
-        rt.pushSt = "pushed";
-        rt.whTaskNo = "MK-LBL-9001";
-        goStatus("executing", "已<strong>推送海外仓</strong> · 任务号 MK-LBL-9001。", "已推送海外仓");
+      if (key === "dispatchExec" || key === "pushWh" || key === "markSent") {
+        if (!confirm("确认下发执行？系统按仓库对接能力自动选择 API 推送或人工登记（演示）")) return;
+        var api = warehouseHasApi(v, rt);
+        if (api === null) {
+          api = confirm("演示：目标仓是否支持 API？\n\n确定 = API 推送\n取消 = 无接口仓，登记已发送");
+          rt.hasWhApi = !!api;
+        }
+        if (api) {
+          rt.pushSt = "pushed";
+          rt.whTaskNo = "MK-LBL-9001";
+          goStatus("executing", "下发执行 · <strong>API 推送海外仓</strong> · 任务号 MK-LBL-9001。", "已推送海外仓");
+        } else {
+          rt.pushSt = "sent_manual";
+          goStatus("executing", "下发执行 · 无接口仓，已<strong>登记发送</strong>。", "已登记发送");
+        }
         return;
       }
-      if (key === "confirmActualFee") {
-        if (!confirm("确认实际费用并记入运单应付快照？（演示）")) return;
+      if (key === "confirmActualFee" || key === "confirmFeeDiff") {
+        var how = prompt("费用差异：向客户加收 / 承担差额 / 关闭差额", "承担差额");
+        if (how == null) return;
+        how = String(how).trim();
+        if (["向客户加收", "承担差额", "关闭差额"].indexOf(how) < 0) {
+          alert("请选择：向客户加收、承担差额或关闭差额");
+          return;
+        }
+        rt.feeDiffPending = false;
         rt.feeSynced = true;
         var feeSt = document.getElementById("feeStatus");
-        if (feeSt) { feeSt.textContent = "已确认 · 已入运单应付"; feeSt.className = "pill ok"; }
-        var pay = document.getElementById("feePayable");
-        if (pay) pay.textContent = "运单应付 +USD 18.00（已追加）";
-        goStatus("accept", "客服<strong>确认实际费用</strong>，快照已保存。", "实际费用已确认 · 待结果确认");
+        if (feeSt) { feeSt.textContent = "差额已处理 · " + how; feeSt.className = "pill ok"; }
+        if (rt.formalStatus === "actualFee") goStatus("accept", "费用差异已处理：<strong>" + how + "</strong>。工单继续验收，不把实际费用确认当作必经节点。", "待结果确认");
+        else {
+          pushTimeline(rt, demoNow(), "费用差异已处理：<strong>" + how + "</strong>。工单状态不变。", true);
+          toast("费用差异已处理 · " + how);
+          render();
+        }
         return;
       }
       if (key === "retryWriteback") {
@@ -2324,15 +2500,7 @@
       }
 
       if (key === "receive") {
-        if (rt.received) return;
-        rt.received = true;
-        var who = DEMO_USER[v.activeActor] || "当前处理人（演示）";
-        rt.handler = who;
-        rt.statusText = "处理中";
-        rt.statusCls = "doing";
-        pushTimeline(rt, demoNow(), who + " <strong>接收</strong>工单。", true);
-        toast("已接收工单");
-        render();
+        alert("接单已并入「确认执行」。请在当前可操作里点确认执行，一次完成接单与执行准备核对。");
         return;
       }
 
@@ -2411,8 +2579,12 @@
           ({ pending: "审批中", passed: "通过", rejected: "驳回", none: "—" }[st] || st);
         if (st === "pending" && confirm(msg + "\n\n确定 = 模拟审批通过回调\n取消 = 仅查看")) {
           rt.apvStatus = "passed";
-          pushTimeline(rt, demoNow(), "现网审批回调：实例 <strong>" + inst + "</strong> <strong>通过</strong> · 工单放行，可提交执行。", true);
-          toast("审批已通过 · 工单已放行");
+          pushTimeline(rt, demoNow(), "现网审批回调：实例 <strong>" + inst + "</strong> <strong>通过</strong> · 回到待确认执行。", true);
+          if (rt.formalStatus === "approval") {
+            rt.formalStatus = "execConfirm";
+            rt.statusText = "待确认执行";
+          }
+          toast("审批已通过 · 回到待确认执行");
           render();
         } else if (st !== "pending") {
           alert(msg);
@@ -2458,18 +2630,6 @@
         return;
       }
 
-      if (key === "markSent") {
-        if (!confirm("登记已发送（无接口仓）？（演示）")) return;
-        rt.pushSt = "sent_manual";
-        rt.formalStatus = "executing";
-        rt.statusText = "海外仓执行中";
-        rt.statusCls = "doing";
-        pushTimeline(rt, demoNow(), "客服<strong>登记已发送</strong>（无接口仓）。", true);
-        toast("已登记发送 · 海外仓执行中");
-        render();
-        return;
-      }
-
       if (key === "retryPush") {
         if (rt.pushSt !== "failed") {
           toast("仅推送失败可重试");
@@ -2489,22 +2649,34 @@
         var resultNote = prompt("登记处理结果（演示）：", "换标完成，回传照片与实际费用");
         if (resultNote == null) return;
         rt.whResult = resultNote || "换标完成（演示）";
-        rt.whActualFee = "USD 18.00";
+        rt.whActualFee = "USD 18.00（费用记录，与已确认 USD 25.00 不一致）";
         rt.whReceipt = "换标后照片.zip · 回执.pdf";
         rt.whTaskNo = rt.whTaskNo && rt.whTaskNo !== "待提交执行后生成" ? rt.whTaskNo : "MK-LBL-9001";
         rt.resultSubmitted = true;
         rt.acceptRejected = false;
-        rt.formalStatus = "actualFee";
-        rt.statusText = "待实际费用确认";
-        rt.statusCls = "risk";
-        pushTimeline(rt, demoNow(), "执行侧登记处理结果：" + rt.whResult + "（待确认实际费用）。", true);
-        toast("已登记处理结果 · 待实际费用确认");
+        rt.feeDiffPending = true;
+        rt.formalStatus = "accept";
+        rt.statusText = "待结果确认";
+        rt.statusCls = "doing";
+        pushTimeline(rt, demoNow(), "海外仓回写处理结果和实际费用 USD 18.00。与已确认 USD 25.00 不一致，生成费用差异待确认；工单进入待结果确认，不单停费用节点。", true);
+        toast("已登记处理结果 · 另有费用差异待确认");
         render();
         return;
       }
 
       if (key === "acceptPass") {
-        if (!confirm("验收通过并回写？（演示）\n验收 ≠ 结案，通过后仍须关闭/结案。")) return;
+        var fbResult = prompt("客户反馈结论\n填「客户已知晓」才能验收；「客户要求继续处理」不能验收", "");
+        if (fbResult == null) return;
+        if (String(fbResult).trim() !== "客户已知晓") {
+          alert("客户要求继续处理，不能验收");
+          return;
+        }
+        var fbNote = prompt("反馈内容", "");
+        if (fbNote == null || !String(fbNote).trim()) {
+          alert("请填写反馈内容后才能验收");
+          return;
+        }
+        if (!confirm("客户已知晓，验收通过并回写？（演示）\n验收 ≠ 结案，通过后仍须关闭/结案。")) return;
         rt.wbResult = "换标成功 · 标签版本 LBL-202605-09";
         rt.wbFee = "USD 18.00（已确认）";
         rt.wbReceipt = "回执.pdf";
@@ -2517,7 +2689,7 @@
         rt.formalStatus = "done";
         rt.statusText = "待结案";
         rt.statusCls = "ok";
-        pushTimeline(rt, demoNow(), "客服<strong>验收通过</strong>并回写。<em>验收≠结案</em>，请再点「关闭/结案」。", true);
+        pushTimeline(rt, demoNow(), "客户反馈：客户已知晓 · " + String(fbNote).trim() + "。客服<strong>验收通过</strong>并回写。<em>验收≠结案</em>，请再点「关闭/结案」。", true);
         toast("验收通过并回写 · 尚未结案");
         render();
         return;
@@ -2533,22 +2705,22 @@
         rt.formalStatus = "executing";
         rt.statusText = "海外仓执行中";
         rt.statusCls = "risk";
-        pushTimeline(rt, demoNow(), "客服验收不通过，退回原执行人返工（同一指令，不升 V2）：" + (rejectReason || "未填原因"), true);
+        pushTimeline(rt, demoNow(), "客服验收不通过，退回原执行人返工（同一工单，不升 V2）：" + (rejectReason || "未填原因"), true);
         toast("已退回返工 · 回到海外仓执行中");
         render();
         return;
       }
 
       if (key === "acceptUnable") {
-        if (!rt.resultSubmitted && !confirm("尚未提交执行结果。仍确认「无法执行」并关闭本指令？（演示）")) return;
-        var unableReason = prompt("确认无法执行原因（确认后关闭当前指令，不自动生成后续）：", "货已出库，无法换标");
+        if (!rt.resultSubmitted && !confirm("尚未提交执行结果。仍确认「无法执行」并关闭本工单？（演示）")) return;
+        var unableReason = prompt("确认无法执行原因（确认后关闭当前工单，不自动生成后续）：", "货已出库，无法换标");
         if (unableReason == null) return;
         rt.acceptUnable = true;
         rt.actionDone = true;
-        rt.statusText = "无法执行 · 指令已关闭";
+        rt.statusText = "无法执行 · 工单已关闭";
         rt.statusCls = "";
-        pushTimeline(rt, demoNow(), "客服确认无法执行：" + (unableReason || "未填原因") + "；<strong>关闭当前指令</strong>，不自动生成后续。若有新要求请人工新建。<em>本单仍可再点结案关单</em>。", true);
-        toast("指令已关闭 · 无自动后续 · 可再结案");
+        pushTimeline(rt, demoNow(), "客服确认无法执行：" + (unableReason || "未填原因") + "；<strong>关闭当前工单</strong>，不自动生成后续。若有新要求请人工新建。<em>本单仍可再点结案关单</em>。", true);
+        toast("工单已关闭 · 无自动后续 · 可再结案");
         render();
         return;
       }
@@ -2668,6 +2840,7 @@
         el.type = "button";
         el.className = "btn " + b.cls;
         el.textContent = b.label;
+        if (pagePortal() === "cs" && key === "urge") el.textContent = "反馈客户";
         el.setAttribute("data-action", key);
         if (rt.closed && key !== "close") el.disabled = true;
         if (key === "close" && rt.closed) {
@@ -2691,7 +2864,7 @@
       }
       var hint = document.getElementById("actionDockHint");
       if (hint && spec.status) {
-        hint.textContent = spec.status.label + " · " + spec.status.hint + " · 下方模块只读";
+        hint.textContent = spec.status.label + " · " + spec.status.hint;
       }
       renderModuleHints(spec.status);
       renderStatusChips(rt);
@@ -2721,14 +2894,13 @@
 
     /** 与履约工作台 FN_CATALOG 对齐的演示作业指引（按功能） */
     var DETAIL_FN_GUIDES = [
-      { id: "feasibility", name: "确认可行性", nodes: ["待可行性确认"], guide: "核对货物位置、仓内能力与时效后再给结论；不可行须写清原因。", docs: "—" },
-      { id: "ask-supp", name: "要求补充资料", nodes: ["执行中", "待执行", "待受理", "待执行准备"], guide: "勾选缺失项（附件/文字）并指定补充人；提交补充资料弹窗将按所选类型分别展示并标注是否必填。", docs: "按勾选项" },
-      { id: "submit-supp", name: "提交补充资料", nodes: ["待补充资料"], guide: "按清单补齐必填项后再提交；附件与文字信息分开展示。", docs: "按待补清单" },
-      { id: "prepare", name: "确认执行准备", nodes: ["待执行准备", "待受理"], guide: "四项核对通过后才可确认准备完成：地址、时间、货物、执行资料。", docs: "执行资料齐全" },
+      { id: "exec-confirm", name: "确认执行", nodes: ["待受理", "待确认执行"], guide: "接单与确认执行准备合并。同屏核对可行性与执行准备，通过后进入执行中并按配置推送。要求补充资料、不可执行/关闭、提交经理确认是同一节点上的另外三个操作。", docs: "费用 / 标签 / 地址 / 指令" },
+      { id: "ask-supp", name: "要求补充资料", nodes: ["待受理", "待确认执行"], guide: "海外客服在确认执行时勾选缺失项。不是单独状态。点下去工单变为待业务/客服补充。", docs: "按勾选项" },
+      { id: "submit-supp", name: "上传补充资料", nodes: ["待业务/客服补充"], guide: "业务客服（发起人或当前绑定业务客服）上传附件并填写字段，提交「已补充」。客户不登录。海外仓不能改业务资料。提交后自动回到待确认执行。", docs: "按待补清单" },
       { id: "dispatch", name: "下发执行", nodes: ["待外部下发"], guide: "不拆「下发海外仓 / 人工登记」；系统按仓库对接能力自动选择通道。", docs: "—" },
       { id: "submit-result", name: "提交处理结果", nodes: ["执行中", "待上传结果", "待执行"], guide: "结果与附件须完整；有异常须写明原因。", docs: "结果附件" },
       { id: "confirm-return", name: "确认回传结果", nodes: ["待结果回传"], guide: "对照回传字段与凭证；不一致可退回要求重传。", docs: "回传凭证" },
-      { id: "accept-pass", name: "验收通过", nodes: ["待结果确认", "待客服验收"], guide: "验收通过后触发业务回写；不通过请用「退回返工」。", docs: "—" },
+      { id: "accept-pass", name: "验收通过", nodes: ["待结果确认", "待客服验收"], guide: "先填客户反馈。客户已知晓才能验收通过；客户要求继续处理不能验收。不通过请用「退回返工」。", docs: "—" },
       { id: "accept-reject", name: "退回返工", nodes: ["待结果确认", "待客服验收"], guide: "退回须写清原因与返工要求；版本不升 V2。", docs: "—" },
       { id: "close", name: "确认关闭", nodes: ["执行中", "处理中", "待受理"], guide: "关闭前确认无待办事项；通知相关角色。", docs: "—" },
       { id: "wb-retry", name: "回写重试", nodes: ["待重试", "回写失败"], guide: "失败保持当前状态（C-09）；可按权限重试。", docs: "—" },
@@ -2737,14 +2909,14 @@
 
     var DETAIL_FN_PRESETS = {
       "WO-202605-LABEL": [
-        { name: "确认执行准备", guide: "1.核对新标签与柜号\n2.确认费用已确认\n3.提交执行（系统按仓能力推送）", docs: "新标签必传、操作说明、客户授权" },
+        { name: "确认执行", guide: "同屏核对可行性与执行准备。通过后进入执行中，并按配置更新头程、推送或生成线下指令。", docs: "费用已确认、标签/地址/指令齐全" },
         { name: "下发执行", guide: "点「提交执行」后系统按仓能力自动推送或待人工发送；不拆通道按钮。", docs: "新标签清晰照片×1（条码可读）；操作说明 PDF×1" },
       ],
       "WO-202605-003": [
         { name: "提交处理结果", guide: "按拍摄标准逐项拍照上传，不得只传一张笼统现场照。", docs: "外箱全景×1；破损特写×≥2；唛头×1；清点×1；尺寸参照×1" },
       ],
       "SIM-SUPP-01": [
-        { name: "提交补充资料", guide: "待补：新标签（附件·必填）、操作说明（文字·必填）、客户确认截图（附件·选填）。按类型分开展示。", docs: "新标签 / 操作说明" },
+        { name: "上传补充资料", guide: "待补：标签（附件·必填）、客户指令（文字·必填）。发起人或当前绑定业务客服上传后提交「已补充」，回到待确认执行。", docs: "标签 / 客户指令" },
       ],
     };
 
@@ -2839,7 +3011,7 @@
         var focus = vers.find(function (x) { return x.instrId === pv.instr || (!x.instrId && pv.instr.indexOf(x.ver) >= 0); });
         ban.hidden = false;
         ban.innerHTML =
-          "<strong>处理人视角（BR-WB-003）</strong> · 当前指令 <code>" + pv.instr + "</code>" +
+          "<strong>处理人视角（BR-WB-003）</strong> · 当前关联工单 <code>" + pv.instr + "</code>" +
           (focus ? " · " + focus.summary + " · " + (focus.pool || "") + " · " + (focus.handler || "") : "") +
           '可见本单信息与关联工单号；关联单费用/附件默认不展开。' +
           ' <a href="工单详情-MVP.html?view=handler#' + id + '" style="color:#9a3412;font-weight:700">刷新本单</a>';
@@ -2915,7 +3087,7 @@
         if (isContainer && rt.actionDone) {
           document.getElementById("syncAction").textContent = "写回柜子计划";
           document.getElementById("syncTime").textContent = rt.timeline.length ? rt.timeline[rt.timeline.length - 1].t : demoNow();
-          document.getElementById("syncUser").textContent = "付雪（港前）/ 系统";
+          document.getElementById("syncUser").textContent = "港前客服 / 系统";
         }
         document.getElementById("notifyWhWrap").classList.add("hidden");
         if (rt.notifyWhSent) document.getElementById("notifyWh").checked = true;
@@ -2941,7 +3113,7 @@
         if (rt.acceptPassed) {
           wbStateEl.innerHTML = '<span class="pill ok">验收通过 · 已回写</span>';
         } else if (rt.acceptUnable) {
-          wbStateEl.innerHTML = '<span class="pill">无法执行 · 指令已关闭</span>';
+          wbStateEl.innerHTML = '<span class="pill">无法执行 · 工单已关闭</span>';
         } else if (rt.acceptRejected) {
           wbStateEl.innerHTML = '<span class="pill risk">已退回返工</span>';
         } else if (rt.resultSubmitted) {
@@ -3014,7 +3186,7 @@
           document.getElementById("whResult").textContent = cur.result;
           document.getElementById("feeStatus").textContent = cur.fee;
           document.getElementById("feeLines").textContent =
-            (handlerFocus ? "处理人视角：仅本指令费用。 " : "") +
+            (handlerFocus ? "处理人视角：仅本工单费用。 " : "") +
             "本单费用挂本工单，不混入关联单备注。";
         }
       } else {
@@ -3196,7 +3368,7 @@
       var v = scenario[id];
       var rt = ensureRuntime(id, v);
       if (rt.feeBatchId === "BATCH-9001") {
-        toast("同批次已回传，防重跳过（指令+费用项+批次）");
+        toast("同批次已回传，防重跳过（工单+费用项+批次）");
         return;
       }
       rt.feeBatchId = "BATCH-9001";
