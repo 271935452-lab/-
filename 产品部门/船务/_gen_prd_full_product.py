@@ -42,7 +42,7 @@ CHAPTERS = [
         "prefix": "final-",
         "file": "船务组-终配舱-MVP-PRD.html",
         "title": "第 4 章 · 终配舱记录",
-        "hint": "自动配舱规则（无配置页）、出号、自动配舱标、合并报关拆舱打「分不同配舱」。",
+        "hint": "自动配舱规则（无配置页）、出号、自动配舱标、「标记」列（报关行 + 合并单多舱）。",
         "proto": [("船务组-终配舱-MVP.html", "终配舱")],
     },
     {
@@ -214,7 +214,7 @@ COVER = r'''    <section class="hero">
           <tr><td>提单创建 / 批量 / AI</td><td>AI/Excel、海运费+两免用箱回写预估。提单号手填或空着</td><td class="proto"><a href="船务组-提单创建批量-AI识别-MVP.html">批量</a> · <a href="船务组-提单创建批量-AI识别-MVP.html?mode=single">单票</a></td><td class="proto"><a href="#ch-create">第 1 章</a></td></tr>
           <tr><td>提单管理</td><td>收敛工具栏；分配 / 播报 / 取消IT / 绑定 / 换柜换船 / 费用·水单 / 日志；预警单独筛；未进港预警</td><td class="proto"><a href="船务组-提单管理-按周分组与分配-MVP.html">打开</a></td><td class="proto"><a href="#ch-bl">第 2 章</a></td></tr>
           <tr><td>待配仓</td><td>按行勾选、改预配舱号、合并报关标</td><td class="proto"><a href="船务组-待配仓-MVP.html">打开</a></td><td class="proto"><a href="#ch-wait">第 3 章</a></td></tr>
-          <tr><td>终配舱记录</td><td>自动配舱规则、出号、自动配舱标、分不同配舱</td><td class="proto"><a href="船务组-终配舱-MVP.html">打开</a></td><td class="proto"><a href="#ch-final">第 4 章</a></td></tr>
+          <tr><td>终配舱记录</td><td>自动配舱规则、出号、自动配舱标、标记（报关行 + 合并单多舱）</td><td class="proto"><a href="船务组-终配舱-MVP.html">打开</a></td><td class="proto"><a href="#ch-final">第 4 章</a></td></tr>
           <tr><td>客户协议价</td><td>向导、同步对象、折扣/减额、发布撞车、运单对照</td><td class="proto"><a href="船务组-客户协议价格维护-原型.html">打开</a></td><td class="proto"><a href="#ch-proto">第 5 章</a></td></tr>
           <tr><td>产品库出货</td><td>出货规则、五仓、查货确认入账</td><td class="proto"><a href="船务组-产品库-出货要求与收费标准-MVP.html">打开</a></td><td class="proto"><a href="#ch-prod">第 6 章</a></td></tr>
           <tr><td>FBA 录入提示</td><td>品名命中、五仓一致/不一致口径。ESS 与客户端同口径</td><td class="proto"><a href="船务组-下单-FBA录入-合规策略-MVP.html">打开</a></td><td class="proto"><a href="#ch-fba">第 7 章</a></td></tr>
@@ -294,7 +294,7 @@ COVER = r'''    <section class="hero">
           <tr><td>费用登记</td><td>落业务数据统计。无同步对象。一笔只能挂提单 / 柜 / 运单其中一个。加载加费挂提单并留柜号。无费用节点。</td><td class="proto"><a href="船务组-提单管理-按周分组与分配-MVP.html#feeMask">费用</a></td></tr>
           <tr><td>飞驼进港 / 进港落库</td><td>飞驼自动抓取本期先调研。未进港预警本期做。进港代码/时间能抓则回写，抓不到手录。落库触发落箱费、H4：<strong>二期、范围外</strong>。落箱费只手登。</td><td class="proto"><a href="船务组-提单管理-按周分组与分配-MVP.html">列表</a></td></tr>
           <tr><td>绑进口商</td><td>下拉已启用/停用待观察。清关行只出授权。列表不展示清关行。同船同装柜日 ≤5 可强制留痕。</td><td class="proto"><a href="船务组-提单管理-按周分组与分配-MVP.html#impMask">绑定</a></td></tr>
-          <tr><td>待配仓 / 终配</td><td>运单只走待配舱或终配舱，禁止「待终配舱」。同渠道装填+反倾销（不占装填档）。一柜方数 &lt; 68、重量 &lt; 20 吨。自动终配打标。合并报关拆到 ≥2 舱打「分不同配舱」并列另舱号；拆组在待配仓改号时提醒。</td><td class="proto"><a href="船务组-待配仓-MVP.html">待配仓</a> · <a href="船务组-终配舱-MVP.html">终配舱</a></td></tr>
+          <tr><td>待配仓 / 终配</td><td>运单只走待配舱或终配舱，禁止「待终配舱」。同渠道装填+反倾销（不占装填档）。一柜方数 &lt; 68、重量 &lt; 20 吨。自动终配打标。列表「标记」列展示报关行；合并报关拆到 ≥2 舱时呈现「合并单多舱」并列另舱号；拆组在待配仓改号时提醒。</td><td class="proto"><a href="船务组-待配仓-MVP.html">待配仓</a> · <a href="船务组-终配舱-MVP.html">终配舱</a></td></tr>
           <tr><td>协议价发布</td><td>确定才落库。撞车已启用作废。下单命中客户+产品+分公司+有效期取协议价。</td><td class="proto"><a href="船务组-客户协议价格维护-原型.html#btnEnable">启用</a></td></tr>
           <tr><td>销售报价改价</td><td>折扣/减额（含不返回结构）跟着变。旧全量重填模式不做；改重量段后按 Excel 填格子。</td><td class="proto"><a href="船务组-客户协议价格维护-原型.html">协议价</a></td></tr>
           <tr><td>产品库保存</td><td>一个品名只绑 1 项附加服务名称。报关用报关 HS，清关用清关 HS。</td><td class="proto"><a href="船务组-产品库-出货要求与收费标准-MVP.html">产品库</a></td></tr>

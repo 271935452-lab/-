@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>唐斌看板专题 · MVP</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --line: #e8e8e8;
+      --text: rgba(0,0,0,.85);
+      --sub: rgba(0,0,0,.45);
+      --blue: #1890ff;
+      --green: #52c41a;
+      --red: #ff4d4f;
+      --orange: #fa8c16;
+      --cyan: #13c2c2;
+      --purple: #722ed1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    .layout { max-width: 1480px; margin: 0 auto; padding: 16px 16px 40px; }
+    .page-hd { margin-bottom: 12px; }
+    .page-hd h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
+    .page-hd .meta { font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .page-hd a { color: var(--blue); text-decoration: none; }
+    .src-tag {
+      display: inline-block; margin-top: 6px; font-size: 11px; padding: 2px 8px;
+      border-radius: 2px; background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff;
+    }
+    .panel {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 2px; margin-bottom: 12px;
+    }
+    .main-tabs {
+      display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line);
+      background: #fafafa; padding: 0 8px;
+    }
+    .main-tab {
+      padding: 12px 16px; border: none; background: none; font: inherit;
+      font-size: 14px; color: var(--sub); cursor: pointer; position: relative;
+    }
+    .main-tab.active { color: var(--blue); font-weight: 600; }
+    .main-tab.active::after {
+      content: ""; position: absolute; left: 16px; right: 16px; bottom: 0;
+      height: 2px; background: var(--blue);
+    }
+    .sub-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 16px 0; }
+    .sub-tab {
+      padding: 6px 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; font: inherit; font-size: 12px; cursor: pointer;
+    }
+    .sub-tab.active { border-color: var(--blue); color: var(--blue); background: #e6f7ff; }
+    .filter-bd { padding: 12px 16px 8px; }
+    .filter-grid {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px 12px;
+    }
+    @media (max-width: 1100px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .filter-item input, .filter-item select {
+      width: 100%; height: 30px; border: 1px solid #d9d9d9;
+      border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .filter-actions {
+      padding: 0 16px 12px; display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .btn {
+      height: 30px; padding: 0 12px; border-radius: 2px;
+      border: 1px solid #d9d9d9; background: #fff; font: inherit; cursor: pointer;
+    }
+    .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .note-box {
+      margin: 10px 16px 0; padding: 8px 12px; border-radius: 2px;
+      background: #fffbe6; border: 1px solid #ffe58f; font-size: 12px; color: #874d00; line-height: 1.5;
+    }
+    .board-title {
+      padding: 14px 16px 4px; font-size: 16px; font-weight: 700; color: #1f1f1f;
+    }
+    .board-title span { font-size: 12px; font-weight: 400; color: var(--sub); margin-left: 8px; }
+    .kpi-strip {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; padding: 10px 16px 4px;
+    }
+    @media (max-width: 1100px) { .kpi-strip { grid-template-columns: repeat(3, 1fr); } }
+    .kpi {
+      border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; background: #fafafa;
+    }
+    .kpi-label { font-size: 11px; color: var(--sub); }
+    .kpi-value { font-size: 20px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .kpi-value.ok { color: var(--green); }
+    .kpi-value.warn { color: var(--orange); }
+    .kpi-value.bad { color: var(--red); }
+    .chart-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px 16px;
+    }
+    .chart-grid.third { grid-template-columns: 1fr 1fr 1fr; }
+    .chart-grid.stack2 { grid-template-columns: 1.2fr .8fr; }
+    @media (max-width: 1100px) {
+      .chart-grid, .chart-grid.third, .chart-grid.stack2 { grid-template-columns: 1fr; }
+    }
+    .chart-card {
+      border: 1px solid var(--line); border-radius: 4px; background: #fff;
+      padding: 10px 12px 8px; min-height: 260px; display: flex; flex-direction: column;
+    }
+    .chart-card.tall { min-height: 320px; }
+    .chart-card.span2 { grid-column: 1 / -1; }
+    .chart-hd {
+      font-size: 13px; font-weight: 600; margin-bottom: 6px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .chart-hd .hint { font-size: 11px; font-weight: 400; color: var(--sub); }
+    .chart-box { position: relative; flex: 1; min-height: 200px; }
+    .chart-box canvas { width: 100% !important; height: 100% !important; }
+    .table-wrap { overflow-x: auto; padding: 0 16px 16px; }
+    table { width: 100%; border-collapse: collapse; min-width: 720px; font-size: 12px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; text-align: left; white-space: nowrap; }
+    th { background: #fafafa; color: var(--sub); font-weight: 500; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(80px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      font-size: 12px; opacity: 0; transition: .25s; z-index: 99; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="page-hd">
+      <p style="margin:0 0 8px;"><a href="财务部门-唐斌看板专题会议纪要-20260921.md">← 2026-09-21 专题纪要</a></p>
+      <h1>唐斌看板专题 · MVP 原型</h1>
+      <p class="meta">按 <code>财务部门/看板</code> Excel 图呈现：环图完成率、柱线组合、排名、渠道/港口占比、查验率等 · 演示数据</p>
+      <span class="src-tag" id="srcTag"></span>
+    </div>
+    <section class="panel">
+      <div class="main-tabs" id="mainTabs"></div>
+      <div id="viewRoot"></div>
+    </section>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+(function () {
+  var PAL = ["#1890ff", "#52c41a", "#fa8c16", "#722ed1", "#13c2c2", "#eb2f96", "#2f54eb", "#a0d911"];
+  var MONTHS = ["1月","2月","3月","4月","5月","6月","7月","8月","9月"];
+  var chartObjs = [];
+  var state = { main: "analysis", sub: { analysis: "board1", inspect: "month" } };
+
+  var MODULES = [
+    { id: "broadcast", name: "一、数据播报", src: "营销数据播报--2026（最新模板7.23唐）.xlsx" },
+    { id: "analysis", name: "二、经营分析", src: "苏州数据.xlsx · 公司/战队/个人看板图" },
+    { id: "fcl", name: "三、整柜", src: "苏州数据 · 船司柜量 / 目的港" },
+    { id: "inspect", name: "四、查验", src: "2026年查验统计.xlsx · 月度/每周看板图" },
+    { id: "product", name: "五、产品部", src: "产品部2026年最新.xlsx · 看板图" },
+    { id: "channel", name: "六、渠道", src: "数据分析-渠道.xlsx · 渠道图" }
+  ];
+
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2000);
+  }
+
+  function destroyCharts() {
+    chartObjs.forEach(function (c) { try { c.destroy(); } catch (e) {} });
+    chartObjs = [];
+  }
+
+  function mkChart(canvasId, cfg) {
+    var el = document.getElementById(canvasId);
+    if (!el || typeof Chart === "undefined") return null;
+    var c = new Chart(el, cfg);
+    chartObjs.push(c);
+    return c;
+  }
+
+  function doughnut(id, labels, data, colors) {
+    return mkChart(id, {
+      type: "doughnut",
+      data: {
+        labels: labels,
+        datasets: [{ data: data, backgroundColor: colors || PAL.slice(0, labels.length), borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: "62%",
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } },
+          tooltip: { callbacks: { label: function (x) { return x.label + " " + x.raw + "%"; } } }
+        }
+      }
+    });
+  }
+
+  function barLine(id, labels, bars, lines, barLabel, lineLabel, dual) {
+    var datasets = [];
+    (bars || []).forEach(function (b, i) {
+      datasets.push({
+        type: "bar", label: b.label, data: b.data,
+        backgroundColor: PAL[i % PAL.length] + "cc",
+        borderRadius: 2, yAxisID: "y", order: 2
+      });
+    });
+    (lines || []).forEach(function (l, i) {
+      datasets.push({
+        type: "line", label: l.label, data: l.data,
+        borderColor: PAL[(bars.length + i) % PAL.length],
+        backgroundColor: "transparent", tension: 0.25, yAxisID: dual ? "y1" : "y", order: 1
+      });
+    });
+    return mkChart(id, {
+      type: "bar",
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: {
+          y: { beginAtZero: true, ticks: { font: { size: 10 } }, grid: { color: "#f0f0f0" } },
+          y1: dual ? { position: "right", beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 }, callback: function (v) { return v + "%"; } } } : undefined,
+          x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function bar(id, labels, datasets, horizontal) {
+    return mkChart(id, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: datasets.map(function (d, i) {
+          return {
+            label: d.label, data: d.data,
+            backgroundColor: d.color || (PAL[i % PAL.length] + "cc"),
+            borderRadius: 2
+          };
+        })
+      },
+      options: {
+        indexAxis: horizontal ? "y" : "x",
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: datasets.length > 1, position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: {
+          x: { beginAtZero: true, ticks: { font: { size: 10 } }, grid: { color: horizontal ? "#f0f0f0" : "transparent" } },
+          y: { ticks: { font: { size: 10 } }, grid: { color: horizontal ? "transparent" : "#f0f0f0" } }
+        }
+      }
+    });
+  }
+
+  function pie(id, labels, data) {
+    return mkChart(id, {
+      type: "pie",
+      data: { labels: labels, datasets: [{ data: data, backgroundColor: PAL.slice(0, labels.length), borderWidth: 0 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } }
+      }
+    });
+  }
+
+  function line(id, labels, datasets) {
+    return mkChart(id, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: datasets.map(function (d, i) {
+          return {
+            label: d.label, data: d.data,
+            borderColor: PAL[i % PAL.length], tension: 0.25, fill: false
+          };
+        })
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: {
+          y: { beginAtZero: true, ticks: { font: { size: 10 } }, grid: { color: "#f0f0f0" } },
+          x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function filters(html) {
+    return '<div class="filter-bd"><div class="filter-grid">' + html + '</div></div>' +
+      '<div class="filter-actions"><button type="button" class="btn btn-primary" id="btnQ">查询</button>' +
+      '<button type="button" class="btn" id="btnR">重置</button>' +
+      '<button type="button" class="btn" id="btnE">导出</button></div>';
+  }
+  function note(t) { return '<div class="note-box">' + t + '</div>'; }
+  function card(title, hint, canvasId, extraClass) {
+    return '<div class="chart-card' + (extraClass ? " " + extraClass : "") + '"><div class="chart-hd">' + title +
+      (hint ? '<span class="hint">' + hint + '</span>' : '') +
+      '</div><div class="chart-box"><canvas id="' + canvasId + '"></canvas></div></div>';
+  }
+  function kpis(items) {
+    return '<div class="kpi-strip">' + items.map(function (k) {
+      return '<div class="kpi"><div class="kpi-label">' + k.label + '</div><div class="kpi-value ' + (k.cls || "") + '">' + k.value + '</div></div>';
+    }).join("") + '</div>';
+  }
+
+  /* —— 一、数据播报（表为主，补完成率图） —— */
+  function viewBroadcast() {
+    return note("按人和实际部门看当月营业额、货量目标完成；计费重去退件退款；欠款=未核销−余额。") +
+      filters(
+        '<div class="filter-item"><label>月份</label><input type="month" value="2026-09"></div>' +
+        '<div class="filter-item"><label>实际部门</label><select><option>全部</option><option selected>苏州一部</option></select></div>' +
+        '<div class="filter-item"><label>战队</label><select><option>全部</option><option>青禾队</option></select></div>' +
+        '<div class="filter-item"><label>实际姓名</label><input placeholder="到人"></div>' +
+        '<div class="filter-item"><label>组织</label><select><option>公司</option><option>部门</option><option>小组</option></select></div>' +
+        '<div class="filter-item"><label>时间进度</label><input value="9/30 · 75%" readonly></div>'
+      ) +
+      kpis([
+        { label: "营业额完成", value: "91.4%", cls: "warn" },
+        { label: "货量完成", value: "94.2%", cls: "warn" },
+        { label: "新客户≥1000", value: "2", cls: "ok" },
+        { label: "欠款", value: "119.7万", cls: "bad" },
+        { label: "周计费重 TOP", value: "张苏宁" },
+        { label: "时间进度", value: "75%" }
+      ]) +
+      '<div class="chart-grid stack2">' +
+        card("人均目标完成比（柱）", "对标销售目标表", "bcBar") +
+        card("周计费重排名", "每周输出", "bcRank") +
+      '</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>实际部门</th><th>战队</th><th>姓名</th><th class="num">营业额目标</th><th class="num">实际</th><th class="num">完成</th><th class="num">货量目标</th><th class="num">实际</th><th class="num">完成</th></tr></thead>' +
+      '<tbody><tr><td>苏州一部</td><td>青禾队</td><td>张苏宁</td><td class="num">280</td><td class="num">256</td><td class="num">91%</td><td class="num">420</td><td class="num">398</td><td class="num">95%</td></tr>' +
+      '<tr><td>苏州一部</td><td>青禾队</td><td>李婷</td><td class="num">220</td><td class="num">198</td><td class="num">90%</td><td class="num">360</td><td class="num">310</td><td class="num">86%</td></tr>' +
+      '<tr><td>苏州二部</td><td>先锋队</td><td>王芳</td><td class="num">190</td><td class="num">205</td><td class="num">108%</td><td class="num">300</td><td class="num">318</td><td class="num">106%</td></tr></tbody></table></div>';
+  }
+  function paintBroadcast() {
+    bar("bcBar", ["张苏宁","李婷","王芳","陈静"], [
+      { label: "营业额完成%", data: [91, 90, 108, 89], color: "#1890ffcc" },
+      { label: "货量完成%", data: [95, 86, 106, 88], color: "#52c41acc" }
+    ]);
+    bar("bcRank", ["张苏宁","王芳","李婷","陈静","赵六"], [
+      { label: "计费重(T)", data: [398, 318, 310, 228, 196], color: "#13c2c2cc" }
+    ], true);
+  }
+
+  /* —— 二、经营分析（对齐苏州/经营分析看板图） —— */
+  function viewAnalysis() {
+    var sub = state.sub.analysis;
+    var tabs = [
+      { id: "board1", name: "看板1 · 公司" },
+      { id: "board2", name: "看板2 · 战队" },
+      { id: "board3", name: "看板3 · 个人" }
+    ];
+    var subHtml = '<div class="sub-tabs">' + tabs.map(function (t) {
+      return '<button type="button" class="sub-tab' + (sub === t.id ? " active" : "") + '" data-sub="' + t.id + '">' + t.name + '</button>';
+    }).join("") + '</div>';
+    var title = sub === "board1" ? "苏州数据可视化看板表（公司）" : sub === "board2" ? "战队数据可视化看板表" : "个人销售数据分析统计表";
+    var body = '';
+    if (sub === "board1") {
+      body = kpis([
+        { label: "全年货量", value: "18,562 T" },
+        { label: "全年销售额", value: "2.86 亿" },
+        { label: "货量完成率", value: "88.6%", cls: "warn" },
+        { label: "销售额完成率", value: "86.2%", cls: "warn" },
+        { label: "时间进度", value: "75%" },
+        { label: "年初目标", value: "3.22 亿" }
+      ]) +
+      '<div class="chart-grid third">' +
+        card("货量完成率", "环图 · Excel", "a1d1") +
+        card("销售额完成率", "环图 · Excel", "a1d2") +
+        card("港口货量占比", "饼图", "a1pie") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("每月货量 / 销售额 / 毛利率", "柱+折 · 对齐看板", "a1mix", "tall") +
+        card("各战队销售情况", "货量·营业额·整柜", "a1team", "tall") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("各渠道销售情况", "货量·销售额·单价", "a1ch") +
+        card("业务员货量排名前10", "横向柱", "a1rank") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("历年开发客户数 vs 3个月内下单", "柱图", "a1new") +
+        card("业务收货比重分布", "货量区间", "a1band") +
+      '</div>';
+    } else if (sub === "board2") {
+      body = kpis([
+        { label: "战队", value: "青禾队" },
+        { label: "累计货量完成", value: "93.8%", cls: "warn" },
+        { label: "累计销售额完成", value: "91.2%", cls: "warn" },
+        { label: "新客户", value: "18", cls: "ok" },
+        { label: "组内第1", value: "张苏宁" },
+        { label: "时间进度", value: "75%" }
+      ]) +
+      '<div class="chart-grid stack2">' +
+        card("累计目标 vs 全年完成", "折线 · 战队", "a2line", "tall") +
+        card("完成率", "环图", "a2donut") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("组内业务员 · 货量/销售额/毛利率", "柱+折", "a2mix", "tall") +
+        card("业务新老客户货量占比", "柱", "a2newold") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("各渠道销售情况", "货量·销售额·单价", "a2ch") +
+        card("业务员排名前十", "横向柱", "a2rank") +
+      '</div>';
+    } else {
+      body = kpis([
+        { label: "业务员", value: "张苏宁" },
+        { label: "当月货量", value: "398 T" },
+        { label: "当月营业额", value: "256 万" },
+        { label: "当月毛利", value: "38.4 万", cls: "ok" },
+        { label: "个人目标", value: "280 万" },
+        { label: "完成比", value: "91.4%", cls: "warn" }
+      ]) +
+      '<div class="chart-grid">' +
+        card("分月货量 / 营业额 / 毛利率", "柱+折 · 个人看板", "a3mix", "tall") +
+        card("业务货量走势", "折线", "a3line", "tall") +
+      '</div>' +
+      '<div class="chart-grid third">' +
+        card("客户结构", "直客/同行", "a3pie1") +
+        card("渠道结构", "美海/卡派等", "a3pie2") +
+        card("港口货量情况", "环图", "a3donut") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("客户毛利情况", "折线", "a3gp") +
+        card("客户货量 TOP", "横向柱", "a3cust") +
+      '</div>';
+    }
+    return note("层级：公司 / 战队 / 个人。回款按票；是否发货按签入。图布局对齐苏州数据·经营分析看板。") +
+      subHtml +
+      '<div class="board-title">' + title + '<span>对齐 Excel 可视化看板</span></div>' +
+      filters(
+        '<div class="filter-item"><label>年份</label><select><option selected>2026</option></select></div>' +
+        '<div class="filter-item"><label>部门</label><select><option>苏州一部</option><option>苏州二部</option></select></div>' +
+        '<div class="filter-item"><label>战队</label><select><option>青禾队</option><option>先锋队</option></select></div>' +
+        '<div class="filter-item"><label>港口</label><select><option>全部</option><option>SH→LA</option></select></div>' +
+        '<div class="filter-item"><label>产品渠道</label><select><option>全部</option><option>美海</option></select></div>' +
+        '<div class="filter-item"><label>业务员</label><input value="' + (sub === "board3" ? "张苏宁" : "") + '"></div>'
+      ) + body;
+  }
+  function paintAnalysis() {
+    var sub = state.sub.analysis;
+    if (sub === "board1") {
+      doughnut("a1d1", ["已完成", "未完成"], [88.6, 11.4], ["#52c41a", "#f0f0f0"]);
+      doughnut("a1d2", ["已完成", "未完成"], [86.2, 13.8], ["#1890ff", "#f0f0f0"]);
+      pie("a1pie", ["SH→LA", "NB→NY", "SZ→SAV", "其他"], [38, 26, 18, 18]);
+      barLine("a1mix", MONTHS,
+        [{ label: "货量/吨", data: [1800, 1620, 1950, 1880, 2010, 2100, 2050, 2180, 2240] },
+         { label: "营业额/万元", data: [2800, 2520, 3010, 2900, 3120, 3280, 3190, 3360, 3450] }],
+        [{ label: "毛利率%", data: [12.1, 11.8, 12.4, 12.0, 12.6, 12.8, 12.5, 12.9, 13.1] }], null, null, true);
+      barLine("a1team", ["青禾队","先锋队","飞虎队","破浪队"],
+        [{ label: "货量", data: [5200, 4100, 3800, 3462] }, { label: "营业额", data: [8100, 6400, 5900, 5200] }],
+        [{ label: "整柜", data: [42, 35, 28, 22] }], null, null, true);
+      barLine("a1ch", ["美海","卡派","快递","专线","UPS"],
+        [{ label: "货量", data: [8200, 4100, 2800, 2100, 1362] }, { label: "销售额", data: [12800, 6200, 4100, 3200, 2300] }],
+        [{ label: "单价", data: [1.56, 1.51, 1.46, 1.52, 1.69] }], null, null, true);
+      bar("a1rank", ["张苏宁","王芳","李婷","周航","陈静","赵六","孙浩","钱程","吴敏","郑凯"],
+        [{ label: "货量", data: [980, 860, 820, 760, 710, 680, 640, 610, 580, 540] }], true);
+      bar("a1new", ["2023","2024","2025","2026"],
+        [{ label: "客户数", data: [120, 146, 168, 142] }, { label: "3个月内下单", data: [68, 82, 95, 78] }]);
+      bar("a1band", ["0-167","167-194","194以上"],
+        [{ label: "票数占比%", data: [42, 35, 23], color: "#722ed1cc" }]);
+    } else if (sub === "board2") {
+      line("a2line", MONTHS, [
+        { label: "累计目标", data: [10, 20, 30, 40, 50, 60, 70, 80, 90] },
+        { label: "全年完成", data: [9, 18, 29, 38, 48, 58, 69, 79, 93.8] }
+      ]);
+      doughnut("a2donut", ["货量完成", "差额"], [93.8, 6.2], ["#52c41a", "#f0f0f0"]);
+      barLine("a2mix", ["张苏宁","李婷","周航","陈静"],
+        [{ label: "货量", data: [980, 820, 760, 710] }, { label: "销售额", data: [1520, 1280, 1180, 1090] }],
+        [{ label: "毛利率%", data: [13.2, 12.1, 11.8, 12.4] }], null, null, true);
+      bar("a2newold", ["1月","2月","3月","4月","5月","6月","7月","8月","9月"],
+        [{ label: "新客户货量", data: [40, 35, 52, 48, 60, 55, 62, 58, 66] },
+         { label: "老客户货量", data: [180, 160, 200, 190, 210, 220, 205, 230, 240] }]);
+      barLine("a2ch", ["美海","卡派","快递","专线"],
+        [{ label: "货量", data: [2100, 980, 620, 500] }, { label: "销售额", data: [3200, 1480, 900, 760] }],
+        [{ label: "单价", data: [1.52, 1.51, 1.45, 1.52] }], null, null, true);
+      bar("a2rank", ["张苏宁","李婷","周航","陈静","赵六"],
+        [{ label: "货量", data: [980, 820, 760, 710, 680] }], true);
+    } else {
+      barLine("a3mix", MONTHS,
+        [{ label: "货量/吨", data: [310, 280, 330, 320, 350, 360, 352, 371, 398] },
+         { label: "营业额/万", data: [198, 182, 215, 208, 228, 236, 228, 241, 256] }],
+        [{ label: "毛利率%", data: [12.8, 12.2, 13.0, 12.5, 13.1, 13.3, 12.9, 13.2, 13.5] }], null, null, true);
+      line("a3line", MONTHS, [{ label: "货量", data: [310, 280, 330, 320, 350, 360, 352, 371, 398] }]);
+      pie("a3pie1", ["直客", "同行"], [60, 40]);
+      pie("a3pie2", ["美海", "卡派", "快递", "其他"], [54, 28, 12, 6]);
+      doughnut("a3donut", ["LA", "NY", "SAV", "其他"], [42, 28, 18, 12]);
+      line("a3gp", ["客户A","客户B","客户C","客户D","客户E","客户F"],
+        [{ label: "毛利", data: [8.2, 6.5, 5.1, 4.8, 3.9, 3.2] }]);
+      bar("a3cust", ["海拓","联洲","优拓","铭信","合创","竞拓"],
+        [{ label: "货量", data: [86, 72, 58, 52, 48, 41] }], true);
+    }
+  }
+
+  /* —— 三、整柜 —— */
+  function viewFcl() {
+    return note("按船司和交货目的地看整柜；费用看实际账单，与预估分开；查验预估单独确认。") +
+      filters(
+        '<div class="filter-item"><label>船司</label><select><option>全部</option><option>COSCO</option><option>ZIM</option></select></div>' +
+        '<div class="filter-item"><label>交货目的地</label><select><option>全部</option><option>LA</option><option>NY</option></select></div>' +
+        '<div class="filter-item"><label>月份</label><input type="month" value="2026-09"></div>' +
+        '<div class="filter-item"><label>费用口径</label><select><option selected>实际账单</option><option>预估</option></select></div>' +
+        '<div class="filter-item"><label>提单号</label><input></div>' +
+        '<div class="filter-item"><label>柜号</label><input></div>'
+      ) +
+      kpis([
+        { label: "整柜柜量", value: "98" },
+        { label: "实际账单", value: "431.2万", cls: "ok" },
+        { label: "预估", value: "437.4万" },
+        { label: "差额", value: "-6.2万" },
+        { label: "查验预估", value: "待定", cls: "warn" },
+        { label: "平均时效", value: "4.2天" }
+      ]) +
+      '<div class="chart-grid">' +
+        card("各船司柜量", "柱图 · 对齐苏州整柜图", "fclCarrier") +
+        card("目的港 · 柜量 / 平均时效", "柱+折", "fclDest") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("整柜 vs 查验率", "柱+折", "fclInsp") +
+        card("实际账单 vs 预估", "分组柱", "fclBill") +
+      '</div>';
+  }
+  function paintFcl() {
+    bar("fclCarrier", ["COSCO","ZIM","ONE","EMC","WHL","MSC"],
+      [{ label: "柜量", data: [28, 18, 16, 12, 14, 10], color: "#1890ffcc" }]);
+    barLine("fclDest", ["LA","NY","SAV","HOU","CHI"],
+      [{ label: "柜量", data: [32, 24, 16, 14, 12] }],
+      [{ label: "平均时效(天)", data: [3.8, 4.5, 4.2, 5.1, 4.0] }], null, null, true);
+    barLine("fclInsp", MONTHS.slice(0, 9),
+      [{ label: "整柜", data: [8, 7, 9, 10, 11, 12, 10, 11, 12] },
+       { label: "查验", data: [1, 0, 1, 1, 2, 1, 1, 2, 1] }],
+      [{ label: "查验率%", data: [12, 0, 11, 10, 18, 8, 10, 18, 8] }], null, null, true);
+    bar("fclBill", ["COSCO","ZIM","ONE","EMC"],
+      [{ label: "实际账单", data: [186, 124, 68, 52] },
+       { label: "预估", data: [192, 119, 71, 56] }]);
+  }
+
+  /* —— 四、查验 —— */
+  function viewInspect() {
+    var sub = state.sub.inspect;
+    var tabs = [
+      { id: "month", name: "月度看板" },
+      { id: "week", name: "每周看板" },
+      { id: "detail", name: "费用明细" }
+    ];
+    var subHtml = '<div class="sub-tabs">' + tabs.map(function (t) {
+      return '<button type="button" class="sub-tab' + (sub === t.id ? " active" : "") + '" data-sub="' + t.id + '">' + t.name + '</button>';
+    }).join("") + '</div>';
+    var body = "";
+    if (sub === "month") {
+      body = kpis([
+        { label: "目的港查验率", value: "4.8%", cls: "warn" },
+        { label: "补税金额", value: "12.6万" },
+        { label: "查验费用CNY", value: "86.4万" },
+        { label: "国外查验柜", value: "38" },
+        { label: "国内查验率", value: "2.1%" },
+        { label: "偏久天数段", value: "7-10天", cls: "bad" }
+      ]) +
+      '<div class="chart-grid">' +
+        card("国内查验 · 柜子合计 / 查验率", "柱+折", "insDom", "tall") +
+        card("国外查验 · 柜子合计 / 查验率", "柱+折", "insAbr", "tall") +
+      '</div>' +
+      '<div class="chart-grid third">' +
+        card("查验天数段占比", "饼图", "insPie") +
+        card("国内/国外查验率对比", "柱", "insRate") +
+        card("查验&滞箱 / 补收关税", "柱", "insFee") +
+      '</div>';
+    } else if (sub === "week") {
+      body = kpis([
+        { label: "本周国内装柜", value: "205" },
+        { label: "国内查验率", value: "1.9%" },
+        { label: "国外到港", value: "163" },
+        { label: "国外查验柜", value: "7" },
+        { label: "国外查验率", value: "4.3%", cls: "warn" },
+        { label: "周次", value: "2026-W39" }
+      ]) +
+      '<div class="chart-grid">' +
+        card("每周 · 国内装柜 / 查验延船 / 查验率", "柱+折", "wkDom", "tall") +
+        card("每周 · 国外到港 / 查验柜 / 查验率", "柱+折", "wkAbr", "tall") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("散货 vs 整柜查验", "分组柱", "wkType") +
+        card("正在查验柜量占比", "饼", "wkPie") +
+      '</div>';
+    } else {
+      body = '<div class="chart-grid">' +
+        card("费用类型结算金额(CNY)", "柱", "feeBar") +
+        card("补税金额趋势", "折", "feeLine") +
+      '</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>运单号</th><th>客户</th><th>费用类型</th><th class="num">原币</th><th>币别</th><th class="num">汇率</th><th class="num">结算CNY</th><th class="num">补税</th></tr></thead>' +
+      '<tbody><tr><td>TX-118</td><td>海拓</td><td>查验超期</td><td class="num">1200</td><td>USD</td><td class="num">7.18</td><td class="num">8616</td><td class="num">—</td></tr>' +
+      '<tr><td>TX-205</td><td>联洲</td><td>目的港查验</td><td class="num">860</td><td>USD</td><td class="num">7.18</td><td class="num">6175</td><td class="num">12800</td></tr></tbody></table></div>';
+    }
+    return note("按月看目的港查验率和天数段；补税单列；费用从应付取并折人民币。图对齐查验统计月度/每周看板。") +
+      subHtml +
+      filters(
+        '<div class="filter-item"><label>月份</label><input type="month" value="2026-09"></div>' +
+        '<div class="filter-item"><label>天数段</label><select><option>全部</option><option>7-10天</option></select></div>' +
+        '<div class="filter-item"><label>目的港</label><select><option>全部</option><option>LA</option></select></div>' +
+        '<div class="filter-item"><label>区域</label><select><option>全部</option><option>国内</option><option>国外</option></select></div>' +
+        '<div class="filter-item"><label>船司</label><select><option>全部</option></select></div>' +
+        '<div class="filter-item"><label>费用类型</label><select><option>全部</option></select></div>'
+      ) + body;
+  }
+  function paintInspect() {
+    var sub = state.sub.inspect;
+    if (sub === "month") {
+      barLine("insDom", MONTHS,
+        [{ label: "国内查验", data: [4, 3, 5, 4, 6, 5, 4, 5, 4] },
+         { label: "柜子合计", data: [180, 170, 200, 190, 210, 205, 198, 210, 205] }],
+        [{ label: "查验率%", data: [2.2, 1.8, 2.5, 2.1, 2.9, 2.4, 2.0, 2.4, 2.0] }], null, null, true);
+      barLine("insAbr", MONTHS,
+        [{ label: "国外查验", data: [6, 5, 7, 6, 8, 7, 6, 8, 7] },
+         { label: "柜子合计", data: [140, 130, 150, 145, 160, 155, 150, 160, 163] }],
+        [{ label: "查验率%", data: [4.3, 3.8, 4.7, 4.1, 5.0, 4.5, 4.0, 5.0, 4.3] }], null, null, true);
+      pie("insPie", ["1-2天","3-6天","7-10天","11-20天","20+天"], [18, 38, 22, 14, 8]);
+      bar("insRate", ["1月","2月","3月","4月","5月","6月","7月","8月","9月"],
+        [{ label: "国内查验率", data: [2.2, 1.8, 2.5, 2.1, 2.9, 2.4, 2.0, 2.4, 2.0] },
+         { label: "国外查验率", data: [4.3, 3.8, 4.7, 4.1, 5.0, 4.5, 4.0, 5.0, 4.3] }]);
+      bar("insFee", ["1月","2月","3月","4月","5月","6月","7月","8月","9月"],
+        [{ label: "查验&滞箱", data: [8, 7, 9, 8, 11, 10, 9, 12, 11] },
+         { label: "补收关税", data: [1.2, 0.8, 1.5, 1.1, 2.0, 1.6, 1.4, 1.8, 1.5] }]);
+    } else if (sub === "week") {
+      barLine("wkDom", ["W35","W36","W37","W38","W39"],
+        [{ label: "国内装柜", data: [186, 190, 198, 205, 205] },
+         { label: "国内查验延船", data: [3, 4, 4, 5, 4] }],
+        [{ label: "国内查验率%", data: [1.6, 2.1, 2.0, 2.4, 1.9] }], null, null, true);
+      barLine("wkAbr", ["W35","W36","W37","W38","W39"],
+        [{ label: "国外到港", data: [142, 148, 156, 160, 163] },
+         { label: "国外查验柜", data: [5, 6, 6, 8, 7] }],
+        [{ label: "国外查验率%", data: [3.5, 4.1, 3.8, 5.0, 4.3] }], null, null, true);
+      bar("wkType", ["W35","W36","W37","W38","W39"],
+        [{ label: "散货查验", data: [2, 3, 2, 4, 3] },
+         { label: "整柜查验", data: [3, 3, 4, 4, 4] }]);
+      pie("wkPie", ["正常", "国内查验中", "国外查验中"], [86, 6, 8]);
+    } else {
+      bar("feeBar", ["查验超期","目的港查验","滞箱","其他"],
+        [{ label: "结算CNY(万)", data: [28, 32, 18, 8.4], color: "#fa8c16cc" }]);
+      line("feeLine", MONTHS, [{ label: "补税金额(万)", data: [0.8, 0.6, 1.2, 0.9, 1.8, 1.4, 1.1, 1.6, 1.5] }]);
+    }
+  }
+
+  /* —— 五、产品部 —— */
+  function viewProduct() {
+    return note("按部门、产品和渠道看应收−应付毛利；单号登记时标有没有费用。图对齐产品部看板。") +
+      filters(
+        '<div class="filter-item"><label>部门</label><select><option>全部</option><option>产品一部</option></select></div>' +
+        '<div class="filter-item"><label>销售产品</label><select><option>全部</option></select></div>' +
+        '<div class="filter-item"><label>产品渠道</label><select><option>全部</option><option>美海</option></select></div>' +
+        '<div class="filter-item"><label>目的国家</label><select><option>全部</option><option>US</option></select></div>' +
+        '<div class="filter-item"><label>单号费用</label><select><option>全部</option><option>有费用</option><option>无费用</option></select></div>' +
+        '<div class="filter-item"><label>周次</label><select><option>2026-W39</option></select></div>'
+      ) +
+      kpis([
+        { label: "应收", value: "954万" },
+        { label: "应付", value: "830万" },
+        { label: "产品部毛利", value: "124万", cls: "ok" },
+        { label: "毛利率", value: "13.0%", cls: "warn" },
+        { label: "单号有费用", value: "75%" },
+        { label: "周货量", value: "1,280 T" }
+      ]) +
+      '<div class="chart-grid">' +
+        card("每周货量情况（历年对比）", "折线 · Excel", "pdWeek", "tall") +
+        card("应收 / 产品部毛利 / 毛利率", "柱+折", "pdMix", "tall") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("尾端货量占比", "柱", "pdTail") +
+        card("各部门渠道货量占比", "分组柱", "pdDept") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("2026 各尾端走势", "折线", "pdTailLine") +
+        card("毛利 / 毛利率", "柱+折", "pdGp") +
+      '</div>';
+  }
+  function paintProduct() {
+    line("pdWeek", ["W30","W31","W32","W33","W34","W35","W36","W37","W38","W39"], [
+      { label: "2023年", data: [900, 920, 880, 940, 960, 910, 930, 950, 970, 940] },
+      { label: "2024年", data: [1000, 1020, 980, 1050, 1080, 1040, 1060, 1090, 1110, 1080] },
+      { label: "2025年", data: [1120, 1140, 1100, 1180, 1200, 1160, 1190, 1220, 1240, 1210] },
+      { label: "2026年", data: [1180, 1200, 1150, 1220, 1250, 1210, 1230, 1260, 1280, 1280] }
+    ]);
+    barLine("pdMix", MONTHS,
+      [{ label: "应收", data: [820, 780, 860, 840, 900, 920, 910, 940, 954] },
+       { label: "产品部毛利", data: [98, 92, 108, 102, 118, 122, 116, 120, 124] }],
+      [{ label: "毛利率%", data: [12.0, 11.8, 12.6, 12.1, 13.1, 13.3, 12.7, 12.8, 13.0] }], null, null, true);
+    bar("pdTail", ["私卡","特价","FEDEX","自提","UPS","卡派"],
+      [{ label: "货量占比%", data: [22, 18, 15, 12, 10, 23], color: "#13c2c2cc" }]);
+    bar("pdDept", ["T16","T20","T25","中美快运","美森正班"],
+      [{ label: "产品一部", data: [120, 98, 86, 70, 65] },
+       { label: "产品二部", data: [80, 72, 60, 55, 48] }]);
+    line("pdTailLine", MONTHS, [
+      { label: "FEDEX", data: [80, 75, 90, 85, 95, 100, 92, 98, 105] },
+      { label: "UPS", data: [60, 58, 65, 62, 70, 72, 68, 74, 78] },
+      { label: "卡派", data: [200, 190, 220, 210, 230, 240, 225, 245, 250] },
+      { label: "私卡", data: [150, 140, 160, 155, 170, 175, 168, 180, 185] }
+    ]);
+    barLine("pdGp", MONTHS,
+      [{ label: "毛利", data: [98, 92, 108, 102, 118, 122, 116, 120, 124] }],
+      [{ label: "毛利率%", data: [12.0, 11.8, 12.6, 12.1, 13.1, 13.3, 12.7, 12.8, 13.0] }], null, null, true);
+  }
+
+  /* —— 六、渠道 —— */
+  function viewChannel() {
+    return note("按代理看货量、销售额、应付和毛利，可下到国家与运单。图对齐渠道分析。") +
+      filters(
+        '<div class="filter-item"><label>代理</label><select><option>全部</option><option>伟成国际</option></select></div>' +
+        '<div class="filter-item"><label>国家</label><select><option>全部</option><option>US</option></select></div>' +
+        '<div class="filter-item"><label>部门</label><select><option>全部</option></select></div>' +
+        '<div class="filter-item"><label>战队</label><select><option>全部</option></select></div>' +
+        '<div class="filter-item"><label>港口</label><select><option>全部</option></select></div>' +
+        '<div class="filter-item"><label>产品渠道</label><select><option>全部</option></select></div>'
+      ) +
+      kpis([
+        { label: "货量", value: "2,660" },
+        { label: "销售额", value: "396万" },
+        { label: "应付", value: "328万" },
+        { label: "毛利", value: "68万", cls: "ok" },
+        { label: "毛利率", value: "17.2%", cls: "ok" },
+        { label: "运单数", value: "128" }
+      ]) +
+      '<div class="chart-grid third">' +
+        card("货量完成结构", "环图", "chD1") +
+        card("销售额结构", "环图", "chD2") +
+        card("毛利结构", "环图", "chD3") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("代理 · 货量 / 销售额 / 毛利", "柱+折", "chMix", "tall") +
+        card("部门货量", "柱", "chDept") +
+      '</div>' +
+      '<div class="chart-grid">' +
+        card("业务员货量 TOP", "横向柱", "chSales") +
+        card("代理货量对比", "柱", "chAgent") +
+      '</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>运单号</th><th>状态</th><th>客户</th><th>服务商</th><th>销售产品</th><th>签入仓</th><th>业务员</th><th>部门</th><th>签入时间</th></tr></thead>' +
+      '<tbody><tr><td>TX-001</td><td>已签入</td><td>海拓</td><td>伟成国际</td><td>美海卡派</td><td>4DS</td><td>张苏宁</td><td>苏州一部</td><td>2026-09-18</td></tr>' +
+      '<tr><td>TX-018</td><td>转运中</td><td>联洲</td><td>伟成国际</td><td>美海卡派</td><td>美库</td><td>李婷</td><td>苏州一部</td><td>2026-09-19</td></tr></tbody></table></div>';
+  }
+  function paintChannel() {
+    doughnut("chD1", ["伟成", "环世", "德莎", "其他"], [48, 28, 14, 10]);
+    doughnut("chD2", ["伟成", "环世", "德莎", "其他"], [47, 30, 13, 10]);
+    doughnut("chD3", ["伟成", "环世", "德莎", "其他"], [50, 28, 12, 10]);
+    barLine("chMix", ["伟成国际","环世供应链","德莎物流","中外运","合创"],
+      [{ label: "货量", data: [1280, 960, 420, 380, 220] },
+       { label: "销售额", data: [186, 142, 68, 58, 36] }],
+      [{ label: "毛利", data: [34, 24, 10, 9, 5] }], null, null, true);
+    bar("chDept", ["销售一部","销售二部","销售三部","销售四部","销售五部","宁波"],
+      [{ label: "货量", data: [620, 540, 480, 410, 360, 250], color: "#1890ffcc" }]);
+    bar("chSales", ["陈炎","李可","黄小丽","王仁韬","徐建","陈燚"],
+      [{ label: "货量", data: [186, 172, 158, 142, 130, 118] }], true);
+    bar("chAgent", ["伟成国际","环世供应链","德莎物流","中外运","合创"],
+      [{ label: "货量", data: [1280, 960, 420, 380, 220] },
+       { label: "应付", data: [152, 118, 58, 50, 32] }]);
+  }
+
+  var VIEWS = {
+    broadcast: { html: viewBroadcast, paint: paintBroadcast },
+    analysis: { html: viewAnalysis, paint: paintAnalysis },
+    fcl: { html: viewFcl, paint: paintFcl },
+    inspect: { html: viewInspect, paint: paintInspect },
+    product: { html: viewProduct, paint: paintProduct },
+    channel: { html: viewChannel, paint: paintChannel }
+  };
+
+  function renderMainTabs() {
+    document.getElementById("mainTabs").innerHTML = MODULES.map(function (m) {
+      return '<button type="button" class="main-tab' + (state.main === m.id ? " active" : "") + '" data-main="' + m.id + '">' + m.name + '</button>';
+    }).join("");
+    var mod = MODULES.filter(function (m) { return m.id === state.main; })[0];
+    document.getElementById("srcTag").textContent = "来源图：" + mod.src;
+  }
+
+  function bindChrome() {
+    document.querySelectorAll("[data-sub]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.sub[state.main] = btn.getAttribute("data-sub");
+        render();
+      });
+    });
+    var q = document.getElementById("btnQ");
+    if (q) q.onclick = function () { toast("已按筛选刷新（演示）"); render(); };
+    var r = document.getElementById("btnR");
+    if (r) r.onclick = function () { toast("已重置"); };
+    var e = document.getElementById("btnE");
+    if (e) e.onclick = function () { toast("演示：导出 Excel"); };
+  }
+
+  function render() {
+    destroyCharts();
+    renderMainTabs();
+    var v = VIEWS[state.main];
+    document.getElementById("viewRoot").innerHTML = v.html();
+    bindChrome();
+    requestAnimationFrame(function () { v.paint(); });
+  }
+
+  document.getElementById("mainTabs").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-main]");
+    if (!btn) return;
+    state.main = btn.getAttribute("data-main");
+    render();
+  });
+
+  render();
+})();
+  </script>
+</body>
+</html>
