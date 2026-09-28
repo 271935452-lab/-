@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>账期锁账时间规则 · PRD</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --card: #fff; --line: #e5e7eb; --text: #111827; --sub: #6b7280;
+      --primary: #1677ff; --accent: #003a8c; --ok: #15803d; --warn: #c2410c; --danger: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 14px;
+    }
+    a { color: var(--primary); }
+    .page { max-width: 1100px; margin: 0 auto; padding: 20px 16px 56px; }
+    .hero {
+      background: linear-gradient(135deg, #003a8c, #1677ff); color: #fff;
+      border-radius: 12px; padding: 16px 18px; margin-bottom: 14px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 20px; }
+    .hero p { margin: 0; font-size: 13px; line-height: 1.65; opacity: .95; }
+    .hero a { color: #fff; }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .toc a {
+      padding: 6px 12px; background: #fff; border: 1px solid var(--line);
+      border-radius: 8px; font-size: 12px; color: var(--text); text-decoration: none;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 16px 18px; margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 10px; font-size: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    }
+    .card h3 { margin: 14px 0 8px; font-size: 14px; }
+    .card p, .card li { line-height: 1.7; color: #334155; }
+    .card ul, .card ol { margin: 0; padding-left: 18px; }
+    .note {
+      margin: 10px 0 0; padding: 8px 10px; background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: 6px; font-size: 12px; color: #1e40af; line-height: 1.65;
+    }
+    .warn {
+      margin: 10px 0 0; padding: 8px 10px; background: #fff7ed; border: 1px solid #fdba74;
+      border-radius: 6px; font-size: 12px; color: var(--warn); line-height: 1.65;
+    }
+    .ok {
+      margin: 10px 0 0; padding: 8px 10px; background: #f0fdf4; border: 1px solid #86efac;
+      border-radius: 6px; font-size: 12px; color: var(--ok); line-height: 1.65;
+    }
+    .danger {
+      margin: 10px 0 0; padding: 8px 10px; background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 6px; font-size: 12px; color: var(--danger); line-height: 1.65;
+    }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top;
+    }
+    th { background: #f8fafc; font-weight: 700; color: #475569; white-space: nowrap; }
+    td.term { font-weight: 700; background: #fafafa; white-space: nowrap; }
+    .tag {
+      display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 700;
+    }
+    .tag.new { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .tag.key { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .tag.done { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .mono { font-family: Consolas, "SF Mono", monospace; font-size: 12px; }
+    .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+    .steps { margin: 0; padding-left: 18px; }
+    .steps li { margin: 4px 0; }
+    .ex {
+      background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px;
+      padding: 10px 12px; margin-top: 8px; font-size: 12px; line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>账期锁账时间规则 · PRD</h1>
+      <p>
+        财务 · 分析组本期清单。<strong>本次新增：开船结</strong>。
+        周结口径已确认（一律下周五）；半月结 / +30 / 回刷已确认。
+        月结+5～+25/+45 及签入、到港、签收等仍<strong>待核实</strong>。
+        统一换算：<strong>锁账时间 = 应结截止日的前一天 24:00</strong>。
+        <a href="分析-模块导航.html">← 分析导航</a>
+        · <a href="../收款/客户管理-中信保合同账期-MVP.html">客户账期原型</a>
+      </p>
+    </section>
+
+    <nav class="toc">
+      <a href="#s-scope">范围</a>
+      <a href="#s-delta">本期增量</a>
+      <a href="#s-change">改账期回刷</a>
+      <a href="#s-lock">锁账总则</a>
+      <a href="#s-matrix">截止日矩阵</a>
+      <a href="#s-half">半月结说明</a>
+      <a href="#s-calc">计算步骤</a>
+      <a href="#s-ex">示例</a>
+      <a href="#s-open">待确认 / 待核实</a>
+      <a href="#s-accept">验收</a>
+    </nav>
+
+    <section class="card" id="s-scope">
+      <h2>一、范围与对象</h2>
+      <table>
+        <thead><tr><th>项</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>适用</td>
+            <td>客户结算账期 / 锁账时刻计算。与客户主数据上的<strong>结算周期</strong>、<strong>账期节点</strong>组合使用。</td>
+          </tr>
+          <tr>
+            <td>本期产出</td>
+            <td>① 新增<strong>开船结</strong>；② 锁账换算总则（截止日前一天 24:00）；③ <strong>改账期后未核销账单按新账期回刷</strong>；④ 其余周期矩阵标为<strong>待核实</strong>。</td>
+          </tr>
+          <tr>
+            <td>不在本期</td>
+            <td>在核实完成前，不以业务草表直接覆盖现网周结/半月结/月结+N 实现；滞纳金、资金占用「实际账期」见调研纪要另条。</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="danger"><strong>状态分层：</strong><span class="tag new">本次新增</span> 可进开发；<span class="tag key">待核实</span> 仅作对照清单，未核实不得当正式需求落地。</p>
+    </section>
+
+    <section class="card" id="s-delta">
+      <h2>二、本期增量 · 开船结 <span class="tag new">本次新增</span></h2>
+      <ol class="steps">
+        <li>账期节点 / 结算方式新增<strong>开船结</strong>：以<strong>开船时间</strong>作为账期起算节点。</li>
+        <li>客户管理、账期申请、锁账任务需能选「开船」维度（与现有到港 / 签收 / 到货等并列）。</li>
+        <li>开船结下的应结截止日：先按开船节点落入下表「开船」列取值（周结/半月结/月结+N 各行）；表中非开船列及其他结算周期整体仍属<strong>待核实</strong>。</li>
+        <li>锁账时刻仍遵守总则：L = 截止日 D 的前一天 24:00。</li>
+      </ol>
+      <p class="note"><strong>与客户管理原型对齐：</strong>账期维度已有「开船」选项意向时，本期按<strong>正式新增开船结</strong>验收；具体截止日数字以核实后的矩阵为准，开船结本身不因矩阵待核实而取消。</p>
+      <table>
+        <thead><tr><th>类型</th><th>内容</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>开船结</td>
+            <td>新增账期节点：按开船时间起算；锁账 = 对应截止日前一天 24:00</td>
+            <td><span class="tag new">本次新增</span></td>
+          </tr>
+          <tr>
+            <td>周结 / 半月结 / 月结+5～60 天</td>
+            <td>业务草表中的截止日数字</td>
+            <td><span class="tag key">待核实</span></td>
+          </tr>
+          <tr>
+            <td>签入 / 到港 / 签收列</td>
+            <td>各结算周期下非开船节点的截止日</td>
+            <td><span class="tag key">待核实</span></td>
+          </tr>
+          <tr>
+            <td>改账期回刷</td>
+            <td>改完账期后，未核销账单全部按新账期重算/回写（打破「下单即锁账期」）</td>
+            <td><span class="tag new">本次新增</span></td>
+          </tr>
+          <tr>
+            <td>锁账换算</td>
+            <td>截止日前一天 24:00</td>
+            <td><span class="tag new">本次明确</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="s-change">
+      <h2>三、改账期后 · 未核销账单回刷 <span class="tag new">本次新增</span></h2>
+      <p class="warn"><strong>现网痛点：</strong>下单时即锁定账期；客户/单据改账期后，历史未结账单仍按旧账期，导致锁账日、应结口径不一致。</p>
+      <ol class="steps">
+        <li><strong>触发：</strong>客户主数据「结算周期 / 账期节点」变更并保存成功（范围 = <strong>整客户</strong>，已确认）。</li>
+        <li><strong>回刷范围：</strong>该客户下<strong>未核销、部分核销</strong>的账单 / 应收费用行，全部按<strong>新账期</strong>重算应结截止日 D 与锁账时间 L（含已锁账但未完全核销的，一并回刷并重调度 L）。</li>
+        <li><strong>不做回刷：</strong>已完全核销 / 已结算单据保持原账期快照。</li>
+        <li><strong>落库：</strong>回写账期类型、节点、D、L；保留变更前账期与操作人、时间，便于追溯。</li>
+        <li><strong>锁账任务：</strong>按新 L 重新调度；旧 L 上未执行的锁账任务取消或作废。</li>
+      </ol>
+      <table>
+        <thead><tr><th>对象</th><th>改账期后处理</th><th>结论</th></tr></thead>
+        <tbody>
+          <tr><td>未核销</td><td>按新账期回刷，重算 D、L</td><td><span class="tag done">已确认</span></td></tr>
+          <tr><td>部分核销</td><td>同样回刷</td><td><span class="tag done">已确认</span></td></tr>
+          <tr><td>已锁账但未完全核销</td><td>同样回刷并重算 L</td><td><span class="tag done">已确认</span></td></tr>
+          <tr><td>已完全核销 / 已结算</td><td>不回刷</td><td><span class="tag done">已确认</span></td></tr>
+          <tr><td>回刷范围</td><td>改整客户（非按批次勾选）</td><td><span class="tag done">已确认</span></td></tr>
+          <tr><td>新下订单</td><td>直接取当前新账期</td><td><span class="tag done">已确认</span></td></tr>
+        </tbody>
+      </table>
+      <p class="ok"><strong>测：</strong>客户改「开船结」→ 未核销 2 笔、部分核销 1 笔、已锁未核销 1 笔均回刷；已完全核销 1 笔不变。</p>
+      <p class="note"><strong>与开船结关系：</strong>若新账期为开船结，回刷时节点时间取各单开船时间；无开船时间的未核销/部分核销单标异常待补，不静默用错节点。</p>
+    </section>
+
+    <section class="card" id="s-lock">
+      <h2>四、锁账总则 <span class="tag new">本次明确</span></h2>
+      <ol class="steps">
+        <li>先按「结算周期 + 账期节点」得到<strong>应结截止日 D</strong>（表中「×号前 / 下周五前」均指 D）。现网已有周期的 D 值须<strong>核实</strong>后再用；开船结启用同一换算。</li>
+        <li><strong>锁账时间 L = D 的前一天 24:00</strong>。等价：<span class="mono">L = D 日 00:00:00</span>（进入 D 日 0 点即已锁）。</li>
+        <li>业务含义：截止日当天起不可再改归属本账期的应收/计费（以实现为准）；锁账任务在 <span class="mono">L</span> 触发。</li>
+        <li>若表述为「次月 5 号前」，则 D = 次月 5 日，L = 次月 4 日 24:00。</li>
+      </ol>
+      <p class="danger"><strong>统一换算：</strong>凡表中出现「N 号前」，锁账时刻一律取 <strong>(N 号 − 1 日) 24:00</strong>，不得理解为 N 号当天 24:00。</p>
+    </section>
+
+    <section class="card" id="s-matrix">
+      <h2>五、应结截止日矩阵 <span class="tag key">待核实</span></h2>
+      <p>下表来自业务草表，用作<strong>对照现网核实清单</strong>，非正式定稿。列 = 账期节点；行 = 结算周期。其中<strong>开船列</strong>供开船结取值参考，数字仍须与现网/业务确认。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>结算周期</th>
+            <th>签入 <span class="tag key">核实</span></th>
+            <th>开船 <span class="tag new">新增节点</span></th>
+            <th>到港 <span class="tag key">核实</span></th>
+            <th>签收 <span class="tag key">核实</span></th>
+            <th>周期状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="term">周结</td>
+            <td>下周五前</td>
+            <td>下周五前</td>
+            <td>下周五前</td>
+            <td>下周五前</td>
+            <td><span class="tag key">待核实</span></td>
+          </tr>
+          <tr>
+            <td class="term" rowspan="2">半月结</td>
+            <td>当月 20 号</td>
+            <td>当月 21 号</td>
+            <td>当月 22 号</td>
+            <td>当月 23 号</td>
+            <td rowspan="2"><span class="tag done">已确认 · 新规则</span></td>
+          </tr>
+          <tr>
+            <td>次月 5 号</td>
+            <td>次月 5 号</td>
+            <td>次月 5 号</td>
+            <td>次月 5 号</td>
+          </tr>
+          <tr>
+            <td class="term">月结 +5 天</td>
+            <td>次月 5 号前</td>
+            <td>次月 5 号前</td>
+            <td>次月 5 号前</td>
+            <td>次月 5 号前</td>
+            <td><span class="tag key">待核实</span></td>
+          </tr>
+          <tr>
+            <td class="term">月结 +10 天</td>
+            <td>次月 10 号前</td>
+            <td>次月 10 号前</td>
+            <td>次月 10 号前</td>
+            <td>次月 10 号前</td>
+            <td><span class="tag key">待核实</span></td>
+          </tr>
+          <tr>
+            <td class="term">月结 +15 天</td>
+            <td>次月 15 号前</td>
+            <td>次月 15 号前</td>
+            <td>次月 15 号前</td>
+            <td>次月 15 号前</td>
+            <td><span class="tag key">待核实</span></td>
+          </tr>
+          <tr>
+            <td class="term">月结 +25 天</td>
+            <td>次月 25 号前</td>
+            <td>次月 25 号前</td>
+            <td>次月 25 号前</td>
+            <td>次月 25 号前</td>
+            <td><span class="tag key">待核实</span></td>
+          </tr>
+          <tr>
+            <td class="term">月结 +30 天</td>
+            <td>次月最后一天</td>
+            <td>次月最后一天</td>
+            <td>次月最后一天</td>
+            <td>次月最后一天</td>
+            <td><span class="tag done">+30 已确认</span></td>
+          </tr>
+          <tr>
+            <td class="term">月结 +45 天</td>
+            <td>隔月 15 号前</td>
+            <td>隔月 15 号前</td>
+            <td>隔月 15 号前</td>
+            <td>隔月 15 号前</td>
+            <td><span class="tag key">待核实</span></td>
+          </tr>
+          <tr>
+            <td class="term">月结 +60 天</td>
+            <td>隔月最后一天</td>
+            <td>隔月最后一天</td>
+            <td>隔月最后一天</td>
+            <td>隔月最后一天</td>
+            <td><span class="tag done">+30 口径 · 隔月</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="warn"><strong>核实要求：</strong>月结+5～+25/+45 及签入/到港/签收列仍须对照现网。周结「一律下周五」、半月结分流、<strong>+30 取目标月最后一天</strong>已确认。未核实项不覆盖现网。</p>
+      <p class="note"><strong>用语：</strong>「次月」= 节点发生月的下一个自然月；「隔月」= 再往后一个月。「N 号前」的 D 取该月 N 日；凡规则含「+30」一律取该目标月<strong>最后一天</strong>，不固定 30 号。</p>
+    </section>
+
+    <section class="card" id="s-half">
+      <h2>六、半月结分流 <span class="tag done">已确认 · 新规则</span></h2>
+      <p>半月结按节点发生日落入上 / 下半月窗口（业务确认：<strong>新规则</strong>，非仅沿用旧现网）：</p>
+      <table>
+        <thead><tr><th>窗口</th><th>判定</th><th>签入 D</th><th>开船 D</th><th>到港 D</th><th>签收 D</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="term">上半月</td>
+            <td>节点日 ∈ 当月 <strong>1–15</strong> 日</td>
+            <td>当月 20 日</td>
+            <td>当月 21 日</td>
+            <td>当月 22 日</td>
+            <td>当月 23 日</td>
+          </tr>
+          <tr>
+            <td class="term">下半月</td>
+            <td>节点日 ∈ 当月 <strong>16 日–月末</strong></td>
+            <td colspan="4" style="text-align:center">次月 5 日（四节点相同）</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="ok">上半月各节点截止日 20/21/22/23；下半月统一次月 5 号。锁账一律 D−1 日 24:00。</p>
+    </section>
+
+    <section class="card" id="s-calc">
+      <h2>七、系统计算步骤</h2>
+      <ol class="steps">
+        <li>读取客户/单据：结算周期、账期节点类型。</li>
+        <li>取节点发生时间 T（签入 / 开船 / 到港 / 签收时间）。</li>
+        <li>由 T 的年月 + 结算周期 + 节点类型，查矩阵得截止日 D。
+          <ul>
+            <li>周结：D = T 之后的<strong>下一个周五</strong>（「下周五前」）。T 当天已是周五时，仍取<strong>下周五</strong>，不取本周五。</li>
+            <li>半月结：按第六节窗口选行（已确认）。</li>
+            <li>月结 +N：D = 次月（或隔月）对应号；凡含 +30 的，D = 该目标月最后一天。</li>
+          </ul>
+        </li>
+        <li>锁账时间 L = D 前一天 24:00。</li>
+        <li>到点执行锁账；解锁走现网/申请流（不在本规则改）。</li>
+      </ol>
+      <h3>特殊日历</h3>
+      <ul>
+        <li><strong>月结 +30：</strong>D = <strong>次月最后一天</strong>（不固定 30 号；2 月等小月自然取月末）。</li>
+        <li><strong>月结 +60：</strong>D = <strong>隔月最后一天</strong>（同 +30 口径）。</li>
+      </ul>
+    </section>
+
+    <section class="card" id="s-ex">
+      <h2>八、换算示例</h2>
+      <div class="ex">
+        <strong>例 A · 开船结（本次新增）· 假设核实后采用「月结 +5 天」开船列</strong><br />
+        开船时间 T = 2026-09-12 → D = 2026-10-05<br />
+        锁账时间 L = <span class="mono">2026-10-04 24:00</span>（换算总则已明确）
+      </div>
+      <div class="ex">
+        <strong>例 1 · 月结 +5 天 · 到港</strong> <span class="tag key">待核实</span><br />
+        到港时间 T = 2026-09-12 → 次月 = 2026-10 → D = 2026-10-05<br />
+        锁账时间 L = <span class="mono">2026-10-04 24:00</span>（即 2026-10-05 00:00:00 起已锁）
+      </div>
+      <div class="ex">
+        <strong>例 2 · 半月结 · 签入 · 上半月窗口</strong> <span class="tag done">已确认</span><br />
+        签入 T = 2026-09-08（属 1–15）→ D = 当月 20 日 = 2026-09-20<br />
+        锁账 L = <span class="mono">2026-09-19 24:00</span>
+      </div>
+      <div class="ex">
+        <strong>例 3 · 半月结 · 开船 · 下半月窗口</strong> <span class="tag done">已确认</span><br />
+        开船 T = 2026-09-18（属 16–月末）→ D = 次月 5 日 = 2026-10-05<br />
+        锁账 L = <span class="mono">2026-10-04 24:00</span>
+      </div>
+      <div class="ex">
+        <strong>例 4 · 周结 · 签收</strong> <span class="tag done">已确认</span><br />
+        签收 T = 2026-09-10（周三）→ 下周五 D = 2026-09-18<br />
+        锁账 L = <span class="mono">2026-09-17 24:00</span><br />
+        若 T = 2026-09-11（周五）→ 仍取<strong>下周五</strong> D = 2026-09-18（不取当天）→ L = <span class="mono">2026-09-17 24:00</span>
+      </div>
+      <div class="ex">
+        <strong>例 5 · 月结 +45 天 · 开船</strong> <span class="tag key">待核实</span><br />
+        开船 T = 2026-09-03 → 隔月 = 2026-11 → D = 2026-11-15<br />
+        锁账 L = <span class="mono">2026-11-14 24:00</span>
+      </div>
+      <div class="ex">
+        <strong>例 6 · 月结 +30 天 · 开船</strong> <span class="tag done">已确认</span><br />
+        开船 T = 2026-01-20 → 次月 = 2026-02 → D = 2026-02-28（2 月最后一天，非 30 号）<br />
+        锁账 L = <span class="mono">2026-02-27 24:00</span>
+      </div>
+      <p class="ok"><strong>测（本期必测）：</strong>开船结；锁账 = D−1 日 24:00；周结一律下周五（含 T=周五）；半月结 1–15 / 16–月末分流；+30 取目标月最后一天；改整客户且未核销+部分核销+已锁未核销均回刷。</p>
+    </section>
+
+    <section class="card" id="s-open">
+      <h2>九、待确认 / 待核实 · 结论台账</h2>
+      <table>
+        <thead><tr><th>ID</th><th>问题</th><th>结论</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>V-LOCK-01</td><td>周结「下周五前」与周五当天取 D</td><td><span class="tag done">已确认</span></td><td>一律取<strong>下周五</strong>为 D；T 当天是周五也不取本周五</td></tr>
+          <tr><td>V-LOCK-02</td><td>半月结窗口与 20/21/22/23</td><td><span class="tag done">已确认 · 新规则</span></td><td>1–15 上半月；16–月末下半月；截止日按矩阵</td></tr>
+          <tr><td>V-LOCK-03</td><td>+30 / 小月无 30 日</td><td><span class="tag done">已确认</span></td><td><strong>+30 一律取目标月最后一天</strong>（月结+30=次月末；+60=隔月末）</td></tr>
+          <tr><td>V-LOCK-04</td><td>签入 / 到港 / 签收列与现网</td><td><span class="tag key">仍待核实</span></td><td>逐节点对照现网</td></tr>
+          <tr><td>Q-CHG-01</td><td>部分核销是否回刷</td><td><span class="tag done">已确认</span></td><td><strong>部分核销也回刷</strong>；已完全核销不回刷</td></tr>
+          <tr><td>Q-CHG-02</td><td>已锁账未核销是否回刷 L</td><td><span class="tag done">已确认</span></td><td><strong>也回刷</strong>并重调度锁账</td></tr>
+          <tr><td>Q-CHG-03</td><td>改账期范围</td><td><span class="tag done">已确认</span></td><td><strong>改整客户</strong></td></tr>
+          <tr><td>Q-LOCK-05</td><td>开船结与到货</td><td><span class="tag done">维持原建议</span></td><td>开船结本期新增；到货另条</td></tr>
+          <tr><td>Q-LOCK-06</td><td>锁账时区</td><td><span class="tag done">维持原建议</span></td><td>公司默认时区（中国）</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="s-accept">
+      <h2>十、验收要点</h2>
+      <ol class="steps">
+        <li>可选<strong>开船结</strong>；锁账时刻 = 截止日前一天 24:00。</li>
+        <li>改账期：<strong>整客户</strong>；未核销、部分核销、已锁未完全核销均回刷；已完全核销不回刷；有留痕。</li>
+        <li>半月结：1–15 / 16–月末分流；上半月 D=20/21/22/23；下半月 D=次月 5 日。</li>
+        <li>月结 +30 / +60：D 取次月 / 隔月<strong>最后一天</strong>。</li>
+        <li>周结：D = 下周五；T 当天是周五仍取下周五。</li>
+        <li>月结+5～+25/+45、签入/到港/签收与现网一致性：核实完成后再验收覆盖。</li>
+      </ol>
+    </section>
+
+    <p class="foot">财务部门 · 分析组 · 账期锁账时间规则 PRD · 2026-09-28 · 周结一律下周五 / 半月结 / +30 / 回刷已确认；开船结新增；月结非+30 等仍待核实</p>
+  </div>
+</body>
+</html>

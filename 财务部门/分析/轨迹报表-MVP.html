@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>轨迹报表 · MVP（分析组）</title>
+  <style>
+    :root {
+      --nav: #001529; --primary: #1890ff; --warn: #fa8c16; --ok: #52c41a; --danger: #ff4d4f;
+      --bg: #f0f2f5; --line: #e8e8e8; --text: #262626; --muted: #8c8c8c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .topbar {
+      height: 40px; background: var(--nav); color: #fff;
+      display: flex; align-items: center; padding: 0 12px; gap: 4px; flex-shrink: 0;
+    }
+    .topbar .logo { font-weight: 700; margin-right: 12px; letter-spacing: .3px; }
+    .topbar .tab {
+      padding: 6px 12px; border-radius: 4px 4px 0 0; color: rgba(255,255,255,.65); font-size: 12px;
+    }
+    .topbar .tab.on { background: #fff; color: var(--warn); font-weight: 600; }
+    .topbar .right { margin-left: auto; font-size: 12px; color: rgba(255,255,255,.7); display: flex; gap: 12px; align-items: center; }
+    .topbar .right a { color: rgba(255,255,255,.85); text-decoration: none; }
+
+    .body { flex: 1; display: flex; min-height: 0; }
+    .side {
+      width: 56px; background: #001529; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 6px;
+    }
+    .side .ico {
+      width: 36px; height: 36px; border-radius: 6px; color: rgba(255,255,255,.55);
+      display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+    }
+    .side .ico.on { background: var(--primary); color: #fff; }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .crumb {
+      height: 36px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; color: var(--muted); font-size: 12px; flex-shrink: 0;
+    }
+    .crumb b { color: var(--text); }
+    .banner {
+      margin: 10px 16px 0; padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 4px; font-size: 12px; color: #ad6800; line-height: 1.55; flex-shrink: 0;
+    }
+    .banner b { color: #d46b08; }
+    .banner .tag-new {
+      display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; font-size: 11px; font-weight: 700;
+    }
+
+    .filter {
+      margin: 10px 16px 0; background: #fff; border: 1px solid var(--line); border-radius: 4px;
+      padding: 12px 14px 8px; flex-shrink: 0;
+    }
+    .fg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 16px; }
+    .fi { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+    .fi label { flex: 0 0 84px; text-align: right; color: var(--muted); padding-top: 6px; white-space: nowrap; }
+    .fi .ctl { flex: 1; min-width: 0; }
+    .fi input, .fi select, .fi textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 4px; padding: 5px 8px; background: #fff;
+    }
+    .fi input, .fi select { height: 32px; }
+    .fi textarea { min-height: 64px; resize: vertical; font-family: Consolas, "SF Mono", monospace; font-size: 12px; }
+    .fi .hint { margin-top: 4px; font-size: 11px; color: var(--muted); }
+    .range { display: flex; align-items: center; gap: 6px; }
+    .range input { flex: 1; }
+    .range span { color: var(--muted); flex-shrink: 0; }
+    .new-field label::after {
+      content: "新"; display: inline-block; margin-left: 4px; padding: 0 4px;
+      font-size: 10px; font-weight: 700; color: #cf1322; background: #fff1f0; border-radius: 2px; vertical-align: 1px;
+    }
+    .filter-actions {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      margin-top: 10px; padding-top: 8px; border-top: 1px dashed #f0f0f0; flex-wrap: wrap;
+    }
+    .filter-actions .left, .filter-actions .right { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .btn {
+      height: 32px; padding: 0 14px; border: 1px solid #d9d9d9; border-radius: 4px;
+      background: #fff; color: var(--text); display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { background: #40a9ff; border-color: #40a9ff; color: #fff; }
+    .btn.ghost { background: #002140; border-color: #002140; color: #fff; }
+    .btn.ghost:hover { filter: brightness(1.1); color: #fff; }
+
+    .table-wrap {
+      margin: 10px 16px 0; flex: 1; min-height: 0; background: #fff;
+      border: 1px solid var(--line); border-radius: 4px; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .table-scroll { flex: 1; overflow: auto; }
+    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+    thead th {
+      position: sticky; top: 0; z-index: 2; background: #fafafa; border-bottom: 1px solid var(--line);
+      padding: 8px 10px; text-align: left; font-weight: 600; white-space: nowrap; color: #595959;
+    }
+    thead th .funnel { opacity: .35; margin-left: 2px; font-size: 10px; }
+    thead th.new-col { background: #fff7e6; color: #d46b08; }
+    tbody td {
+      padding: 7px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; vertical-align: middle;
+    }
+    tbody tr:hover { background: #f5f9ff; }
+    tbody tr.abnormal { background: #fff1f0; }
+    tbody tr.abnormal:hover { background: #ffe7e7; }
+    tbody tr.fcl { background: #f6ffed; }
+    tbody tr.fcl.abnormal { background: #fff7e6; }
+    tfoot td {
+      padding: 8px 10px; background: #fff0f6; border-top: 1px solid var(--line);
+      font-weight: 600; position: sticky; bottom: 0;
+    }
+    .mono { font-family: Consolas, "SF Mono", monospace; }
+    .num { font-variant-numeric: tabular-nums; font-family: Consolas, monospace; }
+    .tag {
+      display: inline-block; padding: 1px 7px; border-radius: 2px; font-size: 11px; line-height: 18px; font-weight: 600;
+    }
+    .tag.ok { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag.warn { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .tag.danger { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .tag.info { background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; }
+    .tag.fcl { background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7; }
+    .empty { color: #bfbfbf; }
+    .miss { color: var(--danger); font-weight: 600; }
+
+    .pager {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 8px 12px; border-top: 1px solid var(--line); background: #fff; flex-shrink: 0; font-size: 12px; color: var(--muted);
+    }
+    .pager .pages { display: flex; gap: 4px; align-items: center; }
+    .pager .pg {
+      min-width: 28px; height: 28px; border: 1px solid #d9d9d9; border-radius: 4px;
+      background: #fff; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .pager .pg.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .pager select, .pager input { height: 28px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 6px; }
+
+    .toast {
+      position: fixed; top: 56px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 18px; border-radius: 4px;
+      z-index: 200; opacity: 0; pointer-events: none; transition: .2s; font-size: 13px;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .note {
+      margin: 8px 16px 12px; font-size: 12px; color: var(--muted); line-height: 1.6; flex-shrink: 0;
+    }
+
+    @media (max-width: 1200px) {
+      .fg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="logo">头程系统</div>
+      <div class="tab">控制台</div>
+      <div class="tab">主单实际费用</div>
+      <div class="tab">应付明细</div>
+      <div class="tab">轨迹配置</div>
+      <div class="tab on">轨迹</div>
+      <div class="right">
+        <a href="分析-模块导航.html">← 分析导航</a>
+        <span>IT(BT0022)</span>
+      </div>
+    </div>
+
+    <div class="body">
+      <aside class="side" aria-label="模块">
+        <div class="ico">业</div>
+        <div class="ico">操</div>
+        <div class="ico">仓</div>
+        <div class="ico on" title="财务 · 分析">析</div>
+        <div class="ico">财</div>
+      </aside>
+
+      <div class="main">
+        <div class="crumb">
+          <span>财务</span><span>/</span><span>分析</span><span>/</span><b>轨迹报表</b>
+          <span style="margin-left:auto">现网轨迹基础上增强 · 分析组 · 唐斌议题</span>
+        </div>
+
+        <div class="banner">
+          <b>本期新增：</b>
+          ① 接入<strong>整柜</strong>轨迹数据；② 列「卸船」「到达交货地时间」「还柜时间」<span class="tag-new">新</span>；
+          ③ 已签收必须有到港（缺失标红进异常）；④ <strong>运单号多值</strong>搜索（换行/逗号/空格）；
+          ⑤ 筛选增加<strong>开船时间、到港时间</strong>。<br />
+          <b>节点编码（已确认）：</b>卸船 <code>A00193</code> · 交货地 <code>A00161</code> · 还空箱/还柜 <code>A00197</code>
+          · <a href="轨迹报表-PRD.html" style="color:#d46b08">PRD</a><br />
+          <b>待确认：</b>统计维度由唐斌另表提供后挂配置；多运单分隔符与上限。
+        </div>
+
+        <div class="filter">
+          <div class="fg">
+            <div class="fi"><label>客户单号</label><div class="ctl"><input id="fCustNo" placeholder="请输入客户单号" /></div></div>
+            <div class="fi"><label>头程主单</label><div class="ctl"><input id="fMbl" placeholder="请输入头程主单" /></div></div>
+            <div class="fi new-field"><label>运单号</label><div class="ctl">
+              <textarea id="fAwb" placeholder="支持多个：换行 / 逗号 / 空格&#10;例：ICBU00000021905&#10;ICBU00000021930"></textarea>
+              <div class="hint">多值搜索：自动拆分后 OR 匹配（现网单框多值搜不出 → 本期修复）</div>
+            </div></div>
+            <div class="fi"><label>客户简称</label><div class="ctl">
+              <select id="fCust"><option value="">全部</option><option>海之蓝</option><option>云仓达</option><option>美西直客A</option></select>
+            </div></div>
+            <div class="fi new-field"><label>开船时间</label><div class="ctl range">
+              <input type="date" id="fSailFrom" /><span>至</span><input type="date" id="fSailTo" />
+            </div></div>
+            <div class="fi new-field"><label>到港时间</label><div class="ctl range">
+              <input type="date" id="fEtaFrom" /><span>至</span><input type="date" id="fEtaTo" />
+            </div></div>
+            <div class="fi"><label>货型</label><div class="ctl">
+              <select id="fCargo"><option value="">全部</option><option>散货</option><option>整柜</option></select>
+            </div></div>
+            <div class="fi"><label>轨迹完整性</label><div class="ctl">
+              <select id="fIntegrity"><option value="">全部</option><option value="abnormal">异常（已签收缺到港）</option><option value="ok">完整</option></select>
+            </div></div>
+          </div>
+          <div class="filter-actions">
+            <div class="left">
+              <button type="button" class="btn primary" id="btnSearch">🔍 查询数据</button>
+              <button type="button" class="btn" id="btnExport">⬇ 导出</button>
+            </div>
+            <div class="right">
+              <button type="button" class="btn ghost" id="btnMore">更多筛选</button>
+              <button type="button" class="btn ghost" id="btnReset">数据重置</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox" id="chkAll" /></th>
+                  <th>序号</th>
+                  <th>货型 <span class="funnel">▾</span></th>
+                  <th>客户单号 <span class="funnel">▾</span></th>
+                  <th>运单号 <span class="funnel">▾</span></th>
+                  <th>渠道转单号 <span class="funnel">▾</span></th>
+                  <th>提单号 <span class="funnel">▾</span></th>
+                  <th>船名航次 <span class="funnel">▾</span></th>
+                  <th>客户简称 <span class="funnel">▾</span></th>
+                  <th>业务员 <span class="funnel">▾</span></th>
+                  <th>操作状态 <span class="funnel">▾</span></th>
+                  <th>签收状态 <span class="funnel">▾</span></th>
+                  <th>开船时间 <span class="funnel">▾</span></th>
+                  <th>到港时间 <span class="funnel">▾</span></th>
+                  <th class="new-col" title="轨迹 A00193">卸船 <span class="mono" style="font-weight:500;opacity:.75">A00193</span> <span class="tag-new" style="border:none;background:#fff1f0;color:#cf1322;padding:0 4px;border-radius:2px;font-size:10px">新</span></th>
+                  <th class="new-col" title="轨迹 A00161">到达交货地时间 <span class="mono" style="font-weight:500;opacity:.75">A00161</span> <span class="tag-new" style="border:none;background:#fff1f0;color:#cf1322;padding:0 4px;border-radius:2px;font-size:10px">新</span></th>
+                  <th>提柜时间 <span class="funnel">▾</span></th>
+                  <th>签收时间 <span class="funnel">▾</span></th>
+                  <th class="new-col" title="还空箱 · 轨迹 A00197">还柜时间 <span class="mono" style="font-weight:500;opacity:.75">A00197</span> <span class="tag-new" style="border:none;background:#fff1f0;color:#cf1322;padding:0 4px;border-radius:2px;font-size:10px">新</span></th>
+                  <th>轨迹校验</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="21">本页 <span id="pageCnt">0</span> 条 · 异常轨迹 <span id="abnCnt" style="color:#cf1322">0</span> · 整柜 <span id="fclCnt">0</span></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="pager">
+            <div>合计：<b id="sumTotal">0</b>　<span id="pageTotal">共 0 条</span></div>
+            <div class="pages">
+              <select id="pageSize"><option>50</option><option selected>100</option><option>500</option></select>
+              <div id="pages"></div>
+              <span>前往</span><input id="pageJump" style="width:48px" value="1" /><span>页</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="note">
+          <strong>整柜：</strong>本期单独接入开船 → 到港 → 卸船(<code>A00193</code>) → 提柜 → 到达交货地(<code>A00161</code>) → 签收 → 还柜/还空箱(<code>A00197</code>)。
+          取值 = 对应编码<strong>首次</strong>轨迹发生时间。<strong>完整性：</strong>签收状态含「已签收/全部签收」时，到港时间不得为空，否则标「缺到港」。
+          <strong>统计维度：</strong>唐斌另表提供后挂配置。细则见 <a href="轨迹报表-PRD.html">轨迹报表 PRD</a>。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    const CUST = ["海之蓝", "云仓达", "美西直客A", "甬江同行", "深港货代"];
+    const SALES = ["张敏", "李华", "王芳", "陈晓", "刘洋"];
+    const VESSELS = ["ZIM NORFOLK 16/E", "COSCO NETHERLANDS 071E", "SM BUSAN 2505E", "EVER GOLDEN 128E", "MSC ISABELLA 42W"];
+    const MBLS = ["ZIMUSHH31769101", "COSU6421532109", "ONEYSHAF98765432", "EGLV149403502288", "MAEU123456789012"];
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function dt(base, addDays, hh, mm, ss) {
+      const d = new Date(2025, 5, 20 + addDays, hh || 10, mm || 0, ss || 0);
+      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+    }
+    function day(s) { return (s || "").slice(0, 10); }
+    function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+    function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+
+    function buildRows(n) {
+      const rows = [];
+      for (let i = 0; i < n; i++) {
+        const isFcl = i % 7 === 0 || i % 11 === 3; // 整柜样本
+        const awb = isFcl ? ("FCL" + String(20250000 + i)) : ("ICBU" + String(10000000000 + i).slice(-11));
+        const custNo = "ZHN" + String(66000000 + i);
+        const mbl = pick(MBLS);
+        const sail = dt(0, rnd(0, 8), rnd(8, 18), rnd(0, 59));
+        const eta = dt(0, rnd(18, 28), rnd(6, 20), rnd(0, 59));
+        const unload = dt(0, rnd(19, 30), rnd(8, 16), rnd(0, 59));
+        const delivery = dt(0, rnd(22, 35), rnd(9, 18), rnd(0, 59));
+        const pickup = dt(0, rnd(23, 36), rnd(9, 17), rnd(0, 59));
+        const returnCntr = dt(0, rnd(30, 45), rnd(9, 17), rnd(0, 59));
+        const signedRoll = Math.random();
+        let signStatus = "未签收";
+        let signTime = "";
+        let opStatus = pick(["已清关", "出库完成", "运输中", "已提柜"]);
+        if (signedRoll > 0.55) {
+          signStatus = pick(["全部签收", "已签收"]);
+          signTime = dt(0, rnd(28, 40), rnd(10, 20), rnd(0, 59));
+          opStatus = "出库完成";
+        } else if (signedRoll > 0.35) {
+          signStatus = "个别签收";
+          signTime = dt(0, rnd(28, 38), rnd(10, 20), rnd(0, 59));
+        }
+
+        // 现网痛点样例：已签收却无到港
+        let arrivePort = eta;
+        let unloadTime = unload;
+        let deliveryTime = delivery;
+        let returnTime = returnCntr;
+        if (!isFcl && i % 9 === 2 && (signStatus === "全部签收" || signStatus === "已签收")) {
+          arrivePort = ""; // 缺到港
+        }
+        // 整柜原先没有 → 本期有完整节点；个别整柜缺卸船/交货地/还柜演示
+        if (isFcl && i % 14 === 0) {
+          unloadTime = "";
+        }
+        if (isFcl && i % 21 === 0) {
+          deliveryTime = "";
+        }
+        if (isFcl && i % 17 === 1) {
+          returnTime = "";
+        }
+        // 散货也可能缺交货地；还柜主要挂整柜，散货可空
+        if (!isFcl && i % 13 === 5) deliveryTime = "";
+        if (!isFcl && Math.random() > 0.35) returnTime = "";
+
+        const abnormal = (signStatus === "全部签收" || signStatus === "已签收") && !arrivePort;
+
+        rows.push({
+          id: "TR" + (10000 + i),
+          cargo: isFcl ? "整柜" : "散货",
+          custNo,
+          awb,
+          channelNo: Math.random() > 0.6 ? ("CH" + rnd(100000, 999999)) : "",
+          mbl,
+          vessel: pick(VESSELS),
+          cust: pick(CUST),
+          sales: pick(SALES),
+          opStatus,
+          signStatus,
+          sailTime: sail,
+          arrivePort,
+          unloadTime,
+          deliveryTime,
+          pickupTime: pickup,
+          signTime,
+          returnTime,
+          abnormal,
+          remark: abnormal ? "已签收缺到港·待补节点" : (isFcl ? "整柜轨迹接入" : "")
+        });
+      }
+      // 固定几条便于演示多运单搜索
+      rows[0].awb = "ICBU00000021905";
+      rows[1].awb = "ICBU00000021930";
+      rows[2].awb = "ICBU00000022001";
+      rows[3].awb = "FCL20250901";
+      rows[3].cargo = "整柜";
+      rows[3].remark = "整柜样例";
+      return rows;
+    }
+
+    let ALL = buildRows(86);
+    let filtered = ALL.slice();
+    let page = 1;
+    let pageSize = 100;
+    let selected = new Set();
+
+    const $ = (id) => document.getElementById(id);
+    const toast = (msg) => {
+      const el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove("show"), 2400);
+    };
+
+    /** 多运单号拆分：换行 / 中英文逗号 / 分号 / 空白 */
+    function parseMulti(text) {
+      return [...new Set(
+        (text || "")
+          .split(/[\s,，;；、]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      )];
+    }
+
+    function applyFilter() {
+      const custNo = $("fCustNo").value.trim();
+      const mbl = $("fMbl").value.trim();
+      const awbs = parseMulti($("fAwb").value);
+      const cust = $("fCust").value;
+      const cargo = $("fCargo").value;
+      const integrity = $("fIntegrity").value;
+      const sailFrom = $("fSailFrom").value;
+      const sailTo = $("fSailTo").value;
+      const etaFrom = $("fEtaFrom").value;
+      const etaTo = $("fEtaTo").value;
+
+      filtered = ALL.filter((r) => {
+        if (custNo && !r.custNo.includes(custNo)) return false;
+        if (mbl && !r.mbl.includes(mbl)) return false;
+        if (awbs.length) {
+          const hit = awbs.some((a) => r.awb.includes(a) || a.includes(r.awb));
+          if (!hit) return false;
+        }
+        if (cust && r.cust !== cust) return false;
+        if (cargo && r.cargo !== cargo) return false;
+        if (integrity === "abnormal" && !r.abnormal) return false;
+        if (integrity === "ok" && r.abnormal) return false;
+        if (sailFrom && day(r.sailTime) < sailFrom) return false;
+        if (sailTo && day(r.sailTime) > sailTo) return false;
+        if (etaFrom) {
+          if (!r.arrivePort || day(r.arrivePort) < etaFrom) return false;
+        }
+        if (etaTo) {
+          if (!r.arrivePort || day(r.arrivePort) > etaTo) return false;
+        }
+        return true;
+      });
+      page = 1;
+      selected.clear();
+      render();
+      if (awbs.length) toast(`运单号多值查询：已解析 ${awbs.length} 个，命中 ${filtered.length} 条`);
+    }
+
+    function pageRows() {
+      const start = (page - 1) * pageSize;
+      return filtered.slice(start, start + pageSize);
+    }
+
+    function cellTime(v, missLabel) {
+      if (v) return `<span class="num">${v}</span>`;
+      return missLabel ? `<span class="miss">${missLabel}</span>` : `<span class="empty">—</span>`;
+    }
+
+    function render() {
+      const rows = pageRows();
+      $("tbody").innerHTML = rows.map((r, idx) => {
+        const sn = (page - 1) * pageSize + idx + 1;
+        const cls = [selected.has(r.id) ? "selected" : "", r.abnormal ? "abnormal" : "", r.cargo === "整柜" ? "fcl" : ""].filter(Boolean).join(" ");
+        const cargoTag = r.cargo === "整柜" ? '<span class="tag fcl">整柜</span>' : '<span class="tag info">散货</span>';
+        const checkTag = r.abnormal
+          ? '<span class="tag danger">缺到港</span>'
+          : '<span class="tag ok">完整</span>';
+        const signTag = r.signStatus === "未签收"
+          ? '<span class="tag warn">未签收</span>'
+          : (r.signStatus.indexOf("签收") >= 0 ? '<span class="tag ok">' + r.signStatus + "</span>" : r.signStatus);
+        return `<tr class="${cls}" data-id="${r.id}">
+          <td><input type="checkbox" class="row-chk" data-id="${r.id}" ${selected.has(r.id) ? "checked" : ""}/></td>
+          <td>${sn}</td>
+          <td>${cargoTag}</td>
+          <td class="mono">${r.custNo}</td>
+          <td class="mono">${r.awb}</td>
+          <td class="mono">${r.channelNo || "—"}</td>
+          <td class="mono">${r.mbl}</td>
+          <td>${r.vessel}</td>
+          <td>${r.cust}</td>
+          <td>${r.sales}</td>
+          <td>${r.opStatus}</td>
+          <td>${signTag}</td>
+          <td>${cellTime(r.sailTime)}</td>
+          <td>${cellTime(r.arrivePort, r.abnormal ? "缺到港" : "")}</td>
+          <td>${cellTime(r.unloadTime)}</td>
+          <td>${cellTime(r.deliveryTime)}</td>
+          <td>${cellTime(r.pickupTime)}</td>
+          <td>${cellTime(r.signTime)}</td>
+          <td>${cellTime(r.returnTime)}</td>
+          <td>${checkTag}</td>
+          <td>${r.remark || "—"}</td>
+        </tr>`;
+      }).join("");
+
+      const abn = rows.filter((r) => r.abnormal).length;
+      const fcl = rows.filter((r) => r.cargo === "整柜").length;
+      $("pageCnt").textContent = rows.length;
+      $("abnCnt").textContent = abn;
+      $("fclCnt").textContent = fcl;
+      $("sumTotal").textContent = filtered.length;
+      $("pageTotal").textContent = `共 ${filtered.length} 条`;
+
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      if (page > totalPages) page = totalPages;
+      const buttons = [];
+      for (let i = 1; i <= Math.min(totalPages, 5); i++) {
+        buttons.push(`<button type="button" class="pg ${i === page ? "on" : ""}" data-p="${i}">${i}</button>`);
+      }
+      if (totalPages > 5) buttons.push(`<span>…</span><button type="button" class="pg" data-p="${totalPages}">${totalPages}</button>`);
+      $("pages").innerHTML = buttons.join("");
+      $("pageJump").value = page;
+      $("chkAll").checked = rows.length > 0 && rows.every((r) => selected.has(r.id));
+    }
+
+    $("btnSearch").onclick = applyFilter;
+    $("btnReset").onclick = () => {
+      ["fCustNo", "fMbl", "fAwb", "fSailFrom", "fSailTo", "fEtaFrom", "fEtaTo"].forEach((id) => $(id).value = "");
+      $("fCust").value = "";
+      $("fCargo").value = "";
+      $("fIntegrity").value = "";
+      applyFilter();
+      toast("已重置查询条件");
+    };
+    $("btnExport").onclick = () => toast(`已导出当前 ${filtered.length} 条轨迹（演示）`);
+    $("btnMore").onclick = () => toast("更多筛选占位 · 本期已露出开船/到港/运单多值/货型/完整性");
+
+    $("pageSize").onchange = () => { pageSize = parseInt($("pageSize").value, 10); page = 1; render(); };
+    $("pages").onclick = (e) => {
+      const b = e.target.closest(".pg");
+      if (!b) return;
+      page = parseInt(b.dataset.p, 10);
+      render();
+    };
+    $("pageJump").onchange = () => {
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      page = Math.min(totalPages, Math.max(1, parseInt($("pageJump").value, 10) || 1));
+      render();
+    };
+    $("chkAll").onchange = () => {
+      const rows = pageRows();
+      if ($("chkAll").checked) rows.forEach((r) => selected.add(r.id));
+      else rows.forEach((r) => selected.delete(r.id));
+      render();
+    };
+    $("tbody").onclick = (e) => {
+      const chk = e.target.closest(".row-chk");
+      if (!chk) return;
+      if (chk.checked) selected.add(chk.dataset.id);
+      else selected.delete(chk.dataset.id);
+      render();
+    };
+
+    // 演示默认：填入多运单示意（不自动查）
+    $("fAwb").placeholder = "支持多个：换行 / 逗号 / 空格\n例：ICBU00000021905, ICBU00000021930";
+
+    applyFilter();
+  })();
+  </script>
+</body>
+</html>
