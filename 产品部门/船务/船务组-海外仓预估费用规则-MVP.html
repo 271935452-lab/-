@@ -261,7 +261,7 @@
       <div class="hd-text">
         <h1>海外仓 · 预估费用配置 <span class="badge branch">旁支</span> <span class="badge ok" id="statusBadge">生效中</span></h1>
         <p>
-          将 Excel 价目/规则拆成可维护配置：代理档案 → 价目矩阵 → 算法参数 → 试算校验。
+          将 Excel 价目/规则拆成可维护配置：代理档案 → 价目矩阵（组合价含柜型）→ 算法按服务商 → 试算校验。
           数据源自 <span class="badge src">海外仓2026-06.xlsx</span> + <span class="badge src">计费规则.xlsx</span>，改动能即时试算，<strong>不进主干验收</strong>。
         </p>
       </div>
@@ -272,12 +272,12 @@
       </div>
     </div>
 
-    <p class="hint">交互示意：单元格可改价 · 代理卡片可编辑档案 · 算法参数可调 · 试算读取当前内存配置（未点保存也会生效于本页）。</p>
+    <p class="hint">本期优化：① 组合价按柜型 45 / 40 / 20 维护，未配默认 40 尺；② 算法系数挂服务商；③ 自提 / 快递按托计费（档案单价 × 托数）。试算即时读当前内存配置。</p>
 
     <div class="tabs" id="tabs">
       <button type="button" class="tab on" data-tab="prov">代理档案<small>全包价 · 附加费</small></button>
       <button type="button" class="tab" data-tab="price">价目矩阵<small>组合 · 散板 · 直送</small></button>
-      <button type="button" class="tab" data-tab="rule">算法规则<small>公式 · 特例系数</small></button>
+      <button type="button" class="tab" data-tab="rule">算法规则<small>按服务商配置</small></button>
       <button type="button" class="tab" data-tab="calc">预估试算<small>按当前配置</small></button>
     </div>
 
@@ -325,6 +325,13 @@
         <button type="button" class="btn sm" id="btnAddCol">＋ 代理列</button>
       </div>
       <div class="toolbar">
+        <label id="fgCtnFilter">柜型
+          <select id="priceCtn">
+            <option value="40">40 尺（默认）</option>
+            <option value="45">45 尺</option>
+            <option value="20">20 尺</option>
+          </select>
+        </label>
         <label>仓点 <input id="priceQ" placeholder="ONT8 / ABE4" /></label>
         <label>只看代理
           <select id="priceProv"><option value="">全部列</option></select>
@@ -335,42 +342,54 @@
       <div class="foot-note" id="priceFoot">空单元格 = 该代理不接此仓。改价后角标「未保存」，试算即时生效。</div>
     </section>
 
-    <!-- 算法规则 -->
+    <!-- 算法规则：按服务商 -->
     <section class="panel hidden" id="panelRule">
       <div class="panel-hd">
-        <h2>算法规则 · 可配置参数</h2>
-        <span class="sub">对应计费规则.xlsx · Sheet1</span>
+        <h2>算法规则 · 按服务商配置</h2>
+        <span class="sub">VMI / 美库 / 托数口径等挂在服务商上，试算取所选服务商参数</span>
+      </div>
+      <div class="toolbar">
+        <label>服务商
+          <select id="ruleProv"></select>
+        </label>
+        <button type="button" class="btn sm" id="btnRuleCopy">从默认模板复制</button>
+        <span class="sub" id="ruleProvHint">—</span>
       </div>
       <div class="rule-cards">
         <div class="rule-card">
-          <h3>① 形态路由</h3>
+          <h3>① 形态路由（全局）</h3>
           <div class="fg">
             <label>优先判定顺序（只读示意）</label>
             <textarea id="ruleRoute" readonly>1 亚马逊整柜直送 → 直送价表
-2 组合柜 → 全包价 + 组合差额分摊
+2 组合柜 → 全包价 + 组合差额分摊（组合价按柜型匹配，缺省 40 尺）
 3 无组合价 → 散板价 × 托数
-4 私人地址 → 私人直送档案
-5 超出阶梯 / 空价 → 单询</textarea>
+4 自提 / 快递 → 代理档案单价 × 托数（按托收）
+5 私人地址 → 私人直送档案
+6 超出阶梯 / 空价 → 单询</textarea>
           </div>
         </div>
         <div class="rule-card">
-          <h3>② 组合差额分摊</h3>
+          <h3>② 组合差额分摊 · 本服务商</h3>
           <div class="fg">
             <label>基础公式</label>
             <input value="方数 / 柜子总方数 × (组合价 − 全包价)" readonly />
           </div>
           <div class="fg">
-            <label>VMI 系数</label>
+            <label>VMI 系数（本服务商）</label>
             <input type="number" id="ruleVmi" min="0" max="1" step="0.01" value="0.88" />
           </div>
           <div class="fg">
-            <label>美库密度阈值（磅/方）</label>
+            <label>密度阈值（磅/方，美库类）</label>
             <input type="number" id="ruleMeiku" min="0" step="1" value="500" />
           </div>
-          <div class="formula">美库：密度 ≥ 阈值按重量占比，&lt; 阈值按方数占比。</div>
+          <div class="fg">
+            <label>启用密度分支（本服务商）</label>
+            <select id="ruleDensityOn"><option value="0">关闭（按方数）</option><option value="1">启用</option></select>
+          </div>
+          <div class="formula">启用后：密度 ≥ 阈值按重量占比，&lt; 阈值按方数占比。未启用则一律按方数。</div>
         </div>
         <div class="rule-card">
-          <h3>③ 托数口径</h3>
+          <h3>③ 托数口径 · 本服务商</h3>
           <div class="fg">
             <label>重量除数（磅）</label>
             <input type="number" id="ruleLb" value="1000" />
@@ -379,25 +398,33 @@
             <label>体积除数（方）</label>
             <input type="number" id="ruleCbm" step="0.1" value="1.8" />
           </div>
-          <div class="formula">托数 = max(重量磅 ÷ 除数, 体积 ÷ 除数)</div>
+          <div class="formula">托数 = max(重量磅 ÷ 除数, 体积 ÷ 除数)。散板 / 自提 / 快递均用本口径（可手填托数覆盖）。</div>
         </div>
         <div class="rule-card">
-          <h3>④ 柜型附加</h3>
+          <h3>④ 柜型附加 · 本服务商</h3>
           <div class="fg">
-            <label>45HQ 额外加收（USD）</label>
+            <label>45 尺额外加收（USD）</label>
             <input type="number" id="rule45" value="300" />
           </div>
           <div class="fg">
-            <label>启用火车柜附加费（取代理档案）</label>
+            <label>启用火车柜附加费（取代理档案金额）</label>
             <select id="ruleTrain"><option value="1">启用</option><option value="0">关闭</option></select>
           </div>
           <div class="fg">
-            <label>启用混装附加费（取代理档案）</label>
+            <label>启用混装附加费（取代理档案金额）</label>
             <select id="ruleMix"><option value="1">启用</option><option value="0">关闭</option></select>
           </div>
         </div>
+        <div class="rule-card">
+          <h3>⑤ 自提 / 快递 · 按托</h3>
+          <div class="fg">
+            <label>计费单位（只读）</label>
+            <input value="按托（托数 × 档案单价）" readonly />
+          </div>
+          <div class="formula" id="rulePickupExpressHint">单价取本服务商档案「自提费/托」「快递出库费/托」。不按票、不按柜。</div>
+        </div>
       </div>
-      <div class="foot-note">改系数后切到「预估试算」即可验证；正式环境应版本化发布，本页为旁支交互示意。</div>
+      <div class="foot-note">切换服务商会加载该商参数；改系数后切「预估试算」验证。正式环境应版本化发布，本页为旁支示意。</div>
     </section>
 
     <!-- 试算 -->
@@ -411,6 +438,8 @@
               <option value="amz">亚马逊卡派直送（整柜）</option>
               <option value="combo">组合价（差额分摊）</option>
               <option value="pallet">散板价（按托）</option>
+              <option value="pickup">自提费（按托）</option>
+              <option value="express">快递出库费（按托）</option>
             </select>
           </div>
           <div class="fg">
@@ -419,11 +448,19 @@
             <datalist id="whList"></datalist>
           </div>
           <div class="fg">
-            <label>海外仓 / 代理</label>
+            <label>海外仓 / 服务商</label>
             <select id="calcProv"></select>
           </div>
+          <div class="fg hidden" id="fgCtn">
+            <label>柜型（组合价匹配；未维护则回落 40 尺）</label>
+            <select id="calcCtn">
+              <option value="40">40 尺</option>
+              <option value="45">45 尺</option>
+              <option value="20">20 尺</option>
+            </select>
+          </div>
           <div class="fg" id="fgPallets">
-            <label>托数（可手填，或按规则自动算）</label>
+            <label>托数（自提 / 快递 / 散板按托；可手填）</label>
             <input id="calcPallets" type="number" min="1" value="10" />
           </div>
           <div class="fg hidden" id="fgCombo">
@@ -435,21 +472,21 @@
             <input id="calcVolTotal" type="number" min="1" value="68" />
           </div>
           <div class="fg hidden" id="fgCombo3">
-            <label>全包价（USD/柜，默认取代理档案）</label>
+            <label>全包价（USD/柜，按柜型取档案）</label>
             <input id="calcFull" type="number" min="0" value="" placeholder="自动带入" />
           </div>
           <div class="fg hidden" id="fgVmi">
-            <label>是否 VMI（× 规则系数）</label>
+            <label>是否 VMI（× 本服务商系数）</label>
             <select id="calcVmi"><option value="0">否</option><option value="1">是</option></select>
           </div>
           <button type="button" class="btn primary" id="btnCalc">试算</button>
         </div>
         <div class="calc-out" id="calcOut">
           <h3>试算结果</h3>
-          <p class="formula">选择类型、仓点、海外仓后点「试算」。结果反映你刚改过的价与系数。</p>
+          <p class="formula">选择类型、仓点、服务商后点「试算」。组合价按柜型取价；算法系数取该服务商配置；自提/快递按托。</p>
         </div>
       </div>
-      <div class="foot-note">组合价：方数占比 ×（组合价 − 全包价）；勾选 VMI 时再 × 配置系数。</div>
+      <div class="foot-note">组合价：柜型匹配（缺省 40）→ 方数占比 ×（组合价 − 全包价）；VMI 等系数取服务商算法配置。自提 / 快递 = 托数 × 档案单价。</div>
     </section>
   </div>
 
@@ -537,12 +574,16 @@
       return;
     }
 
+    var DEFAULT_ALGO = { vmi: 0.88, meiku: 500, densityOn: false, lb: 1000, cbm: 1.8, hq45: 300, train: true, mix: true };
+    var CTN_LABEL = { "40": "40 尺", "45": "45 尺", "20": "20 尺" };
+
     var state = {
       dirty: false,
       priceKind: "combo",
+      priceCtn: "40",
+      ruleProvName: "",
       editProvIdx: -1,
-      addMode: null,
-      rules: { vmi: 0.88, meiku: 500, lb: 1000, cbm: 1.8, hq45: 300, train: true, mix: true }
+      addMode: null
     };
 
     function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -568,6 +609,48 @@
       document.getElementById("statusBadge").className = "badge " + (state.dirty ? "dirty" : "ok");
     }
 
+    function normCtn(v) {
+      var s = String(v == null ? "" : v).toUpperCase().replace(/\s/g, "");
+      if (!s) return "40";
+      if (s.indexOf("45") === 0 || s === "45HQ" || s === "45GP") return "45";
+      if (s.indexOf("20") === 0 || s === "20GP" || s === "20HQ") return "20";
+      return "40";
+    }
+
+    /** 组合价：扁平 prices → 按柜型；未写柜型的历史数据一律落在 40 尺 */
+    function ensureComboByCtn() {
+      var cfg = D.comboPrice;
+      if (!cfg) return;
+      cfg.containerTypes = ["40", "45", "20"];
+      (cfg.warehouses || []).forEach(function (w) {
+        if (w.byCtn) return;
+        var flat = w.prices || {};
+        var first = flat["40"] || flat["45"] || flat["20"];
+        var looksNested = first && typeof first === "object";
+        if (looksNested) {
+          w.byCtn = {
+            "40": flat["40"] || {},
+            "45": flat["45"] || {},
+            "20": flat["20"] || {}
+          };
+        } else {
+          w.byCtn = { "40": flat, "45": {}, "20": {} };
+        }
+        w.prices = w.byCtn["40"];
+      });
+    }
+
+    function comboPricesAt(w, ctn, forEdit) {
+      ensureComboByCtn();
+      var c = normCtn(ctn);
+      if (!w.byCtn) return w.prices || {};
+      if (forEdit) return w.byCtn[c] || (w.byCtn[c] = {});
+      if (w.byCtn[c] && Object.keys(w.byCtn[c]).some(function (k) {
+        return w.byCtn[c][k] != null && w.byCtn[c][k] !== "";
+      })) return w.byCtn[c];
+      return w.byCtn[c] || {};
+    }
+
     function priceCfg() {
       return state.priceKind === "amz" ? D.amzDirect
         : state.priceKind === "pallet" ? D.palletPrice : D.comboPrice;
@@ -576,6 +659,22 @@
     function priceCfgKey() {
       return state.priceKind === "amz" ? "amzDirect"
         : state.priceKind === "pallet" ? "palletPrice" : "comboPrice";
+    }
+
+    function defaultAlgoForName(name) {
+      var a = deepClone(DEFAULT_ALGO);
+      if (/VMI/i.test(name || "")) a.vmi = 0.88;
+      if (/美库|MEEKOO|MKK/i.test(name || "")) {
+        a.densityOn = true;
+        a.meiku = 500;
+      }
+      return a;
+    }
+
+    function getAlgo(prov) {
+      if (!prov) return deepClone(DEFAULT_ALGO);
+      if (!prov.algo) prov.algo = defaultAlgoForName(prov.provider || prov.sysName);
+      return prov.algo;
     }
 
     /* ---------- tabs ---------- */
@@ -591,6 +690,10 @@
       if (tab === "calc") updateCalcForm();
       if (tab === "price") renderPrice();
       if (tab === "prov") renderProv();
+      if (tab === "rule") {
+        fillRuleProvSelect();
+        loadRuleForm();
+      }
     }
 
     /* ---------- 代理档案 ---------- */
@@ -646,8 +749,10 @@
           (p.address ? " · " + esc(p.address) : "") +
           (p.area ? "<br/>仓面积 " + esc(p.area) : "") + "</div>" +
           '<div class="pc-fees">' +
-          (p.fcl40 != null ? '<span class="fee-chip">40HQ $' + esc(p.fcl40) + "</span>" : "") +
-          (p.fcl45 != null ? '<span class="fee-chip">45HQ $' + esc(p.fcl45) + "</span>" : "") +
+          (p.fcl40 != null ? '<span class="fee-chip">40尺 $' + esc(p.fcl40) + "</span>" : "") +
+          (p.fcl45 != null ? '<span class="fee-chip">45尺 $' + esc(p.fcl45) + "</span>" : "") +
+          (p.pickup != null ? '<span class="fee-chip">自提 $' + esc(p.pickup) + "/托</span>" : "") +
+          (p.express != null ? '<span class="fee-chip">快递 $' + esc(p.express) + "/托</span>" : "") +
           (p.chassis != null ? '<span class="fee-chip">车架 $' + esc(p.chassis) + "</span>" : "") +
           "</div></div>";
       }).join("") || '<p style="padding:24px;color:var(--sub)">无匹配代理，可点「新增代理」</p>';
@@ -679,8 +784,8 @@
         ["fcl40", "40尺带车架 USD", "number"],
         ["fcl45", "45尺带车架 USD", "number"],
         ["chassis", "车架费单价", "number"],
-        ["pickup", "自提费/托", "number"],
-        ["express", "快递出库费/托", "number"],
+        ["pickup", "自提费/托（按托收）", "number"],
+        ["express", "快递出库费/托（按托收）", "number"],
         ["sec", "附加费口径（文案可配）"],
         ["overAddr", "超地址费", "textarea"],
         ["overBox", "超箱费", "textarea"],
@@ -761,10 +866,21 @@
     }
 
     function renderPrice() {
+      ensureComboByCtn();
       var cfg = priceCfg();
-      var titles = { combo: "组合价 · 仓点 × 代理", pallet: "散板价 · 每托 USD", amz: "亚马逊卡派直送 · 整柜" };
+      var isCombo = state.priceKind === "combo";
+      document.getElementById("fgCtnFilter").classList.toggle("hidden", !isCombo);
+      var ctn = isCombo ? normCtn(document.getElementById("priceCtn").value) : "40";
+      state.priceCtn = ctn;
+
+      var titles = {
+        combo: "组合价 · 仓点 × 代理 · " + (CTN_LABEL[ctn] || ctn),
+        pallet: "散板价 · 每托 USD",
+        amz: "亚马逊卡派直送 · 整柜"
+      };
       var foots = {
-        combo: "组合差额 = 方数占比 ×（本表价 − 代理全包价）。空 = 无组合价，降级散板。",
+        combo: "柜型条件：45 / 40 / 20；本表显示「" + (CTN_LABEL[ctn] || ctn) +
+          "」。该柜型空价时计价回落 40 尺；未维护任何柜型也默认 40 尺。空单元格 = 该代理不接此仓。",
         pallet: "无组合价时按托计费。空 = 该代理不接此仓。",
         amz: "整柜直送按表收取，无其他费用。空/0 视为未报价。"
       };
@@ -779,18 +895,27 @@
         return !q || String(w.code).toUpperCase().indexOf(q) >= 0;
       });
       document.getElementById("priceCnt").textContent =
-        "显示 " + rows.length + " / " + (cfg.warehouses || []).length + " 行 · " + providers.length + " 列";
+        "显示 " + rows.length + " / " + (cfg.warehouses || []).length + " 行 · " + providers.length + " 列" +
+        (isCombo ? " · " + (CTN_LABEL[ctn] || ctn) : "");
 
       var thead = "<thead><tr><th>仓点</th>" +
+        (isCombo ? "<th>柜型</th>" : "") +
         providers.map(function (p) { return "<th>" + esc(p) + "</th>"; }).join("") +
         "<th>操作</th></tr></thead>";
 
       var tbody = rows.map(function (w) {
         var wi = cfg.warehouses.indexOf(w);
+        var priceMap = isCombo ? comboPricesAt(w, ctn, true) : (w.prices || {});
+        var hasOwn = isCombo && w.byCtn && w.byCtn[ctn] && Object.keys(w.byCtn[ctn]).some(function (k) {
+          return w.byCtn[ctn][k] != null && w.byCtn[ctn][k] !== "";
+        });
+        var showFb = isCombo && ctn !== "40" && !hasOwn;
         return "<tr data-wi='" + wi + "'><td><input class='code-in' data-field='code' value='" +
           esc(w.code) + "' /></td>" +
+          (isCombo ? "<td class='note'>" + esc(CTN_LABEL[ctn]) +
+            (showFb ? "<br/><span style='color:var(--warn)'>计价回落40</span>" : "") + "</td>" : "") +
           providers.map(function (p) {
-            var v = w.prices[p];
+            var v = priceMap[p];
             var shown = v == null || v === "" ? "" : v;
             return "<td><input class='cell' data-prov='" + esc(p) + "' value='" + esc(shown) +
               "' placeholder='—' /></td>";
@@ -810,7 +935,15 @@
           var raw = inp.value.trim();
           var val = raw === "" ? null : parseFloat(raw);
           if (raw !== "" && isNaN(val)) { toast("请输入数字"); return; }
-          cfg.warehouses[wi].prices[prov] = val;
+          var wh = cfg.warehouses[wi];
+          if (isCombo) {
+            ensureComboByCtn();
+            if (!wh.byCtn[ctn]) wh.byCtn[ctn] = {};
+            wh.byCtn[ctn][prov] = val;
+            wh.prices = wh.byCtn["40"];
+          } else {
+            wh.prices[prov] = val;
+          }
           inp.classList.add("changed");
           markDirty(true);
         };
@@ -835,6 +968,64 @@
       });
     }
 
+    /* ---------- 算法：按服务商 ---------- */
+    function fillRuleProvSelect() {
+      var list = normalizeProviders();
+      var sel = document.getElementById("ruleProv");
+      var prev = state.ruleProvName || sel.value;
+      sel.innerHTML = list.map(function (p) {
+        var name = p.provider || p.sysName || "未命名";
+        return "<option value='" + esc(name) + "'" + (name === prev ? " selected" : "") + ">" +
+          esc(name) + (p.mode ? " · " + esc(p.mode) : "") + "</option>";
+      }).join("") || "<option value=''>暂无服务商</option>";
+      if (sel.value) state.ruleProvName = sel.value;
+      else if (list[0]) {
+        state.ruleProvName = list[0].provider || list[0].sysName;
+        sel.value = state.ruleProvName;
+      }
+    }
+
+    function currentRuleProv() {
+      var name = document.getElementById("ruleProv").value || state.ruleProvName;
+      return findProviderFull(name);
+    }
+
+    function loadRuleForm() {
+      var p = currentRuleProv();
+      var algo = getAlgo(p || { provider: "" });
+      document.getElementById("ruleVmi").value = algo.vmi;
+      document.getElementById("ruleMeiku").value = algo.meiku;
+      document.getElementById("ruleDensityOn").value = algo.densityOn ? "1" : "0";
+      document.getElementById("ruleLb").value = algo.lb;
+      document.getElementById("ruleCbm").value = algo.cbm;
+      document.getElementById("rule45").value = algo.hq45;
+      document.getElementById("ruleTrain").value = algo.train ? "1" : "0";
+      document.getElementById("ruleMix").value = algo.mix ? "1" : "0";
+      var hint = p
+        ? (p.provider || "") + " · 自提 $" + (p.pickup != null ? p.pickup : "—") + "/托 · 快递 $" +
+          (p.express != null ? p.express : "—") + "/托"
+        : "请先维护代理档案";
+      document.getElementById("ruleProvHint").textContent = hint;
+      document.getElementById("rulePickupExpressHint").textContent =
+        "单价取本服务商档案「自提费/托」「快递出库费/托」。不按票、不按柜。当前：" + hint;
+    }
+
+    function saveRuleFormToProv() {
+      var p = currentRuleProv();
+      if (!p) return;
+      p.algo = {
+        vmi: parseFloat(document.getElementById("ruleVmi").value) || 0.88,
+        meiku: parseFloat(document.getElementById("ruleMeiku").value) || 500,
+        densityOn: document.getElementById("ruleDensityOn").value === "1",
+        lb: parseFloat(document.getElementById("ruleLb").value) || 1000,
+        cbm: parseFloat(document.getElementById("ruleCbm").value) || 1.8,
+        hq45: parseFloat(document.getElementById("rule45").value) || 300,
+        train: document.getElementById("ruleTrain").value === "1",
+        mix: document.getElementById("ruleMix").value === "1"
+      };
+      markDirty(true);
+    }
+
     /* ---------- 试算 ---------- */
     function allWarehouseCodes() {
       var set = {};
@@ -849,13 +1040,27 @@
         .map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("");
     }
 
-    function lookupPrice(cfg, code, prov) {
+    function lookupPrice(cfg, code, prov, ctn) {
       var hit = (cfg.warehouses || []).find(function (w) {
         return String(w.code).toUpperCase() === String(code).toUpperCase();
       });
-      if (!hit) return null;
-      var v = hit.prices[prov];
-      return v == null || v === "" ? null : v;
+      if (!hit) return { value: null, ctnUsed: null, fallback: false };
+      if (cfg === D.comboPrice) {
+        ensureComboByCtn();
+        var want = normCtn(ctn);
+        var map = hit.byCtn && hit.byCtn[want];
+        var v = map ? map[prov] : null;
+        var fallback = false;
+        if (v == null || v === "") {
+          map = hit.byCtn && hit.byCtn["40"];
+          v = map ? map[prov] : null;
+          fallback = want !== "40";
+          want = "40";
+        }
+        return { value: (v == null || v === "" ? null : v), ctnUsed: want, fallback: fallback };
+      }
+      var v2 = hit.prices[prov];
+      return { value: v2 == null || v2 === "" ? null : v2, ctnUsed: null, fallback: false };
     }
 
     function findProviderFull(prov) {
@@ -864,47 +1069,54 @@
       });
     }
 
-    function syncRulesFromForm() {
-      state.rules.vmi = parseFloat(document.getElementById("ruleVmi").value) || 0.88;
-      state.rules.meiku = parseFloat(document.getElementById("ruleMeiku").value) || 500;
-      state.rules.lb = parseFloat(document.getElementById("ruleLb").value) || 1000;
-      state.rules.cbm = parseFloat(document.getElementById("ruleCbm").value) || 1.8;
-      state.rules.hq45 = parseFloat(document.getElementById("rule45").value) || 300;
-      state.rules.train = document.getElementById("ruleTrain").value === "1";
-      state.rules.mix = document.getElementById("ruleMix").value === "1";
-    }
-
     function updateCalcForm() {
       var t = document.getElementById("calcType").value;
-      document.getElementById("fgPallets").classList.toggle("hidden", t !== "pallet");
+      var needPallet = t === "pallet" || t === "pickup" || t === "express";
+      document.getElementById("fgPallets").classList.toggle("hidden", !needPallet);
       document.getElementById("fgCombo").classList.toggle("hidden", t !== "combo");
       document.getElementById("fgCombo2").classList.toggle("hidden", t !== "combo");
       document.getElementById("fgCombo3").classList.toggle("hidden", t !== "combo");
       document.getElementById("fgVmi").classList.toggle("hidden", t !== "combo");
+      document.getElementById("fgCtn").classList.toggle("hidden", t !== "combo");
+      var needWh = t === "amz" || t === "combo" || t === "pallet";
+      document.getElementById("calcWh").closest(".fg").classList.toggle("hidden", !needWh);
+
       var provSel = document.getElementById("calcProv");
       var prev = provSel.value;
-      var provs = t === "amz" ? D.amzDirect.providers
-        : t === "pallet" ? D.palletPrice.providers : D.comboPrice.providers;
+      var provs;
+      if (t === "amz") provs = D.amzDirect.providers;
+      else if (t === "pallet") provs = D.palletPrice.providers;
+      else if (t === "pickup" || t === "express") {
+        provs = normalizeProviders().map(function (p) { return p.provider; }).filter(Boolean);
+      } else provs = D.comboPrice.providers;
       provSel.innerHTML = provs.map(function (p) {
         return "<option" + (p === prev ? " selected" : "") + ">" + esc(p) + "</option>";
       }).join("");
-      // 自动带全包价
+
       if (t === "combo") {
         var arch = findProviderFull(provSel.value);
-        if (arch && arch.fcl40 != null && !document.getElementById("calcFull").dataset.touched) {
-          document.getElementById("calcFull").value = arch.fcl40;
+        var ctn = normCtn(document.getElementById("calcCtn").value);
+        if (arch && !document.getElementById("calcFull").dataset.touched) {
+          var full = ctn === "45" ? arch.fcl45 : arch.fcl40;
+          if (full == null) full = arch.fcl40;
+          if (full != null) document.getElementById("calcFull").value = full;
         }
       }
     }
 
     function runCalc() {
-      syncRulesFromForm();
       var type = document.getElementById("calcType").value;
       var wh = document.getElementById("calcWh").value.trim();
       var prov = document.getElementById("calcProv").value;
       var out = document.getElementById("calcOut");
-      if (!wh || !prov) {
-        out.innerHTML = "<h3>试算结果</h3><p class='formula'>请填写仓点并选择海外仓。</p>";
+      var arch = findProviderFull(prov);
+      var algo = getAlgo(arch || { provider: prov });
+      if (!prov) {
+        out.innerHTML = "<h3>试算结果</h3><p class='formula'>请选择服务商。</p>";
+        return;
+      }
+      if ((type === "amz" || type === "combo" || type === "pallet") && !wh) {
+        out.innerHTML = "<h3>试算结果</h3><p class='formula'>请填写仓点并选择服务商。</p>";
         return;
       }
       var lines = [];
@@ -912,60 +1124,85 @@
       var formula = "";
 
       if (type === "amz") {
-        var p = lookupPrice(D.amzDirect, wh, prov);
-        if (p == null) {
+        var hit = lookupPrice(D.amzDirect, wh, prov);
+        if (hit.value == null) {
           out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到 " + esc(wh) + " × " + esc(prov) +
             " 直送价（空价 = 单询）。可到「价目矩阵」补录。</p>";
           return;
         }
-        total = p;
-        lines.push("直送价（当前配置）：$" + p);
+        total = hit.value;
+        lines.push("直送价（当前配置）：$" + hit.value);
         formula = "规则：按直送价表收取，无其他费用。";
       } else if (type === "pallet") {
-        var pp = lookupPrice(D.palletPrice, wh, prov);
+        var hitP = lookupPrice(D.palletPrice, wh, prov);
         var n = parseInt(document.getElementById("calcPallets").value, 10) || 0;
-        if (pp == null || n <= 0) {
+        if (hitP.value == null || n <= 0) {
           out.innerHTML = "<h3>试算结果</h3><p class='formula'>未找到散板单价或托数无效。可到价目矩阵配置。</p>";
           return;
         }
-        total = Math.round(pp * n * 100) / 100;
-        lines.push("散板单价（当前配置）：$" + pp + " / 托");
+        total = Math.round(hitP.value * n * 100) / 100;
+        lines.push("散板单价（当前配置）：$" + hitP.value + " / 托");
         lines.push("托数：" + n);
-        formula = "托数口径参考：max(磅÷" + state.rules.lb + ", 方÷" + state.rules.cbm + ")";
+        formula = "按托计费。托数口径（本服务商）：max(磅÷" + algo.lb + ", 方÷" + algo.cbm + ")";
+      } else if (type === "pickup" || type === "express") {
+        var n2 = parseInt(document.getElementById("calcPallets").value, 10) || 0;
+        var unit = type === "pickup" ? (arch && arch.pickup) : (arch && arch.express);
+        var label = type === "pickup" ? "自提费" : "快递出库费";
+        if (unit == null || n2 <= 0) {
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>" + label +
+            "按托收取。请在代理档案维护「" + label + "/托」，并填写托数。</p>";
+          return;
+        }
+        total = Math.round(unit * n2 * 100) / 100;
+        lines.push(label + "单价（档案）：$" + unit + " / 托");
+        lines.push("托数：" + n2);
+        formula = label + " = 托数 × 单价（按托，不按票/柜）。\n托数口径（本服务商）：max(磅÷" +
+          algo.lb + ", 方÷" + algo.cbm + ")";
       } else {
-        var cp = lookupPrice(D.comboPrice, wh, prov);
+        var ctn = normCtn(document.getElementById("calcCtn").value);
+        var hitC = lookupPrice(D.comboPrice, wh, prov, ctn);
         var vol = parseFloat(document.getElementById("calcVol").value) || 0;
         var volT = parseFloat(document.getElementById("calcVolTotal").value) || 1;
         var fullRaw = document.getElementById("calcFull").value;
-        var arch = findProviderFull(prov);
-        var full = fullRaw !== "" ? parseFloat(fullRaw) : (arch && arch.fcl40 != null ? arch.fcl40 : NaN);
-        if (cp == null) {
-          out.innerHTML = "<h3>试算结果</h3><p class='formula'>无组合价 → 应降级散板。请切散板试算或补录组合价。</p>";
+        var full = fullRaw !== "" ? parseFloat(fullRaw) : NaN;
+        if (isNaN(full) && arch) {
+          full = ctn === "45" ? arch.fcl45 : arch.fcl40;
+          if (full == null) full = arch.fcl40;
+        }
+        if (hitC.value == null) {
+          out.innerHTML = "<h3>试算结果</h3><p class='formula'>无组合价（柜型 " +
+            esc(CTN_LABEL[ctn]) + " 及 40 尺回落均空）→ 应降级散板。请切散板试算或补录组合价。</p>";
           return;
         }
         if (isNaN(full) || vol <= 0 || volT <= 0) {
           out.innerHTML = "<h3>试算结果</h3><p class='formula'>全包价或方数无效。可在代理档案维护全包价。</p>";
           return;
         }
-        var diff = cp - full;
+        var diff = hitC.value - full;
         var share = (vol / volT) * diff;
         var isVmi = document.getElementById("calcVmi").value === "1";
         if (isVmi) {
-          share = share * state.rules.vmi;
-          lines.push("VMI 系数 ×" + state.rules.vmi);
+          share = share * algo.vmi;
+          lines.push("VMI 系数（服务商）×" + algo.vmi);
+        }
+        if (ctn === "45" && algo.hq45) {
+          lines.push("45 尺附加（服务商配置，本差额试算未并入）：$" + algo.hq45 + " / 柜");
         }
         total = Math.round(share * 100) / 100;
-        lines.push("组合价（配置）：$" + cp);
+        lines.push("组合价 · " + (CTN_LABEL[hitC.ctnUsed] || hitC.ctnUsed) +
+          (hitC.fallback ? "（由 " + (CTN_LABEL[ctn] || ctn) + " 回落）" : "") + "：$" + hitC.value);
         lines.push("全包价" + (arch ? "（档案 " + (arch.provider || "") + "）" : "") + "：$" + full);
         lines.push("差额：$" + diff);
         lines.push("方数占比：" + vol + " / " + volT);
         formula = "公式：方数/总方数 ×（组合价 − 全包价）" +
-          (isVmi ? " × VMI" + state.rules.vmi : "") +
-          "\n美库阈值 " + state.rules.meiku + " 磅/方（本试算未模拟重量分支）";
+          (isVmi ? " × VMI" + algo.vmi : "") +
+          "\n柜型匹配：先取 " + (CTN_LABEL[ctn] || ctn) + "，无价回落 40 尺。" +
+          "\n算法取服务商「" + esc(prov) + "」" +
+          (algo.densityOn ? "；密度阈值 " + algo.meiku + " 磅/方（本试算未模拟重量分支）" : "；未启用密度分支");
       }
 
       out.innerHTML =
-        "<h3>试算结果 · " + esc(wh) + " · " + esc(prov) + "</h3>" +
+        "<h3>试算结果 · " + (wh ? esc(wh) + " · " : "") + esc(prov) + "</h3>" +
         lines.map(function (l) { return "<div class='line'>" + esc(l) + "</div>"; }).join("") +
         "<div class='big'>≈ $" + total + "</div>" +
         "<div class='formula'>" + esc(formula) + "</div>";
@@ -992,12 +1229,27 @@
         }
         var prices = {};
         (cfg.providers || []).forEach(function (p) { prices[p] = null; });
-        cfg.warehouses.push({ code: v, prices: prices });
+        var row = { code: v, prices: prices };
+        if (state.priceKind === "combo") {
+          row.byCtn = { "40": prices, "45": {}, "20": {} };
+        }
+        cfg.warehouses.push(row);
         toast("已新增仓点 " + v);
       } else {
         if ((cfg.providers || []).indexOf(v) >= 0) { toast("代理列已存在"); return; }
         cfg.providers.push(v);
-        (cfg.warehouses || []).forEach(function (w) { w.prices[v] = null; });
+        (cfg.warehouses || []).forEach(function (w) {
+          if (state.priceKind === "combo") {
+            ensureComboByCtn();
+            ["40", "45", "20"].forEach(function (c) {
+              if (!w.byCtn[c]) w.byCtn[c] = {};
+              w.byCtn[c][v] = null;
+            });
+            w.prices = w.byCtn["40"];
+          } else {
+            w.prices[v] = null;
+          }
+        });
         toast("已新增代理列 " + v);
       }
       markDirty(true);
@@ -1053,9 +1305,11 @@
 
     document.getElementById("priceQ").oninput = renderPrice;
     document.getElementById("priceProv").onchange = renderPrice;
+    document.getElementById("priceCtn").onchange = renderPrice;
     document.getElementById("priceReset").onclick = function () {
       document.getElementById("priceQ").value = "";
       document.getElementById("priceProv").value = "";
+      document.getElementById("priceCtn").value = "40";
       renderPrice();
     };
     document.getElementById("btnAddWh").onclick = function () { openAdd("wh"); };
@@ -1069,15 +1323,28 @@
       if (e.key === "Enter") confirmAdd();
     };
 
-    ["ruleVmi", "ruleMeiku", "ruleLb", "ruleCbm", "rule45", "ruleTrain", "ruleMix"].forEach(function (id) {
-      document.getElementById(id).onchange = function () {
-        syncRulesFromForm();
-        markDirty(true);
-      };
+    document.getElementById("ruleProv").onchange = function () {
+      state.ruleProvName = this.value;
+      loadRuleForm();
+    };
+    document.getElementById("btnRuleCopy").onclick = function () {
+      var p = currentRuleProv();
+      if (!p) { toast("请先选服务商"); return; }
+      p.algo = deepClone(DEFAULT_ALGO);
+      loadRuleForm();
+      markDirty(true);
+      toast("已套用默认模板到「" + (p.provider || "") + "」");
+    };
+    ["ruleVmi", "ruleMeiku", "ruleDensityOn", "ruleLb", "ruleCbm", "rule45", "ruleTrain", "ruleMix"].forEach(function (id) {
+      document.getElementById(id).onchange = saveRuleFormToProv;
     });
 
     document.getElementById("calcType").onchange = updateCalcForm;
     document.getElementById("calcProv").onchange = function () {
+      document.getElementById("calcFull").dataset.touched = "";
+      updateCalcForm();
+    };
+    document.getElementById("calcCtn").onchange = function () {
       document.getElementById("calcFull").dataset.touched = "";
       updateCalcForm();
     };
@@ -1087,7 +1354,7 @@
     document.getElementById("btnCalc").onclick = runCalc;
 
     document.getElementById("btnSave").onclick = function () {
-      syncRulesFromForm();
+      saveRuleFormToProv();
       markDirty(false);
       toast("配置已保存（原型示意 · 未写后端）");
     };
@@ -1095,13 +1362,15 @@
       if (!confirm("还原为 Excel 示例数据？未保存改动将丢失。")) return;
       D = deepClone(SRC);
       delete D.providers;
-      state.rules = { vmi: 0.88, meiku: 500, lb: 1000, cbm: 1.8, hq45: 300, train: true, mix: true };
-      document.getElementById("ruleVmi").value = "0.88";
-      document.getElementById("ruleMeiku").value = "500";
-      document.getElementById("ruleLb").value = "1000";
-      document.getElementById("ruleCbm").value = "1.8";
-      document.getElementById("rule45").value = "300";
+      ensureComboByCtn();
+      normalizeProviders().forEach(function (p) {
+        p.algo = defaultAlgoForName(p.provider || p.sysName);
+      });
+      state.priceCtn = "40";
+      document.getElementById("priceCtn").value = "40";
       markDirty(false);
+      fillRuleProvSelect();
+      loadRuleForm();
       renderProv();
       renderPrice();
       refreshWhList();
@@ -1123,7 +1392,12 @@
     };
 
     // init
-    normalizeProviders();
+    ensureComboByCtn();
+    normalizeProviders().forEach(function (p) {
+      if (!p.algo) p.algo = defaultAlgoForName(p.provider || p.sysName);
+    });
+    fillRuleProvSelect();
+    loadRuleForm();
     renderProv();
     renderPrice();
     refreshWhList();

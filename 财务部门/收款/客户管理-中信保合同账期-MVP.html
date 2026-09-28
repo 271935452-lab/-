@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>客户管理 · 中信保 / 合同 / 账期 · MVP</title>
+  <style>
+    :root{--blue:#1890ff;--blue2:#40a9ff;--nav:#001529;--bg:#f0f2f5;--line:#e8e8e8;--text:#262626;--sub:#8c8c8c;--red:#ff4d4f;--green:#52c41a;--orange:#fa8c16;--new:#cf1322;--chg:#d46b08}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:12px/1.45 "Microsoft YaHei","PingFang SC",Arial,sans-serif}
+    button,input,select,textarea{font:inherit} button{cursor:pointer}
+    .topbar{height:40px;background:#001529;color:#fff;display:flex;align-items:center;padding:0 12px;gap:4px;overflow:auto}
+    .topbar .tab{padding:6px 12px;border-radius:2px 2px 0 0;white-space:nowrap;opacity:.85}
+    .topbar .tab.on{background:#fff;color:#1890ff;opacity:1;font-weight:600}
+    .page{padding:10px 12px 40px;max-width:1680px;margin:0 auto}
+    .banner{background:#e6f7ff;border:1px solid #91d5ff;border-radius:4px;padding:8px 10px;margin-bottom:8px;color:#0050b3}
+    .banner b{color:#003a8c}.legend{float:right;font-size:11px;color:#595959}
+    .mk{display:inline-block;font-size:10px;line-height:14px;padding:0 4px;border-radius:2px;margin-left:3px;vertical-align:1px;font-weight:700}
+    .mk-new{background:#fff1f0;color:var(--new);border:1px solid #ffa39e}
+    .mk-chg{background:#fff7e6;color:var(--chg);border:1px solid #ffd591}
+    .card{background:#fff;border:1px solid var(--line);border-radius:2px;margin-bottom:8px}
+    .filters{padding:10px 10px 4px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 10px}
+    .f label{display:block;color:#595959;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .f input,.f select{width:100%;height:28px;border:1px solid #d9d9d9;border-radius:2px;padding:0 6px}
+    .f-actions{display:flex;align-items:flex-end;gap:6px;justify-content:flex-end}
+    .btn{height:28px;border:1px solid #d9d9d9;background:#fff;border-radius:2px;padding:0 10px;color:#262626}
+    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+    .btn.danger{background:#fff1f0;border-color:#ffa39e;color:var(--red)}
+    .btn.ghost{background:#e6f7ff;border-color:#91d5ff;color:#096dd9}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .toolbar{padding:8px 10px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px}
+    .toolbar .btn{height:26px;padding:0 8px;font-size:12px}
+    .status-tabs{padding:0 10px;border-bottom:1px solid var(--line);display:flex;gap:18px}
+    .status-tabs button{border:0;background:transparent;padding:10px 0;color:#595959;border-bottom:2px solid transparent}
+    .status-tabs button.on{color:var(--blue);border-color:var(--blue);font-weight:600}
+    .table-wrap{overflow:auto;max-height:520px}
+    table{border-collapse:collapse;width:100%;min-width:2200px}
+    th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;white-space:nowrap;vertical-align:middle}
+    th{background:#fafafa;color:#595959;font-weight:600;position:sticky;top:0;z-index:1}
+    th.hl-new,td.hl-new{background:#fff2f0}
+    th.hl-chg,td.hl-chg{background:#fffbe6}
+    .link{color:var(--blue);background:none;border:0;padding:0}
+    .tag{display:inline-block;padding:0 6px;border-radius:2px;font-size:11px;line-height:18px;border:1px solid transparent}
+    .t-g{background:#f6ffed;color:#389e0d;border-color:#b7eb8f}
+    .t-r{background:#fff1f0;color:#cf1322;border-color:#ffa39e}
+    .t-o{background:#fff7e6;color:#d46b08;border-color:#ffd591}
+    .t-b{background:#e6f7ff;color:#096dd9;border-color:#91d5ff}
+    .t-p{background:#f9f0ff;color:#722ed1;border-color:#d3adf7}
+    .t-gray{background:#f5f5f5;color:#595959;border-color:#d9d9d9}
+    .muted{color:var(--sub)}
+    .foot-note{font-size:11px;color:#8c8c8c;margin-top:6px}
+    .mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:30;overflow:auto}
+    .mask.show{display:flex}
+    .modal{background:#fff;width:920px;max-width:100%;border-radius:4px;box-shadow:0 8px 28px rgba(0,0,0,.2)}
+    .modal.wide{width:1080px}
+    .modal-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600}
+    .modal-h .x{margin-left:auto;border:0;background:transparent;font-size:20px;color:#8c8c8c}
+    .modal-b{padding:14px 16px;max-height:70vh;overflow:auto}
+    .modal-f{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+    .sec{font-weight:700;margin:14px 0 8px;padding-left:8px;border-left:3px solid var(--blue)}
+    .sec:first-child{margin-top:0}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .fi label{display:block;margin-bottom:3px;color:#595959}
+    .fi input,.fi select,.fi textarea{width:100%;border:1px solid #d9d9d9;border-radius:2px;padding:6px 8px}
+    .fi textarea{min-height:64px;resize:vertical}
+    .req::after{content:" *";color:var(--red)}
+    .hint{font-size:11px;color:#8c8c8c;margin-top:2px}
+    .upload{border:1px dashed #91d5ff;background:#f0f9ff;padding:16px;text-align:center;border-radius:4px;color:#096dd9}
+    .upload.ok{border-color:#b7eb8f;background:#f6ffed;color:#389e0d}
+    .mini{width:100%;min-width:0}
+    .mini th,.mini td{padding:6px;white-space:normal}
+    .toast{position:fixed;top:56px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);color:#fff;padding:8px 14px;border-radius:4px;display:none;z-index:40}
+    .toast.show{display:block}
+    .rules{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
+    .rules .item{background:#fafafa;border:1px solid var(--line);border-radius:4px;padding:10px}
+    .rules .item h4{margin:0 0 6px;font-size:13px}
+    @media(max-width:1100px){.filters{grid-template-columns:repeat(3,1fr)}.grid2,.grid3,.rules{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="topbar" aria-label="系统页签">
+    <span class="tab">控制台</span><span class="tab">运单管理</span><span class="tab">整柜下单</span><span class="tab">整柜清单管理</span>
+    <span class="tab">轨迹</span><span class="tab">数据导出</span><span class="tab on">客户管理</span>
+    <span style="margin-left:auto;opacity:.7">IT(BT0022) · 原型演示</span>
+  </div>
+
+  <div class="page">
+    <div class="banner">
+      <span class="legend"><span class="mk mk-new">新</span> 新增字段/能力　<span class="mk mk-chg">改</span> 改动字段/规则　·　规则说明见页底「说明」</span>
+      <b>客户管理</b>　现网布局还原；中信保 / 合同 / 账期等增量能力见下列表与按钮（规则细则不写在功能区）。
+    </div>
+
+    <section class="card">
+      <div class="filters" id="filters">
+        <div class="f"><label>客户名称</label><input placeholder="支持模糊" /></div>
+        <div class="f"><label>客户等级</label><select><option>全部</option><option>直客</option><option>同行</option></select></div>
+        <div class="f"><label>客户类型</label><select><option>全部</option></select></div>
+        <div class="f"><label>结算周期 <span class="mk mk-chg">改</span></label><select><option>全部</option><option>月结</option><option>开船</option><option>到港</option><option>签收</option><option>到货</option></select></div>
+        <div class="f"><label>所属业务员</label><select><option>全部</option></select></div>
+        <div class="f"><label>开户状态</label><select><option>全部</option><option>已开户</option><option>未开户</option></select></div>
+        <div class="f"><label>合同状态 <span class="mk mk-chg">改</span></label><select><option>全部</option><option>已签订</option><option>未签订</option><option>即将到期</option><option>已到期</option></select></div>
+        <div class="f"><label>是否购买中信保 <span class="mk mk-new">新</span></label><select><option>全部</option><option>是</option><option>否</option></select></div>
+        <div class="f"><label>需购标记 <span class="mk mk-new">新</span></label><select><option>全部</option><option>是</option><option>否</option></select></div>
+        <div class="f"><label>中信保代码 <span class="mk mk-new">新</span></label><input placeholder="精准/模糊" /></div>
+        <div class="f"><label>中信保推送状态 <span class="mk mk-new">新</span></label><select><option>全部</option><option>成功</option><option>失败</option><option>未推送</option></select></div>
+        <div class="f"><label>信用代码 <span class="mk mk-new">新</span></label><input placeholder="统一社会信用代码" /></div>
+        <div class="f"><label>账期申请状态 <span class="mk mk-new">新</span></label><select><option>全部</option><option>可申请</option><option>审核中</option><option>观察期</option><option>已通过</option><option>已驳回</option><option>未申请</option></select></div>
+        <div class="f"><label>被关联客户 <span class="mk mk-new">新</span></label><input placeholder="反查：谁关联了该客户" /></div>
+        <div class="f-actions"><button class="btn" onclick="notify('已展开更多筛选（演示）')">更多筛选</button><button class="btn" onclick="notify('筛选已重置')">重置</button></div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn primary" onclick="notify('已查询')">查询数据</button>
+        <button class="btn primary" onclick="openAdd()">+ 新增数据</button>
+        <button class="btn" onclick="openEdit()">编辑数据</button>
+        <button class="btn" onclick="openDetail()">查看详情</button>
+        <button class="btn">启用数据</button>
+        <button class="btn danger">禁用数据</button>
+        <button class="btn" onclick="openOpenAccount()">开通账户</button>
+        <button class="btn ghost" onclick="openAudit()">营业执照审核 / 开户审核 <span class="mk mk-chg">改</span></button>
+        <button class="btn ghost" onclick="openImport()">批量导入信用/欠款/中信保 <span class="mk mk-new">新</span></button>
+        <button class="btn ghost" onclick="openSinosure()">中信保推送 <span class="mk mk-new">新</span></button>
+        <button class="btn ghost" onclick="openRiskIns()">风险保险（国外逐条/国内模板） <span class="mk mk-new">新</span></button>
+        <button class="btn ghost" onclick="openContract()">合同 · 我方抬头 / 到期提醒 <span class="mk mk-chg">改</span></button>
+        <a class="btn ghost" href="直客抬头关联风险-MVP.html" style="display:inline-flex;align-items:center;text-decoration:none;height:26px;line-height:26px">直客抬头关联风险 <span class="mk mk-new">新</span></a>
+        <button class="btn ghost" onclick="openTerms()">账期维度设置 <span class="mk mk-chg">改</span></button>
+        <button class="btn ghost" onclick="openTermsApply()">账期申请 <span class="mk mk-new">新</span></button>
+        <button class="btn">批量修改账期</button>
+        <button class="btn">批量修改业务员</button>
+        <button class="btn">风险标记</button>
+        <button class="btn danger">删除客户</button>
+        <button class="btn">导出</button>
+      </div>
+
+      <div class="status-tabs">
+        <button class="on">全部 <span class="muted">128</span></button>
+        <button>启用</button>
+        <button>禁用</button>
+        <button>未签合同 <span class="mk mk-new">新</span> <span class="muted">12</span></button>
+        <button>待购中信保 <span class="mk mk-new">新</span> <span class="muted">5</span></button>
+        <button>合同即将到期 <span class="mk mk-new">新</span> <span class="muted">3</span></button>
+        <button>账期申请中 <span class="mk mk-new">新</span> <span class="muted">2</span></button>
+      </div>
+
+      <div class="table-wrap">
+        <table aria-label="客户列表">
+          <thead>
+            <tr>
+              <th><input type="checkbox" checked /></th>
+              <th>序号</th>
+              <th>客户代码</th>
+              <th>申请代码 <span class="mk mk-new">新</span></th>
+              <th>客户简称</th>
+              <th>客户全称</th>
+              <th class="hl-chg">关联客户 <span class="mk mk-chg">改</span></th>
+              <th class="hl-new">被关联客户 <span class="mk mk-new">新</span></th>
+              <th>客户等级</th>
+              <th>启用状态</th>
+              <th class="hl-chg">合同签订 <span class="mk mk-chg">改</span></th>
+              <th class="hl-new">我方抬头 <span class="mk mk-new">新</span></th>
+              <th class="hl-chg">合同到期 <span class="mk mk-chg">改</span></th>
+              <th class="hl-chg">账期维度 <span class="mk mk-chg">改</span></th>
+              <th class="hl-new">账期申请 <span class="mk mk-new">新</span></th>
+              <th class="hl-new">信用代码 <span class="mk mk-new">新</span></th>
+              <th class="hl-new">上月欠款 <span class="mk mk-new">新</span></th>
+              <th class="hl-new">跨月明细 <span class="mk mk-new">新</span></th>
+              <th class="hl-new">是否购买中信保 <span class="mk mk-new">新</span></th>
+              <th class="hl-new">需购标记 <span class="mk mk-new">新</span></th>
+              <th class="hl-new">中信保代码 <span class="mk mk-new">新</span></th>
+              <th class="hl-new">中信保推送 <span class="mk mk-new">新</span></th>
+              <th>所属业务员</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" checked /></td><td>1</td>
+              <td><button class="link" onclick="openDetail()">TX00558</button></td>
+              <td class="hl-new">APP-202609-001</td>
+              <td>腾信示例A</td><td>深圳市某某贸易有限公司</td>
+              <td class="hl-chg"><button class="link" onclick="openRelate('TX00558')">TX00612</button></td>
+              <td class="hl-new"><button class="link" onclick="openRelate('TX00558')">TX00612、TX00701</button> <span class="muted">反查</span></td>
+              <td><span class="tag t-b">直客</span></td>
+              <td><span class="tag t-g">启用</span></td>
+              <td class="hl-chg"><span class="tag t-g">已签订</span></td>
+              <td class="hl-new">腾信物流（深圳）有限公司</td>
+              <td class="hl-chg">2026-12-31 <span class="tag t-o">30天内</span></td>
+              <td class="hl-chg">开船 / 柜批次</td>
+              <td class="hl-new"><button class="link" onclick="openTermsApply('TX00558','old')">可申请 · 直批/审批</button></td>
+              <td class="hl-new">91440300MA5XXXXX1A</td>
+              <td class="hl-new">CNY 28,600.00</td>
+              <td class="hl-new"><button class="link" onclick="notify('跨月明细：8月尾款+9月新账（演示）')">查看</button></td>
+              <td class="hl-new"><span class="tag t-g">是</span></td>
+              <td class="hl-new"><span class="tag t-o">是</span></td>
+              <td class="hl-new">SCB-882201</td>
+              <td class="hl-new"><span class="tag t-g">成功</span></td>
+              <td>戚流兵</td>
+              <td><button class="link" onclick="openSinosure()">推送</button> · <button class="link" onclick="openContract()">合同</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td><td>2</td>
+              <td><button class="link" onclick="openDetail()">TX00612</button></td>
+              <td class="hl-new">APP-202609-018</td>
+              <td>示例直客B</td><td>东莞某某供应链有限公司</td>
+              <td class="hl-chg"><button class="link" onclick="openRelate('TX00612')">TX00558</button></td>
+              <td class="hl-new"><button class="link" onclick="openRelate('TX00612')">TX00558</button></td>
+              <td><span class="tag t-b">直客</span></td>
+              <td><span class="tag t-g">启用</span></td>
+              <td class="hl-chg"><span class="tag t-g">已签订</span></td>
+              <td class="hl-new">腾信物流（深圳）有限公司</td>
+              <td class="hl-chg">2027-03-01</td>
+              <td class="hl-chg">到港 / 柜批次</td>
+              <td class="hl-new"><span class="tag t-o">部门已批·待财务</span> <button class="link" onclick="openTermsApply('TX00612','old')">审批</button></td>
+              <td class="hl-new">91441900MA5YYYYY2B</td>
+              <td class="hl-new">CNY 0.00</td>
+              <td class="hl-new">—</td>
+              <td class="hl-new"><span class="tag t-gray">否</span></td>
+              <td class="hl-new"><span class="tag t-gray">否</span></td>
+              <td class="hl-new"></td>
+              <td class="hl-new"><span class="tag t-gray">未推送</span></td>
+              <td>王丽</td>
+              <td><button class="link" onclick="openEdit()">编辑</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td><td>3</td>
+              <td><button class="link" onclick="openDetail()">TX00701</button></td>
+              <td class="hl-new">APP-202609-042</td>
+              <td>同行示例C</td><td>广州某某货运代理</td>
+              <td class="hl-chg"></td>
+              <td class="hl-new"><button class="link" onclick="openRelate('TX00701')">TX00558</button> <span class="muted">反查</span></td>
+              <td><span class="tag t-p">同行</span></td>
+              <td><span class="tag t-g">启用</span></td>
+              <td class="hl-chg"><span class="tag t-r">未签订</span></td>
+              <td class="hl-new"></td>
+              <td class="hl-chg">—</td>
+              <td class="hl-chg">签收</td>
+              <td class="hl-new"><span class="tag t-gray">未申请</span> <button class="link" onclick="openTermsApply('TX00701','old')">发起</button></td>
+              <td class="hl-new">91440101MA5ZZZZZ3C</td>
+              <td class="hl-new">CNY 12,400.00</td>
+              <td class="hl-new"><button class="link" onclick="notify('跨月明细演示')">查看</button></td>
+              <td class="hl-new"><span class="tag t-gray">否</span></td>
+              <td class="hl-new"><span class="tag t-gray">否</span></td>
+              <td class="hl-new"></td>
+              <td class="hl-new"><span class="tag t-gray">未推送</span></td>
+              <td>张明宇</td>
+              <td><button class="link" onclick="openContract()">补签合同</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td><td>4</td>
+              <td><button class="link" onclick="openDetail()">TX00788</button></td>
+              <td class="hl-new">APP-202609-055</td>
+              <td>海外客户D</td><td>ABC GLOBAL TRADING LLC</td>
+              <td class="hl-chg"></td>
+              <td class="hl-new"></td>
+              <td><span class="tag t-b">直客·国外</span></td>
+              <td><span class="tag t-g">启用</span></td>
+              <td class="hl-chg"><span class="tag t-g">已签订</span></td>
+              <td class="hl-new">腾信物流（香港）有限公司</td>
+              <td class="hl-chg">2026-10-15 <span class="tag t-r">已到期提醒</span></td>
+              <td class="hl-chg">到货</td>
+              <td class="hl-new"><span class="tag t-b">观察期</span> <button class="link" onclick="openTermsApply('TX00788','new')">查看</button></td>
+              <td class="hl-new">US-EIN-12-3456789</td>
+              <td class="hl-new">USD 4,200.00</td>
+              <td class="hl-new"><button class="link">查看</button></td>
+              <td class="hl-new"><span class="tag t-o">待购买</span></td>
+              <td class="hl-new"><span class="tag t-o">是</span></td>
+              <td class="hl-new"></td>
+              <td class="hl-new"><span class="tag t-r">失败</span></td>
+              <td>林晓雨</td>
+              <td><button class="link" onclick="openSinosure()">重推</button> · <button class="link" onclick="openRiskIns()">逐条投保</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td><td>5</td>
+              <td><span class="muted">待分配</span></td>
+              <td class="hl-new">APP-202609-099</td>
+              <td>新客E</td><td>（待完善）</td>
+              <td class="hl-chg"></td>
+              <td class="hl-new"></td>
+              <td><span class="tag t-gray">草稿</span></td>
+              <td><span class="tag t-o">未启用</span></td>
+              <td class="hl-chg"><span class="tag t-gray">—</span></td>
+              <td class="hl-new"></td>
+              <td class="hl-chg">—</td>
+              <td class="hl-chg">—</td>
+              <td class="hl-new"><span class="tag t-gray">未开户</span></td>
+              <td class="hl-new"></td>
+              <td class="hl-new">—</td>
+              <td class="hl-new">—</td>
+              <td class="hl-new"><span class="tag t-gray">否</span></td>
+              <td class="hl-new"><span class="tag t-gray">否</span></td>
+              <td class="hl-new"></td>
+              <td class="hl-new"><span class="tag t-gray">未推送</span></td>
+              <td>戚流兵</td>
+              <td><button class="link" onclick="openAdd('code')">先申请代码</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="specNote">
+      <div style="padding:10px 12px;font-weight:700;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
+        说明 · 纪要对照
+        <span class="muted" style="font-weight:400;font-size:12px">六、中信保 / 合同 / 账期 · 21–23 · 账期申请（仅说明，非功能操作区）</span>
+        <button type="button" class="btn" style="margin-left:auto;height:24px" onclick="toggleSpecNote()">收起 / 展开</button>
+      </div>
+      <div class="rules" id="specNoteBody">
+        <div class="item"><h4>21. 合同与批量导入 <span class="mk mk-chg">改</span><span class="mk mk-new">新</span></h4>合同签订增加必填「我方抬头」；购买备注非必填。客户管理支持批量导入：信用代码、上月欠款、跨月明细、中信保代码。</div>
+        <div class="item"><h4>22. 开户审核 <span class="mk mk-chg">改</span></h4>开户审核须上传企查查截图作为审核材料，缺截图不可提交审核通过。</div>
+        <div class="item"><h4>23. 申请代码与风险保险 <span class="mk mk-new">新</span></h4>新增客户先申请代码再购买；一客一申请代码。国外客户风险保险逐条新增；国内客户支持模板导入。</div>
+        <div class="item"><h4>1–3. 中信保 <span class="mk mk-new">新</span></h4>字段：是否购买中信保、中信保代码、需购标记（是/否）。有欠款+有合同 → 需购标记=是 → 按接口推送生成/获取代码（成功/失败）。按月批次推送费用；杂费用原运单号-1/-2 投保。</div>
+        <div class="item"><h4>4. 合同提醒 <span class="mk mk-chg">改</span></h4>合同到期提醒业务员；识别未签合同客户（列表页签 + 催办）。</div>
+        <div class="item"><h4>5. 账期维度 <span class="mk mk-chg">改</span></h4>账期增加开船、到港、签收、到货；其中开船/到港按柜批次计算。</div>
+        <div class="item"><h4>单向关联反查 <span class="mk mk-new">新</span></h4>客户管理单向关联增加「被关联客户」列：本客户被哪些客户关联，便于反查关联关系；「关联客户」为正向关联对象。</div>
+        <div class="item"><h4>6. 账期申请线上化 <span class="mk mk-new">新</span><span class="mk mk-chg">改</span></h4>
+          · 取数增加 <b>毛利</b>、<b>平均计费重</b>；近 3 个月主营营业额 + 到货平均回款天数仍出系统结论。<br>
+          · <b>历史付款记录</b>：近 3 个月，法人 / 营业执照抬头与付款人相同的流水才计入。<br>
+          · <b>直批</b>：直客 + 额度 ≤ <b>2.4 万</b> + 账期 ≤ <b>15 号月结</b> → 可直接批。<br>
+          · <b>审批</b>：其他一律两级都批——① 直属部门负责人 → ② 财务。<br>
+          · 新客户 2 个月观察期；非主营最高 <b>5 号月结</b>。
+        </div>
+      </div>
+    </section>
+    <p class="foot-note">功能区为列表与操作；橙色底=改，浅红底=新。规则口径见上方「说明 · 纪要对照」。</p>
+  </div>
+
+  <div class="mask" id="mask" onclick="if(event.target===this)closeModal()"></div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const mask=document.getElementById('mask');
+    function notify(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),2600)}
+    function toggleSpecNote(){
+      const el=document.getElementById('specNoteBody');
+      if(!el)return;
+      el.style.display=el.style.display==='none'?'grid':'none';
+    }
+    function closeModal(){mask.classList.remove('show');mask.innerHTML=''}
+    function openModal(title,body,foot,wide){
+      mask.innerHTML=`<div class="modal ${wide?'wide':''}" role="dialog"><div class="modal-h">${title}<button class="x" onclick="closeModal()">×</button></div><div class="modal-b">${body}</div><div class="modal-f">${foot||'<button class="btn" onclick="closeModal()">关闭</button>'}</div></div>`;
+      mask.classList.add('show');
+    }
+
+    function openRelate(code){
+      const map={
+        TX00558:{name:'腾信示例A', forward:[['TX00612','示例直客B']], reverse:[['TX00612','示例直客B'],['TX00701','同行示例C']]},
+        TX00612:{name:'示例直客B', forward:[['TX00558','腾信示例A']], reverse:[['TX00558','腾信示例A']]},
+        TX00701:{name:'同行示例C', forward:[], reverse:[['TX00558','腾信示例A']]}
+      };
+      const d=map[code]||map.TX00558;
+      const fwd=d.forward.length?d.forward.map(([c,n])=>`<tr><td>本客户 →</td><td><button class="link">${c}</button></td><td>${n}</td><td>关联客户（正向）</td></tr>`).join(''):'<tr><td colspan="4" class="muted">无正向关联</td></tr>';
+      const rev=d.reverse.length?d.reverse.map(([c,n])=>`<tr><td>← 对方关联本客户</td><td><button class="link">${c}</button></td><td>${n}</td><td>被关联客户（反查）</td></tr>`).join(''):'<tr><td colspan="4" class="muted">无被关联</td></tr>';
+      openModal(`单向关联反查 · ${code} ${d.name} <span class="mk mk-new">新</span>`,`
+        <div class="hint" style="margin-bottom:10px">单向关联仅维护「我关联谁」时，需靠「被关联客户」反查「谁关联了我」。</div>
+        <div class="sec">关联客户（正向） <span class="mk mk-chg">改</span></div>
+        <table class="mini"><thead><tr><th>方向</th><th>客户代码</th><th>简称</th><th>说明</th></tr></thead><tbody>${fwd}</tbody></table>
+        <div class="sec">被关联客户（反查） <span class="mk mk-new">新</span></div>
+        <table class="mini"><thead><tr><th>方向</th><th>客户代码</th><th>简称</th><th>说明</th></tr></thead><tbody>${rev}</tbody></table>
+      `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="notify('已打开关联维护（演示）')">维护关联</button>`);
+    }
+
+    function openAdd(mode){
+      openModal('新增客户 · 先申请代码再购买 <span class="mk mk-new">新</span>',`
+        <div class="sec">① 申请代码（每客户独立） <span class="mk mk-new">新</span></div>
+        <div class="grid2">
+          <div class="fi"><label class="req">申请代码</label><input value="APP-202609-100" ${mode==='code'?'':'readonly'} /><div class="hint">新增须先申请；一客一码，后续购买/开户绑定此码</div></div>
+          <div class="fi"><label>申请状态</label><input value="已申请 · 待完善资料" readonly /></div>
+        </div>
+        <div class="sec">② 客户基础信息</div>
+        <div class="grid2">
+          <div class="fi"><label class="req">客户全称</label><input placeholder="企业全称" /></div>
+          <div class="fi"><label class="req">客户简称</label><input /></div>
+          <div class="fi"><label>客户等级</label><select><option>直客</option><option>同行</option><option>直客·国外</option></select></div>
+          <div class="fi"><label>信用代码 <span class="mk mk-new">新</span></label><input placeholder="统一社会信用代码 / 国外税号" /></div>
+        </div>
+        <div class="sec">③ 中信保 <span class="mk mk-new">新</span></div>
+        <div class="grid2">
+          <div class="fi"><label>是否购买中信保</label><select><option>否</option><option>是</option><option>待购买</option></select></div>
+          <div class="fi"><label>中信保代码</label><input placeholder="推送成功后回填" /></div>
+        </div>
+        <div class="sec">④ 合同（签订时） <span class="mk mk-chg">改</span></div>
+        <div class="grid2">
+          <div class="fi"><label class="req">我方抬头 <span class="mk mk-new">新</span></label><select><option value="">请选择</option><option>腾信物流（深圳）有限公司</option><option>腾信物流（香港）有限公司</option></select><div class="hint">合同签订必填</div></div>
+          <div class="fi"><label>购买备注 <span class="mk mk-chg">改</span></label><input placeholder="非必填" /><div class="hint">非必填</div></div>
+        </div>
+      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('已保存申请代码并进入待完善（演示）');closeModal()">保存申请代码</button>`);
+    }
+
+    function openEdit(){openAdd()}
+    function openDetail(){
+      openModal('客户详情 · TX00558',`
+        <div class="grid3">
+          <div class="fi"><label>客户代码</label><input value="TX00558" readonly /></div>
+          <div class="fi"><label>申请代码 <span class="mk mk-new">新</span></label><input value="APP-202609-001" readonly /></div>
+          <div class="fi"><label>客户全称</label><input value="深圳市某某贸易有限公司" readonly /></div>
+          <div class="fi"><label>我方抬头 <span class="mk mk-new">新</span></label><input value="腾信物流（深圳）有限公司" readonly /></div>
+          <div class="fi"><label>信用代码 <span class="mk mk-new">新</span></label><input value="91440300MA5XXXXX1A" readonly /></div>
+          <div class="fi"><label>上月欠款 <span class="mk mk-new">新</span></label><input value="CNY 28,600.00" readonly /></div>
+          <div class="fi"><label>是否购买中信保 <span class="mk mk-new">新</span></label><input value="是" readonly /></div>
+          <div class="fi"><label>中信保代码 <span class="mk mk-new">新</span></label><input value="SCB-882201" readonly /></div>
+          <div class="fi"><label>账期维度 <span class="mk mk-chg">改</span></label><input value="开船 · 按柜批次" readonly /></div>
+          <div class="fi"><label>账期维度 <span class="mk mk-chg">改</span></label><input value="开船 · 按柜批次" readonly /></div>
+          <div class="fi"><label>关联客户 <span class="mk mk-chg">改</span></label><input value="TX00612（正向）" readonly /></div>
+          <div class="fi"><label>被关联客户 <span class="mk mk-new">新</span></label><input value="TX00612、TX00701（反查）" readonly /></div>
+        </div>
+        <div class="sec">关联关系反查 <span class="mk mk-new">新</span></div>
+        <table class="mini"><thead><tr><th>方向</th><th>客户代码</th><th>客户简称</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>本客户 → 关联</td><td>TX00612</td><td>示例直客B</td><td>正向单向关联</td></tr>
+            <tr><td>被关联 ← 对方</td><td>TX00612</td><td>示例直客B</td><td>对方把本客户设为关联</td></tr>
+            <tr><td>被关联 ← 对方</td><td>TX00701</td><td>同行示例C</td><td>对方把本客户设为关联（反查可见）</td></tr>
+          </tbody></table>
+        <div class="sec">跨月明细 <span class="mk mk-new">新</span></div>
+        <table class="mini"><thead><tr><th>月份</th><th>类型</th><th>金额</th><th>说明</th></tr></thead>
+          <tbody><tr><td>2026-08</td><td>尾款</td><td>CNY 8,600</td><td>跨月结转</td></tr><tr><td>2026-09</td><td>新账</td><td>CNY 20,000</td><td>当月应收</td></tr></tbody></table>
+      `);
+    }
+
+    function openAudit(){
+      openModal('开户 / 营业执照审核 <span class="mk mk-chg">改</span>',`
+        <div class="sec">审核对象</div>
+        <div class="grid2">
+          <div class="fi"><label>客户</label><input value="TX00558 / 深圳市某某贸易有限公司" readonly /></div>
+          <div class="fi"><label>申请代码</label><input value="APP-202609-001" readonly /></div>
+        </div>
+        <div class="sec">企查查截图（必传） <span class="mk mk-new">新</span></div>
+        <div class="upload" id="qcUpload" onclick="this.classList.add('ok');this.innerHTML='已上传：企查查截图_TX00558.png（演示）';notify('已模拟上传企查查截图')">
+          点击上传企查查截图<br><span class="hint" style="color:inherit">开户审核材料；未上传不可审核通过</span>
+        </div>
+        <div class="sec">审核意见</div>
+        <div class="fi"><label>内部备注</label><textarea placeholder="审核结论、补件说明"></textarea></div>
+      `,`<button class="btn" onclick="closeModal()">取消</button>
+         <button class="btn" onclick="notify('已打回补传企查查截图（演示）')">打回补件</button>
+         <button class="btn primary" onclick="if(!document.getElementById('qcUpload').classList.contains('ok'))return notify('请先上传企查查截图');notify('审核通过（演示）');closeModal()">审核通过</button>`);
+    }
+
+    function openOpenAccount(){openAudit()}
+
+    function openImport(){
+      openModal('批量导入 · 信用代码 / 欠款 / 中信保 <span class="mk mk-new">新</span>',`
+        <div class="sec">导入模板字段</div>
+        <table class="mini"><thead><tr><th>字段</th><th>必填</th><th>说明</th><th>标记</th></tr></thead><tbody>
+          <tr><td>客户代码 / 申请代码</td><td>是</td><td>匹配客户</td><td>—</td></tr>
+          <tr><td>信用代码</td><td>否</td><td>统一社会信用代码等</td><td><span class="mk mk-new">新</span></td></tr>
+          <tr><td>上月欠款</td><td>否</td><td>金额 · 币种</td><td><span class="mk mk-new">新</span></td></tr>
+          <tr><td>跨月明细</td><td>否</td><td>可多行或 JSON/明细表</td><td><span class="mk mk-new">新</span></td></tr>
+          <tr><td>中信保代码</td><td>否</td><td>已有代码可回填</td><td><span class="mk mk-new">新</span></td></tr>
+          <tr><td>是否购买中信保</td><td>否</td><td>是/否/待购买</td><td><span class="mk mk-new">新</span></td></tr>
+        </tbody></table>
+        <div class="upload" style="margin-top:12px" onclick="notify('已选择导入文件（演示）')">点击选择 Excel / CSV 模板文件</div>
+        <div class="hint" style="margin-top:8px">国内客户风险保险亦可走模板导入；国外客户请用「风险保险」逐条新增。</div>
+      `,`<button class="btn" onclick="notify('已下载导入模板（演示）')">下载模板</button><button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('导入校验通过 3 行（演示）');closeModal()">开始导入</button>`,true);
+    }
+
+    function openSinosure(){
+      openModal('中信保推送 · API <span class="mk mk-new">新</span>',`
+        <div class="sec">规则</div>
+        <div class="hint" style="margin-bottom:8px">满足「有欠款 + 有合同」→ 需购标记=是 → 按接口推送生成/获取代码，回写成功或失败。</div>
+        <table class="mini"><thead><tr><th>客户</th><th>欠款</th><th>合同</th><th>需购标记</th><th>中信保代码</th><th>上次推送</th></tr></thead>
+          <tbody>
+            <tr><td>TX00558</td><td>有</td><td>有</td><td><span class="tag t-o">是</span></td><td>SCB-882201</td><td><span class="tag t-g">成功</span></td></tr>
+            <tr><td>TX00788</td><td>有</td><td>有</td><td><span class="tag t-o">是</span></td><td>—</td><td><span class="tag t-r">失败</span></td></tr>
+            <tr><td>TX00612</td><td>无</td><td>有</td><td><span class="tag t-gray">—</span></td><td>—</td><td><span class="tag t-gray">未推送</span></td></tr>
+          </tbody></table>
+        <div class="sec">按月批次费用投保 <span class="mk mk-new">新</span></div>
+        <div class="grid2">
+          <div class="fi"><label>投保批次</label><select><option>2026-09 批次</option><option>2026-08 批次</option></select></div>
+          <div class="fi"><label>杂费投保标识示例</label><input value="CUS-202609-001-1　/　CUS-202609-001-2" readonly /><div class="hint">原运单号 + -1/-2 作为新投保标识</div></div>
+        </div>
+        <div class="fi"><label>接口返回（演示）</label><textarea readonly>{"code":"FAIL","message":"买方信息校验未通过","requestId":"SIN-DEM-9001"}</textarea></div>
+      `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="notify('已推送中信保，回写成功/失败状态（演示）');closeModal()">推送生成代码</button>`,true);
+    }
+
+    function openRiskIns(){
+      openModal('客户风险保险 <span class="mk mk-new">新</span>',`
+        <div class="sec">国外客户 · 逐条新增</div>
+        <div class="grid2">
+          <div class="fi"><label class="req">客户</label><select><option>TX00788 · ABC GLOBAL</option></select></div>
+          <div class="fi"><label class="req">投保金额</label><input value="USD 4,200.00" /></div>
+          <div class="fi"><label>关联运单</label><input placeholder="主单号" /></div>
+          <div class="fi"><label>备注</label><input /></div>
+        </div>
+        <button class="btn primary" style="margin:8px 0" onclick="notify('已逐条新增国外投保（演示）')">+ 逐条新增</button>
+        <div class="sec">国内客户 · 模板导入</div>
+        <div class="upload" onclick="notify('已选择国内投保模板（演示）')">上传国内客户投保模板</div>
+      `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="notify('国内模板导入完成（演示）');closeModal()">导入</button>`);
+    }
+
+    function openContract(){
+      openModal('合同管理 · 我方抬头 / 到期提醒 <span class="mk mk-chg">改</span>',`
+        <div class="sec">签订信息</div>
+        <div class="grid2">
+          <div class="fi"><label class="req">我方抬头 <span class="mk mk-new">新</span></label><select><option>腾信物流（深圳）有限公司</option><option>腾信物流（香港）有限公司</option></select></div>
+          <div class="fi"><label>购买备注 <span class="mk mk-chg">改</span></label><input placeholder="非必填" /></div>
+          <div class="fi"><label class="req">合同开始</label><input type="date" value="2026-01-01" /></div>
+          <div class="fi"><label class="req">合同结束</label><input type="date" value="2026-12-31" /></div>
+        </div>
+        <div class="sec">到期提醒 / 未签识别 <span class="mk mk-chg">改</span></div>
+        <table class="mini"><thead><tr><th>客户</th><th>业务员</th><th>状态</th><th>到期日</th><th>动作</th></tr></thead>
+          <tbody>
+            <tr><td>TX00701</td><td>张明宇</td><td><span class="tag t-r">未签订</span></td><td>—</td><td><button class="link" onclick="notify('已提醒业务员补签（演示）')">催办</button></td></tr>
+            <tr><td>TX00788</td><td>林晓雨</td><td><span class="tag t-r">已到期</span></td><td>2026-10-15</td><td><button class="link" onclick="notify('已发送到期提醒（演示）')">提醒</button></td></tr>
+            <tr><td>TX00558</td><td>戚流兵</td><td><span class="tag t-o">30天内到期</span></td><td>2026-12-31</td><td><button class="link" onclick="notify('已提醒业务员（演示）')">提醒</button></td></tr>
+          </tbody></table>
+      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('合同已保存（我方抬头必填已校验·演示）');closeModal()">保存合同</button>`,true);
+    }
+
+    function openTerms(){
+      openModal('账期维度设置 <span class="mk mk-chg">改</span>',`
+        <div class="hint" style="margin-bottom:10px">账期维度增加：开船、到港、签收、到货。其中<strong>开船 / 到港按柜批次</strong>计算。</div>
+        <table class="mini"><thead><tr><th>维度</th><th>计算口径</th><th>标记</th><th>示例</th></tr></thead><tbody>
+          <tr><td>开船</td><td>按柜批次起算账期</td><td><span class="mk mk-chg">改</span></td><td>柜 CONT-***001 开船日 + N 天</td></tr>
+          <tr><td>到港</td><td>按柜批次起算账期</td><td><span class="mk mk-chg">改</span></td><td>柜 CONT-***001 到港日 + N 天</td></tr>
+          <tr><td>签收</td><td>按签收时间</td><td><span class="mk mk-new">新</span></td><td>POD 签收日 + N 天</td></tr>
+          <tr><td>到货</td><td>按到货时间</td><td><span class="mk mk-new">新</span></td><td>到货日 + N 天</td></tr>
+        </tbody></table>
+        <div class="sec">当前客户试算</div>
+        <div class="grid3">
+          <div class="fi"><label>客户</label><input value="TX00558" readonly /></div>
+          <div class="fi"><label>选用维度</label><select><option>开船</option><option>到港</option><option>签收</option><option>到货</option></select></div>
+          <div class="fi"><label>账期天数</label><input value="30" /></div>
+        </div>
+      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('账期维度已保存（演示）');closeModal()">保存</button>`);
+    }
+
+    /** 账期申请演示数据 */
+    const TERMS_DEMO = {
+      TX00558: {
+        name:'深圳市某某贸易有限公司', level:'直客', legal:'张某某', licenseTitle:'深圳市某某贸易有限公司',
+        openDate:'2025-12-10', openMonths:9.5, isNew:false, status:'可申请',
+        deptMgr:'戚流兵（直属部门负责人）', creditHint:18000,
+        months:[
+          {m:'2026-07', sales:186000, gp:22320, gpRate:'12.0%', cwt:42.6, payDays:28},
+          {m:'2026-08', sales:214500, gp:27900, gpRate:'13.0%', cwt:48.2, payDays:31},
+          {m:'2026-09', sales:198200, gp:23780, gpRate:'12.0%', cwt:45.1, payDays:27}
+        ],
+        pays:[
+          {d:'2026-09-12', payer:'深圳市某某贸易有限公司', amt:28600, match:true, note:'与营业执照抬头一致'},
+          {d:'2026-08-18', payer:'张某某', amt:15200, match:true, note:'与法人一致'},
+          {d:'2026-08-05', payer:'李某个人卡', amt:8000, match:false, note:'非法人/非执照抬头 · 不计入'},
+          {d:'2026-07-22', payer:'深圳市某某贸易有限公司', amt:42000, match:true, note:'与营业执照抬头一致'}
+        ],
+        approve:{step:0, path:[]}
+      },
+      TX00612: {
+        name:'东莞某某供应链有限公司', level:'直客', legal:'陈某某', licenseTitle:'东莞某某供应链有限公司',
+        openDate:'2025-06-01', openMonths:15.5, isNew:false, status:'审核中',
+        deptMgr:'王部门（直属部门负责人）', creditHint:56000,
+        months:[
+          {m:'2026-07', sales:320000, gp:41600, gpRate:'13.0%', cwt:72.0, payDays:35},
+          {m:'2026-08', sales:298000, gp:35760, gpRate:'12.0%', cwt:68.4, payDays:38},
+          {m:'2026-09', sales:341000, gp:47740, gpRate:'14.0%', cwt:75.2, payDays:33}
+        ],
+        pays:[
+          {d:'2026-09-08', payer:'东莞某某供应链有限公司', amt:88000, match:true, note:'与营业执照抬头一致'},
+          {d:'2026-08-20', payer:'陈某某', amt:36000, match:true, note:'与法人一致'},
+          {d:'2026-07-15', payer:'东莞某某供应链有限公司', amt:92000, match:true, note:'与营业执照抬头一致'}
+        ],
+        apply:{dim:'月结', terms:'20号月结', credit:56000, scope:'main'},
+        approve:{step:1, path:[
+          {role:'直属部门负责人', who:'王部门', at:'2026-09-22 11:20', result:'通过', note:'货量稳定，同意'},
+          {role:'财务', who:'—', at:'—', result:'待审', note:'额度>2.4万且超15号月结，须财务批'}
+        ]}
+      },
+      TX00701: {
+        name:'广州某某货运代理', level:'同行', legal:'刘某某', licenseTitle:'广州某某货运代理有限公司',
+        openDate:'2024-03-01', openMonths:30, isNew:false, status:'可申请',
+        deptMgr:'赵主管（直属部门负责人）', creditHint:12000,
+        months:[
+          {m:'2026-07', sales:96000, gp:9600, gpRate:'10.0%', cwt:28.0, payDays:22},
+          {m:'2026-08', sales:88000, gp:7920, gpRate:'9.0%', cwt:26.5, payDays:24},
+          {m:'2026-09', sales:102000, gp:11220, gpRate:'11.0%', cwt:29.8, payDays:21}
+        ],
+        pays:[
+          {d:'2026-09-03', payer:'广州某某货运代理有限公司', amt:22000, match:true, note:'与营业执照抬头一致'},
+          {d:'2026-08-11', payer:'刘某某', amt:15000, match:true, note:'与法人一致'}
+        ],
+        approve:{step:0, path:[]}
+      },
+      TX00788: {
+        name:'ABC GLOBAL TRADING LLC', level:'直客·国外', legal:'—', licenseTitle:'ABC GLOBAL TRADING LLC',
+        openDate:'2026-08-01', openMonths:1.7, isNew:true, status:'观察期',
+        deptMgr:'戚流兵（直属部门负责人）', creditHint:0,
+        months:[], pays:[], approve:{step:0, path:[]}
+      }
+    };
+
+    /** 月结号数：5/10/15 号月结以内可直批；到货+N 等非月结走审批 */
+    function termsDayRank(terms){
+      const m=String(terms||'').match(/(\d+)\s*号月结/);
+      if(m)return Number(m[1]);
+      if(/月结/.test(terms||'')&&!/\d/.test(terms||''))return 99;
+      return 99;
+    }
+    function canDirectApprove(level, credit, terms){
+      const isZk=/^直客/.test(level||'')&&!/同行/.test(level||'');
+      const withinAmt=Number(credit||0)<=24000;
+      const withinTerms=termsDayRank(terms)<=15;
+      return isZk&&withinAmt&&withinTerms;
+    }
+
+    function openTermsApply(code, type){
+      const cust = code || 'TX00558';
+      const d = TERMS_DEMO[cust] || TERMS_DEMO.TX00558;
+      const isNew = type === 'new' || d.isNew;
+      if(isNew){
+        openModal(`账期申请 · ${cust} · 观察期 <span class="mk mk-new">新</span>`, `
+          <div class="sec">客户与观察期 · 新客户</div>
+          <div class="grid3">
+            <div class="fi"><label>客户</label><input value="${cust} / ${d.name}" readonly /></div>
+            <div class="fi"><label>客户等级</label><input value="${d.level}" readonly /></div>
+            <div class="fi"><label>观察期</label><input value="2 个月 · 剩余约 10 天" readonly /></div>
+          </div>
+          <div style="background:#e6f7ff;border:1px solid #91d5ff;border-radius:4px;padding:10px;margin:10px 0">
+            <b>规则：</b>新客户 <b>2 个月观察期</b>内不走直批/长期账期；期满后按毛利、平均计费重、付款记录（法人/执照抬头=付款人）复核。审批仍为：直属部门负责人 → 财务（两级都批）。
+          </div>
+          <div class="sec">观察期数据</div>
+          <table class="mini"><thead><tr><th>指标</th><th>数值</th></tr></thead><tbody>
+            <tr><td>下单票数 / 营业额</td><td>6 / USD 18,400</td></tr>
+            <tr><td>毛利 / 毛利率</td><td>USD 2,200 / 12.0%</td></tr>
+            <tr><td>平均计费重</td><td>18.6 CBM（或 KG）</td></tr>
+            <tr><td>回款 · 抬头匹配</td><td>4 笔匹配法人/执照抬头 · 平均 22 天</td></tr>
+          </tbody></table>
+        `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn" onclick="notify('已保存观察期备注（演示）')">保存备注</button><button class="btn primary" disabled>提交复核（未满）</button>`, true);
+        return;
+      }
+
+      const salesSum=d.months.reduce((s,x)=>s+x.sales,0);
+      const gpSum=d.months.reduce((s,x)=>s+x.gp,0);
+      const cwtAvg=(d.months.reduce((s,x)=>s+x.cwt,0)/d.months.length).toFixed(1);
+      const payAvg=(d.months.reduce((s,x)=>s+x.payDays,0)/d.months.length).toFixed(1);
+      const gpRateAvg=((gpSum/salesSum)*100).toFixed(1);
+      const matchPays=d.pays.filter(p=>p.match);
+      const matchAmt=matchPays.reduce((s,p)=>s+p.amt,0);
+      const pending=d.status==='审核中';
+
+      const monthRows=d.months.map(x=>`<tr>
+        <td>${x.m}</td><td>CNY ${x.sales.toLocaleString('en-US')}</td>
+        <td>CNY ${x.gp.toLocaleString('en-US')} <span class="muted">(${x.gpRate})</span></td>
+        <td>${x.cwt} CBM</td><td>${x.payDays} 天</td>
+      </tr>`).join('');
+
+      const payRows=d.pays.map(p=>`<tr>
+        <td>${p.d}</td><td>${p.payer}</td><td>CNY ${p.amt.toLocaleString('en-US')}</td>
+        <td>${p.match?'<span class="tag t-g">计入</span>':'<span class="tag t-gray">不计</span>'}</td>
+        <td class="muted">${p.note}</td>
+      </tr>`).join('');
+
+      const approveRows=(pending&&d.approve.path.length?d.approve.path:[
+        {role:'① 直属部门负责人', who:d.deptMgr, at:'提交后', result:'待审', note:'第一级，必须批'},
+        {role:'② 财务', who:'财务审核岗', at:'一级通过后', result:'待审', note:'第二级，必须批'}
+      ]).map((a,i)=>`<tr>
+        <td>${a.role||('第'+(i+1)+'级')}</td><td>${a.who}</td><td>${a.at}</td>
+        <td>${a.result==='通过'?'<span class="tag t-g">通过</span>':a.result==='待审'?'<span class="tag t-o">待审</span>':'<span class="tag t-r">'+a.result+'</span>'}</td>
+        <td class="muted">${a.note||''}</td>
+      </tr>`).join('');
+
+      const defaultTerms=pending?(d.apply?.terms||'20号月结'):'15号月结';
+      const defaultCredit=pending?(d.apply?.credit||d.creditHint):d.creditHint;
+      const directNow=canDirectApprove(d.level, defaultCredit, defaultTerms);
+
+      openModal(`账期申请 · ${cust} <span class="mk mk-new">新</span><span class="mk mk-chg">改</span>`, `
+        <div style="background:#fff7e6;border:1px solid #ffd591;border-radius:4px;padding:10px;margin-bottom:12px;line-height:1.7">
+          <b>审批与直批：</b>① 直属部门负责人 → ② 财务，<b>两级都要批</b>。<br>
+          <b>可直批：</b>直客 + 额度 ≤ <b>CNY 24,000</b> + 账期 ≤ <b>15 号月结</b>（含 5/10/15 号）。其余走两级审批。<br>
+          <b>付款记录：</b>近 3 个月仅统计「付款人 = 法人 或 营业执照抬头」的流水。
+        </div>
+
+        <div class="sec">客户与开户</div>
+        <div class="grid3">
+          <div class="fi"><label>客户</label><input value="${cust} / ${d.name}" readonly /></div>
+          <div class="fi"><label>客户等级</label><input value="${d.level}" readonly /></div>
+          <div class="fi"><label>开户时长</label><input value="${d.openMonths} 个月 · ${d.openDate}" readonly /></div>
+          <div class="fi"><label>法人</label><input value="${d.legal}" readonly /></div>
+          <div class="fi"><label>营业执照抬头</label><input value="${d.licenseTitle}" readonly /></div>
+          <div class="fi"><label>当前状态</label><input value="${d.status}" readonly /></div>
+        </div>
+
+        <div class="sec">系统取数（近 3 个月）· 含毛利 / 平均计费重 <span class="mk mk-chg">改</span></div>
+        <table class="mini"><thead><tr>
+          <th>月份</th><th>主营营业额</th><th>毛利（毛利率）</th><th>平均计费重</th><th>到货回款天</th>
+        </tr></thead><tbody>
+          ${monthRows}
+          <tr><td><b>合计 / 平均</b></td>
+            <td><b>CNY ${salesSum.toLocaleString('en-US')}</b></td>
+            <td><b>CNY ${gpSum.toLocaleString('en-US')}</b> <span class="muted">(${gpRateAvg}%)</span></td>
+            <td><b>${cwtAvg} CBM</b></td>
+            <td><b>${payAvg} 天</b></td></tr>
+        </tbody></table>
+
+        <div class="sec">历史付款记录 · 法人 / 执照抬头 = 付款人（近 3 个月） <span class="mk mk-new">新</span></div>
+        <div class="hint" style="margin-bottom:6px">匹配口径：付款人与法人「${d.legal}」或营业执照抬头「${d.licenseTitle}」相同才计入。已匹配 <b>${matchPays.length}</b> 笔 · 合计 <b>CNY ${matchAmt.toLocaleString('en-US')}</b>。</div>
+        <table class="mini"><thead><tr><th>付款日</th><th>付款人</th><th>金额</th><th>是否计入</th><th>说明</th></tr></thead>
+          <tbody>${payRows||'<tr><td colspan="5" class="muted">近 3 个月无匹配流水</td></tr>'}</tbody></table>
+
+        <div class="sec">系统结论</div>
+        <div style="background:#f6ffed;border:1px solid #b7eb8f;border-radius:4px;padding:10px;margin-bottom:10px">
+          <b>建议：</b>主营可申请至 <b>15 号月结</b> 或 <b>到货 + 30 天</b>（超范围须审批）。<br>
+          <span class="muted">依据：营业额 CNY ${(salesSum/10000).toFixed(2)} 万 · 毛利 CNY ${(gpSum/10000).toFixed(2)} 万（${gpRateAvg}%）· 平均计费重 ${cwtAvg} CBM · 平均回款 ${payAvg} 天 · 抬头匹配付款 ${matchPays.length} 笔。</span>
+        </div>
+
+        <div class="sec">申请内容</div>
+        <div class="grid2">
+          <div class="fi"><label class="req">申请账期维度</label>
+            <select id="applyDim"><option ${defaultTerms.includes('月结')?'selected':''}>月结</option><option>到货</option><option>开船</option><option>到港</option><option>签收</option></select>
+          </div>
+          <div class="fi"><label class="req">申请账期</label>
+            <select id="applyTerms" onchange="refreshTermsRoute()">
+              <option value="5号月结" ${defaultTerms==='5号月结'?'selected':''}>5 号月结</option>
+              <option value="10号月结" ${defaultTerms==='10号月结'?'selected':''}>10 号月结</option>
+              <option value="15号月结" ${defaultTerms==='15号月结'?'selected':''}>15 号月结</option>
+              <option value="20号月结" ${defaultTerms==='20号月结'?'selected':''}>20 号月结</option>
+              <option value="25号月结">25 号月结</option>
+              <option value="到货+30天">到货 + 30 天</option>
+            </select>
+          </div>
+          <div class="fi"><label class="req">申请额度（CNY）</label>
+            <input id="applyCredit" type="number" value="${defaultCredit}" oninput="refreshTermsRoute()" />
+            <div class="hint">直客 ≤ 24,000 且账期 ≤ 15 号月结可直批</div>
+          </div>
+          <div class="fi"><label class="req">产品范围</label>
+            <select id="prodScope" onchange="syncNonMainLimit();refreshTermsRoute()">
+              <option value="main">主营产品</option><option value="nonmain">非主营产品</option>
+            </select>
+          </div>
+          <div class="fi"><label>非主营上限</label><input id="nonMainCap" value="—" readonly /><div class="hint" id="nonMainHint">非主营最高 <b>5 号月结</b></div></div>
+          <div class="fi"><label>直属部门负责人</label><input value="${d.deptMgr}" readonly /></div>
+        </div>
+        <div class="fi"><label>申请说明</label><textarea id="applyNote" placeholder="业务员补充说明（可选）"></textarea></div>
+
+        <div class="sec">审批路径预判 <span class="mk mk-chg">改</span></div>
+        <div id="routeBanner" style="border-radius:4px;padding:10px;margin-bottom:8px;border:1px solid #d9d9d9"></div>
+        <table class="mini"><thead><tr><th>层级</th><th>审批人</th><th>时间</th><th>结果</th><th>说明</th></tr></thead>
+          <tbody id="approvePathBody">${approveRows}</tbody></table>
+        ${pending?`<div class="hint" style="margin-top:8px">本单已过第一级，待财务批。额度 CNY ${Number(defaultCredit).toLocaleString('en-US')} · ${defaultTerms}，不满足直批。</div>`:''}
+      `, pending
+        ? `<button class="btn" onclick="closeModal()">关闭</button>
+           <button class="btn" onclick="notify('已催办财务审核（演示）')">催办财务</button>
+           <button class="btn primary" onclick="approveTermsFinance('${cust}')">财务审核通过</button>`
+        : `<button class="btn" onclick="closeModal()">取消</button>
+           <button class="btn" onclick="notify('已保存草稿（演示）')">存草稿</button>
+           <button class="btn primary" onclick="submitTermsApply('${cust}')">提交账期申请</button>`,
+        true);
+      window.__termsLevel=d.level;
+      syncNonMainLimit();
+      refreshTermsRoute();
+    }
+
+    function refreshTermsRoute(){
+      const credit=Number(document.getElementById('applyCredit')?.value||0);
+      const terms=document.getElementById('applyTerms')?.value||'';
+      const scope=document.getElementById('prodScope')?.value||'main';
+      const banner=document.getElementById('routeBanner');
+      if(!banner)return;
+      const direct=scope==='main'&&canDirectApprove(window.__termsLevel, credit, terms);
+      if(direct){
+        banner.style.cssText='background:#f6ffed;border:1px solid #b7eb8f;border-radius:4px;padding:10px;margin-bottom:8px';
+        banner.innerHTML=`<b>路径：系统直批</b>　直客 · 额度 CNY ${credit.toLocaleString('en-US')} ≤ 2.4 万 · 账期「${terms}」≤ 15 号月结。<br><span class="muted">直批通过后仍留痕；不满足条件时改为：直属部门负责人 → 财务（两级都批）。</span>`;
+      }else{
+        banner.style.cssText='background:#fff7e6;border:1px solid #ffd591;border-radius:4px;padding:10px;margin-bottom:8px';
+        const why=[];
+        if(!/^直客/.test(window.__termsLevel||''))why.push('非直客');
+        if(credit>24000)why.push('额度>2.4万');
+        if(termsDayRank(terms)>15)why.push('账期超15号月结');
+        if(scope==='nonmain')why.push('非主营（上限5号月结）');
+        banner.innerHTML=`<b>路径：两级审批</b>　① 直属部门负责人 → ② 财务　<span class="muted">（${why.join('；')||'须人工审'}）</span><br><span class="muted">两级都要通过后再生效。</span>`;
+      }
+    }
+
+    function syncNonMainLimit(){
+      const scope=document.getElementById('prodScope');
+      const cap=document.getElementById('nonMainCap');
+      const terms=document.getElementById('applyTerms');
+      if(!scope||!cap)return;
+      if(scope.value==='nonmain'){
+        cap.value='最高 5 号月结';
+        if(terms&&termsDayRank(terms.value)>5){
+          terms.value='5号月结';
+          notify('非主营产品：账期已限制为 5 号月结');
+        }
+      }else{
+        cap.value='—（按系统结论；直批另看 2.4 万 / 15 号月结）';
+      }
+    }
+
+    function submitTermsApply(cust){
+      const scope=document.getElementById('prodScope')?.value||'main';
+      const credit=Number(document.getElementById('applyCredit')?.value||0);
+      const terms=document.getElementById('applyTerms')?.value||'';
+      if(scope==='nonmain'&&termsDayRank(terms)>5){
+        return notify('非主营产品最高只能申请 5 号月结');
+      }
+      const direct=scope==='main'&&canDirectApprove(window.__termsLevel, credit, terms);
+      closeModal();
+      if(direct){
+        notify(`已直批通过：${cust||''} · ${terms} · 额度 CNY ${credit.toLocaleString('en-US')}（直客≤2.4万且≤15号月结）`);
+      }else{
+        notify(`已提交：${cust||''} · 待直属部门负责人审批，通过后再到财务（两级都批）`);
+      }
+    }
+
+    function approveTermsFinance(cust){
+      closeModal();
+      notify(`财务已通过 ${cust||''}：两级审批完成（部门负责人 → 财务），账期生效（演示）`);
+    }
+
+    document.querySelectorAll('.status-tabs button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll('.status-tabs button').forEach(x=>x.classList.remove('on'));
+        btn.classList.add('on');
+        notify('已切换：'+btn.textContent.trim());
+      });
+    });
+  </script>
+</body>
+</html>

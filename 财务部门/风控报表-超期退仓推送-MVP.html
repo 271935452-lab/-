@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>风控报表 · 超期退仓推送 · MVP</title>
+  <style>
+    :root{--nav:#001529;--blue:#1677ff;--bg:#f3f5f8;--card:#fff;--line:#e7eaee;--text:#1f2937;--sub:#667085;--green:#389e0d;--orange:#d46b08;--red:#cf1322}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 "Microsoft YaHei","PingFang SC",Arial,sans-serif}
+    button,input,select{font:inherit}button{cursor:pointer}
+    .app{min-height:100vh;display:flex}
+    .side{width:184px;flex:0 0 184px;background:var(--nav);color:#aeb8c4;padding:14px 0}
+    .brand{padding:0 18px 16px;color:#fff;font-weight:700;font-size:15px}
+    .brand small{display:block;color:#8da2b7;font-weight:400;margin-top:2px;font-size:11px}
+    .nav-title{padding:12px 18px 5px;font-size:11px;color:#71849a}
+    .nav-item{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:10px 18px;text-decoration:none}
+    .nav-item.active{background:var(--blue);color:#fff}
+    .main{flex:1;min-width:0}
+    .top{padding:10px 18px;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .title{font-size:16px;font-weight:700}.crumb{font-size:12px;color:var(--sub)}
+    .top-right{margin-left:auto;display:flex;gap:8px;align-items:center;color:var(--sub);font-size:12px}
+    .demo{background:#fff7e6;color:#ad6800;border:1px solid #ffd591;border-radius:10px;padding:2px 8px}
+    .content{padding:16px 18px 40px;max-width:1480px;margin:auto}
+    .banner{background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;padding:10px 12px;color:#614700;margin-bottom:12px;line-height:1.7;font-size:12px}
+    .banner b{color:#ad6800}
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+    .stat{background:#fff;border:1px solid var(--line);border-radius:7px;padding:11px 13px}
+    .stat .l{font-size:12px;color:var(--sub)}.stat .n{font-size:22px;font-weight:700;margin-top:2px}.stat .h{font-size:11px;color:var(--sub);margin-top:2px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:7px}
+    .tabs{display:flex;border-bottom:1px solid var(--line);padding:0 14px;gap:18px;flex-wrap:wrap}
+    .tab{border:0;background:transparent;padding:12px 2px;color:var(--sub);border-bottom:2px solid transparent}
+    .tab.active{color:var(--blue);border-color:var(--blue);font-weight:700}
+    .filters{padding:12px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .field label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px}
+    .field input,.field select{height:30px;border:1px solid #d9dfe7;border-radius:4px;padding:0 8px;min-width:130px;background:#fff}
+    .btn{height:30px;border:1px solid #d9dfe7;border-radius:4px;background:#fff;padding:0 11px;color:#344054}
+    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+    .btn.warn{background:#fff7e6;border-color:#ffd591;color:#d46b08}
+    .toolbar{border-top:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .toolbar .sel{margin-right:auto;color:var(--sub);font-size:12px}
+    .table-wrap{overflow:auto}
+    table{border-collapse:collapse;width:100%;min-width:1280px}
+    th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left;white-space:nowrap;font-size:12px;vertical-align:middle}
+    th{background:#fafbfc;color:#475467;font-weight:600}
+    .tag{display:inline-block;padding:2px 6px;border-radius:3px;font-size:11px;line-height:18px;border:1px solid transparent}
+    .t-g{background:#f6ffed;color:var(--green);border-color:#b7eb8f}
+    .t-y{background:#fffbe6;color:#ad6800;border-color:#ffe58f}
+    .t-r{background:#fff1f0;color:var(--red);border-color:#ffa39e}
+    .t-b{background:#e6f4ff;color:#0958d9;border-color:#91caff}
+    .t-o{background:#fff7e6;color:#d46b08;border-color:#ffd591}
+    .t-gray{background:#f2f4f7;color:#475467;border-color:#d0d5dd}
+    .link{border:0;background:transparent;color:var(--blue);padding:0}
+    .muted{color:var(--sub)}
+    .rule-box{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:14px}
+    .rule-box .item{background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:12px;font-size:12px;line-height:1.65}
+    .rule-box h4{margin:0 0 6px;font-size:13px}
+    .toast{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);color:#fff;padding:8px 14px;border-radius:5px;display:none;z-index:20}
+    .toast.show{display:block}
+    @media(max-width:900px){.side{display:none}.stats,.rule-box{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="side">
+      <div class="brand">腾信物流<small>财务中心 · 风控报表</small></div>
+      <div class="nav-title">财务管理</div>
+      <a class="nav-item" href="财务部门-模块导航.html">模块导航</a>
+      <a class="nav-item active" href="#">超期退仓风控</a>
+      <a class="nav-item" href="收款/收款-模块导航.html">收款</a>
+      <div class="nav-title">推送</div>
+      <a class="nav-item" href="#" onclick="notify('演示：黄少飞待办列表');return false">黄少飞 · 退仓待办</a>
+    </aside>
+    <section class="main">
+      <header class="top">
+        <div>
+          <div class="title">风控报表 · 超期退仓推送 <span class="tag t-o">MVP</span></div>
+          <div class="crumb">财务中心 / 风控 · 每天更新一次 · 推送黄少飞办理退仓</div>
+        </div>
+        <div class="top-right">
+          <span class="demo">示例数据 · 未联调</span>
+          <span>上次更新：2026-09-24 06:00</span>
+          <span>下次：每日 06:00</span>
+        </div>
+      </header>
+      <div class="content">
+        <div class="banner">
+          <b>口径：</b>
+          渠道范围 <b>美森 / EXX / T16 / 以星快船</b>：
+          <b>已签出</b> →（签出 − 签入）&gt; 8 天；
+          <b>未签出</b> →（当前 − 签入）&gt; 8 天 → 推送黄少飞办理退仓。
+          <b>其余渠道</b>：在仓天数 &gt; 16 天 → 同样推送黄少飞办理退仓。
+          <b>财务视图：已签出 + 未签出都要。</b>
+          报表每天更新一次。
+        </div>
+
+        <section class="stats">
+          <div class="stat"><div class="l">今日待推送合计</div><div class="n" id="nAll">12</div><div class="h">财务全量 · 已签+未签</div></div>
+          <div class="stat"><div class="l">重点渠道 · 已签出 &gt;8 天</div><div class="n" id="nOut">4</div><div class="h">美森/EXX/T16/以星</div></div>
+          <div class="stat"><div class="l">重点渠道 · 未签出 &gt;8 天</div><div class="n" id="nIn">5</div><div class="h">当前−签入</div></div>
+          <div class="stat"><div class="l">其余渠道 · &gt;16 天</div><div class="n" id="n16">3</div><div class="h">非重点渠道</div></div>
+          <div class="stat"><div class="l">已推送黄少飞</div><div class="n">7</div><div class="h">退仓办理中</div></div>
+        </section>
+
+        <section class="card">
+          <nav class="tabs">
+            <button type="button" class="tab active" data-f="all">财务全量（已签+未签）</button>
+            <button type="button" class="tab" data-f="out8">已签出 &gt;8 天</button>
+            <button type="button" class="tab" data-f="in8">未签出 &gt;8 天</button>
+            <button type="button" class="tab" data-f="other16">其余 &gt;16 天</button>
+            <button type="button" class="tab" data-f="rule">规则说明</button>
+          </nav>
+
+          <div id="listView">
+            <div class="filters">
+              <div class="field"><label>销售产品 / 渠道</label>
+                <select id="fChan"><option value="">全部</option><option>美森</option><option>EXX</option><option>T16</option><option>以星快船</option><option>其他</option></select>
+              </div>
+              <div class="field"><label>签出状态</label>
+                <select id="fSign"><option value="">全部（财务）</option><option>已签出</option><option>未签出</option></select>
+              </div>
+              <div class="field"><label>推送状态</label>
+                <select id="fPush"><option value="">全部</option><option>待推送</option><option>已推送</option><option>退仓办理中</option></select>
+              </div>
+              <div class="field"><label>运单号</label><input id="fNo" placeholder="模糊搜索" /></div>
+              <button type="button" class="btn primary" onclick="render()">查询</button>
+              <button type="button" class="btn" onclick="resetF()">重置</button>
+            </div>
+            <div class="toolbar">
+              <span class="sel" id="selText">共 0 条 · 财务需同时看已签出与未签出</span>
+              <button type="button" class="btn warn" onclick="pushSelected()">推送黄少飞 · 办理退仓</button>
+              <button type="button" class="btn" onclick="notify('已导出 CSV（演示）')">导出报表</button>
+              <button type="button" class="btn" onclick="notify('已触发每日刷新任务（演示）· 下次 06:00')">手动刷新</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th><input type="checkbox" id="chkAll" /></th>
+                    <th>运单号</th>
+                    <th>销售产品</th>
+                    <th>规则组</th>
+                    <th>签出状态</th>
+                    <th>签入时间</th>
+                    <th>签出时间</th>
+                    <th>在仓天数</th>
+                    <th>命中规则</th>
+                    <th>客户</th>
+                    <th>业务员</th>
+                    <th>签入仓</th>
+                    <th>推送状态</th>
+                    <th>办理人</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="ruleView" class="rule-box" style="display:none">
+            <div class="item">
+              <h4>1. 更新频率</h4>
+              报表<strong>每天更新一次</strong>（建议凌晨批次）。财务与退仓办理共用同一数据源。
+            </div>
+            <div class="item">
+              <h4>2. 重点渠道 · 8 天</h4>
+              涉及：<b>美森、EXX、T16、以星快船</b>。<br>
+              · 已签出：（签出时间 − 签入时间）&gt; 8 天<br>
+              · 未签出：（当前时间 − 签入时间）&gt; 8 天<br>
+              → 推送 <b>黄少飞</b> 办理退仓。
+            </div>
+            <div class="item">
+              <h4>3. 其余渠道 · 16 天</h4>
+              非上述重点渠道：在仓天数 &gt; <b>16</b> 天 → 同样推送黄少飞办理退仓。
+            </div>
+            <div class="item">
+              <h4>4. 财务视图</h4>
+              财务需要<strong>已签出 + 未签出</strong>全量清单，不按办理角色过滤；可按渠道/推送状态筛选导出。
+            </div>
+            <div class="item">
+              <h4>5. 天数计算</h4>
+              已签出天数 = 签出 − 签入（自然日）。未签出天数 = 报表日 − 签入（自然日）。边界「大于」不含等于 8 / 16。
+            </div>
+            <div class="item">
+              <h4>6. 推送动作</h4>
+              命中规则后生成退仓待办给黄少飞；支持批量推送、导出。重复推送幂等（演示）。
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const FOCUS = ["美森", "EXX", "T16", "以星快船"];
+    const TODAY = new Date("2026-09-24T06:00:00");
+
+    const ROWS = [
+      { no:"TXZG…92001", chan:"美森", signed:true,  inAt:"2026-09-10", outAt:"2026-09-20", cust:"示例直客A", sales:"王丽", wh:"4DS", push:"待推送" },
+      { no:"TXZG…92002", chan:"EXX", signed:true,  inAt:"2026-09-08", outAt:"2026-09-19", cust:"示例直客B", sales:"张明", wh:"苏州仓", push:"待推送" },
+      { no:"TXZG…92003", chan:"T16", signed:true,  inAt:"2026-09-05", outAt:"2026-09-18", cust:"同行C", sales:"林晓", wh:"4DS", push:"已推送" },
+      { no:"TXZG…92004", chan:"以星快船", signed:true, inAt:"2026-09-01", outAt:"2026-09-15", cust:"示例直客D", sales:"戚流兵", wh:"宁波仓", push:"退仓办理中" },
+      { no:"TXZG…92005", chan:"美森", signed:false, inAt:"2026-09-12", outAt:"", cust:"示例直客A", sales:"王丽", wh:"4DS", push:"待推送" },
+      { no:"TXZG…92006", chan:"EXX", signed:false, inAt:"2026-09-10", outAt:"", cust:"示例直客E", sales:"李思远", wh:"深圳仓", push:"待推送" },
+      { no:"TXZG…92007", chan:"T16", signed:false, inAt:"2026-09-08", outAt:"", cust:"同行F", sales:"张明", wh:"4DS", push:"已推送" },
+      { no:"TXZG…92008", chan:"以星快船", signed:false, inAt:"2026-09-05", outAt:"", cust:"示例直客G", sales:"林晓", wh:"上海仓", push:"待推送" },
+      { no:"TXZG…92009", chan:"美森", signed:false, inAt:"2026-09-14", outAt:"", cust:"示例直客H", sales:"王丽", wh:"4DS", push:"待推送" },
+      { no:"TXZG…92010", chan:"T20", signed:true,  inAt:"2026-08-28", outAt:"2026-09-20", cust:"示例直客I", sales:"孟照", wh:"美库", push:"待推送" },
+      { no:"TXZG…92011", chan:"中美快运", signed:false, inAt:"2026-09-01", outAt:"", cust:"同行J", sales:"袁州", wh:"VMI", push:"待推送" },
+      { no:"TXZG…92012", chan:"美森加班", signed:true, inAt:"2026-08-20", outAt:"2026-09-10", cust:"示例直客K", sales:"唐海", wh:"4DS", push:"已推送" },
+      // 边界：=8 天不命中
+      { no:"TXZG…92013", chan:"美森", signed:true, inAt:"2026-09-12", outAt:"2026-09-20", cust:"边界样例", sales:"测试", wh:"4DS", push:"—" },
+      { no:"TXZG…92014", chan:"T25", signed:false, inAt:"2026-09-10", outAt:"", cust:"边界样例", sales:"测试", wh:"4DS", push:"—" }
+    ];
+
+    let tab = "all";
+
+    function parseDay(s) {
+      if (!s) return null;
+      return new Date(s + "T00:00:00");
+    }
+    function daysBetween(a, b) {
+      return Math.floor((b - a) / 86400000);
+    }
+    function enrich(r) {
+      const inD = parseDay(r.inAt);
+      const outD = r.outAt ? parseDay(r.outAt) : null;
+      const isFocus = FOCUS.includes(r.chan) || r.chan.startsWith("美森");
+      let dwell = 0;
+      if (r.signed && outD) dwell = daysBetween(inD, outD);
+      else dwell = daysBetween(inD, TODAY);
+
+      let hit = null, group = isFocus ? "重点·8天" : "其余·16天";
+      if (isFocus) {
+        if (r.signed && dwell > 8) hit = "已签出·签出−签入>8天";
+        if (!r.signed && dwell > 8) hit = "未签出·当前−签入>8天";
+      } else {
+        if (dwell > 16) hit = "其余渠道·在仓>16天";
+      }
+      return { ...r, isFocus, dwell, hit, group };
+    }
+
+    const DATA = ROWS.map(enrich).filter(r => r.hit); // 报表只出命中行；边界样例不进清单
+    // 上面 filter 掉了边界，但用户可能想看全量命中。边界未命中正确。
+    // 重新：美森加班 should be focus. T20/中美 >16.
+
+    function notify(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg; t.classList.add("show");
+      clearTimeout(notify._t); notify._t = setTimeout(() => t.classList.remove("show"), 2400);
+    }
+
+    function filtered() {
+      let list = DATA.slice();
+      if (tab === "out8") list = list.filter(r => r.isFocus && r.signed);
+      if (tab === "in8") list = list.filter(r => r.isFocus && !r.signed);
+      if (tab === "other16") list = list.filter(r => !r.isFocus);
+      const chan = document.getElementById("fChan").value;
+      const sign = document.getElementById("fSign").value;
+      const push = document.getElementById("fPush").value;
+      const no = document.getElementById("fNo").value.trim();
+      if (chan === "其他") list = list.filter(r => !r.isFocus);
+      else if (chan) list = list.filter(r => r.chan.includes(chan) || (chan === "美森" && r.chan.startsWith("美森")));
+      if (sign === "已签出") list = list.filter(r => r.signed);
+      if (sign === "未签出") list = list.filter(r => !r.signed);
+      if (push) list = list.filter(r => r.push === push);
+      if (no) list = list.filter(r => r.no.includes(no));
+      return list;
+    }
+
+    function pushTag(s) {
+      if (s === "待推送") return '<span class="tag t-y">待推送</span>';
+      if (s === "已推送") return '<span class="tag t-b">已推送</span>';
+      if (s === "退仓办理中") return '<span class="tag t-o">退仓办理中</span>';
+      return '<span class="tag t-gray">—</span>';
+    }
+
+    function render() {
+      const list = filtered();
+      document.getElementById("selText").textContent = `共 ${list.length} 条 · 财务全量含已签出与未签出`;
+      document.getElementById("tbody").innerHTML = list.map((r, i) => `
+        <tr data-i="${DATA.indexOf(r)}">
+          <td><input type="checkbox" class="rowchk" ${r.push === "待推送" ? "checked" : ""} /></td>
+          <td>${r.no}</td>
+          <td>${r.chan}</td>
+          <td><span class="tag ${r.isFocus ? "t-o" : "t-gray"}">${r.group}</span></td>
+          <td>${r.signed ? '<span class="tag t-g">已签出</span>' : '<span class="tag t-y">未签出</span>'}</td>
+          <td>${r.inAt}</td>
+          <td>${r.outAt || '<span class="muted">—</span>'}</td>
+          <td><b style="color:${r.dwell > 16 ? "#cf1322" : "#d46b08"}">${r.dwell} 天</b></td>
+          <td>${r.hit}</td>
+          <td>${r.cust}</td>
+          <td>${r.sales}</td>
+          <td>${r.wh}</td>
+          <td>${pushTag(r.push)}</td>
+          <td>${r.push === "待推送" ? "—" : "黄少飞"}</td>
+          <td>
+            <button type="button" class="link" onclick="pushOne(${DATA.indexOf(r)})">推送退仓</button>
+          </td>
+        </tr>
+      `).join("") || `<tr><td colspan="15" class="muted" style="text-align:center;padding:28px">无命中数据</td></tr>`;
+
+      document.getElementById("nAll").textContent = DATA.length;
+      document.getElementById("nOut").textContent = DATA.filter(r => r.isFocus && r.signed).length;
+      document.getElementById("nIn").textContent = DATA.filter(r => r.isFocus && !r.signed).length;
+      document.getElementById("n16").textContent = DATA.filter(r => !r.isFocus).length;
+    }
+
+    function resetF() {
+      document.getElementById("fChan").value = "";
+      document.getElementById("fSign").value = "";
+      document.getElementById("fPush").value = "";
+      document.getElementById("fNo").value = "";
+      render();
+    }
+
+    function pushOne(idx) {
+      const r = DATA[idx];
+      if (!r) return;
+      r.push = "已推送";
+      notify(`已推送黄少飞办理退仓：${r.no}`);
+      render();
+    }
+
+    function pushSelected() {
+      const boxes = [...document.querySelectorAll(".rowchk:checked")];
+      if (!boxes.length) return notify("请先勾选待推送行");
+      boxes.forEach(b => {
+        const tr = b.closest("tr");
+        const i = +tr.dataset.i;
+        if (DATA[i] && DATA[i].push === "待推送") DATA[i].push = "已推送";
+      });
+      notify(`已批量推送 ${boxes.length} 单至黄少飞办理退仓（演示）`);
+      render();
+    }
+
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+        btn.classList.add("active");
+        tab = btn.dataset.f;
+        const rule = tab === "rule";
+        document.getElementById("listView").style.display = rule ? "none" : "block";
+        document.getElementById("ruleView").style.display = rule ? "grid" : "none";
+        if (!rule) render();
+      });
+    });
+
+    document.getElementById("chkAll").addEventListener("change", e => {
+      document.querySelectorAll(".rowchk").forEach(c => { c.checked = e.target.checked; });
+    });
+
+    render();
+  </script>
+</body>
+</html>

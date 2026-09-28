@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>收款管理 · 手工录入 × 银行流水自动对冲</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --card: #fff; --text: #111827; --sub: #6b7280;
+      --line: #e5e7eb; --primary: #2563eb; --ok: #059669; --warn: #d97706; --bad: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif; font-size: 13px;
+    }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .page { max-width: 1280px; margin: 0 auto; padding: 16px 16px 48px; }
+    .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .top .crumb { color: var(--sub); }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .lead { margin: 0 0 14px; color: var(--sub); line-height: 1.6; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 10px; font-size: 15px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0;
+    }
+    .card h3 { margin: 12px 0 8px; font-size: 13px; color: #1e3a8a; }
+    .hint { margin: 0 0 10px; color: var(--sub); font-size: 12px; line-height: 1.6; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #fafafa; color: var(--sub); font-weight: 600; white-space: nowrap; }
+    td.n { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+    .mono { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+    .pill {
+      display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .pill.ok { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
+    .pill.warn { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
+    .pill.info { background: #eff6ff; color: var(--primary); border-color: #bfdbfe; }
+    .pill.bad { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+    .pill.gray { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 980px) { .grid3 { grid-template-columns: 1fr; } }
+    .box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #f8fafc; }
+    .box h4 { margin: 0 0 8px; font-size: 13px; }
+    .kv { display: grid; grid-template-columns: 92px 1fr; gap: 4px 8px; font-size: 12px; }
+    .kv dt { color: var(--sub); margin: 0; }
+    .kv dd { margin: 0; word-break: break-all; }
+    .btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    button {
+      height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line);
+      background: #fff; cursor: pointer; font-size: 13px;
+    }
+    button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    button.danger { background: #fff; color: var(--bad); border-color: #fecaca; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .callout {
+      padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.65; margin: 8px 0 0;
+    }
+    .callout.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+    .callout.yellow { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .callout.green { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+    .callout.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .log-list { list-style: none; margin: 0; padding: 0; }
+    .log-list li {
+      display: grid; grid-template-columns: 148px 88px 72px 1fr;
+      gap: 8px; padding: 8px 0; border-bottom: 1px dashed var(--line);
+    }
+    @media (max-width: 800px) { .log-list li { grid-template-columns: 1fr; } }
+    .log-list .time { color: var(--sub); font-size: 12px; }
+    .log-list .op { font-weight: 700; }
+    pre {
+      margin: 8px 0 0; padding: 10px 12px; background: #0f172a; color: #e2e8f0;
+      border-radius: 8px; font-size: 11px; line-height: 1.5; overflow: auto; max-height: 280px;
+    }
+    .chk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sub); }
+    .match-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    @media (max-width: 800px) { .match-grid { grid-template-columns: 1fr 1fr; } }
+    .match-item {
+      padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-size: 12px;
+    }
+    .match-item.hit { border-color: #a7f3d0; background: #ecfdf5; }
+    .footer { text-align: center; color: var(--sub); font-size: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <div class="crumb">
+        <a href="../index.html">总导航</a> ·
+        <a href="银行流水认领-明细工作台.html">银行流水认领</a> ·
+        自动对冲
+      </div>
+      <div id="phaseTag"></div>
+    </div>
+    <h1>收款管理 · 手工录入 × 银行抓取 · 自动对冲</h1>
+    <p class="lead">
+      原方案是人工对冲；现改为<strong>认领后自动匹配 + 数据置换</strong>。
+      手工已部分核销时费用前端保持核销不变，后台把来源从虚拟流水换成真实银行流水。
+      本页可演示<strong>自动对冲</strong>、<strong>手动对冲</strong>与<strong>撤销对冲</strong>，三种操作共用一套日志字段。
+    </p>
+
+    <section class="card">
+      <h2>1. 方案对照</h2>
+      <table>
+        <thead>
+          <tr><th></th><th>原方案（人工对冲）</th><th>现方案（自动匹配 + 置换）</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>触发</td>
+            <td>财务在列表勾选手工凭证 + 银行凭证，点「凭证对冲」</td>
+            <td>银行流水抓回并<strong>认领成功</strong>后，系统按字段全集匹配虚拟流水</td>
+          </tr>
+          <tr>
+            <td>部分核销</td>
+            <td>易出现费用先反核销再重核，前端状态会闪</td>
+            <td>费用保持核销；只换核销记录上的来源流水 ID</td>
+          </tr>
+          <tr>
+            <td>凭证</td>
+            <td>两套凭证并存或手工作废</td>
+            <td>虚拟流水标记「已作废/已替换」，<strong>不生成正式凭证</strong>；正式凭证只基于真实银行流水</td>
+          </tr>
+          <tr>
+            <td>数据置换</td>
+            <td>无（靠对冲分录把两边轧平）</td>
+            <td><strong>有</strong>：核销记录 <code>source_flow_id</code> 从虚拟 ID 更新为真实银行流水 ID</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout blue">
+        <strong>锁定状态：</strong>手工录入并核销后，该笔收款标记为「临时核销」，关联 <strong>虚拟流水 ID</strong>（不入正式账）。
+        真实流水认领匹配成功后进入置换；费用核销状态对外不变。
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. 完全匹配字段（认领后自动识别）</h2>
+      <p class="hint">须<strong>全部命中</strong>才自动对冲；任一不等则进入待人工处理池，不自动置换。</p>
+      <div class="match-grid" id="matchGrid"></div>
+      <p class="hint" style="margin-top:8px;">时间窗：凭证时间相差 ≤ 48 小时。账户：对方账户、我方账户须一致。金额：收款金额 + 汇算金额（折算本币）须一致。</p>
+    </section>
+
+    <section class="card">
+      <h2>3. 手工已部分核销 · 怎么处理</h2>
+      <table>
+        <thead>
+          <tr><th>场景</th><th>规则</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>一笔手工收款核销了多笔费用（未用完）</td>
+            <td>该笔收款仍是「临时核销」；其下<strong>全部核销分录</strong>随来源 ID 一起置换。未核销余额转到真实流水上继续可核。</td>
+          </tr>
+          <tr>
+            <td>费用侧已核销金额</td>
+            <td>费用行保持「已核销 / 部分核销」，<strong>不反核销、不重做</strong>。前端无波动。</td>
+          </tr>
+          <tr>
+            <td>金额对不上 / 超 48h / 账户不一致</td>
+            <td>不自动对冲。真实流水保持已认领待核销；虚拟流水保持临时核销。进「待人工对冲」。</td>
+          </tr>
+          <tr>
+            <td>对冲后真实流水又核了新费用</td>
+            <td>允许继续核销。此时<strong>禁止「转换回来」</strong>，须先撤销对冲后新增的核销。</td>
+          </tr>
+          <tr>
+            <td>会计期间已关账且虚拟已误出正式凭证</td>
+            <td>不走静默置换；走红冲 + 真实流水重出凭证（本原型不演示关账）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>4. 演示 · 部分核销后对冲 / 撤销</h2>
+      <p class="hint">示例：手工录入 CNY 50,000，已核销两笔费用共 30,000，余额 20,000。银行流水同额到账并已认领。自动对冲要求字段全命中；手动对冲用于未全命中时财务勾选确认。</p>
+      <div class="btns">
+        <button type="button" class="primary" id="btnHedge">自动对冲</button>
+        <button type="button" id="btnManual">手动对冲</button>
+        <button type="button" class="danger" id="btnRollback">撤销对冲</button>
+        <button type="button" id="btnReset">重置到临时核销</button>
+        <label class="chk">
+          <input type="checkbox" id="chkNewWriteoff" />
+          模拟：对冲后又用真实流水核销了 FY-NEW 5,000（应阻断撤销）
+        </label>
+      </div>
+      <div id="actionMsg"></div>
+      <div class="grid3" style="margin-top:10px;">
+        <div class="box">
+          <h4>费用（前端）</h4>
+          <dl class="kv" id="feeBox"></dl>
+        </div>
+        <div class="box">
+          <h4>虚拟流水</h4>
+          <dl class="kv" id="virtBox"></dl>
+        </div>
+        <div class="box">
+          <h4>真实银行流水</h4>
+          <dl class="kv" id="bankBox"></dl>
+        </div>
+      </div>
+      <h3>核销分录（来源流水 ID 才是置换对象）</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>费用编号</th><th>核销金额</th><th>费用状态</th><th>来源流水 ID</th><th>来源类型</th>
+          </tr>
+        </thead>
+        <tbody id="woBody"></tbody>
+      </table>
+    </section>
+
+    <section class="card" id="logSpec">
+      <h2>5. 三种操作日志（给开发 / 测试）</h2>
+      <p class="hint">三种操作写<strong>同一张对冲日志表</strong>：1 条主日志 + N 条核销分录明细。费用详情、虚拟流水、真实流水「操作记录」都按 <code>batch_no</code> 互查。对冲明细页签展示关系，不另写一套字段。</p>
+
+      <h3>5.1 何时记、记什么类型</h3>
+      <table>
+        <thead>
+          <tr><th>操作</th><th>触发</th><th>biz_type</th><th>trigger</th><th>操作人</th><th>前端操作记录文案（display_text）</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>自动对冲</td>
+            <td>银行流水认领成功，匹配字段全部命中</td>
+            <td class="mono">AUTO_HEDGE</td>
+            <td class="mono">CLAIM_AUTO</td>
+            <td>系统</td>
+            <td>系统自动对冲成功：虚拟流水 VIRT-… 替换为银行流水 BANK-…，正式凭证 PZ-…，费用核销状态不变</td>
+          </tr>
+          <tr>
+            <td>手动对冲</td>
+            <td>未全命中（或未走自动），财务勾选虚拟流水 + 真实流水后点「凭证对冲」，须填原因</td>
+            <td class="mono">MANUAL_HEDGE</td>
+            <td class="mono">MANUAL_RUN</td>
+            <td>当前登录人</td>
+            <td>王财务手动对冲成功：原因「银行到账延迟，已核对同一笔」。虚拟流水 VIRT-… → 银行流水 BANK-…</td>
+          </tr>
+          <tr>
+            <td>撤销对冲</td>
+            <td>对已成功的自动/手动对冲点「撤销对冲」；自动、手动用同一套回滚</td>
+            <td class="mono">HEDGE_ROLLBACK</td>
+            <td class="mono">ROLLBACK</td>
+            <td>当前登录人</td>
+            <td>王财务撤销对冲成功：回滚批次 AH…，来源改回虚拟流水，正式凭证已作废，费用核销状态不变</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>5.2 公共字段（三种都写）</h3>
+      <table>
+        <thead>
+          <tr><th>字段</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">log_id</td><td>日志主键</td></tr>
+          <tr><td class="mono">batch_no</td><td>对冲批次。自动/手动成功时新开一批；撤销时新开回滚单号，并用 rollback_of_batch_no 指向原批次</td></tr>
+          <tr><td class="mono">biz_type / trigger / operator / occur_time</td><td>见上表</td></tr>
+          <tr><td class="mono">virtual_flow_id / real_flow_id</td><td>虚拟流水、真实银行流水</td></tr>
+          <tr><td class="mono">virtual_status_from / to · real_status_from / to</td><td>两边状态变迁</td></tr>
+          <tr><td class="mono">fee_status_unchanged</td><td>费用前端核销状态是否保持（成功对冲/撤销均为 true）</td></tr>
+          <tr><td class="mono">inherited_writeoff_amt / inherited_remain_amt</td><td>承接已核金额、转到真实流水的未核余额</td></tr>
+          <tr><td class="mono">writeoff_ids</td><td>被改 source_flow_id 的核销分录</td></tr>
+          <tr><td class="mono">replace_ok</td><td>数据置换是否落库成功</td></tr>
+          <tr><td class="mono">formal_voucher_from_bank</td><td>基于真实流水的正式凭证号；撤销成功后清空或记作废号</td></tr>
+          <tr><td class="mono">virtual_no_formal_voucher</td><td>虚拟流水不生成正式凭证</td></tr>
+          <tr><td class="mono">display_text</td><td>操作记录页给用户看的一句完整话</td></tr>
+          <tr><td class="mono">result</td><td>SUCCESS / BLOCKED / FAIL</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.3 三种操作的差异字段</h3>
+      <table>
+        <thead>
+          <tr><th>字段</th><th>自动对冲</th><th>手动对冲</th><th>撤销对冲</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">match_fields</td>
+            <td>全量命中清单</td>
+            <td>实际命中项（可不全）</td>
+            <td>抄原批次，不重新匹配</td>
+          </tr>
+          <tr>
+            <td class="mono">unmatched_fields</td>
+            <td>空</td>
+            <td>未命中项，如「凭证时间差≤48h」</td>
+            <td>空</td>
+          </tr>
+          <tr>
+            <td class="mono">time_diff_hours</td>
+            <td>须 ≤ 48</td>
+            <td>允许 &gt; 48（本示例 52）</td>
+            <td>抄原批次</td>
+          </tr>
+          <tr>
+            <td class="mono">manual_reason</td>
+            <td>空</td>
+            <td><strong>必填</strong>对冲原因</td>
+            <td>空；另用 rollback_reason（选填）</td>
+          </tr>
+          <tr>
+            <td class="mono">rollback_of_batch_no</td>
+            <td>空</td>
+            <td>空</td>
+            <td><strong>必填</strong>，原 AUTO/MANUAL 批次号</td>
+          </tr>
+          <tr>
+            <td class="mono">rollback_of_biz_type</td>
+            <td>空</td>
+            <td>空</td>
+            <td>AUTO_HEDGE 或 MANUAL_HEDGE</td>
+          </tr>
+          <tr>
+            <td class="mono">block_reason</td>
+            <td>匹配失败不写对冲成功日志，可另记 MATCH_SKIP</td>
+            <td>未选齐两边 / 未填原因</td>
+            <td>对冲后有新核销、已过账、已关账</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>5.4 核销分录明细（主日志下挂，三种相同）</h3>
+      <table>
+        <thead>
+          <tr><th>字段</th><th>对冲时</th><th>撤销时</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">writeoff_id / fee_no / amount</td><td>WO-01 / FY… / 18000.00</td><td>同原分录</td></tr>
+          <tr><td class="mono">source_flow_id_from</td><td>VIRT-20260816-001</td><td>BANK-20260818-776</td></tr>
+          <tr><td class="mono">source_flow_id_to</td><td>BANK-20260818-776</td><td>VIRT-20260816-001</td></tr>
+          <tr><td class="mono">fee_status</td><td>已核销（不变）</td><td>已核销（不变）</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.5 示例三条（成功）</h3>
+      <table>
+        <thead>
+          <tr><th>操作</th><th>operator</th><th>batch_no</th><th>关键结果</th><th>display_text</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>自动对冲</td>
+            <td>系统</td>
+            <td class="mono">AH20260819001</td>
+            <td>字段全命中；时间差 26h；置换成功</td>
+            <td>系统自动对冲成功：虚拟流水 VIRT-20260816-001 替换为银行流水 BANK-20260818-776，正式凭证 PZ-2608180776，费用核销状态不变</td>
+          </tr>
+          <tr>
+            <td>手动对冲</td>
+            <td>王财务</td>
+            <td class="mono">MH20260819002</td>
+            <td>时间差 52h 未自动命中；人工确认后置换</td>
+            <td>王财务手动对冲成功：原因「银行到账延迟，已核对同一笔」。虚拟流水 VIRT-20260816-001 → 银行流水 BANK-20260818-776</td>
+          </tr>
+          <tr>
+            <td>撤销对冲</td>
+            <td>王财务</td>
+            <td class="mono">RB20260819001</td>
+            <td>rollback_of=AH20260819001；来源改回虚拟；正式凭证作废</td>
+            <td>王财务撤销对冲成功：回滚批次 AH20260819001，来源改回虚拟流水，正式凭证已作废，费用核销状态不变</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout yellow">
+        撤销失败也要记日志：<code>biz_type=HEDGE_ROLLBACK</code>，<code>result=BLOCKED</code>，<code>replace_ok=false</code>，
+        <code>block_reason=REAL_FLOW_HAS_NEW_WRITEOFF:FY-NEW</code>，来源 ID 保持银行流水不变。
+      </div>
+
+      <h3>5.6 本场演示写入</h3>
+      <ul class="log-list" id="logList"></ul>
+      <h3>最近一条 JSON（测试对照）</h3>
+      <pre id="logJson">（点「自动对冲」或「手动对冲」）</pre>
+    </section>
+
+    <section class="card">
+      <h2>6. 撤销对冲 · 测试口径</h2>
+      <div class="callout green">
+        自动对冲、手动对冲<strong>都可以撤销</strong>，动作相同：核销分录 <code>source_flow_id</code> 改回虚拟 ID；虚拟流水恢复「临时核销」；真实流水恢复「已认领待核销」；正式凭证作废（或关账后红冲）；费用状态不变。
+        日志一律 <code>HEDGE_ROLLBACK</code>，用 <code>rollback_of_biz_type</code> 区分撤的是自动还是手动。
+      </div>
+      <div class="callout yellow" style="margin-top:8px;">
+        勾选「对冲后又核销了 FY-NEW」再点撤销，应 <code>result=BLOCKED</code>。对冲可逆，叠加新核销后不可直接逆。
+      </div>
+    </section>
+
+    <p class="footer">现金流量 · 收款管理自动对冲 MVP · 2026-08-19</p>
+  </div>
+
+  <script>
+    (function () {
+      var MATCH_FIELDS = [
+        "客户名称", "客户代码", "结算员", "业务员", "收款金额", "汇算金额",
+        "币别", "收款账户名称", "借贷标识", "手工录入标志", "对方账户", "我方账户一致",
+        "凭证时间差 ≤ 48h"
+      ];
+      var BATCH_AUTO = "AH20260819001";
+      var BATCH_MANUAL = "MH20260819002";
+      var VIRT = "VIRT-20260816-001";
+      var BANK = "BANK-20260818-776";
+      var PZ = "PZ-2608180776";
+      var logs = [];
+      var phase = "temp"; /* temp | auto | manual */
+      var lastBatch = "";
+      var lastBiz = "";
+
+      function fmt(n) {
+        return Number(n).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      function nowStr() {
+        var d = new Date();
+        function p(x) { return String(x).padStart(2, "0"); }
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " +
+          p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+      }
+      function pill(cls, text) {
+        return '<span class="pill ' + cls + '">' + text + "</span>";
+      }
+      function isHedged() {
+        return phase === "auto" || phase === "manual";
+      }
+      function extraWriteoff() {
+        return document.getElementById("chkNewWriteoff").checked && isHedged();
+      }
+
+      function snapshot() {
+        var hedged = isHedged();
+        var extra = extraWriteoff();
+        return {
+          fees: [
+            { no: "FY20260816021", amt: 18000, status: "已核销", src: hedged ? BANK : VIRT, type: hedged ? "银行抓取" : "手工虚拟" },
+            { no: "FY20260816022", amt: 12000, status: "已核销", src: hedged ? BANK : VIRT, type: hedged ? "银行抓取" : "手工虚拟" }
+          ].concat(extra ? [{ no: "FY-NEW", amt: 5000, status: "已核销", src: BANK, type: "银行抓取（对冲后新增）" }] : []),
+          feeFront: { flash: "无波动" },
+          virt: {
+            id: VIRT,
+            status: hedged ? "已作废/已替换" : "临时核销",
+            used: hedged ? "—" : "30,000.00",
+            remain: hedged ? "—" : "20,000.00",
+            voucher: hedged ? "不生成正式凭证" : "非正式 / 不入账"
+          },
+          bank: {
+            id: BANK,
+            status: hedged ? (extra ? "部分核销" : "部分核销（继承）") : "已认领 · 待核销",
+            used: hedged ? (extra ? "35,000.00" : "30,000.00") : "0.00",
+            remain: hedged ? (extra ? "15,000.00" : "20,000.00") : "50,000.00",
+            voucher: hedged ? PZ : "认领后待生成"
+          }
+        };
+      }
+
+      function renderKv(el, rows) {
+        el.innerHTML = rows.map(function (r) {
+          return "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>";
+        }).join("");
+      }
+
+      function phaseLabel() {
+        if (phase === "auto") return pill("ok", "当前：已自动对冲 · 来源=银行");
+        if (phase === "manual") return pill("info", "当前：已手动对冲 · 来源=银行");
+        return pill("warn", "当前：临时核销 · 来源=虚拟流水");
+      }
+
+      function render() {
+        var s = snapshot();
+        var hedged = isHedged();
+        document.getElementById("phaseTag").innerHTML = phaseLabel();
+
+        renderKv(document.getElementById("feeBox"), [
+          ["客户", "义乌丰宇国际"],
+          ["费用状态", pill("ok", "核销中 / 已核销行不变")],
+          ["前端波动", s.feeFront.flash],
+          ["已核费用", "FY20260816021 + FY20260816022"],
+          ["后端来源", hedged ? "银行流水 " + BANK : "虚拟流水 " + VIRT]
+        ]);
+        renderKv(document.getElementById("virtBox"), [
+          ["流水 ID", '<span class="mono">' + s.virt.id + "</span>"],
+          ["状态", hedged ? pill("gray", s.virt.status) : pill("warn", s.virt.status)],
+          ["已核销", s.virt.used],
+          ["未核销", s.virt.remain],
+          ["正式凭证", s.virt.voucher]
+        ]);
+        renderKv(document.getElementById("bankBox"), [
+          ["流水 ID", '<span class="mono">' + s.bank.id + "</span>"],
+          ["状态", hedged ? pill("ok", s.bank.status) : pill("info", s.bank.status)],
+          ["已核销", s.bank.used],
+          ["未核销", s.bank.remain],
+          ["正式凭证", s.bank.voucher]
+        ]);
+
+        document.getElementById("woBody").innerHTML = s.fees.map(function (f) {
+          return "<tr><td class='mono'>" + f.no + "</td><td class='n'>" + fmt(f.amt) +
+            "</td><td>" + pill("ok", f.status) + "</td><td class='mono'>" + f.src +
+            "</td><td>" + f.type + "</td></tr>";
+        }).join("");
+
+        document.getElementById("btnHedge").disabled = hedged;
+        document.getElementById("btnManual").disabled = hedged;
+        document.getElementById("btnRollback").disabled = !hedged;
+
+        document.getElementById("logList").innerHTML = logs.map(function (l) {
+          var cls = l.result === "BLOCKED" || l.replace_ok === false ? "bad" : (l.biz_type === "HEDGE_ROLLBACK" ? "warn" : "ok");
+          return "<li><span class='time'>" + l.occur_time + "</span><span class='op'>" +
+            l.biz_type + "</span>" + pill(cls, l.batch_no) + "<span>" + l.display_text + "</span></li>";
+        }).join("") || "<li style='color:#6b7280'>暂无。点「自动对冲」或「手动对冲」写入。</li>";
+      }
+
+      function pushLog(entry) {
+        logs.unshift(entry);
+        document.getElementById("logJson").textContent = JSON.stringify(entry, null, 2);
+        render();
+      }
+
+      function matchPayload() {
+        return MATCH_FIELDS.slice();
+      }
+
+      function writeoffLines(fromId, toId) {
+        return [
+          { writeoff_id: "WO-01", fee_no: "FY20260816021", amount: 18000.00, source_flow_id_from: fromId, source_flow_id_to: toId, fee_status: "已核销" },
+          { writeoff_id: "WO-02", fee_no: "FY20260816022", amount: 12000.00, source_flow_id_from: fromId, source_flow_id_to: toId, fee_status: "已核销" }
+        ];
+      }
+
+      function baseLog() {
+        return {
+          virtual_flow_id: VIRT,
+          real_flow_id: BANK,
+          fee_status_unchanged: true,
+          inherited_writeoff_amt: 30000.00,
+          inherited_remain_amt: 20000.00,
+          writeoff_ids: ["WO-01", "WO-02"],
+          virtual_no_formal_voucher: true
+        };
+      }
+
+      document.getElementById("matchGrid").innerHTML = MATCH_FIELDS.map(function (f) {
+        return '<div class="match-item hit">✓ ' + f + "</div>";
+      }).join("");
+
+      document.getElementById("btnHedge").addEventListener("click", function () {
+        if (isHedged()) return;
+        phase = "auto";
+        lastBatch = BATCH_AUTO;
+        lastBiz = "AUTO_HEDGE";
+        document.getElementById("actionMsg").innerHTML =
+          '<div class="callout green">自动对冲完成：核销分录来源 ' + VIRT + " → " + BANK +
+          "。费用核销状态未变。日志 biz_type=AUTO_HEDGE。</div>";
+        var row = Object.assign(baseLog(), {
+          log_id: "AHL-" + Date.now(),
+          batch_no: BATCH_AUTO,
+          biz_type: "AUTO_HEDGE",
+          occur_time: nowStr(),
+          operator: "系统",
+          trigger: "CLAIM_AUTO",
+          virtual_status_from: "临时核销",
+          virtual_status_to: "已作废/已替换",
+          real_status_from: "已认领·待核销",
+          real_status_to: "部分核销（继承 30,000）",
+          match_fields: matchPayload(),
+          unmatched_fields: [],
+          time_diff_hours: 26,
+          manual_reason: "",
+          replace_ok: true,
+          result: "SUCCESS",
+          formal_voucher_from_bank: PZ,
+          rollback_of_batch_no: "",
+          rollback_of_biz_type: "",
+          block_reason: "",
+          lines: writeoffLines(VIRT, BANK),
+          display_text: "系统自动对冲成功：虚拟流水 " + VIRT + " 替换为银行流水 " + BANK + "，正式凭证 " + PZ + "，费用核销状态不变"
+        });
+        pushLog(row);
+      });
+
+      document.getElementById("btnManual").addEventListener("click", function () {
+        if (isHedged()) return;
+        phase = "manual";
+        lastBatch = BATCH_MANUAL;
+        lastBiz = "MANUAL_HEDGE";
+        document.getElementById("actionMsg").innerHTML =
+          '<div class="callout blue">手动对冲完成：时间差 52h 未走自动，财务确认后置换。日志 biz_type=MANUAL_HEDGE，manual_reason 必填。</div>';
+        var hit = MATCH_FIELDS.filter(function (f) { return f.indexOf("48h") < 0; });
+        var row = Object.assign(baseLog(), {
+          log_id: "AHL-" + Date.now(),
+          batch_no: BATCH_MANUAL,
+          biz_type: "MANUAL_HEDGE",
+          occur_time: nowStr(),
+          operator: "王财务",
+          trigger: "MANUAL_RUN",
+          virtual_status_from: "临时核销",
+          virtual_status_to: "已作废/已替换",
+          real_status_from: "已认领·待核销",
+          real_status_to: "部分核销（继承 30,000）",
+          match_fields: hit,
+          unmatched_fields: ["凭证时间差 ≤ 48h"],
+          time_diff_hours: 52,
+          manual_reason: "银行到账延迟，已核对同一笔",
+          replace_ok: true,
+          result: "SUCCESS",
+          formal_voucher_from_bank: PZ,
+          rollback_of_batch_no: "",
+          rollback_of_biz_type: "",
+          block_reason: "",
+          lines: writeoffLines(VIRT, BANK),
+          display_text: "王财务手动对冲成功：原因「银行到账延迟，已核对同一笔」。虚拟流水 " + VIRT + " → 银行流水 " + BANK
+        });
+        pushLog(row);
+      });
+
+      document.getElementById("btnRollback").addEventListener("click", function () {
+        if (!isHedged()) return;
+        var originBatch = lastBatch;
+        var originBiz = lastBiz;
+        if (extraWriteoff()) {
+          document.getElementById("actionMsg").innerHTML =
+            '<div class="callout red">撤销对冲失败：真实流水在对冲后新增核销 FY-NEW 5,000。来源 ID 保持银行流水。日志 result=BLOCKED。</div>';
+          pushLog(Object.assign(baseLog(), {
+            log_id: "AHL-" + Date.now(),
+            batch_no: "RB" + originBatch.replace(/^[A-Z]+/, "") + "-FAIL",
+            biz_type: "HEDGE_ROLLBACK",
+            occur_time: nowStr(),
+            operator: "王财务",
+            trigger: "ROLLBACK",
+            virtual_status_from: "已作废/已替换",
+            virtual_status_to: "已作废/已替换",
+            real_status_from: "部分核销",
+            real_status_to: "部分核销",
+            match_fields: [],
+            unmatched_fields: [],
+            time_diff_hours: originBiz === "MANUAL_HEDGE" ? 52 : 26,
+            manual_reason: "",
+            replace_ok: false,
+            result: "BLOCKED",
+            formal_voucher_from_bank: PZ,
+            rollback_of_batch_no: originBatch,
+            rollback_of_biz_type: originBiz,
+            block_reason: "REAL_FLOW_HAS_NEW_WRITEOFF:FY-NEW",
+            lines: [],
+            display_text: "王财务撤销对冲失败：回滚批次 " + originBatch + " 被阻断（对冲后存在新增核销 FY-NEW），来源仍为银行流水"
+          }));
+          return;
+        }
+        phase = "temp";
+        document.getElementById("actionMsg").innerHTML =
+          '<div class="callout yellow">撤销对冲成功：核销分录来源 ' + BANK + " → " + VIRT +
+          "；正式凭证作废。日志 biz_type=HEDGE_ROLLBACK，rollback_of=" + originBatch + "。</div>";
+        pushLog(Object.assign(baseLog(), {
+          log_id: "AHL-" + Date.now(),
+          batch_no: "RB" + originBatch.replace(/^[A-Z]+/, ""),
+          biz_type: "HEDGE_ROLLBACK",
+          occur_time: nowStr(),
+          operator: "王财务",
+          trigger: "ROLLBACK",
+          virtual_status_from: "已作废/已替换",
+          virtual_status_to: "临时核销",
+          real_status_from: "部分核销（继承）",
+          real_status_to: "已认领·待核销",
+          match_fields: [],
+          unmatched_fields: [],
+          time_diff_hours: originBiz === "MANUAL_HEDGE" ? 52 : 26,
+          manual_reason: "",
+          replace_ok: true,
+          result: "SUCCESS",
+          formal_voucher_from_bank: "",
+          rollback_of_batch_no: originBatch,
+          rollback_of_biz_type: originBiz,
+          block_reason: "",
+          lines: writeoffLines(BANK, VIRT),
+          display_text: "王财务撤销对冲成功：回滚批次 " + originBatch + "，来源改回虚拟流水，正式凭证已作废，费用核销状态不变"
+        }));
+        lastBatch = "";
+        lastBiz = "";
+      });
+
+      document.getElementById("btnReset").addEventListener("click", function () {
+        phase = "temp";
+        lastBatch = "";
+        lastBiz = "";
+        logs = [];
+        document.getElementById("chkNewWriteoff").checked = false;
+        document.getElementById("actionMsg").innerHTML = "";
+        document.getElementById("logJson").textContent = "（点「自动对冲」或「手动对冲」）";
+        render();
+      });
+
+      document.getElementById("chkNewWriteoff").addEventListener("change", function () {
+        if (isHedged()) {
+          document.getElementById("actionMsg").innerHTML = extraWriteoff()
+            ? '<div class="callout yellow">已模拟对冲后新增核销。此时点「撤销对冲」应失败并写 BLOCKED 日志。</div>'
+            : "";
+        }
+        render();
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>
