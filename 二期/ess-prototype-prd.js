@@ -67,7 +67,7 @@
     "f-r2": { proto: "风控组-操作查货率报表-MVP.html", prd: "风控组-操作查货率报表-MVP-PRD.html", anchor: "s1", chip: "PRD · 二 查货报表" },
     "f-r3": { proto: "关务组-查验报表-提单运单维度-MVP.html", prd: "关务组-查验报表-提单运单维度-MVP-PRD.html", anchor: "s-week-outcome", chip: "PRD · 三 查验报表" },
     "f-r4": { proto: "海外对接组-提柜拆柜时效-MVP.html", prd: "海外对接组-提柜拆柜时效-MVP-PRD.html", anchor: "s-logic", chip: "PRD · 四 提柜拆柜" },
-    "f-r5": { proto: "海外对接组-主单实际费用-MVP.html", prd: "海外对接组-主单实际费用-MVP-PRD.html", anchor: "s-logic", chip: "PRD · 五 实际费用" }
+    "f-r5": { proto: "海外对接组-主单实际费用-MVP.html", prd: "海外对接组-主单实际费用-MVP-PRD.html", anchor: "s-batch", chip: "PRD · 五 实际费用·批次" }
   };
 
   /** 旁支计划二：?plan2= 功能 id → 侧栏只展示本分册片段（proto 可为多页） */
@@ -99,7 +99,15 @@
       chip: "PRD · 计划二 #5 整柜权限"
     },
     f6: { proto: "报关管理-列表-MVP.html", prd: "报关管理-列表-MVP-PRD.html", scope: "m-bar", row: "发 ISF", chip: "PRD · 计划二 #6 信号旗 ISF" },
-    f7: { proto: "海外对接组-主单跟进-MVP.html", prd: "海外对接组-主单跟进-MVP-PRD.html", anchor: "s-dray", chip: "PRD · 计划二 #7 DrayEasy 主单跟进预报" },
+    f7: {
+      proto: ["海外对接组-主单跟进-MVP.html", "DrayEasy-推送下单-MVP.html"],
+      prdByProto: {
+        "海外对接组-主单跟进-MVP.html": "../旁支/计划二/旁支计划二-外部对接-PRD.html",
+        "DrayEasy-推送下单-MVP.html": "../旁支计划二-外部对接-PRD.html"
+      },
+      anchor: "s-f7",
+      chip: "PRD · 计划二 #7 DrayEasy"
+    },
     f8: { proto: "海外对接组-卡派跟进新-MVP.html", prd: "海外对接组-卡派跟进新-MVP-PRD.html", anchor: "s-pro", chip: "PRD · 计划二 #8 17TRACK" },
     f9: {
       proto: ["新建工单-MVP.html", "工单提交-入口-MVP.html"],
