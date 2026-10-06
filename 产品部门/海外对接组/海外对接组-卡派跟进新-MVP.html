@@ -1078,11 +1078,23 @@
         <div class="out-notify-block" id="outNotifyBlock">
           <h3>出库通知 <span style="font-size:11px;font-weight:400;color:#8c8c8c">现网保留</span></h3>
           <p class="sub-hint">确认出库后，按勾选向<strong>业务员、客服</strong>推送站内消息；附件链接写入通知正文（可改）。</p>
-          <div class="out-att-slot">
-            <strong>上传附件 <span class="req" id="outAttStar" style="display:none">*</span></strong>
-            <input type="file" id="outAtt" accept=".pdf,.jpg,.jpeg,.png,.webp" />
-            <div class="file-name empty" id="outAttName">未上传</div>
-            <div class="out-link-preview" id="outAttLink"></div>
+          <div class="out-att-slot" style="margin-bottom:10px">
+            <strong>上传附件 <span class="req" id="outAttStar">*</span></strong>
+            <p class="sub-hint" style="margin:6px 0 8px">请上传出库单照片和出库货物图片：2张，装车前整体1张，装车完毕1张。</p>
+            <div class="out-att-grid">
+              <div class="out-att-slot">
+                <strong>出库单照片 <span class="req">*</span></strong>
+                <input type="file" id="outAtt" accept=".pdf,.jpg,.jpeg,.png,.webp" />
+                <div class="file-name empty" id="outAttName">未上传</div>
+                <div class="out-link-preview" id="outAttLink"></div>
+              </div>
+              <div class="out-att-slot">
+                <strong>出库货物图片 <span class="req">*</span></strong>
+                <input type="file" id="outCargo" accept=".jpg,.jpeg,.png,.webp" multiple />
+                <div class="file-name empty" id="outCargoName">未上传</div>
+                <div class="out-link-preview" id="outCargoLink"></div>
+              </div>
+            </div>
           </div>
           <label for="outNotifyMsg">通知内容</label>
           <textarea class="out-msg-box" id="outNotifyMsg" spellcheck="false" placeholder="出库通知正文，可编辑"></textarea>
@@ -1094,26 +1106,10 @@
           </div>
         </div>
 
-        <!-- 仅私卡：装车照 + 拼车口径（出库单/通知走上方通用区） -->
+        <!-- 仅私卡：拼车口径（出库单/装车照已并入上方上传附件） -->
         <div class="out-priv-block" id="outPrivBlock" hidden>
-          <h3>私卡 · 装车凭证（额外必传） <span style="font-size:11px;font-weight:400;color:#8c8c8c">现网保留</span></h3>
-          <p class="sub-hint">
-            仅<strong>私卡派</strong>展示。除上方轨迹、上传 BOL 和出库通知外，另须上传装车前/完毕照。预计送达时间在轨迹一组填写，这里不重复。
-          </p>
-          <div class="out-att-grid">
-            <div class="out-att-slot">
-              <strong>装车前整体照 <span class="req">*</span></strong>
-              <input type="file" id="privBefore" accept=".jpg,.jpeg,.png,.webp" />
-              <div class="file-name empty" id="privBeforeName">未上传</div>
-              <div class="out-link-preview" id="privBeforeLink"></div>
-            </div>
-            <div class="out-att-slot">
-              <strong>装车完毕照 <span class="req">*</span></strong>
-              <input type="file" id="privAfter" accept=".jpg,.jpeg,.png,.webp" />
-              <div class="file-name empty" id="privAfterName">未上传</div>
-              <div class="out-link-preview" id="privAfterLink"></div>
-            </div>
-          </div>
+          <h3>私卡 · LTL 追踪 <span style="font-size:11px;font-weight:400;color:#8c8c8c">现网保留</span></h3>
+          <p class="sub-hint">仅<strong>私卡派</strong>展示。出库单与装车照在上方「上传附件」。预计送达时间在轨迹一组填写。</p>
           <label>LTL 追踪网址 <span class="opt">（有 PRO 时按号对接 17TRACK，可手改；没有 PRO 不填、不对接）</span></label>
           <input type="text" id="privTrackUrl" placeholder="例 https://www.17track.net/zh-cn#nums=PRO号" />
         </div>
@@ -1755,14 +1751,15 @@
   var outAttFile = null;
   var outPhotoFiles = [];
   var privFiles = { before: null, after: null };
+  var cargoPhotoFiles = [];
 
   var PRIV_STD_REMARK =
-    "卸货等候时间包26尺40分钟，53尺2小时；超时间了等候费实报实销，以卡车实际账单为准；" +
+    "卸货等候时间包26尺1小时，53尺3小时；超时间了等候费实报实销，以卡车实际账单为准；" +
     "请收件人在签收货物时，注意检查货物状态和件数，如发生破损和丢件，请收件人一定要在签收单上正面备注说明，" +
     "并把外箱与货物拍照/视频回传，签收日起3天内提出，提出便于我司帮助收件人递交索赔申请。" +
     "如发生部分破损/丢失问题件，签收面单未备注，或超过受理时间等情况，恕我司无法处理，还请海涵；" +
     "如因破损或其他原因，客户拒收的，跟客户确认要求再次派送的，因此产生的二次费用，将由客户负责，" +
-    "请告知收件人勿轻易拒收货物，请知悉!";
+    "请告知收件人勿轻易拒收货物，请知悉！";
 
   function isPrivateType(r) {
     return r && String(r.type || "").indexOf("私卡") >= 0;
@@ -1821,6 +1818,31 @@
     return outPhotoFiles.map(function (f) { return demoFileLink("bol", f.name); });
   }
 
+  function syncCargoToPriv() {
+    privFiles.before = cargoPhotoFiles[0] || null;
+    privFiles.after = cargoPhotoFiles[1] || null;
+  }
+
+  function setCargoUi() {
+    var nameEl = $("outCargoName");
+    var linkEl = $("outCargoLink");
+    if (!nameEl) return;
+    if (!cargoPhotoFiles.length) {
+      nameEl.textContent = "未上传";
+      nameEl.className = "file-name empty";
+      if (linkEl) linkEl.textContent = "";
+      return;
+    }
+    nameEl.textContent = "已选 " + cargoPhotoFiles.length + " 张 · " + cargoPhotoFiles.map(function (f) { return f.name; }).join("、");
+    nameEl.className = "file-name";
+    if (linkEl) {
+      linkEl.textContent = cargoPhotoFiles.map(function (f, i) {
+        var lab = i === 0 ? "装车前整体" : (i === 1 ? "装车完毕" : "图片" + (i + 1));
+        return lab + "：" + demoFileLink(i === 0 ? "before" : "after", f.name);
+      }).join("\n");
+    }
+  }
+
   function defaultTrackUrl(pro) {
     var p = (pro || "").trim();
     if (!p) return "https://www.17track.net/zh-cn";
@@ -1852,6 +1874,51 @@
     var c = selectedCarrier();
     return c ? (c.name_zh_cn || c.name) : "";
   }
+  function carrierConfigUrl() {
+    var c = selectedCarrier();
+    var u = c && String(c.url || "").trim();
+    return u || "无";
+  }
+  function fmtLocalDt(raw) {
+    var s = String(raw || "").replace("T", " ").trim();
+    if (s.length === 16) s += ":00";
+    return s;
+  }
+  function collectCustNos() {
+    var nos = [];
+    (outTargets || []).forEach(function (r) {
+      waybillsOf(r).forEach(function (w) {
+        var no = String(w.custNo || "").trim();
+        if (no && nos.indexOf(no) < 0) nos.push(no);
+      });
+    });
+    return nos;
+  }
+  function collectBlCntr() {
+    return (outTargets || []).map(function (r) {
+      return (r.bl || "—") + "/" + (r.cntr || "—");
+    });
+  }
+  function cargoPhotoLinks() {
+    var bits = [];
+    if (outAttFile) bits.push("出库单照片 " + demoFileLink("doc", outAttFile.name));
+    photoMsgLines().forEach(function (u) {
+      if (u && u.indexOf("http") === 0) bits.push("BOL " + u);
+    });
+    if (privFiles.before) bits.push("装车前整体 " + demoFileLink("before", privFiles.before.name));
+    if (privFiles.after) bits.push("装车完毕 " + demoFileLink("after", privFiles.after.name));
+    return bits.length ? bits.join(" ； ") : "无";
+  }
+  function trackInfoText() {
+    var at = fmtLocalDt($("outAt") && $("outAt").value);
+    var tAt = fmtLocalDt($("outTrackAt") && $("outTrackAt").value);
+    var place = ($("outTrackPlace") && $("outTrackPlace").value) || "";
+    var bits = [];
+    if (at) bits.push("实际出发 " + at);
+    if (tAt) bits.push("轨迹发生 " + tAt);
+    if (place) bits.push("发生地 " + place);
+    return bits.length ? bits.join(" / ") : "无";
+  }
 
   function formatEta(raw) {
     var eta = (raw || "").replace("T", " ");
@@ -1861,59 +1928,17 @@
 
   function buildNotifyMsg() {
     var pro = ($("outPro").value || "").trim().replace(/\s+/g, "");
-    var at = ($("outAt").value || "").replace("T", " ");
-    if (at && at.length === 16) at += ":00";
     var eta = formatEta($("outEta") ? $("outEta").value : "");
+    var custNos = collectCustNos();
+    var bls = collectBlCntr();
+    var ltl = (pro || "无") + " + " + carrierConfigUrl() + " + " + trackInfoText();
+    if (eta) ltl += "；预计送达时间 " + eta;
     var lines = [];
-    if (outIsPrivate) {
-      var url = ($("privTrackUrl").value || "").trim();
-      lines.push("私卡出库服务标准提升要求：通过腾小信 实现");
-      lines.push("");
-      lines.push("【上传 BOL】");
-      photoMsgLines().forEach(function (line) { lines.push(line); });
-      lines.push("");
-      lines.push("【出库单照片 / 附件】");
-      lines.push(outAttFile ? demoFileLink("doc", outAttFile.name) : "（待上传）");
-      lines.push("");
-      lines.push("【出库货物图片 · 装车前整体】");
-      lines.push(privFiles.before ? demoFileLink("before", privFiles.before.name) : "（待上传）");
-      lines.push("【出库货物图片 · 装车完毕】");
-      lines.push(privFiles.after ? demoFileLink("after", privFiles.after.name) : "（待上传）");
-      lines.push("");
-      lines.push("【卡司】" + (selCarrierName() || "（未选）"));
-      lines.push("【LTL PRO 号】" + (pro || "（无，不对接轨迹）"));
-      lines.push("【预计送达时间】" + (eta || "（待填）"));
-      if (pro) lines.push("【追踪网址】" + (url || defaultTrackUrl(pro)));
-      lines.push("");
-      lines.push("【备注信息】");
-      lines.push(PRIV_STD_REMARK);
-    } else {
-      lines.push("【出发登记通知】");
-      lines.push("");
-      if (outTargets.length) {
-        lines.push("票数：" + outTargets.length);
-        outTargets.slice(0, 5).forEach(function (r) {
-          lines.push("- " + r.bl + " / " + r.cntr + (r.type ? " · " + r.type : "") + (r.cs ? " · 客服" + r.cs : ""));
-        });
-        if (outTargets.length > 5) lines.push("- …共 " + outTargets.length + " 票");
-      }
-      lines.push("");
-      lines.push("实际出发时间：" + (at || "（待填）"));
-      lines.push("轨迹发生时间：" + (($("outTrackAt").value || "").replace("T", " ") || "（待填）"));
-      lines.push("轨迹发生地：" + ($("outTrackPlace").value || "（待选）"));
-      lines.push("卡司：" + (selCarrierName() || "（未选）"));
-      lines.push("PRO 追踪号：" + (pro || "（无，不对接轨迹）"));
-      lines.push("预计送达时间：" + (eta || "（待填）"));
-      if (pro) lines.push("追踪网址：" + defaultTrackUrl(pro));
-      lines.push("");
-      lines.push("【上传 BOL】");
-      photoMsgLines().forEach(function (line) { lines.push(line); });
-      lines.push("");
-      lines.push("【附件】");
-      lines.push(outAttFile ? demoFileLink("doc", outAttFile.name) : "（未上传）");
-      lines.push("");
-      lines.push("说明：预计送达时间写入最新轨迹。" + (pro ? "有 PRO，轨迹由 17TRACK 抓取。" : "没有 PRO，不对接轨迹。"));
-    }
+    lines.push("客户单号：" + (custNos.length ? custNos.join("、") : "无"));
+    lines.push("提单号/柜号：" + (bls.length ? bls.join("、") : "无"));
+    lines.push("出库货物图片：" + cargoPhotoLinks());
+    lines.push("LTL PRO 号+追踪网址（拼车的可以不用，但是加上预计送达时间）：" + ltl);
+    lines.push("备注信息：" + PRIV_STD_REMARK);
     return lines.join("\n");
   }
 
@@ -1930,12 +1955,11 @@
     if (outIsPrivate) {
       box.classList.add("out-private");
       block.hidden = false;
-      if (star) star.style.display = "";
     } else {
       box.classList.remove("out-private");
       block.hidden = true;
-      if (star) star.style.display = "none";
     }
+    if (star) star.style.display = "";
   }
 
   function resetOutNotifyForm() {
@@ -1943,15 +1967,13 @@
     outPhotoFiles = [];
     notifyMsgDirty = false;
     privFiles = { before: null, after: null };
+    cargoPhotoFiles = [];
     if ($("outAtt")) $("outAtt").value = "";
     if ($("outPhoto")) $("outPhoto").value = "";
+    if ($("outCargo")) $("outCargo").value = "";
     setFileUi("outAttName", "outAttLink", "doc", null);
     setPhotoUi();
-    ["privBefore", "privAfter"].forEach(function (id) {
-      if ($(id)) $(id).value = "";
-    });
-    setFileUi("privBeforeName", "privBeforeLink", "before", null);
-    setFileUi("privAfterName", "privAfterLink", "after", null);
+    setCargoUi();
     $("outEta").value = "";
     $("privTrackUrl").value = "";
     $("outPushSales").checked = true;
@@ -1968,13 +1990,13 @@
     var privRows = outTargets.filter(isPrivateType);
     var nonPriv = outTargets.filter(function (r) { return !isPrivateType(r); });
     if (privRows.length && nonPriv.length) {
-      toast("私卡与非私卡请分开勾选出库：私卡另需装车照");
+      toast("私卡与非私卡请分开勾选出库");
       return;
     }
     outIsPrivate = privRows.length > 0;
     $("outHint").textContent = outIsPrivate
-      ? "已选 " + outTargets.length + " 票私卡 · 轨迹必填，上传 BOL 必传，预计送达必填。有 PRO 须选卡司才对接轨迹。另须出库附件和装车照"
-      : "已选 " + outTargets.length + " 票 · 轨迹必填，上传 BOL 必传，预计送达必填。有 PRO 须选卡司才对接 17TRACK";
+      ? "已选 " + outTargets.length + " 票私卡 · 轨迹必填，上传 BOL 必传，预计送达必填。有 PRO 须选卡司才对接轨迹。上传附件须含出库单 + 装车前整体 + 装车完毕"
+      : "已选 " + outTargets.length + " 票 · 轨迹必填，上传 BOL 必传，预计送达必填。有 PRO 须选卡司才对接 17TRACK。上传附件须含出库单 + 装车前整体 + 装车完毕";
     $("outSel").innerHTML = outTargets.map(function (r) {
       return "<span>" + r.bl + " / " + r.cntr + (r.type ? " · " + r.type : "") + (r.cs ? " · 客服" + r.cs : "") + "</span>";
     }).join("");
@@ -2055,12 +2077,12 @@
       toast("请上传 BOL");
       return;
     }
-    if (outIsPrivate && !outAttFile) {
-      toast("私卡须上传出库单照片/附件");
+    if (!outAttFile) {
+      toast("请上传出库单照片");
       return;
     }
-    if (outIsPrivate && (!privFiles.before || !privFiles.after)) {
-      toast("私卡须上传装车前整体照 + 装车完毕照（各 1 张）");
+    if (cargoPhotoFiles.length < 2) {
+      toast("请上传出库货物图片 2 张：装车前整体 1 张、装车完毕 1 张");
       return;
     }
     if (!$("outPushSales").checked && !$("outPushCs").checked) {
@@ -2099,6 +2121,8 @@
         photos: outPhotoFiles.map(function (f) { return f.name; }),
         bol: outPhotoFiles.map(function (f) { return f.name; }),
         att: outAttFile && outAttFile.name,
+        before: privFiles.before && privFiles.before.name,
+        after: privFiles.after && privFiles.after.name,
         remark: ($("outRemark") && $("outRemark").value || "").trim(),
         msg: notifyBody,
         pushSales: $("outPushSales").checked,
@@ -2236,21 +2260,17 @@
   if ($("outTrackPlace")) $("outTrackPlace").addEventListener("change", function () { refreshNotifyMsg(false); });
   if ($("outRemark")) $("outRemark").addEventListener("input", function () { refreshNotifyMsg(false); });
 
-  function bindPrivFile(inputId, key) {
-    $(inputId).onchange = function () {
-      var f = this.files && this.files[0];
-      privFiles[key] = f || null;
-      setFileUi(
-        key === "before" ? "privBeforeName" : "privAfterName",
-        key === "before" ? "privBeforeLink" : "privAfterLink",
-        key,
-        privFiles[key]
-      );
-      refreshNotifyMsg(false);
-    };
-  }
-  bindPrivFile("privBefore", "before");
-  bindPrivFile("privAfter", "after");
+  $("outCargo").onchange = function () {
+    var files = this.files ? Array.prototype.slice.call(this.files) : [];
+    if (files.length > 2) {
+      toast("出库货物图片只需 2 张：装车前整体 1 张、装车完毕 1 张");
+      files = files.slice(0, 2);
+    }
+    cargoPhotoFiles = files;
+    syncCargoToPriv();
+    setCargoUi();
+    refreshNotifyMsg(false);
+  };
   $("outEta").addEventListener("change", function () { refreshNotifyMsg(false); });
   $("privTrackUrl").addEventListener("input", function () { refreshNotifyMsg(false); });
   outMask.addEventListener("click", function (e) {
