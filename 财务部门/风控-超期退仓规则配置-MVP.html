@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>超期退仓风控配置 · RISK-006 · MVP</title>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --orange: #fa8c16; --new: #cf1322;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      font-size: 12px; color: var(--text); background: #eef1f6;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; font-size: 14px; }
+    .topbar .nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.72); padding: 0 10px; height: 40px;
+      display: inline-flex; align-items: center; white-space: nowrap;
+    }
+    .topbar .nav a.on { color: #fff; font-weight: 600; background: var(--orange); }
+    .topbar .right { margin-left: auto; color: rgba(255,255,255,.65); }
+    .layout { display: flex; min-height: calc(100vh - 40px); }
+    .sider {
+      width: 168px; background: #001529; color: rgba(255,255,255,.75);
+      padding: 8px 0; flex: none;
+    }
+    .sider .g { padding: 8px 16px 4px; font-size: 11px; color: rgba(255,255,255,.45); }
+    .sider a { display: block; padding: 8px 16px; color: rgba(255,255,255,.75); }
+    .sider a.on { background: #1890ff; color: #fff; }
+    .main { flex: 1; min-width: 0; padding: 12px 14px 32px; max-width: 960px; }
+
+    .badge {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; margin-left: 4px; background: #fff1f0; color: var(--new);
+      border: 1px solid #ffa39e;
+    }
+    .page-hd {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .page-hd h1 { margin: 0; font-size: 18px; }
+    .page-hd .sub { margin: 4px 0 0; color: var(--sub); font-size: 12px; }
+    .btn {
+      height: 28px; padding: 0 14px; border: 1px solid #d9d9d9; background: #fff;
+      border-radius: 2px; font: inherit; cursor: pointer;
+    }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.danger { color: #cf1322; border-color: #ffa39e; background: #fff1f0; }
+
+    .panel {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px; margin-bottom: 10px;
+    }
+    .panel-hd {
+      padding: 9px 12px; border-bottom: 1px solid var(--line);
+      font-size: 13px; font-weight: 700; background: #fafafa;
+    }
+    .panel-bd { padding: 14px 12px; }
+
+    .row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .row:last-child { margin-bottom: 0; }
+    .row .lbl { color: var(--sub); min-width: 88px; }
+    .row input[type="time"], .row input[type="number"], .row input[type="text"] {
+      height: 30px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font: inherit; background: #fff;
+    }
+    .row input[type="number"] { width: 88px; }
+    .row input[type="text"] { width: 160px; }
+
+    .switch { position: relative; width: 40px; height: 22px; display: inline-block; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider {
+      position: absolute; inset: 0; background: #d9d9d9; border-radius: 11px; cursor: pointer;
+    }
+    .switch .slider:before {
+      content: ""; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px;
+      background: #fff; border-radius: 50%; transition: .2s;
+    }
+    .switch input:checked + .slider { background: #1890ff; }
+    .switch input:checked + .slider:before { transform: translateX(18px); }
+
+    table.grid { width: 100%; border-collapse: collapse; }
+    table.grid th, table.grid td {
+      border: 1px solid #f0f0f0; padding: 10px 12px; text-align: left; vertical-align: middle;
+    }
+    table.grid th { background: #fafafa; color: var(--sub); font-weight: 600; }
+    table.grid input[type="number"] {
+      height: 28px; width: 80px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font: inherit;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 2px;
+      background: #e6f7ff; border: 1px solid #91d5ff; color: #096dd9; font-size: 12px;
+    }
+    .chip.gray { background: #f5f5f5; border-color: #d9d9d9; color: #8c8c8c; }
+    .chip .x {
+      border: none; background: none; color: #69c0ff; cursor: pointer; padding: 0 0 0 2px;
+      font-size: 12px; line-height: 1;
+    }
+    .chip .x:hover { color: #cf1322; }
+    .muted { color: var(--sub); font-size: 12px; line-height: 1.55; margin: 0; }
+    .fixed { color: var(--text); }
+    .link-btn {
+      border: none; background: none; color: var(--blue); cursor: pointer;
+      font: inherit; padding: 0; white-space: nowrap;
+    }
+    .prod-cell { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+    .prod-cell .hint { font-size: 11px; color: var(--sub); }
+
+    /* —— 选择产品弹窗（穿梭） —— */
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 100; align-items: center; justify-content: center; padding: 12px;
+    }
+    .mask.show { display: flex; }
+    .modal {
+      width: min(1100px, 98vw); max-height: 92vh; background: #fff; border-radius: 2px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.22); display: flex; flex-direction: column;
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-hd .close {
+      border: none; background: none; font-size: 18px; color: var(--sub); cursor: pointer; line-height: 1;
+    }
+    .modal-bd { padding: 12px 16px; overflow: auto; flex: 1; min-height: 0; }
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+
+    .filter-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px;
+    }
+    .filter-bar .fi { display: flex; flex-direction: column; gap: 4px; }
+    .filter-bar .fi label { font-size: 12px; color: var(--text); }
+    .filter-bar .fi input, .filter-bar .fi select {
+      height: 30px; min-width: 160px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font: inherit; background: #fff;
+    }
+    .filter-bar .acts { display: flex; gap: 8px; }
+
+    .shuttle {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 360px;
+    }
+    @media (max-width: 900px) { .shuttle { grid-template-columns: 1fr; } }
+    .shuttle-pane {
+      border: 1px solid var(--line); border-radius: 2px; display: flex; flex-direction: column;
+      min-height: 0; background: #fff;
+    }
+    .shuttle-hd {
+      padding: 8px 10px; border-bottom: 1px solid var(--line); background: #fafafa;
+      display: flex; justify-content: space-between; align-items: center; font-weight: 600;
+    }
+    .shuttle-body { flex: 1; overflow: auto; min-height: 280px; max-height: 420px; }
+    .shuttle-foot {
+      padding: 6px 10px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;
+    }
+
+    table.pick {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    table.pick th, table.pick td {
+      border-bottom: 1px solid #f0f0f0; padding: 7px 8px; text-align: left; white-space: nowrap;
+    }
+    table.pick th {
+      position: sticky; top: 0; z-index: 1; background: #fafafa; color: var(--sub); font-weight: 600;
+    }
+    table.pick tr:hover td { background: #f5faff; }
+    table.pick tr.picked td { background: #e6f7ff; }
+    table.pick .empty-cell {
+      text-align: center; color: var(--sub); padding: 48px 12px; white-space: normal;
+    }
+    table.pick input[type="checkbox"] { cursor: pointer; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; z-index: 999;
+      transform: translateX(-50%) translateY(20px); opacity: 0;
+      background: rgba(0,0,0,.78); color: #fff; font-size: 13px;
+      padding: 10px 16px; border-radius: 4px; pointer-events: none;
+      transition: opacity .25s, transform .25s;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">腾信 ESS</div>
+    <nav class="nav">
+      <a href="财务部门-模块导航.html">财务</a>
+      <a class="on" href="风控报表-超期退仓推送-MVP.html">风控报表</a>
+    </nav>
+    <div class="right">RISK-006</div>
+  </header>
+
+  <div class="layout">
+    <aside class="sider">
+      <div class="g">财务 · 风控</div>
+      <a href="风控报表-超期退仓推送-MVP.html">超期退仓推送</a>
+      <a class="on" href="风控-超期退仓规则配置-MVP.html">超期风控配置 <span class="badge">NEW</span></a>
+      <a href="风控报表-超期退仓推送-MVP.html#huang">黄少飞待办</a>
+      <a href="风控报表-超期退仓推送-MVP-PRD.html">PRD 文档</a>
+      <div class="g">导航</div>
+      <a href="财务部门-模块导航.html">← 财务导航</a>
+    </aside>
+
+    <main class="main">
+      <div class="page-hd">
+        <div>
+          <h1>超期退仓风控配置 <span class="badge">NEW</span></h1>
+          <p class="sub">每天跑批一次 · 命中进财务全量 · 仅未签出推黄少飞办理退仓</p>
+        </div>
+        <button type="button" class="btn primary" id="btnSave">保存</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hd">跑批</div>
+        <div class="panel-bd">
+          <div class="row">
+            <label class="switch"><input type="checkbox" id="cfgEnabled" checked /><span class="slider"></span></label>
+            <span>启用</span>
+          </div>
+          <div class="row">
+            <span class="lbl">跑批时间</span>
+            <input type="time" id="cfgTime" value="06:00" />
+            <span class="muted">每天 1 次</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hd">阈值规则</div>
+        <div class="panel-bd" style="padding:0">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th>适用销售产品</th>
+                <th style="width:120px">阈值（天）</th>
+                <th>计算口径</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="prod-cell">
+                    <div class="chips" id="specialChips"></div>
+                    <div>
+                      <button type="button" class="link-btn" id="btnPickSpecial">选择产品</button>
+                      <span class="hint"> · 本行阈值优先</span>
+                    </div>
+                  </div>
+                </td>
+                <td><input type="number" id="daysSpecial" min="1" step="1" value="8" /></td>
+                <td class="muted">已签出：签出−签入<br>未签出：当前−签入</td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="prod-cell">
+                    <div class="chips" id="otherChips"></div>
+                    <div>
+                      <button type="button" class="link-btn" id="btnPickOther">选择产品</button>
+                      <span class="hint"> · 与上行互斥；未选入任一行的产品不跑超期规则</span>
+                    </div>
+                  </div>
+                </td>
+                <td><input type="number" id="daysOther" min="1" step="1" value="16" /></td>
+                <td class="muted">同上</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hd">推送</div>
+        <div class="panel-bd">
+          <div class="row">
+            <span class="lbl">财务清单</span>
+            <span class="fixed">已签出 + 未签出（全量）</span>
+          </div>
+          <div class="row">
+            <span class="lbl">推送范围</span>
+            <span class="fixed">仅未签出（办理退仓）</span>
+          </div>
+          <div class="row">
+            <span class="lbl">接收人</span>
+            <input type="text" id="cfgAssignee" value="黄少飞" />
+          </div>
+          <p class="muted" style="margin-top:8px">提醒：右下角代办弹窗（同询价）+ 角标未读。</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 选择产品弹窗（对齐现网穿梭） -->
+  <div class="mask" id="prodMask" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="prodTitle">
+      <div class="modal-hd">
+        <span id="prodTitle">选择产品</span>
+        <button type="button" class="close" id="prodClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-bd">
+        <div class="filter-bar">
+          <div class="fi">
+            <label>产品名称</label>
+            <input type="text" id="fName" placeholder="请输入产品名称" />
+          </div>
+          <div class="fi">
+            <label>产品组</label>
+            <select id="fGroup">
+              <option value="">请选择产品组</option>
+              <option>海运</option>
+              <option>空运</option>
+              <option>快船</option>
+              <option>非主营</option>
+            </select>
+          </div>
+          <div class="fi">
+            <label>派送方式</label>
+            <select id="fDelivery">
+              <option value="">请选择派送方式</option>
+              <option>FBA派</option>
+              <option>私人地址</option>
+              <option>海外仓自提</option>
+              <option>卡派</option>
+            </select>
+          </div>
+          <div class="acts">
+            <button type="button" class="btn primary" id="btnQuery">查询</button>
+            <button type="button" class="btn" id="btnReset">重置</button>
+          </div>
+        </div>
+
+        <div class="shuttle">
+          <div class="shuttle-pane">
+            <div class="shuttle-hd">查询结果</div>
+            <div class="shuttle-body">
+              <table class="pick">
+                <thead>
+                  <tr>
+                    <th style="width:36px"><input type="checkbox" id="chkAllLeft" title="全选当前页" /></th>
+                    <th style="width:48px">序号</th>
+                    <th>产品名称</th>
+                    <th>产品编号</th>
+                    <th>产品组</th>
+                    <th>派送方式</th>
+                  </tr>
+                </thead>
+                <tbody id="leftBody"></tbody>
+              </table>
+            </div>
+            <div class="shuttle-foot">
+              <span id="leftTotal">共 0 条</span>
+              <span>500条/页 · 第 1 页</span>
+            </div>
+          </div>
+
+          <div class="shuttle-pane">
+            <div class="shuttle-hd">
+              <span>已选中的数据</span>
+              <button type="button" class="btn danger" id="btnDelSelected" style="height:26px;padding:0 10px">删除</button>
+            </div>
+            <div class="shuttle-body">
+              <table class="pick">
+                <thead>
+                  <tr>
+                    <th style="width:36px"><input type="checkbox" id="chkAllRight" title="全选已选" /></th>
+                    <th style="width:48px">序号</th>
+                    <th>产品名称</th>
+                    <th>产品编号</th>
+                    <th>产品组</th>
+                    <th>派送方式</th>
+                  </tr>
+                </thead>
+                <tbody id="rightBody"></tbody>
+              </table>
+            </div>
+            <div class="shuttle-foot">
+              <span id="rightTotal">已选 0 条</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="prodCancel">取消</button>
+        <button type="button" class="btn primary" id="prodOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+(function () {
+  var KEY = "risk006_config_simple_v1";
+
+  /** 销售产品主数据示意（正式对接已启用产品） */
+  var CATALOG = [
+    { code: "PK2535", name: "(T25) FBA海卡", group: "海运", delivery: "FBA派" },
+    { code: "PK2536", name: "(T25) 私人地址海卡", group: "海运", delivery: "私人地址" },
+    { code: "MS-001", name: "美森", group: "快船", delivery: "卡派" },
+    { code: "MS-002", name: "美森MAX海外仓自提", group: "快船", delivery: "海外仓自提" },
+    { code: "EXX-01", name: "EXX", group: "快船", delivery: "卡派" },
+    { code: "T16-01", name: "T16", group: "快船", delivery: "卡派" },
+    { code: "ZIM-01", name: "以星快船", group: "快船", delivery: "卡派" },
+    { code: "QD-T25", name: "青岛T25", group: "海运", delivery: "FBA派" },
+    { code: "T18-KP", name: "T18卡派", group: "海运", delivery: "卡派" },
+    { code: "T20-QG", name: "T20卡派全关达", group: "海运", delivery: "卡派" },
+    { code: "AIR-LAX", name: "美国空派 LAX", group: "空运", delivery: "私人地址" },
+    { code: "AIR-OAK", name: "中美快运私人卡派(奥克兰)", group: "空运", delivery: "私人地址" },
+    { code: "AIR-LA", name: "中美快运私人卡派(洛杉矶)", group: "空运", delivery: "私人地址" },
+    { code: "HKU-HDAE", name: "中美卡派特价", group: "海运", delivery: "卡派" },
+    { code: "PRIV-01", name: "私卡特惠", group: "非主营", delivery: "私人地址" },
+    { code: "WH-SELF", name: "海外仓自提特价", group: "海运", delivery: "海外仓自提" }
+  ];
+
+  var DEFAULT_SPECIAL = ["MS-001", "EXX-01", "T16-01", "ZIM-01"];
+  var DEFAULT_OTHER = ["PK2535", "PK2536", "QD-T25", "T18-KP", "T20-QG", "HKU-HDAE", "PRIV-01", "WH-SELF", "AIR-LAX", "AIR-OAK", "AIR-LA", "MS-002"];
+  var specialCodes = DEFAULT_SPECIAL.slice();
+  var otherCodes = DEFAULT_OTHER.slice();
+  /** 当前弹窗编辑目标：special | other */
+  var pickTarget = "special";
+  var draftCodes = [];
+  var queryResult = CATALOG.slice();
+  var leftMarks = {};
+  var rightMarks = {};
+
+  function byCode(code) {
+    for (var i = 0; i < CATALOG.length; i++) {
+      if (CATALOG[i].code === code) return CATALOG[i];
+    }
+    return null;
+  }
+
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+
+  function renderChipList(boxId, codes, emptyText) {
+    var box = document.getElementById(boxId);
+    if (!codes.length) {
+      box.innerHTML = '<span class="chip gray">' + emptyText + "</span>";
+      return;
+    }
+    box.innerHTML = codes.map(function (code) {
+      var p = byCode(code);
+      var name = p ? p.name : code;
+      return '<span class="chip" title="' + code + '">' + name +
+        '<button type="button" class="x" data-rm="' + code + '" title="移除">×</button></span>';
+    }).join("");
+  }
+
+  function renderAllChips() {
+    renderChipList("specialChips", specialCodes, "未选择");
+    renderChipList("otherChips", otherCodes, "未选择");
+  }
+
+  function applyQuery() {
+    var name = (document.getElementById("fName").value || "").trim().toLowerCase();
+    var group = document.getElementById("fGroup").value;
+    var delivery = document.getElementById("fDelivery").value;
+    queryResult = CATALOG.filter(function (p) {
+      if (name && p.name.toLowerCase().indexOf(name) < 0 && p.code.toLowerCase().indexOf(name) < 0) return false;
+      if (group && p.group !== group) return false;
+      if (delivery && p.delivery !== delivery) return false;
+      return true;
+    });
+    leftMarks = {};
+    document.getElementById("chkAllLeft").checked = false;
+    renderLeft();
+  }
+
+  function renderLeft() {
+    var tb = document.getElementById("leftBody");
+    document.getElementById("leftTotal").textContent = "共 " + queryResult.length + " 条";
+    if (!queryResult.length) {
+      tb.innerHTML = '<tr><td colspan="6" class="empty-cell">暂无数据</td></tr>';
+      return;
+    }
+    tb.innerHTML = queryResult.map(function (p, i) {
+      var inDraft = draftCodes.indexOf(p.code) >= 0;
+      return '<tr class="' + (inDraft ? "picked" : "") + '" data-code="' + p.code + '">' +
+        '<td><input type="checkbox" data-side="left" data-code="' + p.code + '"' +
+          (leftMarks[p.code] ? " checked" : "") + (inDraft ? " disabled" : "") + " /></td>" +
+        "<td>" + (i + 1) + "</td>" +
+        "<td>" + p.name + "</td>" +
+        "<td>" + p.code + "</td>" +
+        "<td>" + p.group + "</td>" +
+        "<td>" + p.delivery + "</td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function renderRight() {
+    var tb = document.getElementById("rightBody");
+    document.getElementById("rightTotal").textContent = "已选 " + draftCodes.length + " 条";
+    if (!draftCodes.length) {
+      tb.innerHTML = '<tr><td colspan="6" class="empty-cell">暂无数据</td></tr>';
+      document.getElementById("chkAllRight").checked = false;
+      return;
+    }
+    tb.innerHTML = draftCodes.map(function (code, i) {
+      var p = byCode(code) || { name: code, code: code, group: "—", delivery: "—" };
+      return '<tr data-code="' + code + '">' +
+        '<td><input type="checkbox" data-side="right" data-code="' + code + '"' +
+          (rightMarks[code] ? " checked" : "") + " /></td>" +
+        "<td>" + (i + 1) + "</td>" +
+        "<td>" + p.name + "</td>" +
+        "<td>" + p.code + "</td>" +
+        "<td>" + p.group + "</td>" +
+        "<td>" + p.delivery + "</td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function refreshShuttle() {
+    renderLeft();
+    renderRight();
+  }
+
+  function addToDraft(codes) {
+    codes.forEach(function (c) {
+      if (draftCodes.indexOf(c) < 0) draftCodes.push(c);
+    });
+    leftMarks = {};
+    document.getElementById("chkAllLeft").checked = false;
+    refreshShuttle();
+  }
+
+  function namesOf(codes) {
+    return codes.map(function (c) {
+      var p = byCode(c);
+      return p ? p.name : c;
+    });
+  }
+
+  function resolveNamesToCodes(names) {
+    var out = [];
+    (names || []).forEach(function (name) {
+      for (var i = 0; i < CATALOG.length; i++) {
+        if (CATALOG[i].name === name || CATALOG[i].name.indexOf(name) >= 0) {
+          if (out.indexOf(CATALOG[i].code) < 0) out.push(CATALOG[i].code);
+          break;
+        }
+      }
+    });
+    return out;
+  }
+
+  function openPicker(target) {
+    pickTarget = target === "other" ? "other" : "special";
+    draftCodes = (pickTarget === "other" ? otherCodes : specialCodes).slice();
+    document.getElementById("prodTitle").textContent =
+      pickTarget === "other" ? "选择产品 · 其余阈值行" : "选择产品 · 指定阈值行";
+    document.getElementById("fName").value = "";
+    document.getElementById("fGroup").value = "";
+    document.getElementById("fDelivery").value = "";
+    queryResult = CATALOG.slice();
+    leftMarks = {};
+    rightMarks = {};
+    document.getElementById("chkAllLeft").checked = false;
+    document.getElementById("chkAllRight").checked = false;
+    refreshShuttle();
+    document.getElementById("prodMask").classList.add("show");
+    document.getElementById("prodMask").setAttribute("aria-hidden", "false");
+  }
+
+  function closePicker() {
+    document.getElementById("prodMask").classList.remove("show");
+    document.getElementById("prodMask").setAttribute("aria-hidden", "true");
+  }
+
+  function load() {
+    try {
+      var o = JSON.parse(localStorage.getItem(KEY) || "{}");
+      if (o.enabled === false) document.getElementById("cfgEnabled").checked = false;
+      if (o.time) document.getElementById("cfgTime").value = o.time;
+      if (o.daysSpecial) document.getElementById("daysSpecial").value = o.daysSpecial;
+      if (o.daysOther) document.getElementById("daysOther").value = o.daysOther;
+      if (o.assignee) document.getElementById("cfgAssignee").value = o.assignee;
+      if (Array.isArray(o.specialProductCodes) && o.specialProductCodes.length) {
+        specialCodes = o.specialProductCodes.slice();
+      } else if (Array.isArray(o.specialProducts) && o.specialProducts.length) {
+        specialCodes = resolveNamesToCodes(o.specialProducts);
+        if (!specialCodes.length) specialCodes = DEFAULT_SPECIAL.slice();
+      }
+      if (Array.isArray(o.otherProductCodes) && o.otherProductCodes.length) {
+        otherCodes = o.otherProductCodes.slice();
+      } else if (Array.isArray(o.otherProducts) && o.otherProducts.length) {
+        otherCodes = resolveNamesToCodes(o.otherProducts);
+      }
+    } catch (e) {}
+    renderAllChips();
+  }
+
+  document.getElementById("btnPickSpecial").addEventListener("click", function () { openPicker("special"); });
+  document.getElementById("btnPickOther").addEventListener("click", function () { openPicker("other"); });
+  document.getElementById("prodClose").addEventListener("click", closePicker);
+  document.getElementById("prodCancel").addEventListener("click", closePicker);
+
+  document.getElementById("prodOk").addEventListener("click", function () {
+    if (pickTarget === "other") {
+      otherCodes = draftCodes.slice();
+      /* 互斥：从指定行去掉重复 */
+      specialCodes = specialCodes.filter(function (c) { return otherCodes.indexOf(c) < 0; });
+    } else {
+      specialCodes = draftCodes.slice();
+      otherCodes = otherCodes.filter(function (c) { return specialCodes.indexOf(c) < 0; });
+    }
+    renderAllChips();
+    closePicker();
+    toast("已选择 " + draftCodes.length + " 个销售产品");
+  });
+
+  document.getElementById("btnQuery").addEventListener("click", applyQuery);
+  document.getElementById("btnReset").addEventListener("click", function () {
+    document.getElementById("fName").value = "";
+    document.getElementById("fGroup").value = "";
+    document.getElementById("fDelivery").value = "";
+    applyQuery();
+  });
+  document.getElementById("fName").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") applyQuery();
+  });
+
+  /* 左侧勾选 → 加入已选 */
+  document.getElementById("leftBody").addEventListener("change", function (e) {
+    var cb = e.target.closest("input[data-side=left]");
+    if (!cb || cb.disabled) return;
+    var code = cb.getAttribute("data-code");
+    leftMarks[code] = cb.checked;
+    if (cb.checked) addToDraft([code]);
+  });
+
+  document.getElementById("chkAllLeft").addEventListener("change", function () {
+    var on = this.checked;
+    var codes = [];
+    queryResult.forEach(function (p) {
+      if (draftCodes.indexOf(p.code) >= 0) return;
+      leftMarks[p.code] = on;
+      if (on) codes.push(p.code);
+    });
+    if (on) addToDraft(codes);
+    else renderLeft();
+  });
+
+  document.getElementById("rightBody").addEventListener("change", function (e) {
+    var cb = e.target.closest("input[data-side=right]");
+    if (!cb) return;
+    rightMarks[cb.getAttribute("data-code")] = cb.checked;
+  });
+
+  document.getElementById("chkAllRight").addEventListener("change", function () {
+    var on = this.checked;
+    draftCodes.forEach(function (c) { rightMarks[c] = on; });
+    renderRight();
+  });
+
+  document.getElementById("btnDelSelected").addEventListener("click", function () {
+    var keep = draftCodes.filter(function (c) { return !rightMarks[c]; });
+    var removed = draftCodes.length - keep.length;
+    if (!removed) { toast("请先勾选要删除的已选产品"); return; }
+    draftCodes = keep;
+    rightMarks = {};
+    document.getElementById("chkAllRight").checked = false;
+    refreshShuttle();
+    toast("已删除 " + removed + " 条");
+  });
+
+  /* 双击左侧行快速加入 */
+  document.getElementById("leftBody").addEventListener("dblclick", function (e) {
+    var tr = e.target.closest("tr[data-code]");
+    if (!tr) return;
+    addToDraft([tr.getAttribute("data-code")]);
+  });
+
+  document.getElementById("specialChips").addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-rm]");
+    if (!btn) return;
+    var code = btn.getAttribute("data-rm");
+    specialCodes = specialCodes.filter(function (c) { return c !== code; });
+    renderAllChips();
+  });
+
+  document.getElementById("otherChips").addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-rm]");
+    if (!btn) return;
+    var code = btn.getAttribute("data-rm");
+    otherCodes = otherCodes.filter(function (c) { return c !== code; });
+    renderAllChips();
+  });
+
+  document.getElementById("btnSave").addEventListener("click", function () {
+    var daysSpecial = parseInt(document.getElementById("daysSpecial").value, 10);
+    var daysOther = parseInt(document.getElementById("daysOther").value, 10);
+    if (!daysSpecial || daysSpecial < 1) daysSpecial = 8;
+    if (!daysOther || daysOther < 1) daysOther = 16;
+    document.getElementById("daysSpecial").value = daysSpecial;
+    document.getElementById("daysOther").value = daysOther;
+
+    var data = {
+      enabled: document.getElementById("cfgEnabled").checked,
+      time: document.getElementById("cfgTime").value || "06:00",
+      daysSpecial: daysSpecial,
+      daysOther: daysOther,
+      specialProductCodes: specialCodes.slice(),
+      specialProducts: namesOf(specialCodes),
+      otherProductCodes: otherCodes.slice(),
+      otherProducts: namesOf(otherCodes),
+      assignee: (document.getElementById("cfgAssignee").value || "黄少飞").trim()
+    };
+    localStorage.setItem(KEY, JSON.stringify(data));
+    toast("已保存 · 指定 " + specialCodes.length + " · 其余 " + otherCodes.length);
+  });
+
+  load();
+})();
+  </script>
+</body>
+</html>

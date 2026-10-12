@@ -1,357 +1,1044 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>风控报表 · 超期退仓推送 · MVP</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>超期退仓风控推送 · RISK-006 · MVP</title>
+  <link rel="stylesheet" href="../二期/ess-prototype-prd.css" />
   <style>
-    :root{--nav:#001529;--blue:#1677ff;--bg:#f3f5f8;--card:#fff;--line:#e7eaee;--text:#1f2937;--sub:#667085;--green:#389e0d;--orange:#d46b08;--red:#cf1322}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 "Microsoft YaHei","PingFang SC",Arial,sans-serif}
-    button,input,select{font:inherit}button{cursor:pointer}
-    .app{min-height:100vh;display:flex}
-    .side{width:184px;flex:0 0 184px;background:var(--nav);color:#aeb8c4;padding:14px 0}
-    .brand{padding:0 18px 16px;color:#fff;font-weight:700;font-size:15px}
-    .brand small{display:block;color:#8da2b7;font-weight:400;margin-top:2px;font-size:11px}
-    .nav-title{padding:12px 18px 5px;font-size:11px;color:#71849a}
-    .nav-item{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:10px 18px;text-decoration:none}
-    .nav-item.active{background:var(--blue);color:#fff}
-    .main{flex:1;min-width:0}
-    .top{padding:10px 18px;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .title{font-size:16px;font-weight:700}.crumb{font-size:12px;color:var(--sub)}
-    .top-right{margin-left:auto;display:flex;gap:8px;align-items:center;color:var(--sub);font-size:12px}
-    .demo{background:#fff7e6;color:#ad6800;border:1px solid #ffd591;border-radius:10px;padding:2px 8px}
-    .content{padding:16px 18px 40px;max-width:1480px;margin:auto}
-    .banner{background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;padding:10px 12px;color:#614700;margin-bottom:12px;line-height:1.7;font-size:12px}
-    .banner b{color:#ad6800}
-    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
-    .stat{background:#fff;border:1px solid var(--line);border-radius:7px;padding:11px 13px}
-    .stat .l{font-size:12px;color:var(--sub)}.stat .n{font-size:22px;font-weight:700;margin-top:2px}.stat .h{font-size:11px;color:var(--sub);margin-top:2px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:7px}
-    .tabs{display:flex;border-bottom:1px solid var(--line);padding:0 14px;gap:18px;flex-wrap:wrap}
-    .tab{border:0;background:transparent;padding:12px 2px;color:var(--sub);border-bottom:2px solid transparent}
-    .tab.active{color:var(--blue);border-color:var(--blue);font-weight:700}
-    .filters{padding:12px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-    .field label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px}
-    .field input,.field select{height:30px;border:1px solid #d9dfe7;border-radius:4px;padding:0 8px;min-width:130px;background:#fff}
-    .btn{height:30px;border:1px solid #d9dfe7;border-radius:4px;background:#fff;padding:0 11px;color:#344054}
-    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
-    .btn.warn{background:#fff7e6;border-color:#ffd591;color:#d46b08}
-    .toolbar{border-top:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .toolbar .sel{margin-right:auto;color:var(--sub);font-size:12px}
-    .table-wrap{overflow:auto}
-    table{border-collapse:collapse;width:100%;min-width:1280px}
-    th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left;white-space:nowrap;font-size:12px;vertical-align:middle}
-    th{background:#fafbfc;color:#475467;font-weight:600}
-    .tag{display:inline-block;padding:2px 6px;border-radius:3px;font-size:11px;line-height:18px;border:1px solid transparent}
-    .t-g{background:#f6ffed;color:var(--green);border-color:#b7eb8f}
-    .t-y{background:#fffbe6;color:#ad6800;border-color:#ffe58f}
-    .t-r{background:#fff1f0;color:var(--red);border-color:#ffa39e}
-    .t-b{background:#e6f4ff;color:#0958d9;border-color:#91caff}
-    .t-o{background:#fff7e6;color:#d46b08;border-color:#ffd591}
-    .t-gray{background:#f2f4f7;color:#475467;border-color:#d0d5dd}
-    .link{border:0;background:transparent;color:var(--blue);padding:0}
-    .muted{color:var(--sub)}
-    .rule-box{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:14px}
-    .rule-box .item{background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:12px;font-size:12px;line-height:1.65}
-    .rule-box h4{margin:0 0 6px;font-size:13px}
-    .toast{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);color:#fff;padding:8px 14px;border-radius:5px;display:none;z-index:20}
-    .toast.show{display:block}
-    @media(max-width:900px){.side{display:none}.stats,.rule-box{grid-template-columns:1fr 1fr}}
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --orange: #fa8c16;
+      --new: #cf1322; --chg: #d46b08;
+      --green: #52c41a; --red: #ff4d4f; --gold: #d48806;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      font-size: 12px; color: var(--text); background: #eef1f6;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; font-size: 14px; white-space: nowrap; }
+    .topbar .nav { display: flex; gap: 2px; overflow-x: auto; flex: 1; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.72); padding: 0 10px; height: 40px;
+      display: inline-flex; align-items: center; white-space: nowrap; font-size: 12px;
+    }
+    .topbar .nav a.on { color: #fff; font-weight: 600; background: var(--orange); }
+    .topbar .right {
+      margin-left: auto; color: rgba(255,255,255,.65); white-space: nowrap;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .layout { display: flex; min-height: calc(100vh - 40px); }
+    .sider {
+      width: 168px; background: #001529; color: rgba(255,255,255,.75);
+      padding: 8px 0; flex: none;
+    }
+    .sider .g { padding: 8px 16px 4px; font-size: 11px; color: rgba(255,255,255,.45); }
+    .sider a {
+      display: block; padding: 8px 16px; color: rgba(255,255,255,.75); font-size: 12px;
+    }
+    .sider a.on { background: #1890ff; color: #fff; }
+    .main { flex: 1; min-width: 0; padding: 10px 12px 24px; overflow: auto; }
+
+    .badge {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; line-height: 16px; vertical-align: middle; margin-left: 4px;
+    }
+    .badge.new { background: #fff1f0; color: var(--new); border: 1px solid #ffa39e; }
+
+    .page-hd {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px;
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); line-height: 1.55; }
+    .page-hd .hd-row {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+    }
+
+    .panel {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px; margin-bottom: 8px;
+    }
+    .panel-hd {
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      font-size: 13px; font-weight: 700; background: #fafafa;
+    }
+    .panel-bd { padding: 10px 12px; }
+
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; background: #fff;
+      border-radius: 2px; font: inherit; cursor: pointer; white-space: nowrap;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.warn { background: #fff7e6; border-color: #ffd591; color: #d46b08; }
+    .btn.danger { background: #fff1f0; border-color: #ffa39e; color: #cf1322; }
+
+    .role-bar {
+      display: flex; gap: 0; padding: 0 8px; border-bottom: 1px solid var(--line);
+      background: #fafafa; align-items: center; flex-wrap: wrap;
+    }
+    .role-bar .label { font-size: 11px; color: var(--sub); padding: 0 8px 0 4px; }
+    .role-tab {
+      border: none; background: transparent; padding: 10px 14px; cursor: pointer;
+      font: inherit; color: var(--sub); white-space: nowrap; border-bottom: 2px solid transparent;
+      position: relative;
+    }
+    .role-tab.active { color: var(--orange); font-weight: 600; border-bottom-color: var(--orange); background: #fff; }
+    .role-tab .badge-dot {
+      position: absolute; top: 4px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: 8px; background: #ff4d4f; color: #fff; font-size: 10px; font-weight: 700;
+      display: none; align-items: center; justify-content: center;
+    }
+    .role-tab .badge-dot.show { display: flex; }
+    .role-tab .badge-dot.pulse { animation: badgePulse .6s ease; }
+    @keyframes badgePulse {
+      0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); }
+    }
+    .role-hint { margin-left: auto; padding: 0 8px; font-size: 11px; color: var(--sub); }
+
+    .chip .cnt {
+      display: inline-block; min-width: 16px; margin-left: 4px; padding: 0 5px;
+      border-radius: 8px; background: #f0f0f0; color: var(--sub);
+      font-size: 11px; font-weight: 700; line-height: 16px; vertical-align: 0;
+    }
+    .chip.active .cnt { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+
+    .search-bar {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end;
+      padding: 4px 0 10px; margin-bottom: 4px; border-bottom: 1px dashed var(--line);
+    }
+    .search-bar .fi { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+    .search-bar .fi label { font-size: 11px; color: var(--sub); }
+    .search-bar .fi input, .search-bar .fi select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font: inherit; min-width: 140px; background: #fff;
+    }
+    .search-bar .fi.range { min-width: 260px; }
+    .search-bar .fi.range .ctl {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .search-bar .fi.range input { min-width: 0; flex: 1; }
+    .search-bar .fi.range span { color: var(--sub); font-size: 11px; }
+    .search-bar .fi.actions {
+      flex-direction: row; align-items: center; gap: 8px; min-width: auto;
+      padding-bottom: 0;
+    }
+
+    .status-toolbar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;
+      padding: 8px 0; margin-bottom: 0; min-height: 36px;
+    }
+    .status-toolbar .filter-row {
+      display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; flex: 1; min-width: 0;
+    }
+    .status-toolbar .flabel {
+      flex: none; font-size: 11px; color: var(--sub); white-space: nowrap;
+    }
+    .status-toolbar .toolbar {
+      display: flex; gap: 8px; flex-wrap: nowrap; align-items: center;
+      margin: 0; padding: 0; margin-left: auto; flex: none;
+    }
+    .chip {
+      height: 28px; padding: 0 10px; border-radius: 2px; border: 1px solid #d9d9d9;
+      background: #fff; cursor: pointer; font-size: 12px; white-space: nowrap;
+    }
+    .chip.active { background: #fff7e6; border-color: #ffd591; color: #d46b08; font-weight: 600; }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 360px); border-top: 1px solid var(--line); }
+    table.grid { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 980px; }
+    table.grid th, table.grid td {
+      border: 1px solid #f0f0f0; padding: 6px 8px; text-align: left; vertical-align: middle;
+    }
+    table.grid th {
+      background: #fafafa; position: sticky; top: 0; z-index: 2; font-weight: 600; color: var(--sub);
+      white-space: nowrap;
+    }
+    table.grid tr:nth-child(even) td { background: #fcfcfc; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; border: 1px solid;
+    }
+    .tag.blue { background: #e6f7ff; color: #096dd9; border-color: #91d5ff; }
+    .tag.orange { background: #fff7e6; color: #d46b08; border-color: #ffd591; }
+    .tag.red { background: #fff1f0; color: #cf1322; border-color: #ffa39e; }
+    .tag.green { background: #f6ffed; color: #389e0d; border-color: #b7eb8f; }
+    .tag.gold { background: #fffbe6; color: #ad6800; border-color: #ffe58f; }
+    .tag.gray { background: #f5f5f5; color: #8c8c8c; border-color: #d9d9d9; }
+    .muted { color: var(--sub); font-size: 11px; }
+    .red { color: #cf1322; font-weight: 700; }
+    .ops { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .push-ok-mark {
+      display: inline-flex; align-items: center; gap: 4px;
+      color: #389e0d; font-size: 12px; font-weight: 600; line-height: 1.3;
+    }
+    .push-ok-mark .tick {
+      width: 16px; height: 16px; border-radius: 50%; background: #f6ffed;
+      border: 1px solid #b7eb8f; color: #389e0d; font-size: 11px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .push-ok-mark .sub { display: block; font-weight: 400; color: var(--sub); font-size: 11px; }
+    .log { font-size: 12px; color: var(--sub); line-height: 1.6; max-height: 140px; overflow: auto; }
+    .log .line { padding: 2px 0; border-bottom: 1px dashed #f0f0f0; }
+    .log .line.ok { color: #389e0d; }
+    .log .line.fail { color: #cf1322; }
+    tr.row-push-ok td { background: #f6ffed !important; }
+
+    .huang-banner {
+      display: none; background: #fffbe6; border: 1px solid #ffe58f;
+      border-radius: 2px; padding: 8px 12px; margin-bottom: 8px; font-size: 12px;
+    }
+    .huang-banner.show { display: block; }
+    .huang-banner strong { color: #ad6800; }
+    .todo-empty { text-align: center; padding: 36px 12px; color: var(--sub); font-size: 12px; }
+    .row-highlight { animation: rowFlash 1.6s ease; }
+    @keyframes rowFlash {
+      0%, 100% { background: transparent; }
+      20%, 60% { background: #fff7e6; }
+    }
+
+    .inquiry-toast-stack {
+      position: fixed; right: 20px; bottom: 20px; z-index: 1000;
+      display: flex; flex-direction: column-reverse; gap: 10px;
+      pointer-events: none; max-width: min(420px, calc(100vw - 40px));
+    }
+    .inquiry-toast {
+      pointer-events: auto; background: #fff; border-radius: 4px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.15), 0 0 0 1px rgba(0,0,0,.04);
+      padding: 14px 16px 12px 44px; position: relative;
+      transform: translateX(calc(100% + 40px)); opacity: 0;
+      transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .3s;
+    }
+    .inquiry-toast.show { transform: translateX(0); opacity: 1; }
+    .inquiry-toast.hide { transform: translateX(calc(100% + 40px)); opacity: 0; }
+    .inquiry-toast .toast-ico {
+      position: absolute; left: 14px; top: 14px; width: 22px; height: 22px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; background: #e6f7ff; color: #1890ff;
+    }
+    .inquiry-toast.type-urgent .toast-ico { background: #fff1f0; color: #ff4d4f; }
+    .inquiry-toast .toast-title { font-size: 14px; font-weight: 600; margin: 0 0 6px; line-height: 1.45; }
+    .inquiry-toast .toast-title em { font-style: normal; color: var(--blue); }
+    .inquiry-toast.type-urgent .toast-title em { color: var(--red); }
+    .inquiry-toast .toast-meta { font-size: 12px; color: var(--sub); margin: 0 0 10px; }
+    .inquiry-toast .toast-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .inquiry-toast .toast-btn {
+      height: 26px; padding: 0 12px; border-radius: 2px;
+      border: 1px solid #d9d9d9; background: #fff; cursor: pointer; font-size: 12px;
+    }
+    .inquiry-toast .toast-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .inquiry-toast .toast-close {
+      position: absolute; top: 8px; right: 8px; width: 22px; height: 22px;
+      border: none; background: none; color: var(--sub); cursor: pointer; font-size: 16px;
+    }
+    .finance-tip {
+      position: fixed; left: 50%; bottom: 28px; z-index: 999;
+      transform: translateX(-50%) translateY(20px); opacity: 0;
+      background: rgba(0,0,0,.78); color: #fff; font-size: 13px;
+      padding: 10px 16px; border-radius: 4px; pointer-events: none;
+      transition: opacity .25s, transform .25s;
+      max-width: min(480px, calc(100vw - 40px)); text-align: center;
+    }
+    .finance-tip.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .top-notify { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+    .top-notify .badge-dot {
+      min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+      background: #ff4d4f; color: #fff; font-size: 10px; font-weight: 700;
+      display: none; align-items: center; justify-content: center;
+    }
+    .top-notify .badge-dot.show { display: flex; }
+    .finance-only, .huang-only { display: none; }
+    body[data-role="finance"] .finance-only { display: block; }
+    body[data-role="huang"] .huang-only { display: block; }
+    body[data-role="finance"] .finance-inline { display: inline-flex; }
+    body[data-role="huang"] .huang-inline { display: inline-flex; }
+    .finance-inline, .huang-inline { display: none; }
   </style>
 </head>
-<body>
-  <main class="app">
-    <aside class="side">
-      <div class="brand">腾信物流<small>财务中心 · 风控报表</small></div>
-      <div class="nav-title">财务管理</div>
-      <a class="nav-item" href="财务部门-模块导航.html">模块导航</a>
-      <a class="nav-item active" href="#">超期退仓风控</a>
-      <a class="nav-item" href="收款/收款-模块导航.html">收款</a>
-      <div class="nav-title">推送</div>
-      <a class="nav-item" href="#" onclick="notify('演示：黄少飞待办列表');return false">黄少飞 · 退仓待办</a>
+<body data-role="finance">
+  <header class="topbar">
+    <div class="logo">腾信 ESS</div>
+    <nav class="nav">
+      <a href="财务部门-模块导航.html">财务</a>
+      <a href="分析/分析-模块导航.html">分析</a>
+      <a class="on" href="风控报表-超期退仓推送-MVP.html">风控报表</a>
+      <a href="财务调研-需求清单-20260919.html#r-risk-006">需求清单</a>
+    </nav>
+    <div class="right">
+      <div class="top-notify huang-inline" id="topNotify">
+        <button class="btn" type="button" id="btnOpenTodos" style="height:26px;font-size:11px">我的退仓待办</button>
+        <span class="badge-dot" id="badgeTop">0</span>
+      </div>
+      <span>RISK-006 · 原型</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sider">
+      <div class="g">财务 · 风控</div>
+      <a class="on" href="风控报表-超期退仓推送-MVP.html">超期退仓推送 <span class="badge new">NEW</span></a>
+      <a href="风控-超期退仓规则配置-MVP.html">超期风控配置 <span class="badge new">NEW</span></a>
+      <a href="风控报表-超期退仓推送-MVP.html#huang">黄少飞待办</a>
+      <a href="风控报表-超期退仓推送-MVP-PRD.html">PRD 文档</a>
+      <div class="g">导航</div>
+      <a href="财务部门-模块导航.html">← 财务导航</a>
+      <a href="财务调研-原型PRD开发测试评审计划-20261006.html">评审计划</a>
     </aside>
-    <section class="main">
-      <header class="top">
-        <div>
-          <div class="title">风控报表 · 超期退仓推送 <span class="tag t-o">MVP</span></div>
-          <div class="crumb">财务中心 / 风控 · 每天更新一次 · 推送黄少飞办理退仓</div>
-        </div>
-        <div class="top-right">
-          <span class="demo">示例数据 · 未联调</span>
-          <span>上次更新：2026-09-24 06:00</span>
-          <span>下次：每日 06:00</span>
-        </div>
-      </header>
-      <div class="content">
-        <div class="banner">
-          <b>口径：</b>
-          渠道范围 <b>美森 / EXX / T16 / 以星快船</b>：
-          <b>已签出</b> →（签出 − 签入）&gt; 8 天；
-          <b>未签出</b> →（当前 − 签入）&gt; 8 天 → 推送黄少飞办理退仓。
-          <b>其余渠道</b>：在仓天数 &gt; 16 天 → 同样推送黄少飞办理退仓。
-          <b>财务视图：已签出 + 未签出都要。</b>
-          报表每天更新一次。
-        </div>
 
-        <section class="stats">
-          <div class="stat"><div class="l">今日待推送合计</div><div class="n" id="nAll">12</div><div class="h">财务全量 · 已签+未签</div></div>
-          <div class="stat"><div class="l">重点渠道 · 已签出 &gt;8 天</div><div class="n" id="nOut">4</div><div class="h">美森/EXX/T16/以星</div></div>
-          <div class="stat"><div class="l">重点渠道 · 未签出 &gt;8 天</div><div class="n" id="nIn">5</div><div class="h">当前−签入</div></div>
-          <div class="stat"><div class="l">其余渠道 · &gt;16 天</div><div class="n" id="n16">3</div><div class="h">非重点渠道</div></div>
-          <div class="stat"><div class="l">已推送黄少飞</div><div class="n">7</div><div class="h">退仓办理中</div></div>
-        </section>
+    <main class="main">
+      <div class="page-hd">
+        <div class="hd-row">
+          <div>
+            <h1>超期退仓风控推送 <span class="badge new">NEW</span></h1>
+            <p>RISK-006 · 背景：扣件滞留 / 签入时运费低放久涨价 · <strong>终配时提醒</strong>未签出超期 · 已配完舱不追代办 · 财务看全量 · 已签出不退仓</p>
+          </div>
+          <a class="btn" href="风控-超期退仓规则配置-MVP.html">超期风控配置</a>
+        </div>
+      </div>
 
-        <section class="card">
-          <nav class="tabs">
-            <button type="button" class="tab active" data-f="all">财务全量（已签+未签）</button>
-            <button type="button" class="tab" data-f="out8">已签出 &gt;8 天</button>
-            <button type="button" class="tab" data-f="in8">未签出 &gt;8 天</button>
-            <button type="button" class="tab" data-f="other16">其余 &gt;16 天</button>
-            <button type="button" class="tab" data-f="rule">规则说明</button>
-          </nav>
+      <div class="panel">
+        <div class="role-bar">
+          <span class="label">视角</span>
+          <button type="button" class="role-tab active" data-role="finance" id="tabFinance">财务全量</button>
+          <button type="button" class="role-tab" data-role="huang" id="tabHuang">
+            黄少飞待办
+            <span class="badge-dot" id="badgeHuangTab">0</span>
+          </button>
+          <span class="role-hint" id="roleHint">财务：全量盯盘；黄少飞：终配时弹退仓提醒</span>
+        </div>
+      </div>
 
-          <div id="listView">
-            <div class="filters">
-              <div class="field"><label>销售产品 / 渠道</label>
-                <select id="fChan"><option value="">全部</option><option>美森</option><option>EXX</option><option>T16</option><option>以星快船</option><option>其他</option></select>
+      <div class="huang-banner huang-only" id="huangBanner">
+        <strong>黄少飞 · 终配提醒</strong>
+        <span class="muted"> · 主路径：终配舱<strong>登记</strong>时提示「运单：… · 销售产品：… · 签入时间大于N天，请及时办理退仓」· 已配完舱不另塞代办</span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-bd">
+          <div class="search-bar" id="searchBar">
+            <div class="fi">
+              <label>运单/柜号</label>
+              <input type="text" id="qWaybill" placeholder="支持模糊，多值空格/逗号" />
+            </div>
+            <div class="fi">
+              <label>销售产品</label>
+              <select id="qProduct">
+                <option value="">全部</option>
+                <option value="美森">美森</option>
+                <option value="EXX">EXX</option>
+                <option value="T16">T16</option>
+                <option value="以星快船">以星快船</option>
+                <option value="其他销售产品">其他销售产品</option>
+              </select>
+            </div>
+            <div class="fi range">
+              <label>签入时间</label>
+              <div class="ctl">
+                <input type="date" id="qInFrom" /><span>至</span><input type="date" id="qInTo" />
               </div>
-              <div class="field"><label>签出状态</label>
-                <select id="fSign"><option value="">全部（财务）</option><option>已签出</option><option>未签出</option></select>
-              </div>
-              <div class="field"><label>推送状态</label>
-                <select id="fPush"><option value="">全部</option><option>待推送</option><option>已推送</option><option>退仓办理中</option></select>
-              </div>
-              <div class="field"><label>运单号</label><input id="fNo" placeholder="模糊搜索" /></div>
-              <button type="button" class="btn primary" onclick="render()">查询</button>
-              <button type="button" class="btn" onclick="resetF()">重置</button>
+            </div>
+            <div class="fi">
+              <label>命中规则</label>
+              <select id="qRule">
+                <option value="">全部</option>
+                <option value="lane8">指定销售产品·>8天</option>
+                <option value="other16">其余销售产品·>16天</option>
+                <option value="ok">未超期</option>
+              </select>
+            </div>
+            <div class="fi finance-only">
+              <label>推送状态</label>
+              <select id="qPush">
+                <option value="">全部</option>
+                <option value="pending">未推送</option>
+                <option value="ok">推送成功</option>
+                <option value="done">已办理</option>
+                <option value="finance">仅财务看</option>
+                <option value="miss">未命中</option>
+              </select>
+            </div>
+            <div class="fi actions">
+              <button type="button" class="btn primary" id="btnSearch">查询</button>
+              <button type="button" class="btn" id="btnResetSearch">重置</button>
+            </div>
+          </div>
+          <div class="status-toolbar">
+            <div class="filter-row" data-dim="status">
+              <span class="flabel">签出状态</span>
+              <button type="button" class="chip active" data-dim="status" data-f="all">全部 <span class="cnt" id="cntAll">0</span></button>
+              <button type="button" class="chip" data-dim="status" data-f="checked_out">已签出 <span class="cnt" id="cntOut">0</span></button>
+              <button type="button" class="chip" data-dim="status" data-f="not_out">未签出 <span class="cnt" id="cntNotOut">0</span></button>
             </div>
             <div class="toolbar">
-              <span class="sel" id="selText">共 0 条 · 财务需同时看已签出与未签出</span>
-              <button type="button" class="btn warn" onclick="pushSelected()">推送黄少飞 · 办理退仓</button>
-              <button type="button" class="btn" onclick="notify('已导出 CSV（演示）')">导出报表</button>
-              <button type="button" class="btn" onclick="notify('已触发每日刷新任务（演示）· 下次 06:00')">手动刷新</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th><input type="checkbox" id="chkAll" /></th>
-                    <th>运单号</th>
-                    <th>销售产品</th>
-                    <th>规则组</th>
-                    <th>签出状态</th>
-                    <th>签入时间</th>
-                    <th>签出时间</th>
-                    <th>在仓天数</th>
-                    <th>命中规则</th>
-                    <th>客户</th>
-                    <th>业务员</th>
-                    <th>签入仓</th>
-                    <th>推送状态</th>
-                    <th>办理人</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody id="tbody"></tbody>
-              </table>
+              <button class="btn finance-inline" type="button" id="btnRefresh">模拟每日更新</button>
+              <button class="btn primary finance-inline" type="button" id="btnPushAll">一键代办通知未签出</button>
+              <button class="btn warn huang-inline" type="button" id="btnDemoToast">演示终配提醒</button>
+              <button class="btn huang-inline" type="button" id="btnMarkAllRead">全部标已读</button>
             </div>
           </div>
-
-          <div id="ruleView" class="rule-box" style="display:none">
-            <div class="item">
-              <h4>1. 更新频率</h4>
-              报表<strong>每天更新一次</strong>（建议凌晨批次）。财务与退仓办理共用同一数据源。
-            </div>
-            <div class="item">
-              <h4>2. 重点渠道 · 8 天</h4>
-              涉及：<b>美森、EXX、T16、以星快船</b>。<br>
-              · 已签出：（签出时间 − 签入时间）&gt; 8 天<br>
-              · 未签出：（当前时间 − 签入时间）&gt; 8 天<br>
-              → 推送 <b>黄少飞</b> 办理退仓。
-            </div>
-            <div class="item">
-              <h4>3. 其余渠道 · 16 天</h4>
-              非上述重点渠道：在仓天数 &gt; <b>16</b> 天 → 同样推送黄少飞办理退仓。
-            </div>
-            <div class="item">
-              <h4>4. 财务视图</h4>
-              财务需要<strong>已签出 + 未签出</strong>全量清单，不按办理角色过滤；可按渠道/推送状态筛选导出。
-            </div>
-            <div class="item">
-              <h4>5. 天数计算</h4>
-              已签出天数 = 签出 − 签入（自然日）。未签出天数 = 报表日 − 签入（自然日）。边界「大于」不含等于 8 / 16。
-            </div>
-            <div class="item">
-              <h4>6. 推送动作</h4>
-              命中规则后生成退仓待办给黄少飞；支持批量推送、导出。重复推送幂等（演示）。
-            </div>
+          <div class="table-wrap">
+            <table class="grid">
+              <thead>
+                <tr>
+                  <th>运单/柜号</th>
+                  <th>销售产品</th>
+                  <th>签出状态</th>
+                  <th>签入时间</th>
+                  <th>签出时间</th>
+                  <th>超期天数</th>
+                  <th>命中规则</th>
+                  <th>推送状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
           </div>
-        </section>
+          <div class="todo-empty" id="emptyTip" style="display:none;">暂无待办，推送后会出现在此列表</div>
+        </div>
       </div>
-    </section>
-  </main>
-  <div class="toast" id="toast"></div>
 
-  <script>
-    const FOCUS = ["美森", "EXX", "T16", "以星快船"];
-    const TODAY = new Date("2026-09-24T06:00:00");
+      <div class="panel finance-only">
+        <div class="panel-hd">推送日志</div>
+        <div class="panel-bd">
+          <div class="log" id="pushLog"><div class="line muted">尚未推送</div></div>
+        </div>
+      </div>
 
-    const ROWS = [
-      { no:"TXZG…92001", chan:"美森", signed:true,  inAt:"2026-09-10", outAt:"2026-09-20", cust:"示例直客A", sales:"王丽", wh:"4DS", push:"待推送" },
-      { no:"TXZG…92002", chan:"EXX", signed:true,  inAt:"2026-09-08", outAt:"2026-09-19", cust:"示例直客B", sales:"张明", wh:"苏州仓", push:"待推送" },
-      { no:"TXZG…92003", chan:"T16", signed:true,  inAt:"2026-09-05", outAt:"2026-09-18", cust:"同行C", sales:"林晓", wh:"4DS", push:"已推送" },
-      { no:"TXZG…92004", chan:"以星快船", signed:true, inAt:"2026-09-01", outAt:"2026-09-15", cust:"示例直客D", sales:"戚流兵", wh:"宁波仓", push:"退仓办理中" },
-      { no:"TXZG…92005", chan:"美森", signed:false, inAt:"2026-09-12", outAt:"", cust:"示例直客A", sales:"王丽", wh:"4DS", push:"待推送" },
-      { no:"TXZG…92006", chan:"EXX", signed:false, inAt:"2026-09-10", outAt:"", cust:"示例直客E", sales:"李思远", wh:"深圳仓", push:"待推送" },
-      { no:"TXZG…92007", chan:"T16", signed:false, inAt:"2026-09-08", outAt:"", cust:"同行F", sales:"张明", wh:"4DS", push:"已推送" },
-      { no:"TXZG…92008", chan:"以星快船", signed:false, inAt:"2026-09-05", outAt:"", cust:"示例直客G", sales:"林晓", wh:"上海仓", push:"待推送" },
-      { no:"TXZG…92009", chan:"美森", signed:false, inAt:"2026-09-14", outAt:"", cust:"示例直客H", sales:"王丽", wh:"4DS", push:"待推送" },
-      { no:"TXZG…92010", chan:"T20", signed:true,  inAt:"2026-08-28", outAt:"2026-09-20", cust:"示例直客I", sales:"孟照", wh:"美库", push:"待推送" },
-      { no:"TXZG…92011", chan:"中美快运", signed:false, inAt:"2026-09-01", outAt:"", cust:"同行J", sales:"袁州", wh:"VMI", push:"待推送" },
-      { no:"TXZG…92012", chan:"美森加班", signed:true, inAt:"2026-08-20", outAt:"2026-09-10", cust:"示例直客K", sales:"唐海", wh:"4DS", push:"已推送" },
-      // 边界：=8 天不命中
-      { no:"TXZG…92013", chan:"美森", signed:true, inAt:"2026-09-12", outAt:"2026-09-20", cust:"边界样例", sales:"测试", wh:"4DS", push:"—" },
-      { no:"TXZG…92014", chan:"T25", signed:false, inAt:"2026-09-10", outAt:"", cust:"边界样例", sales:"测试", wh:"4DS", push:"—" }
-    ];
+      <div class="panel huang-only">
+        <div class="panel-hd">终配提醒说明（黄少飞 10/12）</div>
+        <div class="panel-bd">
+          <div class="muted" style="line-height:1.7;">
+            1. <strong>背景：</strong>扣件太多放太久；签入时海运费低，放久运费涨 → 超期未签出要退仓<br>
+            2. <strong>主路径：</strong>终配舱<strong>登记</strong>时弹：「运单：{运单} · 销售产品：{产品} · 签入时间大于{N}天，请及时办理退仓」· 稍后处理 / 已知晓继续<br>
+            3. <strong>已配完舱：</strong>一般不另推代办（黄少飞：应该不会）<br>
+            4. <strong>已签出</strong>只在财务清单，不进提醒；办理后退仓提醒关闭，财务全量仍保留（标已办）
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
 
-    let tab = "all";
+  <div class="inquiry-toast-stack" id="toastStack" aria-live="polite"></div>
+  <div class="finance-tip" id="financeTip" role="status" aria-live="polite"></div>
 
-    function parseDay(s) {
-      if (!s) return null;
-      return new Date(s + "T00:00:00");
+  <div class="ess-prd-source" hidden aria-hidden="true"
+       data-prd-href="风控报表-超期退仓推送-MVP-PRD.html">
+    <span class="ess-prd-chip">PRD · 超期退仓 RISK-006</span>
+  </div>
+  <script src="../二期/ess-prototype-prd.js"></script>
+
+<script>
+(function () {
+  var LANE_8 = ["美森", "EXX", "T16", "以星快船"];
+  var STORAGE_KEY = "risk006_huang_todos_v1";
+  var filterStatus = "all";
+  var role = "finance";
+  /** 财务推送后排队，黄少飞进入视角时再弹询价同款代办 */
+  var pendingNotifyIds = [];
+  var FLOW_NAME = "办理退仓";
+  /** 刚推送成功的行，用于操作区高亮标记 */
+  var justPushedIds = {};
+  var searchQ = { waybill: "", product: "", inFrom: "", inTo: "", rule: "", push: "" };
+
+  function readSearchForm() {
+    return {
+      waybill: (document.getElementById("qWaybill").value || "").trim(),
+      product: document.getElementById("qProduct").value || "",
+      inFrom: document.getElementById("qInFrom").value || "",
+      inTo: document.getElementById("qInTo").value || "",
+      rule: document.getElementById("qRule").value || "",
+      push: document.getElementById("qPush").value || ""
+    };
+  }
+  function applySearchForm(q) {
+    document.getElementById("qWaybill").value = q.waybill || "";
+    document.getElementById("qProduct").value = q.product || "";
+    document.getElementById("qInFrom").value = q.inFrom || "";
+    document.getElementById("qInTo").value = q.inTo || "";
+    document.getElementById("qRule").value = q.rule || "";
+    document.getElementById("qPush").value = q.push || "";
+  }
+  function splitKeys(s) {
+    return String(s || "").split(/[\s,，;；]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+  }
+  function dateOnly(s) {
+    return String(s || "").slice(0, 10);
+  }
+  function pushStateOf(row) {
+    var rule = ruleOf(row);
+    var todo = todos[row.id];
+    if (!rule.hit) return "miss";
+    if (row.status === "已签出") return "finance";
+    if (!todo) return "pending";
+    if (todo.done) return "done";
+    return "ok";
+  }
+
+  var baseRows = [
+    { id: "R01", waybill: "MSCU8829101", lane: "美森", status: "已签出", inAt: "2026-09-28 09:12", outAt: "2026-10-08 14:20", days: 10.2 },
+    { id: "R02", waybill: "EXX-771203", lane: "EXX", status: "未签出", inAt: "2026-09-30 11:00", outAt: "—", days: 9.1 },
+    { id: "R03", waybill: "T16-550918", lane: "T16", status: "已签出", inAt: "2026-09-26 08:40", outAt: "2026-10-05 16:10", days: 9.3 },
+    { id: "R04", waybill: "ZIM-FAST-8891", lane: "以星快船", status: "未签出", inAt: "2026-09-29 15:30", outAt: "—", days: 10.0 },
+    { id: "R05", waybill: "COSCO-339210", lane: "其他销售产品", status: "已签出", inAt: "2026-09-18 10:00", outAt: "2026-10-06 09:20", days: 17.9 },
+    { id: "R06", waybill: "OOCL-448812", lane: "其他销售产品", status: "未签出", inAt: "2026-09-20 13:45", outAt: "—", days: 19.2 },
+    { id: "R07", waybill: "ONE-662100", lane: "其他销售产品", status: "已签出", inAt: "2026-09-22 07:50", outAt: "2026-10-07 18:00", days: 15.4 },
+    { id: "R08", waybill: "MSCU9901122", lane: "美森", status: "未签出", inAt: "2026-10-02 10:20", outAt: "—", days: 7.2 }
+  ];
+
+  function ruleOf(row) {
+    var isLane8 = LANE_8.indexOf(row.lane) >= 0;
+    if (isLane8) {
+      return row.days > 8
+        ? { hit: true, code: "lane8", label: "指定销售产品·>8天", level: "orange" }
+        : { hit: false, code: "lane8_ok", label: "指定销售产品·未超8天", level: "gray" };
     }
-    function daysBetween(a, b) {
-      return Math.floor((b - a) / 86400000);
-    }
-    function enrich(r) {
-      const inD = parseDay(r.inAt);
-      const outD = r.outAt ? parseDay(r.outAt) : null;
-      const isFocus = FOCUS.includes(r.chan) || r.chan.startsWith("美森");
-      let dwell = 0;
-      if (r.signed && outD) dwell = daysBetween(inD, outD);
-      else dwell = daysBetween(inD, TODAY);
+    return row.days > 16
+      ? { hit: true, code: "other16", label: "其余销售产品·>16天", level: "red" }
+      : { hit: false, code: "other_ok", label: "其余销售产品·未超16天", level: "gray" };
+  }
 
-      let hit = null, group = isFocus ? "重点·8天" : "其余·16天";
-      if (isFocus) {
-        if (r.signed && dwell > 8) hit = "已签出·签出−签入>8天";
-        if (!r.signed && dwell > 8) hit = "未签出·当前−签入>8天";
-      } else {
-        if (dwell > 16) hit = "其余渠道·在仓>16天";
+  function loadTodos() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+  function saveTodos(map) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  }
+
+  var todos = loadTodos();
+
+  function ensureTodo(row, pushedAt, unread) {
+    if (!todos[row.id]) {
+      todos[row.id] = {
+        id: row.id,
+        waybill: row.waybill,
+        lane: row.lane,
+        status: row.status,
+        days: row.days,
+        ruleLabel: ruleOf(row).label,
+        pushedAt: pushedAt || nowStr(),
+        unread: unread !== false,
+        done: false,
+        doneAt: ""
+      };
+    } else {
+      todos[row.id].pushedAt = pushedAt || todos[row.id].pushedAt;
+      if (unread) todos[row.id].unread = true;
+      if (!todos[row.id].done) {
+        todos[row.id].waybill = row.waybill;
+        todos[row.id].lane = row.lane;
+        todos[row.id].status = row.status;
+        todos[row.id].days = row.days;
+        todos[row.id].ruleLabel = ruleOf(row).label;
       }
-      return { ...r, isFocus, dwell, hit, group };
     }
+  }
 
-    const DATA = ROWS.map(enrich).filter(r => r.hit); // 报表只出命中行；边界样例不进清单
-    // 上面 filter 掉了边界，但用户可能想看全量命中。边界未命中正确。
-    // 重新：美森加班 should be focus. T20/中美 >16.
+  function nowStr() {
+    return new Date().toLocaleString("zh-CN", { hour12: false });
+  }
 
-    function notify(msg) {
-      const t = document.getElementById("toast");
-      t.textContent = msg; t.classList.add("show");
-      clearTimeout(notify._t); notify._t = setTimeout(() => t.classList.remove("show"), 2400);
-    }
+  function unreadCount() {
+    return Object.keys(todos).filter(function (k) {
+      return todos[k] && !todos[k].done && todos[k].unread;
+    }).length;
+  }
+  function pendingCount() {
+    return Object.keys(todos).filter(function (k) {
+      return todos[k] && !todos[k].done;
+    }).length;
+  }
 
-    function filtered() {
-      let list = DATA.slice();
-      if (tab === "out8") list = list.filter(r => r.isFocus && r.signed);
-      if (tab === "in8") list = list.filter(r => r.isFocus && !r.signed);
-      if (tab === "other16") list = list.filter(r => !r.isFocus);
-      const chan = document.getElementById("fChan").value;
-      const sign = document.getElementById("fSign").value;
-      const push = document.getElementById("fPush").value;
-      const no = document.getElementById("fNo").value.trim();
-      if (chan === "其他") list = list.filter(r => !r.isFocus);
-      else if (chan) list = list.filter(r => r.chan.includes(chan) || (chan === "美森" && r.chan.startsWith("美森")));
-      if (sign === "已签出") list = list.filter(r => r.signed);
-      if (sign === "未签出") list = list.filter(r => !r.signed);
-      if (push) list = list.filter(r => r.push === push);
-      if (no) list = list.filter(r => r.no.includes(no));
-      return list;
-    }
+  function formatBadge(n) {
+    if (n <= 0) return "0";
+    return n > 99 ? "99+" : String(n);
+  }
 
-    function pushTag(s) {
-      if (s === "待推送") return '<span class="tag t-y">待推送</span>';
-      if (s === "已推送") return '<span class="tag t-b">已推送</span>';
-      if (s === "退仓办理中") return '<span class="tag t-o">退仓办理中</span>';
-      return '<span class="tag t-gray">—</span>';
-    }
-
-    function render() {
-      const list = filtered();
-      document.getElementById("selText").textContent = `共 ${list.length} 条 · 财务全量含已签出与未签出`;
-      document.getElementById("tbody").innerHTML = list.map((r, i) => `
-        <tr data-i="${DATA.indexOf(r)}">
-          <td><input type="checkbox" class="rowchk" ${r.push === "待推送" ? "checked" : ""} /></td>
-          <td>${r.no}</td>
-          <td>${r.chan}</td>
-          <td><span class="tag ${r.isFocus ? "t-o" : "t-gray"}">${r.group}</span></td>
-          <td>${r.signed ? '<span class="tag t-g">已签出</span>' : '<span class="tag t-y">未签出</span>'}</td>
-          <td>${r.inAt}</td>
-          <td>${r.outAt || '<span class="muted">—</span>'}</td>
-          <td><b style="color:${r.dwell > 16 ? "#cf1322" : "#d46b08"}">${r.dwell} 天</b></td>
-          <td>${r.hit}</td>
-          <td>${r.cust}</td>
-          <td>${r.sales}</td>
-          <td>${r.wh}</td>
-          <td>${pushTag(r.push)}</td>
-          <td>${r.push === "待推送" ? "—" : "黄少飞"}</td>
-          <td>
-            <button type="button" class="link" onclick="pushOne(${DATA.indexOf(r)})">推送退仓</button>
-          </td>
-        </tr>
-      `).join("") || `<tr><td colspan="15" class="muted" style="text-align:center;padding:28px">无命中数据</td></tr>`;
-
-      document.getElementById("nAll").textContent = DATA.length;
-      document.getElementById("nOut").textContent = DATA.filter(r => r.isFocus && r.signed).length;
-      document.getElementById("nIn").textContent = DATA.filter(r => r.isFocus && !r.signed).length;
-      document.getElementById("n16").textContent = DATA.filter(r => !r.isFocus).length;
-    }
-
-    function resetF() {
-      document.getElementById("fChan").value = "";
-      document.getElementById("fSign").value = "";
-      document.getElementById("fPush").value = "";
-      document.getElementById("fNo").value = "";
-      render();
-    }
-
-    function pushOne(idx) {
-      const r = DATA[idx];
-      if (!r) return;
-      r.push = "已推送";
-      notify(`已推送黄少飞办理退仓：${r.no}`);
-      render();
-    }
-
-    function pushSelected() {
-      const boxes = [...document.querySelectorAll(".rowchk:checked")];
-      if (!boxes.length) return notify("请先勾选待推送行");
-      boxes.forEach(b => {
-        const tr = b.closest("tr");
-        const i = +tr.dataset.i;
-        if (DATA[i] && DATA[i].push === "待推送") DATA[i].push = "已推送";
-      });
-      notify(`已批量推送 ${boxes.length} 单至黄少飞办理退仓（演示）`);
-      render();
-    }
-
-    document.querySelectorAll(".tab").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
-        btn.classList.add("active");
-        tab = btn.dataset.f;
-        const rule = tab === "rule";
-        document.getElementById("listView").style.display = rule ? "none" : "block";
-        document.getElementById("ruleView").style.display = rule ? "grid" : "none";
-        if (!rule) render();
-      });
+  function renderBadges(pulse) {
+    var n = unreadCount();
+    ["badgeHuangTab", "badgeTop"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = formatBadge(n);
+      el.classList.toggle("show", n > 0);
+      if (pulse && n > 0) {
+        el.classList.remove("pulse");
+        void el.offsetWidth;
+        el.classList.add("pulse");
+      }
     });
+  }
 
-    document.getElementById("chkAll").addEventListener("change", e => {
-      document.querySelectorAll(".rowchk").forEach(c => { c.checked = e.target.checked; });
+  var toastStack = document.getElementById("toastStack");
+  var financeTip = document.getElementById("financeTip");
+  var financeTipTimer = null;
+
+  function showFinanceTip(msg) {
+    if (!financeTip) return;
+    financeTip.textContent = msg;
+    financeTip.classList.add("show");
+    clearTimeout(financeTipTimer);
+    financeTipTimer = setTimeout(function () { financeTip.classList.remove("show"); }, 3200);
+  }
+
+  function createToast(todo, urgent) {
+    var toast = document.createElement("div");
+    toast.className = "inquiry-toast " + (urgent ? "type-urgent" : "");
+    var meta = "运单 " + todo.waybill +
+      " · " + (todo.lane || "") +
+      " · 超期 " + todo.days + " 天" +
+      " · " + (todo.ruleLabel || "") +
+      " · 黄少飞 · " + (todo.pushedAt || nowStr());
+    toast.innerHTML =
+      '<button type="button" class="toast-close" aria-label="关闭">×</button>' +
+      '<div class="toast-ico">' + (urgent ? "!" : "✓") + "</div>" +
+      '<p class="toast-title">您有一件代办事项，请及时处理：<em>' + FLOW_NAME + "</em></p>" +
+      '<p class="toast-meta">' + meta + "</p>" +
+      '<div class="toast-actions">' +
+      '<button type="button" class="toast-btn">稍后处理</button>' +
+      '<button type="button" class="toast-btn primary">去处理</button>' +
+      "</div>";
+
+    toastStack.appendChild(toast);
+    requestAnimationFrame(function () { toast.classList.add("show"); });
+
+    var autoTimer = setTimeout(function () { dismiss(toast); }, 8000);
+    function dismiss(node) {
+      clearTimeout(autoTimer);
+      node.classList.remove("show");
+      node.classList.add("hide");
+      setTimeout(function () { node.remove(); }, 350);
+    }
+    toast.querySelector(".toast-close").addEventListener("click", function () { dismiss(toast); });
+    toast.querySelector(".toast-btn").addEventListener("click", function () { dismiss(toast); });
+    toast.querySelector(".toast-btn.primary").addEventListener("click", function () {
+      dismiss(toast);
+      goHandleTodo(todo.id);
     });
+  }
 
-    render();
+  function goHandleTodo(id) {
+    if (role !== "huang") setRole("huang", true);
+    filterStatus = "not_out";
+    syncChipActive();
+    renderTable();
+    var row = document.getElementById("row-" + id);
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.classList.remove("row-highlight");
+      void row.offsetWidth;
+      row.classList.add("row-highlight");
+    }
+    if (todos[id]) {
+      todos[id].unread = false;
+      saveTodos(todos);
+      renderBadges(false);
+      renderTable();
+    }
+  }
+
+  /** 对齐询价：代办弹窗只给接收人（黄少飞）；财务侧仅角标 + 轻提示 */
+  function deliverTodoNotify(todo, urgent) {
+    if (!todo) return;
+    if (role === "huang") {
+      createToast(todo, urgent);
+    } else if (pendingNotifyIds.indexOf(todo.id) < 0) {
+      pendingNotifyIds.push(todo.id);
+    }
+  }
+
+  function flushPendingToasts() {
+    if (role !== "huang") return;
+    var ids = pendingNotifyIds.splice(0);
+    if (!ids.length) return;
+    ids.slice(0, 3).forEach(function (id, i) {
+      var t = todos[id];
+      if (!t || t.done) return;
+      setTimeout(function () {
+        createToast(t, (t.days || 0) > 16);
+      }, 280 + i * 400);
+    });
+  }
+
+  function logLine(html, kind) {
+    var box = document.getElementById("pushLog");
+    if (box.querySelector(".muted") && box.children.length === 1) box.innerHTML = "";
+    var div = document.createElement("div");
+    div.className = "line" + (kind ? " " + kind : "");
+    div.innerHTML = html;
+    box.insertBefore(div, box.firstChild);
+  }
+
+  function hitRows() {
+    return baseRows.filter(function (r) { return ruleOf(r).hit; });
+  }
+  /** 可推黄少飞：命中规则且未签出（已签出不退仓） */
+  function pushableRows() {
+    return hitRows().filter(function (r) { return r.status === "未签出"; });
+  }
+  function canPush(r) {
+    return !!(r && ruleOf(r).hit && r.status === "未签出");
+  }
+
+  function updateStatusCounts() {
+    var rows = rowsForView().filter(passSearch);
+    var checked = rows.filter(function (r) { return r.status === "已签出"; }).length;
+    var notOut = rows.filter(function (r) { return r.status === "未签出"; }).length;
+    var elAll = document.getElementById("cntAll");
+    var elOut = document.getElementById("cntOut");
+    var elNot = document.getElementById("cntNotOut");
+    if (elAll) elAll.textContent = String(rows.length);
+    if (elOut) elOut.textContent = String(checked);
+    if (elNot) elNot.textContent = String(notOut);
+  }
+
+  function rowsForView() {
+    if (role === "huang") {
+      return Object.keys(todos).map(function (k) { return todos[k]; }).sort(function (a, b) {
+        if (a.done !== b.done) return a.done ? 1 : -1;
+        if (a.unread !== b.unread) return a.unread ? -1 : 1;
+        return (b.pushedAt || "").localeCompare(a.pushedAt || "");
+      });
+    }
+    return baseRows.slice();
+  }
+
+  function passSearch(row) {
+    var q = searchQ;
+    if (q.waybill) {
+      var keys = splitKeys(q.waybill);
+      var wb = String(row.waybill || "");
+      var ok = keys.some(function (k) { return wb.indexOf(k) >= 0; });
+      if (!ok) return false;
+    }
+    if (q.product && row.lane !== q.product) return false;
+    if (q.inFrom && dateOnly(row.inAt) < q.inFrom) return false;
+    if (q.inTo && dateOnly(row.inAt) > q.inTo) return false;
+    if (q.rule) {
+      if (role === "huang") {
+        var label = row.ruleLabel || "";
+        if (q.rule === "lane8" && label.indexOf("指定") < 0) return false;
+        if (q.rule === "other16" && label.indexOf("其余") < 0) return false;
+        if (q.rule === "ok") return false;
+      } else {
+        var rule = ruleOf(row);
+        if (q.rule === "lane8" && rule.code !== "lane8") return false;
+        if (q.rule === "other16" && rule.code !== "other16") return false;
+        if (q.rule === "ok" && rule.hit) return false;
+      }
+    }
+    if (q.push && role !== "huang") {
+      if (pushStateOf(row) !== q.push) return false;
+    }
+    return true;
+  }
+  function passStatus(row) {
+    if (filterStatus === "all") return true;
+    if (filterStatus === "checked_out") return row.status === "已签出";
+    if (filterStatus === "not_out") return row.status === "未签出";
+    return true;
+  }
+  function passFilter(row) {
+    return passSearch(row) && passStatus(row);
+  }
+  function syncChipActive() {
+    document.querySelectorAll(".chip[data-dim]").forEach(function (c) {
+      c.classList.toggle("active", c.getAttribute("data-f") === filterStatus);
+    });
+  }
+
+  function renderTable() {
+    updateStatusCounts();
+    var tb = document.getElementById("tbody");
+    var list = rowsForView().filter(passFilter);
+    var empty = document.getElementById("emptyTip");
+
+    if (role === "huang" && list.length === 0) {
+      tb.innerHTML = "";
+      empty.style.display = "block";
+      empty.textContent = "暂无待办，请财务侧推送未签出后退仓票";
+      return;
+    }
+    empty.style.display = "none";
+
+    if (role === "huang") {
+      tb.innerHTML = list.map(function (t) {
+        var urgent = (t.days || 0) > 16;
+        var todoTag = t.done
+          ? '<span class="tag green">已办理</span>'
+          : (t.unread ? '<span class="tag red">未读待办</span>' : '<span class="tag orange">待办理</span>');
+        var ops = t.done
+          ? '<span class="muted">完成于 ' + (t.doneAt || "—") + "</span>"
+          : '<div class="ops">' +
+              '<button class="btn primary" data-act="done" data-id="' + t.id + '">办理退仓</button>' +
+              (t.unread ? '<button class="btn" data-act="read" data-id="' + t.id + '">标已读</button>' : "") +
+            "</div>";
+        return "<tr id=\"row-" + t.id + "\">" +
+          "<td><b>" + t.waybill + "</b><div class=\"muted\">" + t.id + "</div></td>" +
+          "<td>" + t.lane + "</td>" +
+          "<td><span class=\"tag " + (t.status === "已签出" ? "blue" : "gold") + "\">" + t.status + "</span></td>" +
+          "<td colspan=\"2\" class=\"muted\">推送时间 " + (t.pushedAt || "—") + "</td>" +
+          "<td><b style=\"color:" + (urgent ? "#cf1322" : "#d46b08") + "\">" + t.days + "</b></td>" +
+          "<td><span class=\"tag " + (urgent ? "red" : "orange") + "\">" + t.ruleLabel + "</span></td>" +
+          "<td>" + todoTag + "</td>" +
+          "<td>" + ops + "</td>" +
+          "</tr>";
+      }).join("");
+      return;
+    }
+
+    tb.innerHTML = list.map(function (r) {
+      var rule = ruleOf(r);
+      var todo = todos[r.id];
+      var pushable = canPush(r);
+      var pushedOk = !!(todo && !todo.done);
+      var pushHtml;
+      if (!rule.hit) {
+        pushHtml = '<span class="tag gray">未命中</span>';
+      } else if (r.status === "已签出") {
+        pushHtml = '<span class="tag gray">仅财务看 · 不退仓</span>';
+      } else if (!todo) {
+        pushHtml = '<span class="tag orange">未推送</span><div class="muted">待代办通知</div>';
+      } else if (todo.done) {
+        pushHtml = '<span class="tag green">推送成功</span>' +
+          '<div class="muted">黄少飞已办理 · ' + (todo.doneAt || "") + "</div>";
+      } else {
+        pushHtml = '<span class="tag green">推送成功</span>' +
+          '<div class="muted">' +
+            (todo.unread ? "黄少飞未读" : "黄少飞待办中") +
+            " · " + (todo.pushedAt || "") +
+          "</div>";
+      }
+      var ops;
+      if (pushable && !pushedOk && !(todo && todo.done)) {
+        ops = '<div class="ops">' +
+            '<button class="btn primary" data-act="push-one" data-id="' + r.id + '">代办通知</button>' +
+          "</div>";
+      } else if (pushedOk || (todo && todo.done)) {
+        ops = '<div class="ops"><span class="push-ok-mark">' +
+          '<span class="tick">✓</span>' +
+          '<span>推送成功' +
+            (todo && todo.done
+              ? '<span class="sub">已办理 · ' + (todo.doneAt || "") + "</span>"
+              : '<span class="sub">' + (todo.pushedAt || "") + "</span>") +
+          "</span></span></div>";
+      } else if (rule.hit && r.status === "已签出") {
+        ops = '<span class="muted">—</span>';
+      } else {
+        ops = '<span class="muted">—</span>';
+      }
+      var rowCls = justPushedIds[r.id] ? " row-push-ok row-highlight" : "";
+      return "<tr id=\"row-" + r.id + "\" class=\"" + rowCls.trim() + "\" style=\"" + (rule.hit ? "" : "opacity:.55") + "\">" +
+        "<td><b>" + r.waybill + "</b></td>" +
+        "<td>" + r.lane + "</td>" +
+        "<td><span class=\"tag " + (r.status === "已签出" ? "blue" : "gold") + "\">" + r.status + "</span></td>" +
+        "<td>" + r.inAt + "</td>" +
+        "<td>" + r.outAt + "</td>" +
+        "<td><b style=\"color:" + (rule.hit ? (rule.level === "red" ? "#cf1322" : "#d46b08") : "#667085") + "\">" + r.days + "</b></td>" +
+        "<td><span class=\"tag " + rule.level + "\">" + rule.label + "</span></td>" +
+        "<td>" + pushHtml + "</td>" +
+        "<td>" + ops + "</td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function markJustPushed(ids) {
+    ids.forEach(function (id) { justPushedIds[id] = true; });
+    setTimeout(function () {
+      ids.forEach(function (id) { delete justPushedIds[id]; });
+      if (role === "finance") renderTable();
+    }, 2800);
+  }
+
+  function pushRows(rows, withToast) {
+    var ts = nowStr();
+    var count = 0;
+    var notified = [];
+    var okIds = [];
+    rows.forEach(function (r) {
+      if (!canPush(r)) return;
+      var existed = todos[r.id] && !todos[r.id].done;
+      ensureTodo(r, ts, true);
+      if (!existed || todos[r.id].unread) count += 1;
+      notified.push(todos[r.id]);
+      okIds.push(r.id);
+      if (withToast) deliverTodoNotify(todos[r.id], ruleOf(r).code === "other16");
+    });
+    saveTodos(todos);
+    if (okIds.length) markJustPushed(okIds);
+    renderBadges(true);
+    renderTable();
+    if (withToast && role === "finance" && notified.length) {
+      showFinanceTip("推送成功 " + notified.length + " 票 → 黄少飞代办（角标已更新）");
+    }
+    return count;
+  }
+
+  function setRole(next, skipFlush) {
+    var prev = role;
+    role = next;
+    document.body.setAttribute("data-role", role);
+    document.querySelectorAll(".role-tab").forEach(function (t) {
+      t.classList.toggle("active", t.getAttribute("data-role") === role);
+    });
+    document.getElementById("roleHint").textContent = role === "finance"
+      ? "财务：全量盯盘（已签+未签）；已签出不退仓；可标记未签出超期"
+      : "黄少飞：终配时弹「办理退仓」· 已配完舱不追代办（同询价文案）";
+    document.getElementById("huangBanner").classList.toggle("show", role === "huang");
+    syncChipActive();
+    renderTable();
+    if (!skipFlush && role === "huang" && prev !== "huang") flushPendingToasts();
+  }
+
+  document.querySelectorAll(".role-tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      setRole(tab.getAttribute("data-role"));
+    });
+  });
+
+  document.querySelectorAll(".chip[data-dim]").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      filterStatus = chip.getAttribute("data-f");
+      syncChipActive();
+      renderTable();
+    });
+  });
+
+  document.getElementById("btnSearch").addEventListener("click", function () {
+    searchQ = readSearchForm();
+    renderTable();
+  });
+  document.getElementById("btnResetSearch").addEventListener("click", function () {
+    searchQ = { waybill: "", product: "", inFrom: "", inTo: "", rule: "", push: "" };
+    applySearchForm(searchQ);
+    filterStatus = "all";
+    syncChipActive();
+    renderTable();
+  });
+  document.getElementById("qWaybill").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      searchQ = readSearchForm();
+      renderTable();
+    }
+  });
+
+  document.getElementById("btnPushAll").addEventListener("click", function () {
+    var rows = pushableRows();
+    if (!rows.length) {
+      logLine("[" + nowStr() + "] 无可推送：命中票中无<strong>未签出</strong>（已签出不推黄少飞）");
+      return;
+    }
+    var skipped = hitRows().length - rows.length;
+    var n = pushRows(rows, true);
+    logLine("[" + nowStr() + "] <strong>推送成功</strong>：一键代办通知未签出 <b>" + rows.length + "</b> 票 → 黄少飞（角标 +" + n + "）" +
+      (skipped ? " · 已签出 " + skipped + " 票跳过" : "") +
+      " · 列表已标「推送成功」", "ok");
+  });
+
+  document.getElementById("btnRefresh").addEventListener("click", function () {
+    // 微调演示天数，模拟每日更新
+    baseRows.forEach(function (r) {
+      if (r.id === "R08") r.days = 8.5;
+      else r.days = Math.round((r.days + 0.3) * 10) / 10;
+    });
+    logLine("[" + nowStr() + "] 模拟每日更新完成 · 重新计算超期天数");
+    renderTable();
+  });
+
+  document.getElementById("btnDemoToast").addEventListener("click", function () {
+    var pending = Object.keys(todos).map(function (k) { return todos[k]; }).filter(function (t) { return !t.done; });
+    if (!pending.length) {
+      var demo = pushableRows().slice(0, 1);
+      if (!demo.length) {
+        logLine("[" + nowStr() + "] 演示失败：没有未签出命中票可推");
+        return;
+      }
+      setRole("huang", true);
+      pushRows(demo, true);
+      logLine("[" + nowStr() + "] 演示：终配提醒 · 补 1 票未签出超期并弹出「办理退仓」");
+      return;
+    }
+    var t = pending[0];
+    t.unread = true;
+    saveTodos(todos);
+    renderBadges(true);
+    setRole("huang", true);
+    createToast(t, (t.days || 0) > 16);
+    logLine("[" + nowStr() + "] 演示终配提醒：运单 <b>" + t.waybill + "</b> · 已配完舱不另塞代办");
+  });
+
+  document.getElementById("btnMarkAllRead").addEventListener("click", function () {
+    Object.keys(todos).forEach(function (k) {
+      if (todos[k] && !todos[k].done) todos[k].unread = false;
+    });
+    saveTodos(todos);
+    renderBadges(false);
+    renderTable();
+  });
+
+  document.getElementById("btnOpenTodos").addEventListener("click", function () {
+    setRole("huang");
+    filterStatus = "not_out";
+    syncChipActive();
+    renderTable();
+  });
+
+  document.getElementById("tbody").addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    var act = btn.getAttribute("data-act");
+    var id = btn.getAttribute("data-id");
+
+    if (act === "push-one") {
+      var row = baseRows.find(function (r) { return r.id === id; });
+      if (!row) return;
+      if (!canPush(row)) {
+        logLine("[" + nowStr() + "] <strong>推送失败</strong>：<b>" + row.waybill + "</b> 为已签出/未命中，不推黄少飞", "fail");
+        return;
+      }
+      pushRows([row], true);
+      logLine("[" + nowStr() + "] <strong>推送成功</strong>：<b>" + row.waybill + "</b> 已代办通知黄少飞 · 操作列已标记", "ok");
+      return;
+    }
+    if (act === "read" && todos[id]) {
+      todos[id].unread = false;
+      saveTodos(todos);
+      renderBadges(false);
+      renderTable();
+      return;
+    }
+    if (act === "done" && todos[id]) {
+      todos[id].done = true;
+      todos[id].unread = false;
+      todos[id].doneAt = nowStr();
+      saveTodos(todos);
+      renderBadges(false);
+      renderTable();
+      logLine("[" + nowStr() + "] 黄少飞已办理退仓 <b>" + todos[id].waybill + "</b>");
+    }
+  });
+
+  // 首次进入：#huang 切黄少飞并弹出未读代办（同询价进列表收通知）
+  if (location.hash === "#huang") {
+    Object.keys(todos).forEach(function (k) {
+      if (todos[k] && !todos[k].done && todos[k].unread && pendingNotifyIds.indexOf(k) < 0) {
+        pendingNotifyIds.push(k);
+      }
+    });
+    setRole("huang");
+  } else {
+    setRole("finance");
+  }
+  renderBadges(false);
+  renderTable();
+})();
   </script>
 </body>
 </html>

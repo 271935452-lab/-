@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>账期 · 轨迹 · 财务签字清单（不重不漏）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --card: #fff; --line: #e5e7eb; --text: #111827; --sub: #6b7280;
+      --primary: #1677ff; --ok: #15803d; --warn: #c2410c; --danger: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px;
+    }
+    a { color: var(--primary); }
+    .page { max-width: 980px; margin: 0 auto; padding: 16px 14px 64px; }
+    .hero {
+      background: linear-gradient(135deg, #0f2744, #163b63); color: #fff;
+      border-radius: 8px; padding: 16px 18px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 20px; }
+    .hero p { margin: 0; font-size: 12px; line-height: 1.7; opacity: .95; }
+    .hero a { color: #fff; }
+    .meta {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0;
+    }
+    .meta .box {
+      background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+    }
+    .meta .k { font-size: 11px; color: var(--sub); }
+    .meta .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 8px; font-size: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    }
+    .card h3 { margin: 14px 0 8px; font-size: 13px; color: #334155; }
+    .rule {
+      margin: 0 0 10px; padding: 8px 10px; background: #fff7ed; border: 1px solid #fdba74;
+      border-radius: 6px; font-size: 12px; color: var(--warn); line-height: 1.65;
+    }
+    .ok {
+      margin: 0 0 10px; padding: 8px 10px; background: #f0fdf4; border: 1px solid #86efac;
+      border-radius: 6px; font-size: 12px; color: var(--ok); line-height: 1.65;
+    }
+    .danger {
+      margin: 0 0 10px; padding: 8px 10px; background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 6px; font-size: 12px; color: var(--danger); line-height: 1.65;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      border: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top;
+    }
+    th { background: #f8fafc; font-weight: 700; color: #475569; white-space: nowrap; }
+    .id { font-family: Consolas, "SF Mono", monospace; font-size: 11px; white-space: nowrap; }
+    .chk { width: 52px; text-align: center; }
+    .chk input { width: 16px; height: 16px; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 10px; font-weight: 700;
+    }
+    .tag.in { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag.out { background: #f5f5f5; color: #8c8c8c; border: 1px solid #d9d9d9; }
+    .tag.wait { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    tr.grp td {
+      background: #f1f5f9; font-weight: 700; color: #334155; font-size: 12px;
+      padding: 6px 8px; border-color: var(--line);
+    }
+    td ul { margin: 0; padding-left: 18px; }
+    td ul li { margin: 2px 0; line-height: 1.55; }
+    .sign {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;
+    }
+    .sign .cell {
+      border: 1px dashed #cbd5e1; border-radius: 6px; padding: 12px; min-height: 110px;
+    }
+    .sign .cell .lab { font-size: 12px; color: var(--sub); margin-bottom: 18px; }
+    .sign .cell .line { border-bottom: 1px solid #94a3b8; height: 28px; margin: 10px 0 6px; }
+    .sign .cell .hint { font-size: 11px; color: var(--sub); }
+    .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .toc a {
+      padding: 5px 10px; background: #fff; border: 1px solid var(--line);
+      border-radius: 6px; font-size: 12px; color: var(--text); text-decoration: none;
+    }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .page { max-width: none; padding: 0; }
+      .card, .hero, .meta .box { break-inside: avoid; box-shadow: none; }
+      .hero { background: #163b63 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    @media (max-width: 720px) {
+      .meta, .sign { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="no-print" data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei','PingFang SC',sans-serif">
+  <a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a>
+  · <a href="分析-模块导航.html" style="color:#fff;text-decoration:none">分析导航</a>
+  · <button type="button" onclick="window.print()" style="margin-left:8px;height:24px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:2px;cursor:pointer;font:inherit">打印 / 另存 PDF</button>
+</div>
+
+  <div class="page">
+    <section class="hero">
+      <h1>账期锁账 · 轨迹报表 · 财务签字清单</h1>
+      <p>
+        日期 <strong>2026-10-12</strong> ·
+        <a href="账期锁账时间规则-PRD.html">账期 PRD</a> ·
+        <a href="轨迹报表-PRD.html">轨迹 PRD</a>
+      </p>
+    </section>
+
+    <div class="meta">
+      <div class="box"><div class="k">编号</div><div class="v">FIN-SIGN-20261012</div></div>
+      <div class="box"><div class="k">范围</div><div class="v">账期 + 轨迹</div></div>
+      <div class="box"><div class="k">条数</div><div class="v">账期 6 · 轨迹 3</div></div>
+      <div class="box"><div class="k">版本</div><div class="v">V1.7</div></div>
+    </div>
+
+    <!-- ========== 账期 ========== -->
+    <section class="card" id="a-in">
+      <h2>A. 账期锁账</h2>
+      <table>
+        <thead>
+          <tr>
+            <th class="chk">确认</th>
+            <th style="width:72px">编号</th>
+            <th>功能点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">LOCK-01</td>
+            <td>客户账期 / 账期申请：确认签入、到港、签收可选，按对应签入 / 到港 / 签收时间起算（原有节点本期确认，不能停用）</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">LOCK-02</td>
+            <td>客户账期 / 账期申请：新增开船结；开船时间只认轨迹 <code>A00106</code> 第一次时间；无开船轨迹时标「异常待补」、先不算账期；按柜时取该柜开船时间</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">LOCK-03</td>
+            <td>结算周期：新增现结；当节点为签入 / 开船 / 到港 / 签收时，发生当天应结 / 锁账，无宽限天数</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">LOCK-04</td>
+            <td>结算周期：周结一律下周五 0 点（当天周五仍取下周五）；半月结 1–15 为当月 20/21/22/23 日 0 点（签入/开船/到港/签收），16–月末统一次月 5 日 0 点；月结 +30 取次月最后一天 0 点，+60 取隔月最后一天 0 点</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">LOCK-05</td>
+            <td>锁账时刻：截止日当天 0 点锁账；统一写「×日 0 点」，不写「×前」；时区中国</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">LOCK-06</td>
+            <td>改账期：整客户回刷；未核销 / 部分核销 / 已锁未完全核销按新账期重算；已完全核销 / 已结算不回刷；新单直接用新账期</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ========== 轨迹 ========== -->
+    <section class="card" id="c-in">
+      <h2>B. 轨迹报表</h2>
+      <table>
+        <thead>
+          <tr>
+            <th class="chk">确认</th>
+            <th style="width:72px">编号</th>
+            <th>功能点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">TRK-01</td>
+            <td>列表：新增卸船、到达交货地、还柜；取值分别为轨迹 <code>A00193</code> / <code>A00161</code> / <code>A00197</code> 第一次时间；无轨迹时为空，不强制报异常</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">TRK-02</td>
+            <td>列表：已签收必须有到港；已签收 / 全部签收 / 个别签收且到港为空时，标「缺到港」、进异常、行标红</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">TRK-03</td>
+            <td>列表 / 筛选：新增运单号多值搜索（换行 / 逗号 / 空格拆分）；新增开船时间、到港时间区间筛选；支持按货型、轨迹完整性筛选</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="sign">
+      <h2>C. 签字</h2>
+      <div class="sign">
+        <div class="cell">
+          <div class="lab">财务确认（签字）</div>
+          <div class="line"></div>
+          <div class="hint">姓名：____________　日期：____年__月__日</div>
+        </div>
+        <div class="cell">
+          <div class="lab">财务负责人（签字）</div>
+          <div class="line"></div>
+          <div class="hint">姓名：____________　日期：____年__月__日</div>
+        </div>
+      </div>
+    </section>
+
+    <p class="foot">FIN-SIGN-20261012 · V1.7 · 合计 9 条</p>
+  </div>
+</body>
+</html>

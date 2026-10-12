@@ -227,6 +227,15 @@
     .rule-box.warn {
       background: #fff7e6; border-color: #ffd591; color: #ad6800;
     }
+    .rule-box.danger {
+      background: #fff1f0; border-color: #ffa39e; color: #cf1322;
+    }
+    .return-warn-list { margin: 10px 0 0; padding: 0; list-style: none; }
+    .return-warn-list li {
+      padding: 8px 10px; margin-bottom: 6px; background: #fff;
+      border: 1px solid #ffccc7; border-radius: 2px; font-size: 13px; line-height: 1.55; color: #262626;
+    }
+    .return-warn-list li b { color: #cf1322; }
     .rule-links { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 12px; }
     .rule-links a { margin-right: 12px; }
     .mini {
@@ -457,65 +466,173 @@
     </div>
   </div>
 
+  <div class="mask" id="returnWarnMask">
+    <div class="modal wide" role="dialog" aria-labelledby="returnWarnTitle">
+      <div class="modal-hd" id="returnWarnTitle">超期未签出 · 退仓提醒</div>
+      <div class="modal-bd" id="returnWarnBody"></div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="returnWarnLater">稍后处理</button>
+        <button type="button" class="tool-btn" id="returnWarnOk" style="background:#cf1322">已知晓，继续登记</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
-  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-终配舱-MVP-PRD.html" data-prd-anchor="m-stow">
-    <span class="ess-prd-chip">PRD · 终配舱</span>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-终配舱-MVP-PRD.html" data-prd-anchor="m-return">
+    <span class="ess-prd-chip">PRD · 终配舱 · 退仓提醒</span>
   </div>
   <script src="../../二期/ess-prototype-prd.js?v=aidock1"></script>
   <script>
     (function () {
+      /** RISK-006：指定销售产品阈值 8 天，其余 16 天 */
+      var LANE8_KEYS = ["美森", "EXX", "T16", "以星"];
+      var returnWarnPending = null;
+
       var ROWS = [
         rec({ sn: 1, finalNo: "260820-青岛T25-1", bl: "ZIMUN0821040004", seal: "260820-45", ctn: "PPLU1219708",
           tickets: 2, pcs: 38, recv: 31.84, vol: 5335.6, plan: 6034, forecast: 31.12,
           product: "青岛T25", status: "已配舱", auto: true, merge: "MB-0820-QD", broker: "欣扬",
           waybills: ["ICBU00001221001", "ICBU00001221016"], master: "MSCU882104", sub: "QD-0820-1",
-          chan: "卡派", created: "2026-08-20" }),
+          chan: "卡派", created: "2026-08-20",
+          wbMeta: [
+            { no: "ICBU00001221001", inAt: "2026-08-10 09:12", checkedOut: true },
+            { no: "ICBU00001221016", inAt: "2026-08-11 14:00", checkedOut: true }
+          ] }),
         rec({ sn: 2, finalNo: "260820-青岛T25-2", bl: "ZIMUN0821040005", seal: "260820-46", ctn: "TEMU8872104",
           tickets: 1, pcs: 18, recv: 12.41, vol: 2104.2, plan: 2280, forecast: 12.08,
           product: "青岛T25", status: "已配舱", auto: true, merge: "MB-0820-QD", broker: "欣扬",
           waybills: ["ICBU00001221027"], master: "MSCU882105", sub: "QD-0820-2",
-          chan: "卡派", created: "2026-08-20" }),
+          chan: "卡派", created: "2026-08-20",
+          wbMeta: [{ no: "ICBU00001221027", inAt: "2026-08-12 10:00", checkedOut: true }] }),
         rec({ sn: 3, finalNo: "260820-青岛T25-3", bl: "ZIMUN0821040006", seal: "260820-47", ctn: "TCLU5562109",
           tickets: 1, pcs: 9, recv: 8.22, vol: 990.4, plan: 1040, forecast: 8.01,
           product: "青岛T25", status: "已配舱", auto: false, merge: "", broker: "赛因",
           waybills: ["ICBU00001221038"], master: "MSCU882106", sub: "QD-0820-3",
-          chan: "卡派", created: "2026-08-20" }),
+          chan: "卡派", created: "2026-08-20",
+          wbMeta: [{ no: "ICBU00001221038", inAt: "2026-08-15 08:40", checkedOut: true }] }),
         rec({ sn: 4, finalNo: "260825-T18卡派-1", bl: "EGLV142600118201", seal: "260825-12", ctn: "EGSU2219087",
           tickets: 2, pcs: 44, recv: 28.66, vol: 4102.0, plan: 4388, forecast: 28.10,
           product: "T18卡派", status: "已配舱", auto: true, merge: "MB-0825-T18", broker: "欣扬",
           waybills: ["TX-20260806-009", "TX-20260806-018"], master: "EGLV118201", sub: "T18-0825-1",
-          chan: "卡派", created: "2026-08-25" }),
+          chan: "卡派", created: "2026-08-25",
+          wbMeta: [
+            { no: "TX-20260806-009", inAt: "2026-08-18 11:00", checkedOut: true },
+            { no: "TX-20260806-018", inAt: "2026-08-19 09:20", checkedOut: true }
+          ] }),
         rec({ sn: 5, finalNo: "260821-美森MAX-1", bl: "MATS2608210018", seal: "260821-08", ctn: "MATU9082211",
           tickets: 1, pcs: 22, recv: 19.05, vol: 2801.3, plan: 3010, forecast: 18.88,
           product: "美森MAX海外仓自提", status: "已到达", auto: true, merge: "", broker: "中外运",
           waybills: ["FBA19DFXK542"], master: "MATS08210018", sub: "MAX-0821-1",
-          chan: "快递", created: "2026-08-21" }),
+          chan: "快递", created: "2026-08-21",
+          /* 演示：未签出且签入超 8 天 → 终配登记弹退仓提醒 */
+          wbMeta: [{ no: "FBA19DFXK542", inAt: "2026-09-30 11:00", checkedOut: false }] }),
         rec({ sn: 6, finalNo: "260822-青岛T25-1", bl: "COSU62608220011", seal: "260822-03", ctn: "CBHU3321904",
           tickets: 2, pcs: 26, recv: 16.40, vol: 1988.0, plan: 2102, forecast: 16.11,
           product: "青岛T25", status: "已发出", auto: false, merge: "MB-0822-NS", broker: "欣扬",
           waybills: ["ICBU00001222011", "ICBU00001222024"], master: "COSU08220011", sub: "NS-0822-1",
-          chan: "卡派", created: "2026-08-22" }),
+          chan: "卡派", created: "2026-08-22",
+          wbMeta: [
+            { no: "ICBU00001222011", inAt: "2026-09-20 13:45", checkedOut: false },
+            { no: "ICBU00001222024", inAt: "2026-09-22 08:00", checkedOut: true }
+          ] }),
         rec({ sn: 7, finalNo: "260823-T20卡派-1", bl: "ONEYSHA26082301", seal: "260823-19", ctn: "TGHU7712098",
           tickets: 1, pcs: 15, recv: 11.20, vol: 1560.0, plan: 1688, forecast: 10.95,
           product: "T20卡派全关达", status: "待装中", auto: true, merge: "MB-0823-TY", broker: "赛因",
           waybills: ["TX-20260813-021"], master: "ONEY082301", sub: "TY-0823-1",
-          chan: "卡派", created: "2026-08-23" }),
+          chan: "卡派", created: "2026-08-23",
+          wbMeta: [{ no: "TX-20260813-021", inAt: "2026-10-05 10:20", checkedOut: false }] }),
         rec({ sn: 8, finalNo: "260823-T20卡派-2", bl: "ONEYSHA26082302", seal: "260823-20", ctn: "FSCU4401987",
           tickets: 1, pcs: 12, recv: 9.08, vol: 1320.5, plan: 1402, forecast: 8.90,
           product: "T20卡派全关达", status: "待装中", auto: false, merge: "MB-0823-TY", broker: "赛因",
           waybills: ["TX-20260813-033"], master: "ONEY082302", sub: "TY-0823-2",
-          chan: "卡派", created: "2026-08-23" }),
+          chan: "卡派", created: "2026-08-23",
+          wbMeta: [{ no: "TX-20260813-033", inAt: "2026-09-22 07:50", checkedOut: false }] }),
         rec({ sn: 9, finalNo: "260824-中美卡派-1", bl: "HLCUXM226082401", seal: "260824-07", ctn: "HLXU1192084",
           tickets: 1, pcs: 8, recv: 6.55, vol: 880.0, plan: 920, forecast: 6.40,
           product: "中美卡派特价", status: "待出发", auto: true, merge: "", broker: "中外运",
           waybills: ["ICBU00001219002"], master: "HLCU082401", sub: "ZM-0824-1",
-          chan: "卡派", created: "2026-08-24" })
+          chan: "卡派", created: "2026-08-24",
+          wbMeta: [{ no: "ICBU00001219002", inAt: "2026-09-29 15:30", checkedOut: false }] }),
+        /* 演示终配登记：美森未签出超 8 天 */
+        rec({ sn: 10, finalNo: "261012-美森EXX-1", bl: "EXXU2610120001", seal: "261012-01", ctn: "EXXU8829101",
+          tickets: 1, pcs: 16, recv: 14.20, vol: 2100.0, plan: 2200, forecast: 14.00,
+          product: "美森EXX", status: "待出发", auto: false, merge: "", broker: "欣扬",
+          waybills: ["EXX-771203"], master: "EXXU1012001", sub: "EXX-1012-1",
+          chan: "卡派", created: "2026-10-12",
+          wbMeta: [{ no: "EXX-771203", inAt: "2026-09-30 11:00", checkedOut: false }] })
       ];
 
       function rec(o) {
         o.id = "c" + o.sn;
         o.mode = "海运";
+        if (!o.wbMeta) o.wbMeta = (o.waybills || []).map(function (n) {
+          return { no: n, inAt: o.created + " 10:00", checkedOut: true };
+        });
         return o;
+      }
+
+      function thresholdOf(product) {
+        var p = product || "";
+        for (var i = 0; i < LANE8_KEYS.length; i++) {
+          if (p.indexOf(LANE8_KEYS[i]) >= 0) return 8;
+        }
+        return 16;
+      }
+
+      function daysSince(inAt) {
+        var t = new Date(String(inAt).replace(/-/g, "/")).getTime();
+        if (!t) return 0;
+        return (Date.now() - t) / (24 * 3600 * 1000);
+      }
+
+      /** 未签出且签入超阈值 → 退仓提醒行 */
+      function overdueReturns(rows) {
+        var list = [];
+        (rows || []).forEach(function (r) {
+          var th = thresholdOf(r.product);
+          (r.wbMeta || []).forEach(function (w) {
+            if (w.checkedOut) return;
+            var d = daysSince(w.inAt);
+            if (d > th) {
+              list.push({
+                waybill: w.no,
+                product: r.product,
+                inAt: w.inAt,
+                days: Math.round(d * 10) / 10,
+                threshold: th,
+                finalNo: r.finalNo,
+                line: "运单：" + w.no + " · 销售产品：" + r.product +
+                  " · 签入时间大于" + th + "天，请及时办理退仓"
+              });
+            }
+          });
+        });
+        return list;
+      }
+
+      function showReturnWarn(hits, onContinue) {
+        if (!hits.length) {
+          if (onContinue) onContinue();
+          return;
+        }
+        returnWarnPending = onContinue || null;
+        document.getElementById("returnWarnBody").innerHTML =
+          '<div class="rule-box danger">终配舱<strong>登记</strong>时检出超期未签出（RISK-006）。文案固定如下，请及时办理退仓。</div>' +
+          '<ul class="return-warn-list">' +
+          hits.map(function (h) {
+            return "<li><b>" + h.line + "</b>" +
+              '<div style="margin-top:4px;font-size:11px;color:#8c8c8c">签入 ' + h.inAt +
+              " · 已超期 " + h.days + " 天 · 舱 " + h.finalNo + "</div></li>";
+          }).join("") +
+          "</ul>";
+        document.getElementById("returnWarnMask").className = "mask show";
+      }
+
+      function closeReturnWarn(go) {
+        document.getElementById("returnWarnMask").className = "mask";
+        var fn = returnWarnPending;
+        returnWarnPending = null;
+        if (go && fn) fn();
       }
 
       var checked = {};
@@ -805,9 +922,7 @@
         if (!list.length) { toast("请先勾选终配舱"); return; }
         openDetail(list[0]);
       };
-      document.getElementById("btnDone").onclick = function () {
-        var list = picked();
-        if (!list.length) { toast("请先勾选终配舱"); return; }
+      function proceedDone(list) {
         var splits = needSplitConfirm(list);
         if (!splits.length) { toast("配舱完成。已按船司×港口规则生成分单号；有调整则整组重算"); return; }
         var groups = {};
@@ -823,9 +938,37 @@
           }).join("") +
           "<label style='margin-top:8px'><input type='checkbox' checked disabled /> 我已知晓并确认承担分舱风险</label>";
         document.getElementById("splitMask").className = "mask show";
+      }
+
+      document.getElementById("btnDone").onclick = function () {
+        var list = picked();
+        if (!list.length) { toast("请先勾选终配舱"); return; }
+        var hits = overdueReturns(list);
+        showReturnWarn(hits, function () { proceedDone(list); });
       };
 
-      ["btnEnter", "btnExport", "btnList", "btnBind", "btnUnbind", "btnBarcode", "btnOut", "btnAttach"].forEach(function (id) {
+      /** 终配舱登记（录入数据）：超期未签出弹固定文案 */
+      document.getElementById("btnEnter").onclick = function () {
+        var list = picked();
+        if (!list.length) {
+          toast("请先勾选要登记的终配舱");
+          return;
+        }
+        var hits = overdueReturns(list);
+        showReturnWarn(hits, function () {
+          toast("登记继续（演示）· 已提示 " + hits.length + " 票退仓");
+        });
+      };
+
+      document.getElementById("returnWarnLater").onclick = function () {
+        closeReturnWarn(false);
+        toast("已稍后处理 · 退仓提醒保留");
+      };
+      document.getElementById("returnWarnOk").onclick = function () {
+        closeReturnWarn(true);
+      };
+
+      ["btnExport", "btnList", "btnBind", "btnUnbind", "btnBarcode", "btnOut", "btnAttach"].forEach(function (id) {
         document.getElementById(id).onclick = function () { toast("现网能力，本期原型不展开"); };
       });
 
