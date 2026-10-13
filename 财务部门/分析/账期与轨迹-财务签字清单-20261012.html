@@ -71,6 +71,15 @@
     }
     td ul { margin: 0; padding-left: 18px; }
     td ul li { margin: 2px 0; line-height: 1.55; }
+    .matrix-wrap { margin-top: 12px; overflow-x: auto; }
+    .matrix-wrap h3 { margin: 0 0 6px; font-size: 13px; color: #0f2744; }
+    .matrix-wrap .tip { margin: 0 0 8px; font-size: 12px; color: var(--sub); line-height: 1.55; }
+    table.matrix { font-size: 12px; min-width: 640px; }
+    table.matrix th { text-align: center; background: #eef4fa; color: #102a43; }
+    table.matrix td { text-align: center; vertical-align: middle; }
+    table.matrix td.term { text-align: left; font-weight: 700; background: #f8fafc; white-space: nowrap; }
+    table.matrix td.win { text-align: left; color: #475569; white-space: nowrap; }
+    table.matrix .hl { background: #f0fdf4; font-weight: 600; }
     .sign {
       display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;
     }
@@ -80,12 +89,36 @@
     .sign .cell .lab { font-size: 12px; color: var(--sub); margin-bottom: 18px; }
     .sign .cell .line { border-bottom: 1px solid #94a3b8; height: 28px; margin: 10px 0 6px; }
     .sign .cell .hint { font-size: 11px; color: var(--sub); }
+    .brief td:first-child { width: 110px; font-weight: 700; color: #334155; background: #f8fafc; white-space: nowrap; }
+    .brief td { line-height: 1.6; }
     .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
     .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .toc a {
       padding: 5px 10px; background: #fff; border: 1px solid var(--line);
       border-radius: 6px; font-size: 12px; color: var(--text); text-decoration: none;
     }
+    .hub-bar {
+      position: sticky; top: 0; z-index: 9999; background: #163b63; color: #fff;
+      padding: 7px 14px; font: 12px/1.4 "Microsoft YaHei", "PingFang SC", sans-serif;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+    }
+    .hub-bar a { color: #fff; text-decoration: none; }
+    .hub-bar a.strong { font-weight: 700; }
+    .hub-bar .btn-bar {
+      height: 26px; padding: 0 10px; border: 1px solid rgba(255,255,255,.55);
+      background: transparent; color: #fff; border-radius: 2px; cursor: pointer; font: inherit;
+    }
+    .hub-bar .btn-bar.primary {
+      background: #fff; color: #163b63; border-color: #fff; font-weight: 700;
+    }
+    .hub-bar .btn-bar:disabled { opacity: .55; cursor: wait; }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+      background: #0f2744; color: #fff; padding: 10px 16px; border-radius: 6px;
+      font-size: 13px; font-weight: 600; z-index: 10050; opacity: 0;
+      pointer-events: none; transition: opacity .2s ease; max-width: 90vw; text-align: center;
+    }
+    .toast.show { opacity: 1; }
     @media print {
       body { background: #fff; }
       .no-print { display: none !important; }
@@ -99,13 +132,16 @@
   </style>
 </head>
 <body>
-<div class="no-print" data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei','PingFang SC',sans-serif">
-  <a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a>
-  · <a href="分析-模块导航.html" style="color:#fff;text-decoration:none">分析导航</a>
-  · <button type="button" onclick="window.print()" style="margin-left:8px;height:24px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:2px;cursor:pointer;font:inherit">打印 / 另存 PDF</button>
+<div class="no-print hub-bar" data-fin-hub>
+  <a class="strong" href="../财务部门-模块导航.html">← 财务部门导航</a>
+  · <a href="分析-模块导航.html">分析导航</a>
+  <button type="button" class="btn-bar primary" id="btnCopyImg">复制图片</button>
+  <button type="button" class="btn-bar" id="btnDownloadImg">下载 PNG</button>
+  <button type="button" class="btn-bar" onclick="window.print()">打印 / 另存 PDF</button>
 </div>
+<div class="toast no-print" id="toast" role="status"></div>
 
-  <div class="page">
+  <div class="page" id="shot">
     <section class="hero">
       <h1>账期锁账 · 轨迹报表 · 财务签字清单</h1>
       <p>
@@ -119,8 +155,32 @@
       <div class="box"><div class="k">编号</div><div class="v">FIN-SIGN-20261012</div></div>
       <div class="box"><div class="k">范围</div><div class="v">账期 + 轨迹</div></div>
       <div class="box"><div class="k">条数</div><div class="v">账期 6 · 轨迹 3</div></div>
-      <div class="box"><div class="k">版本</div><div class="v">V1.7</div></div>
+      <div class="box"><div class="k">版本</div><div class="v">V2.2</div></div>
     </div>
+
+    <section class="card" id="brief">
+      <h2>〇、背景 · 目标 · 验收 · 变更</h2>
+      <table class="brief">
+        <tbody>
+          <tr>
+            <td>需求背景</td>
+            <td>账期锁账口径不统一（含开船结如何取时间、截止日怎么算）、轨迹报表缺卸船/交货地/还柜等列，财务对账与锁账口径需统一确认。</td>
+          </tr>
+          <tr>
+            <td>目标</td>
+            <td>本期把下方功能点与截止日对照表一次确认清楚，开发/验收按本清单执行，范围不重不漏。</td>
+          </tr>
+          <tr>
+            <td>验收标准</td>
+            <td>① 本清单勾选项全部实现；② 账期按对照表算出截止日，锁账=截止日当天 0 点；③ 开船结只认 A00106 第一次时间；④ 轨迹三列与筛选按 TRK 条验收；⑤ 口头补充不对抗本清单。</td>
+          </tr>
+          <tr>
+            <td>变更规则</td>
+            <td>签字后新增/修改范围须另开变更说明并重新确认；未勾选条目本期不做；本清单外需求不纳入本期验收。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
     <!-- ========== 账期 ========== -->
     <section class="card" id="a-in">
@@ -142,30 +202,114 @@
           <tr>
             <td class="chk"><input type="checkbox" /></td>
             <td class="id">LOCK-02</td>
-            <td>客户账期 / 账期申请：新增开船结；开船时间只认轨迹 <code>A00106</code> 第一次时间；无开船轨迹时标「异常待补」、先不算账期；按柜时取该柜开船时间</td>
+            <td>客户账期 / 账期申请：新增开船结；开船时间只认轨迹 <code>A00106</code> 第一次时间</td>
           </tr>
           <tr>
             <td class="chk"><input type="checkbox" /></td>
             <td class="id">LOCK-03</td>
-            <td>结算周期：新增现结；当节点为签入 / 开船 / 到港 / 签收时，发生当天应结 / 锁账，无宽限天数</td>
+            <td>结算周期应结截止日：按下表默认值执行（勾选本条 = 同意下表口径）；表中「号数 / +N 天数」支持后续配置调整（见 LOCK-06）</td>
           </tr>
           <tr>
             <td class="chk"><input type="checkbox" /></td>
             <td class="id">LOCK-04</td>
-            <td>结算周期：周结一律下周五 0 点（当天周五仍取下周五）；半月结 1–15 为当月 20/21/22/23 日 0 点（签入/开船/到港/签收），16–月末统一次月 5 日 0 点；月结 +30 取次月最后一天 0 点，+60 取隔月最后一天 0 点</td>
+            <td>锁账时刻：截止日当天 0 点锁账；时区中国</td>
           </tr>
           <tr>
             <td class="chk"><input type="checkbox" /></td>
             <td class="id">LOCK-05</td>
-            <td>锁账时刻：截止日当天 0 点锁账；统一写「×日 0 点」，不写「×前」；时区中国</td>
+            <td>改账期：整客户回刷；未核销 / 部分核销 / 已锁未完全核销按新账期重算；已完全核销 / 已结算不回刷；新单直接用新账期</td>
           </tr>
           <tr>
             <td class="chk"><input type="checkbox" /></td>
             <td class="id">LOCK-06</td>
-            <td>改账期：整客户回刷；未核销 / 部分核销 / 已锁未完全核销按新账期重算；已完全核销 / 已结算不回刷；新单直接用新账期</td>
+            <td>截止日「后面的时间」可配置调整：半月结上半月各节点号（默认 20/21/22/23）、下半月次月号（默认 5）、月结 +5/+10/+15/+25 的次月固定号、+45 在月末后再加的天数（默认 +15）均可改；改后对新单生效，历史按改账期回刷规则</td>
           </tr>
         </tbody>
       </table>
+
+      <div class="matrix-wrap">
+        <h3>应结截止日对照表 <span class="tag in">本期确认 · 财务看这张</span></h3>
+        <p class="tip">
+          横轴 = 账期节点（签入 / 开船 / 到港 / 签收）；纵轴 = 结算周期。<br>
+          查出「节点发生时间」后，按下表找截止日；锁账 = 截止日当天 0 点（见 LOCK-04）。周结当天已是周五，仍取下周五。<br>
+          下表号数为<strong>默认值</strong>，支持配置调整（LOCK-06）。
+        </p>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>结算周期</th>
+              <th>节点落在</th>
+              <th>签入</th>
+              <th>开船</th>
+              <th>到港</th>
+              <th>签收</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="term">周结</td>
+              <td class="win">—</td>
+              <td class="hl">下周五 0 点</td>
+              <td class="hl">下周五 0 点</td>
+              <td class="hl">下周五 0 点</td>
+              <td class="hl">下周五 0 点</td>
+            </tr>
+            <tr>
+              <td class="term" rowspan="2">半月结</td>
+              <td class="win">1–15（上半月）</td>
+              <td class="hl">当月 20 日 0 点</td>
+              <td class="hl">当月 21 日 0 点</td>
+              <td class="hl">当月 22 日 0 点</td>
+              <td class="hl">当月 23 日 0 点</td>
+            </tr>
+            <tr>
+              <td class="win">16–月末（下半月）</td>
+              <td class="hl">次月 5 日 0 点</td>
+              <td class="hl">次月 5 日 0 点</td>
+              <td class="hl">次月 5 日 0 点</td>
+              <td class="hl">次月 5 日 0 点</td>
+            </tr>
+            <tr>
+              <td class="term">月结</td>
+              <td class="win">—</td>
+              <td class="hl">次月最后一天 0 点</td>
+              <td class="hl">次月最后一天 0 点</td>
+              <td class="hl">次月最后一天 0 点</td>
+              <td class="hl">次月最后一天 0 点</td>
+            </tr>
+            <tr>
+              <td class="term">月结 +30</td>
+              <td class="win">—</td>
+              <td class="hl">次月最后一天 0 点</td>
+              <td class="hl">次月最后一天 0 点</td>
+              <td class="hl">次月最后一天 0 点</td>
+              <td class="hl">次月最后一天 0 点</td>
+            </tr>
+            <tr>
+              <td class="term">月结 +45</td>
+              <td class="win">—</td>
+              <td class="hl">次月最后一天 +15 天 0 点</td>
+              <td class="hl">次月最后一天 +15 天 0 点</td>
+              <td class="hl">次月最后一天 +15 天 0 点</td>
+              <td class="hl">次月最后一天 +15 天 0 点</td>
+            </tr>
+            <tr>
+              <td class="term">月结 +60</td>
+              <td class="win">—</td>
+              <td class="hl">隔月最后一天 0 点</td>
+              <td class="hl">隔月最后一天 0 点</td>
+              <td class="hl">隔月最后一天 0 点</td>
+              <td class="hl">隔月最后一天 0 点</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="tip" style="margin-top:8px">
+          「次月」= 节点发生月的下一个月；「隔月」= 再往后一个月。<br>
+          <strong>月结 / +30 / +60：</strong>一律取目标月<strong>最后一天</strong>结算，不固定写 30 / 60 号。<br>
+          <strong>+45：</strong>先卡<strong>次月最后一天</strong>，再 <strong>+15 天</strong>（+15 可配置）；例如 1/20 → 次月末 2/28 → +15 = 3/15。<br>
+          其他固定号月结（+5 / +10 / +15 / +25）默认取次月对应号，号数可配置（LOCK-06）。
+        </p>
+      </div>
     </section>
 
     <!-- ========== 轨迹 ========== -->
@@ -193,29 +337,129 @@
           <tr>
             <td class="chk"><input type="checkbox" /></td>
             <td class="id">TRK-03</td>
-            <td>列表 / 筛选：新增运单号多值搜索（换行 / 逗号 / 空格拆分）；新增开船时间、到港时间区间筛选；支持按货型、轨迹完整性筛选</td>
+            <td>列表 / 筛选：新增运单号多值搜索（换行 / 逗号 / 空格拆分）；新增开船时间、到港时间区间筛选；支持按货型筛选</td>
           </tr>
         </tbody>
       </table>
     </section>
 
     <section class="card" id="sign">
-      <h2>C. 签字</h2>
-      <div class="sign">
-        <div class="cell">
-          <div class="lab">财务确认（签字）</div>
-          <div class="line"></div>
-          <div class="hint">姓名：____________　日期：____年__月__日</div>
-        </div>
-        <div class="cell">
-          <div class="lab">财务负责人（签字）</div>
-          <div class="line"></div>
-          <div class="hint">姓名：____________　日期：____年__月__日</div>
-        </div>
-      </div>
+      <h2>C. 确认人 · 确认时间</h2>
+      <table class="brief" style="margin-bottom:12px">
+        <thead>
+          <tr><th>角色</th><th>确认人（签字）</th><th>确认时间</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>财务确认</td>
+            <td style="height:36px"></td>
+            <td>____年__月__日</td>
+          </tr>
+          <tr>
+            <td>财务负责人</td>
+            <td style="height:36px"></td>
+            <td>____年__月__日</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin:0;font-size:12px;color:var(--sub)">签字即确认：已阅读〇/A/B；同意勾选功能点与截止日对照表进入开发与验收。</p>
     </section>
 
-    <p class="foot">FIN-SIGN-20261012 · V1.7 · 合计 9 条</p>
+    <p class="foot">FIN-SIGN-20261012 · V2.2 · 合计 9 条 · 含截止日对照表 · 月结/+30/+60 月末 · +45=月末+15 · 号数可调</p>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+  (function () {
+    var shot = document.getElementById("shot");
+    var btnCopy = document.getElementById("btnCopyImg");
+    var btnDl = document.getElementById("btnDownloadImg");
+    var toast = document.getElementById("toast");
+    var toastTimer = null;
+    var FILE = "账期轨迹-财务签字清单-20261012.png";
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2600);
+    }
+
+    function capturePngBlob() {
+      if (typeof html2canvas !== "function") {
+        return Promise.reject(new Error("截图库未加载，请检查网络后刷新"));
+      }
+      return html2canvas(shot, {
+        backgroundColor: "#f5f7fb",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        scrollX: 0,
+        scrollY: -window.scrollY
+      }).then(function (canvas) {
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob);
+            else reject(new Error("生成图片失败"));
+          }, "image/png");
+        });
+      });
+    }
+
+    function downloadBlob(blob, filename) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename || FILE;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function setBusy(busy) {
+      btnCopy.disabled = busy;
+      btnDl.disabled = busy;
+      btnCopy.textContent = busy ? "生成中…" : "复制图片";
+    }
+
+    function copyImage() {
+      setBusy(true);
+      capturePngBlob().then(function (blob) {
+        if (navigator.clipboard && window.ClipboardItem) {
+          return navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob })
+          ]).then(function () {
+            showToast("已复制图片，可直接粘贴到微信/飞书");
+          }).catch(function () {
+            downloadBlob(blob, FILE);
+            showToast("当前环境无法写剪贴板，已改为下载 PNG");
+          });
+        }
+        downloadBlob(blob, FILE);
+        showToast("浏览器不支持复制图片，已下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "复制失败，请用下载或手动截图");
+      }).finally(function () {
+        setBusy(false);
+      });
+    }
+
+    function downloadImage() {
+      setBusy(true);
+      capturePngBlob().then(function (blob) {
+        downloadBlob(blob, FILE);
+        showToast("已开始下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "下载失败");
+      }).finally(function () {
+        setBusy(false);
+      });
+    }
+
+    btnCopy.addEventListener("click", copyImage);
+    btnDl.addEventListener("click", downloadImage);
+  })();
+  </script>
 </body>
 </html>

@@ -97,7 +97,8 @@
         <div class="f"><label>客户名称</label><input placeholder="支持模糊" /></div>
         <div class="f"><label>客户等级</label><select><option>全部</option><option>直客</option><option>同行</option></select></div>
         <div class="f"><label>客户类型</label><select><option>全部</option></select></div>
-        <div class="f"><label>结算周期 <span class="mk mk-chg">改</span></label><select><option>全部</option><option>现结</option><option>周结</option><option>半月结</option><option>月结</option><option>开船</option><option>到港</option><option>签收</option><option>到货</option></select></div>
+        <div class="f"><label>结算周期 <span class="mk mk-chg">改</span></label><select><option>全部</option><option>现结</option><option>周结</option><option>半月结</option><option>月结</option></select></div>
+        <div class="f"><label>账期节点</label><select><option>全部</option><option>签入</option><option>开船</option><option>到港</option><option>签收</option><option>到货</option></select></div>
         <div class="f"><label>所属业务员</label><select><option>全部</option></select></div>
         <div class="f"><label>开户状态</label><select><option>全部</option><option>已开户</option><option>未开户</option></select></div>
         <div class="f"><label>合同状态 <span class="mk mk-chg">改</span></label><select><option>全部</option><option>已签订</option><option>未签订</option><option>即将到期</option><option>已到期</option></select></div>
@@ -312,7 +313,7 @@
         <div class="item"><h4>23. 申请代码与风险保险 <span class="mk mk-new">新</span></h4>新增客户先申请代码再购买；一客一申请代码。国外客户风险保险逐条新增；国内客户支持模板导入。</div>
         <div class="item"><h4>1–3. 中信保 <span class="mk mk-new">新</span></h4>字段：是否购买中信保、中信保代码、需购标记（是/否）。有欠款+有合同 → 需购标记=是 → 按接口推送生成/获取代码（成功/失败）。按月批次推送费用；杂费用原运单号-1/-2 投保。</div>
         <div class="item"><h4>4. 合同提醒 <span class="mk mk-chg">改</span></h4>合同到期提醒业务员；识别未签合同客户（列表页签 + 催办）。</div>
-        <div class="item"><h4>5. 账期维度 <span class="mk mk-chg">改</span></h4>结算周期新增<strong>现结</strong>（节点发生日 0点，无 +N 宽限）。账期节点增加开船、到港、签收、到货；其中开船/到港按柜批次计算。<strong>开船结唯一口径：</strong>开船日 = 轨迹 <code>A00106</code> 第一次发生时间（10/12 已确认，不得用 ETD/预计开船顶替）。截止日用语统一为「× 0点」（不再写「×前」）。</div>
+        <div class="item"><h4>5. 账期维度 <span class="mk mk-chg">改</span></h4>结算周期新增<strong>现结</strong>（<strong>仅签入现结</strong>，签入发生日 0点，无 +N；无开船/到港/签收现结）。账期节点另增开船、到港、签收、到货（用于周结/半月结/月结等）；开船/到港按柜批次。<strong>开船结唯一口径：</strong>开船日 = 轨迹 <code>A00106</code> 第一次发生时间（10/12 已确认，不得用 ETD/预计开船顶替）。截止日用语统一为「× 0点」（不再写「×前」）。</div>
         <div class="item"><h4>单向关联反查 <span class="mk mk-new">新</span></h4>客户管理单向关联增加「被关联客户」列：本客户被哪些客户关联，便于反查关联关系；「关联客户」为正向关联对象。</div>
         <div class="item"><h4>6. 账期申请线上化 <span class="mk mk-new">新</span><span class="mk mk-chg">改</span></h4>
           · 取数增加 <b>毛利</b>、<b>平均计费重</b>；近 3 个月主营营业额 + 到货平均回款天数仍出系统结论。<br>
@@ -509,21 +510,45 @@
 
     function openTerms(){
       openModal('账期维度设置 <span class="mk mk-chg">改</span>',`
-        <div class="hint" style="margin-bottom:10px">结算周期新增<strong>现结</strong>（四节点「节点发生日 0点」，无宽限）。账期节点：开船、到港、签收、到货。其中<strong>开船 / 到港按柜批次</strong>计算。<strong>开船结</strong>开船日<strong>仅</strong>取轨迹 <code>A00106</code> 第一次发生时间（10/12 已确认，不得用 ETD/预计开船顶替）。截止日统一写「× 0点」。</div>
-          <div class="fi" style="margin-bottom:10px"><label>结算周期</label><select><option>现结</option><option>周结</option><option>半月结</option><option selected>月结 +N</option></select></div>
+        <div class="hint" style="margin-bottom:10px">结算周期新增<strong>现结</strong>：<strong>只有签入现结</strong>（签入发生日 0点，无宽限）；无开船/到港/签收现结。选现结时账期节点固定为<strong>签入</strong>。其他周期可用节点：开船、到港、签收、到货；其中<strong>开船 / 到港按柜批次</strong>。<strong>开船结</strong>开船日<strong>仅</strong>取轨迹 <code>A00106</code> 第一次发生时间（10/12 已确认）。截止日统一写「× 0点」。</div>
+          <div class="fi" style="margin-bottom:10px"><label>结算周期</label><select id="termsCycle"><option>现结</option><option>周结</option><option>半月结</option><option selected>月结 +N</option></select></div>
         <table class="mini"><thead><tr><th>维度</th><th>计算口径</th><th>标记</th><th>示例</th></tr></thead><tbody>
-          <tr><td>开船</td><td>按柜批次起算；开船结 = 轨迹 <code>A00106</code> 第一次发生时间（唯一）</td><td><span class="mk mk-chg">改</span></td><td>柜 CONT-***001 开船日 + N 天</td></tr>
-          <tr><td>到港</td><td>按柜批次起算账期</td><td><span class="mk mk-chg">改</span></td><td>柜 CONT-***001 到港日 + N 天</td></tr>
-          <tr><td>签收</td><td>按签收时间</td><td><span class="mk mk-new">新</span></td><td>POD 签收日 + N 天</td></tr>
-          <tr><td>到货</td><td>按到货时间</td><td><span class="mk mk-new">新</span></td><td>到货日 + N 天</td></tr>
+          <tr><td>签入</td><td>现结唯一可用节点；签入发生日 0点（无 +N）</td><td><span class="mk mk-new">新 · 现结</span></td><td>签入当日应结</td></tr>
+          <tr><td>开船</td><td>按柜批次起算；开船结 = 轨迹 <code>A00106</code> 第一次发生时间（唯一）；不用于现结</td><td><span class="mk mk-chg">改</span></td><td>柜 CONT-***001 开船日 + N 天</td></tr>
+          <tr><td>到港</td><td>按柜批次起算账期；不用于现结</td><td><span class="mk mk-chg">改</span></td><td>柜 CONT-***001 到港日 + N 天</td></tr>
+          <tr><td>签收</td><td>按签收时间；不用于现结</td><td><span class="mk mk-new">新</span></td><td>POD 签收日 + N 天</td></tr>
+          <tr><td>到货</td><td>按到货时间；不用于现结</td><td><span class="mk mk-new">新</span></td><td>到货日 + N 天</td></tr>
         </tbody></table>
         <div class="sec">当前客户试算</div>
         <div class="grid3">
           <div class="fi"><label>客户</label><input value="TX00558" readonly /></div>
-          <div class="fi"><label>选用维度</label><select><option>开船</option><option>到港</option><option>签收</option><option>到货</option></select></div>
-          <div class="fi"><label>账期天数</label><input value="30" /></div>
+          <div class="fi"><label>选用维度</label><select id="termsNode"><option>签入</option><option>开船</option><option>到港</option><option>签收</option><option>到货</option></select></div>
+          <div class="fi"><label>账期天数</label><input id="termsDays" value="30" /></div>
         </div>
+        <p class="hint" id="termsCashTip" style="display:none;margin-top:8px">当前为<strong>现结</strong>：账期节点已固定为<strong>签入</strong>，无宽限天数；不可选开船/到港/签收。</p>
       `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('账期维度已保存（演示）');closeModal()">保存</button>`);
+      syncTermsCashOnly();
+      const cycleEl=document.getElementById('termsCycle');
+      if(cycleEl) cycleEl.addEventListener('change', syncTermsCashOnly);
+    }
+
+    /** 现结 = 仅签入节点，无其他节点 */
+    function syncTermsCashOnly(){
+      const c=document.getElementById('termsCycle');
+      const n=document.getElementById('termsNode');
+      const d=document.getElementById('termsDays');
+      const tip=document.getElementById('termsCashTip');
+      const cash=c && c.value==='现结';
+      if(tip) tip.style.display=cash?'block':'none';
+      if(n){
+        if(cash) n.value='签入';
+        n.disabled=!!cash;
+        Array.from(n.options).forEach(o=>{ o.disabled=cash && o.value!=='签入'; });
+      }
+      if(d){
+        if(cash){ d.value='0'; d.disabled=true; }
+        else { if(d.value==='0') d.value='30'; d.disabled=false; }
+      }
     }
 
     /** 账期申请演示数据 */
@@ -705,7 +730,22 @@
         <div class="sec">申请内容</div>
         <div class="grid2">
           <div class="fi"><label class="req">申请账期维度</label>
-            <select id="applyDim"><option ${defaultTerms.includes('现结')?'selected':''}>现结</option><option ${!defaultTerms.includes('现结')&&defaultTerms.includes('月结')?'selected':''}>月结</option><option>周结</option><option>半月结</option><option>到货</option><option>开船</option><option>到港</option><option>签收</option></select>
+            <select id="applyDim" onchange="syncApplyDimCash()">
+              <option value="现结" ${defaultTerms.includes('现结')?'selected':''}>现结（仅签入）</option>
+              <option value="月结" ${!defaultTerms.includes('现结')&&defaultTerms.includes('月结')?'selected':''}>月结</option>
+              <option value="周结">周结</option>
+              <option value="半月结">半月结</option>
+            </select>
+          </div>
+          <div class="fi"><label class="req">账期节点</label>
+            <select id="applyNode">
+              <option value="签入">签入</option>
+              <option value="开船">开船</option>
+              <option value="到港">到港</option>
+              <option value="签收">签收</option>
+              <option value="到货">到货</option>
+            </select>
+            <div class="hint" id="applyCashHint" style="display:none">现结仅支持<strong>签入</strong>，不可选其他节点</div>
           </div>
           <div class="fi"><label class="req">申请账期</label>
             <select id="applyTerms" onchange="refreshTermsRoute()">
@@ -746,7 +786,21 @@
         true);
       window.__termsLevel=d.level;
       syncNonMainLimit();
+      syncApplyDimCash();
       refreshTermsRoute();
+    }
+
+    /** 申请单：现结 → 节点固定签入 */
+    function syncApplyDimCash(){
+      const dim=document.getElementById('applyDim');
+      const node=document.getElementById('applyNode');
+      const hint=document.getElementById('applyCashHint');
+      if(!dim||!node) return;
+      const cash=dim.value==='现结';
+      if(hint) hint.style.display=cash?'block':'none';
+      if(cash) node.value='签入';
+      node.disabled=!!cash;
+      Array.from(node.options).forEach(o=>{ o.disabled=cash && o.value!=='签入'; });
     }
 
     function refreshTermsRoute(){
