@@ -204,6 +204,26 @@
     .map-note b { color: #003eb3; }
     .hidden { display: none !important; }
 
+    .audit-bar {
+      display: none; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+      margin: 0 0 12px; padding: 10px 12px;
+      background: #fff7e6; border: 1px solid #ffd591; border-radius: 4px;
+    }
+    body.audit .audit-bar { display: flex; }
+    body.audit .page-bar .ttl::after {
+      content: " · 财务审核"; color: #d46b08; font-weight: 700; font-size: 13px;
+    }
+    .audit-bar .txt { flex: 1; min-width: 220px; font-size: 12px; color: #614700; line-height: 1.55; }
+    .audit-bar .txt b { color: #ad6800; }
+    .audit-bar .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+    .audit-bar .btn.ok { background: #1677ff; border-color: #1677ff; color: #fff; font-weight: 600; }
+    .audit-bar .btn.danger { border-color: #ffa39e; color: #cf1322; background: #fff1f0; }
+    .risk-pill {
+      display: none; margin-top: 4px; padding: 4px 8px; border-radius: 2px;
+      background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; font-size: 12px;
+    }
+    body.audit.risk .risk-pill { display: inline-block; }
+
     @media (max-width: 900px) {
       .party, .seller { grid-template-columns: 24px 1fr; }
       .party .vlabel:nth-child(3), .party .block:nth-child(4),
@@ -216,6 +236,8 @@
   </style>
 </head>
 <body>
+<div data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei','PingFang SC',sans-serif"><a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a></div>
+
   <div class="page-bar">
     <span class="ttl">数电普票（电子）· 模版预览</span>
     <span class="muted">对齐税务开票界面 · 演示映射，非正式开票</span>
@@ -226,6 +248,18 @@
   </div>
 
   <div class="wrap">
+    <div class="audit-bar" id="auditBar">
+      <div class="txt">
+        <b>财务审核 · 税务发票模式</b>：请按下方数电普票界面核对购买方、明细金额/税率、备注；货物运输还需核「特定信息」各段车牌 / 起运地 / 目的地 / 品名。
+        <div class="risk-pill" id="riskPill">抬头风险提示（不阻断）：直客间同一抬头 / 关联，事后核查；可催办加急。</div>
+      </div>
+      <div class="acts">
+        <button type="button" class="btn" onclick="auditAction('urge')">催办加急</button>
+        <button type="button" class="btn danger" onclick="auditAction('reject')">打回业务补充</button>
+        <button type="button" class="btn ok" id="btnAuditPass" onclick="auditAction('pass')">财务审核通过</button>
+      </div>
+    </div>
+
     <div class="inv-toolbar">
       <button type="button" class="tb">含税</button>
       <button type="button" class="tb">清单</button>
@@ -635,7 +669,40 @@
     function setMode(m) { applyMode(m, true); }
     function onBizChange() { applyMode(document.getElementById("bizType").value, true); }
 
-    // URL: ?mode=cargo|normal&amount=&title=&remark=&order=&legs=&plate=&origin=&dest=&goods=&empty=1
+    let auditCtx = { on: false, risk: false, appNo: "", title: "", amount: "", feeType: "" };
+
+    function auditAction(action) {
+      if (!auditCtx.on) return;
+      const payload = {
+        type: "invoice-audit",
+        action,
+        appNo: auditCtx.appNo,
+        title: auditCtx.title || document.getElementById("buyerName").value,
+        amount: auditCtx.amount || ("CNY " + (document.getElementById("sumAmt").textContent || "0")),
+        feeType: auditCtx.feeType || (mode === "cargo" ? "国内拖车" : "国内报关")
+      };
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage(payload, "*");
+        if (action === "pass" || action === "reject") {
+          notify(action === "pass" ? "已审核通过，正在返回工作台…" : "已打回业务补充");
+          setTimeout(() => { try { window.close(); } catch (e) {} }, 400);
+        } else {
+          notify("已催办加急（演示）");
+        }
+        return;
+      }
+      if (action === "pass") {
+        location.href = "财务开票-拖车费-MVP.html?auditPass=" + encodeURIComponent(auditCtx.appNo)
+          + "&title=" + encodeURIComponent(payload.title)
+          + "&amount=" + encodeURIComponent(payload.amount)
+          + "&fee=" + encodeURIComponent(payload.feeType)
+          + "#audit";
+        return;
+      }
+      notify(action === "reject" ? "已打回业务员补充资料（演示）" : "已催办加急（演示）");
+    }
+
+    // URL: ?mode=cargo|normal&amount=&title=&remark=&order=&legs=&plate=&origin=&dest=&goods=&empty=1&audit=1&risk=1
     // legs = 段|车牌|起运地|到达地|货名;段|…（多段写入特定信息-货物运输）
     (function init() {
       const q = new URLSearchParams(location.search);
@@ -680,6 +747,38 @@
           }];
           renderCargo();
         }
+      }
+
+      if (q.get("audit") === "1") {
+        auditCtx = {
+          on: true,
+          risk: q.get("risk") === "1",
+          appNo: q.get("order") || "",
+          title: q.get("title") || "",
+          amount: q.get("amount") ? ("CNY " + Number(q.get("amount")).toLocaleString("en-US", { minimumFractionDigits: 2 })) : "",
+          feeType: m === "cargo" ? "国内拖车" : "国内报关"
+        };
+        document.body.classList.add("audit");
+        if (auditCtx.risk) document.body.classList.add("risk");
+        document.title = "财务审核 · 税务发票模式 · " + (auditCtx.appNo || "数电普票");
+        const muted = document.querySelector(".page-bar .muted");
+        if (muted) muted.textContent = "财务在数电普票界面审核 · 通过后回工作台导出";
+        const back = document.querySelector(".page-bar a.btn.ghost");
+        if (back) back.textContent = "← 返回待审列表";
+        const btn = document.getElementById("btnSubmit");
+        if (btn) {
+          btn.textContent = "财务审核通过";
+          btn.disabled = false;
+          btn.onclick = function () { auditAction("pass"); };
+        }
+        document.getElementById("mapNote").innerHTML =
+          `<b>审核口径：</b>本页即税务发票模式。核对购买方=发票抬头；明细=费用类型+税率+金额；` +
+          (m === "cargo"
+            ? "特定信息=提货/拖车/调拨各段车牌、起运地、目的地、品名（合开一张）。"
+            : "备注含报关单号「、」拼接。") +
+          ` 申请单号 <b>${auditCtx.appNo || "—"}</b>` +
+          (q.get("customer") ? ` · 客户 <b>${q.get("customer")}</b>` : "") +
+          `。<br>通过 → 进入「开票申请 / 税务导出」；打回 → 业务员补资料。风控提示不阻断。`;
       }
     })();
   </script>

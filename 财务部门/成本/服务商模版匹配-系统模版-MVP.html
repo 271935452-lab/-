@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>服务商智能账单解析与费用映射配置（MVP）</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --panel2: #f8fafc;
+      --border: #e5e7eb;
+      --text: #1f2937;
+      --sub: #6b7280;
+      --accent: #0f766e;
+      --accent-dim: rgba(15, 118, 110, 0.08);
+      --blue: #2563eb;
+      --orange: #d97706;
+      --green: #059669;
+      --purple: #7c3aed;
+      --mono: "Cascadia Code", "Consolas", "Microsoft YaHei Mono", monospace;
+      --surface: #ffffff;
+      --input: #ffffff;
+      --muted-bg: #f3f4f6;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100vh;
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      font-size: 12px; color: var(--text); background: var(--bg);
+    }
+    button, input, select { font: inherit; }
+    .tm-app { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .tm-topbar {
+      height: 44px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+    .tm-topbar h1 {
+      margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .tm-topbar h1 span { color: var(--accent); font-weight: 700; }
+    .tm-topbar-actions { display: flex; gap: 6px; align-items: center; }
+    .tm-btn {
+      height: 28px; padding: 0 12px; border-radius: 4px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--panel2); color: var(--text);
+      font-size: 12px;
+    }
+    .tm-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .tm-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .tm-btn.primary:hover { filter: brightness(1.06); color: #fff; }
+    .tm-status {
+      font-size: 11px; color: var(--sub); padding: 0 8px;
+      border-left: 1px solid var(--border); margin-left: 4px;
+    }
+    .tm-status em { color: var(--green); font-style: normal; }
+
+    .tm-body { flex: 1; display: grid; grid-template-columns: 280px 1fr 320px; min-height: 0; }
+
+    .tm-panel {
+      display: flex; flex-direction: column; min-height: 0;
+      border-right: 1px solid var(--border); background: var(--panel);
+    }
+    .tm-panel:last-child { border-right: none; }
+    .tm-panel-head {
+      padding: 10px 12px 8px; border-bottom: 1px solid var(--border);
+      background: var(--panel2);
+    }
+    .tm-panel-head .label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      color: var(--accent); text-transform: uppercase;
+    }
+    .tm-panel-head h2 { margin: 4px 0 0; font-size: 13px; font-weight: 600; }
+
+    .tm-field { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .tm-field label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+    .tm-field select, .tm-field input[type="text"] {
+      width: 100%; height: 28px; border-radius: 4px;
+      border: 1px solid var(--border); background: var(--input); color: var(--text);
+      padding: 0 8px; font-size: 12px;
+    }
+    .tm-upload {
+      display: flex; align-items: center; gap: 6px; margin-top: 4px;
+    }
+    .tm-upload input[type="file"] { display: none; }
+    .tm-upload-btn {
+      flex: 1; height: 28px; border: 1px dashed var(--border); border-radius: 4px;
+      background: transparent; color: var(--sub); cursor: pointer; font-size: 11px;
+    }
+    .tm-upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .tm-file-chip {
+      font-size: 10px; color: var(--blue); padding: 2px 6px;
+      background: rgba(88, 166, 255, 0.1); border-radius: 3px; margin-top: 4px;
+      word-break: break-all;
+    }
+
+    .tm-scroll { flex: 1; overflow: auto; padding: 6px 0; }
+    .tm-tree-title {
+      padding: 6px 12px 4px; font-size: 10px; font-weight: 700;
+      color: var(--purple); letter-spacing: 0.06em;
+    }
+    .tm-tree-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px 6px 18px; cursor: pointer;
+      border-left: 2px solid transparent;
+    }
+    .tm-tree-item:hover { background: #f0fdfa; }
+    .tm-tree-item.active {
+      background: var(--accent-dim); border-left-color: var(--accent);
+    }
+    .tm-tree-item .dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    .tm-tree-item .dot.mapped { background: var(--green); }
+    .tm-tree-item .dot.pending { background: var(--orange); }
+    .tm-tree-item .name { flex: 1; font-size: 12px; }
+    .tm-tree-item .meta { font-size: 10px; color: var(--sub); }
+    .tm-template-card { margin: 8px 12px; padding: 9px; border: 1px solid var(--accent); border-radius: 5px; background: var(--accent-dim); }
+    .tm-template-card b { display:block; margin-bottom:3px; font-size:12px; }
+    .tm-template-card span { color:var(--sub); font-size:10px; }
+    .tm-template-card .tag { display:inline-block; margin-top:5px; padding:1px 5px; border:1px solid #99f6e4; color:var(--accent); border-radius:8px; font-size:10px; background:#ecfdf5; }
+
+    .tm-center-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--border);
+      background: var(--panel2); padding: 0 8px; flex-shrink: 0;
+    }
+    .tm-tab {
+      padding: 8px 14px; border: none; background: transparent;
+      color: var(--sub); cursor: pointer; font-size: 12px;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .tm-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .tm-tab .cnt {
+      font-size: 10px; padding: 0 5px; margin-left: 4px;
+      background: #eef2ff; border-radius: 8px; color: var(--purple);
+    }
+
+    .tm-sandbox { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: auto; background: #fff; }
+    .tm-sandbox-bar {
+      padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border); background: #f8fafc;
+    }
+    .tm-sandbox-bar p { margin: 0; font-size: 11px; color: var(--sub); }
+    .tm-match-grid {
+      flex: 0 0 auto; overflow: auto; display: grid;
+      grid-template-columns: 1fr 100px 1fr 120px;
+      min-height: 210px;
+    }
+    .tm-match-head {
+      position: sticky; top: 0; z-index: 2;
+      padding: 8px 10px; font-size: 11px; font-weight: 600;
+      background: #f3f4f6; border-bottom: 1px solid var(--border);
+      color: var(--sub);
+    }
+    .tm-match-head.sys { color: var(--purple); }
+    .tm-match-head.prov { color: var(--blue); }
+    .tm-match-row {
+      display: contents;
+    }
+    .tm-match-cell {
+      padding: 7px 10px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; font-size: 12px;
+    }
+    .tm-match-cell.prov {
+      background: #eff6ff; cursor: pointer;
+    }
+    .tm-match-cell.prov:hover { background: #dbeafe; }
+    .tm-match-cell.prov.selected { outline: 1px solid var(--blue); outline-offset: -1px; }
+    .tm-match-cell.sys {
+      background: #f5f3ff; cursor: pointer;
+    }
+    .tm-match-cell.sys:hover { background: #ede9fe; }
+    .tm-match-cell.sys.selected { outline: 1px solid var(--purple); outline-offset: -1px; }
+    .tm-match-cell.mid {
+      justify-content: center; color: var(--sub); font-size: 14px;
+    }
+    .tm-match-cell.rule select {
+      width: 100%; height: 24px; border-radius: 3px;
+      border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 11px;
+    }
+    .tm-badge {
+      font-size: 10px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;
+    }
+    .tm-badge.ok { background: rgba(63,185,80,.15); color: var(--green); }
+    .tm-badge.wait { background: rgba(240,136,62,.15); color: var(--orange); }
+
+    .tm-preview {
+      border-top: 1px solid var(--border); max-height: 180px; overflow: auto;
+      background: #fff; flex-shrink: 0;
+    }
+    .tm-preview-head {
+      padding: 6px 12px; font-size: 10px; color: var(--sub);
+      background: var(--panel2); position: sticky; top: 0;
+    }
+    .tm-preview table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .tm-preview th, .tm-preview td {
+      border: 1px solid var(--border); padding: 4px 8px; text-align: left;
+    }
+    .tm-preview th { background: #f3f4f6; color: var(--sub); font-weight: 500; }
+    .tm-preview .hl { background: rgba(15,118,110,.12); color: var(--accent); }
+    .tm-sheet { flex:0 0 230px; overflow:auto; background:#fff; min-height:0; }
+    .tm-sheet table { width:100%; min-width:760px; border-collapse:collapse; font-size:11px; }
+    .tm-sheet th,.tm-sheet td { border:1px solid var(--border); padding:7px 8px; text-align:left; height:32px; background:#fff; }
+    .tm-sheet .col { background:#f3f4f6; color:var(--sub); text-align:center; font-family:var(--mono); }
+    .tm-sheet .row { background:#f3f4f6; color:var(--sub); width:38px; text-align:center; font-family:var(--mono); }
+    .tm-sheet .title { text-align:center; font-weight:700; color:var(--text); background:#ecfdf5; }
+    .tm-sheet .mapped-cell { outline:1px solid var(--accent); outline-offset:-2px; background:rgba(15,118,110,.08); }
+    .tm-sheet .pending-cell { outline:1px dashed var(--orange); outline-offset:-2px; background:rgba(217,119,6,.08); }
+    .tm-field-map { flex:0 0 148px; border-top:1px solid var(--border); background:var(--panel); overflow:auto; }
+    .tm-field-map h3 { margin:0; padding:7px 12px; background:var(--panel2); font-size:11px; color:var(--purple); }
+    .tm-field-map table { width:100%; border-collapse:collapse; font-size:11px; }
+    .tm-field-map th,.tm-field-map td { border-bottom:1px solid var(--border); padding:5px 9px; text-align:left; }
+    .tm-field-map th { color:var(--sub); font-weight:500; }
+    .tm-field-map select { height:23px; width:100%; border:1px solid var(--border); background:#fff; color:var(--text); border-radius:3px; }
+
+    .tm-split-box {
+      margin: 8px 12px 4px; padding: 9px 10px; border: 1px solid #99f6e4;
+      border-radius: 5px; background: #ecfdf5; font-size: 11px; line-height: 1.5;
+    }
+    .tm-split-box b { display: block; margin-bottom: 4px; color: var(--accent); }
+    .tm-split-box .hint { color: var(--sub); margin: 0 0 8px; }
+    .tm-split-box label { display: block; color: var(--sub); margin: 6px 0 3px; }
+    .tm-split-box select {
+      width: 100%; height: 26px; border-radius: 4px;
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+    }
+    .tm-split-box .chk {
+      display: flex; align-items: flex-start; gap: 6px; margin: 2px 0 8px; color: var(--text);
+    }
+    .tm-split-box .chk input { margin-top: 2px; }
+    .tm-split-demo {
+      margin-top: 8px; padding: 6px 8px; background: #fff; border: 1px dashed #99f6e4;
+      border-radius: 4px; color: var(--text); font-family: var(--mono); font-size: 10px;
+    }
+    .tm-json {
+      flex: 1; overflow: auto; padding: 10px 12px;
+      font-family: var(--mono); font-size: 11px; line-height: 1.55;
+      color: #1e40af; background: #f8fafc; white-space: pre-wrap; word-break: break-all;
+      border-top: 1px solid var(--border);
+    }
+    .tm-json .key { color: #b91c1c; }
+    .tm-json .str { color: #0369a1; }
+    .tm-json .num { color: #1d4ed8; }
+
+    .tm-footnote {
+      padding: 8px 12px; border-top: 1px solid var(--border);
+      font-size: 10px; color: var(--sub); line-height: 1.5;
+      background: var(--panel2);
+    }
+
+    @media (max-width: 1100px) {
+      .tm-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+      .tm-panel { border-right: none; border-bottom: 1px solid var(--border); max-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+<div data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei','PingFang SC',sans-serif"><a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a></div>
+
+  <div class="tm-app">
+    <header class="tm-topbar">
+      <h1><span>成本</span> · 服务商智能账单解析与费用映射配置</h1>
+      <div class="tm-topbar-actions">
+        <a href="成本-模块导航.html" class="tm-btn" style="text-decoration:none;display:inline-flex;align-items:center">← 成本导航</a>
+        <a href="服务商模版版本列表-MVP.html" class="tm-btn" style="text-decoration:none;display:inline-flex;align-items:center">模版版本列表</a>
+        <span class="tm-status">已映射 <em id="mappedCount">0</em> / <em id="totalCount">0</em> 个原始费用类型</span>
+        <button type="button" class="tm-btn" id="btnNewVersion">新建模板版本</button>
+        <button type="button" class="tm-btn" id="btnTest">识别并试跑导入</button>
+        <button type="button" class="tm-btn" id="btnCopy">复制 JSON</button>
+        <button type="button" class="tm-btn primary" id="btnSave">保存并发布</button>
+      </div>
+    </header>
+
+    <div class="tm-body">
+      <!-- 左侧：数据源 + 系统模版树 -->
+      <aside class="tm-panel">
+        <div class="tm-panel-head">
+          <div class="label">Data Source</div>
+          <h2>服务商账单与模板识别</h2>
+        </div>
+        <div class="tm-field">
+          <label>代理 / 服务商 <span style="color:var(--orange)">［账单归属］</span></label>
+          <select id="providerSelect">
+            <option value="warehouse_a">海外仓服务商 A（示例）</option>
+            <option value="trucker_b">拖车服务商 B（示例）</option>
+            <option value="customs_c">报关服务商 C（示例）</option>
+            <option value="custom">自定义服务商</option>
+          </select>
+        </div>
+        <div class="tm-field">
+          <label>账单模板版本 <span style="color:var(--orange)">［PDF 优先］</span></label>
+          <select id="versionSelect">
+            <option value="pdf_v1">海外仓费用账单 · PDF-V1 · 2026-09 起</option>
+            <option value="pdf_v2">海外仓费用账单 · PDF-V2 · 多页 / 合并单元格</option>
+            <option value="excel_v1">海外仓费用账单 · Excel-V1</option>
+          </select>
+        </div>
+        <div class="tm-template-card" id="templateSummary"><b>海外仓费用账单 · PDF-V1</b><span>账单类型：海外仓应付 · 币种：USD · 生效：2026-09-01</span><br><span class="tag">当前编辑模板</span></div>
+        <div class="tm-field">
+          <label>上传代理账单样例（识别费用类型与导入字段）</label>
+          <div class="tm-upload">
+            <input type="file" id="fileInput" accept=".pdf,.xls,.xlsx,.jpg,.jpeg,.png" />
+            <button type="button" class="tm-upload-btn" id="btnUpload">上传 PDF / Excel 账单…</button>
+          </div>
+          <div class="tm-file-chip" id="fileName">海外仓服务商A · 2026-09费用账单.pdf（示例）</div>
+        </div>
+        <div class="tm-tree-title">系统统一费用类型 · FEE DICTIONARY</div>
+        <div class="tm-scroll" id="schemaTree"></div>
+        <div class="tm-footnote">
+          左侧树为<strong>系统统一费用类型</strong>。中间将 PDF/Excel 识别出的<strong>代理原始费用名称</strong>映射到我方费用类型；保存后，同一代理、同一模板版本的账单可直接导入。<br><span style="color:var(--orange)">［待确认］实际费用字典、单号匹配键与 PDF 识别置信度阈值。</span>
+        </div>
+      </aside>
+
+      <!-- 中间：匹配沙盒 -->
+      <main class="tm-panel">
+        <div class="tm-panel-head">
+          <div class="label">Mapping Sandbox</div>
+          <h2>账单费用类型映射沙盒</h2>
+        </div>
+        <div class="tm-center-tabs" id="docTabs"></div>
+        <div class="tm-sandbox">
+          <div class="tm-sandbox-bar">
+            <p><strong>步骤 1：</strong>维护账单字段位置；<strong>步骤 2：</strong>维护原始费用名称与系统费用类型。未映射费用不得直接导入实际费用。</p>
+            <button type="button" class="tm-btn" id="btnAutoMap">智能推荐费用映射</button>
+          </div>
+          <div class="tm-sheet" aria-label="账单原始版式预览">
+            <table>
+              <tr><th class="col"></th><th class="col">A</th><th class="col">B</th><th class="col">C</th><th class="col">D</th><th class="col">E</th><th class="col">F</th></tr>
+              <tr><th class="row">1</th><td colspan="6" class="title">OVERSEAS WAREHOUSE SERVICE BILL（脱敏样例）</td></tr>
+              <tr><th class="row">2</th><td>服务商</td><td class="mapped-cell">Warehouse A</td><td>账单号</td><td class="mapped-cell">BILL-***001</td><td>账单日期</td><td class="mapped-cell">2026-09-18</td></tr>
+              <tr><th class="row">3</th><td>币种</td><td class="mapped-cell">USD</td><td>账单批次</td><td class="mapped-cell">BATCH-***09</td><td>页码</td><td>1 / 2</td></tr>
+              <tr><th class="row">4</th><td class="title">关联单号 / 柜号</td><td class="title">原始费用名称</td><td class="title">金额</td><td class="title">加收时间</td><td class="title">数量</td><td class="title">备注</td></tr>
+              <tr><th class="row">5</th><td class="mapped-cell">CONT-***001</td><td class="mapped-cell">Warehouse Handling</td><td class="mapped-cell">320.00</td><td class="mapped-cell">2026-09-16</td><td>1</td><td>单柜</td></tr>
+              <tr><th class="row">6</th><td class="mapped-cell">CONT-***001 / 002 / 003 / 004</td><td class="mapped-cell">Delivery Charge</td><td class="mapped-cell">1,280.00</td><td class="mapped-cell">2026-09-16</td><td class="mapped-cell">4</td><td>一账四柜，金额为合计</td></tr>
+              <tr><th class="row">7</th><td class="mapped-cell">CUS-***002</td><td class="pending-cell">Special Service Charge</td><td class="mapped-cell">58.00</td><td class="mapped-cell">2026-09-17</td><td>1</td><td>待确认</td></tr>
+            </table>
+          </div>
+          <section class="tm-field-map" aria-label="账单字段映射">
+            <h3>账单字段映射 · 字段位置 / PDF 识别标签 → 系统字段</h3>
+            <table><thead><tr><th>原始位置 / 标签</th><th>识别值示例</th><th>系统字段</th><th>校验</th></tr></thead><tbody id="fieldMapRows"></tbody></table>
+          </section>
+          <div class="tm-match-grid" id="matchGrid">
+            <div class="tm-match-head prov">代理账单原始费用类型</div>
+            <div class="tm-match-head">映射</div>
+            <div class="tm-match-head sys">我方系统费用类型</div>
+            <div class="tm-match-head">导入处理规则</div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 右侧：持久化 JSON -->
+      <aside class="tm-panel">
+        <div class="tm-panel-head">
+          <div class="label">Persistence</div>
+          <h2>模板与费用映射配置</h2>
+        </div>
+        <div class="tm-field">
+          <label>账单模板匹配策略</label>
+          <select id="matchStrategy">
+            <option value="provider_first">优先按代理 + 模板版本</option>
+            <option value="fingerprint">PDF 文件指纹 + 费用表特征</option>
+            <option value="manual">人工指定账单模板</option>
+          </select>
+        </div>
+        <div class="tm-split-box">
+          <b>多柜一账 · 金额摊柜</b>
+          <p class="hint">有的服务商一张账单覆盖多个柜子，明细金额是合计数。挂在本模板上后，导入时系统自动 ÷ 柜数并按柜落费，不进人工池。</p>
+          <label class="chk"><input type="checkbox" id="splitEnable" checked /> 启用：本模板所有费用金额先除柜数，再按柜落费</label>
+          <label for="splitSource">柜数取值</label>
+          <select id="splitSource">
+            <option value="qty_col" selected>账单「数量」列（示例行数量=4）</option>
+            <option value="ref_count">关联柜号拆分后的个数（逗号 / 空格 / 斜杠）</option>
+            <option value="header_cnt">账单头「柜数」字段</option>
+          </select>
+          <label for="splitAction">系统处理方式</label>
+          <select id="splitAction">
+            <option value="divide_and_explode" selected>金额÷柜数，拆成 N 行（一柜一行）</option>
+            <option value="divide_keep_row">金额÷柜数，仍写一行（仅能匹配到 1 个柜时）</option>
+          </select>
+          <div class="tm-split-demo" id="splitDemo"></div>
+        </div>
+        <div class="tm-json" id="jsonOut" aria-label="配置 JSON"></div>
+        <div class="tm-footnote">
+          运行时：上传代理 PDF/Excel 账单 → 识别代理与<strong>模板版本</strong> → 先按本模板提取账单号、币种、金额、单号/柜号等字段 → 再映射原始费用名称 → 若模板开启摊柜：<strong>金额÷柜数并按柜拆行</strong> → 输出<strong>我方费用类型 + 单柜金额 + 柜号</strong> → 进入“待核对实际费用”。柜数为 0、柜号拆不出、或金额不能整除到约定精度时进入人工核对池。未命中模板、字段缺失、低置信度、未映射费用或无法匹配单号的行均进入人工处理池。
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      /* 原始名称均为 PDF/Excel 账单识别示例；正式以代理上传样本和我方费用字典为准。 */
+      var DOCS = {
+        warehouse_bill: {
+          label: "海外仓账单 PDF",
+          providerFields: [
+            { id: "wh_handling", label: "Warehouse Handling", sample: "USD 320.00" },
+            { id: "delivery_charge", label: "Delivery Charge", sample: "USD 1,280.00" },
+            { id: "storage_fee", label: "Storage Fee", sample: "USD 86.00" },
+            { id: "label_service", label: "Label Service", sample: "USD 45.00" },
+            { id: "unknown_fee", label: "Special Service Charge", sample: "USD 58.00" }
+          ],
+          systemFields: [
+            { id: "sys_warehouse_operation", label: "海外仓操作费", required: true },
+            { id: "sys_delivery_fee", label: "派送费", required: true },
+            { id: "sys_storage_fee", label: "仓储费", required: true },
+            { id: "sys_label_fee", label: "贴标费", required: false },
+            { id: "sys_other_payable", label: "其他应付费用（待确认）", required: false }
+          ],
+          autoMap: {
+            wh_handling: "sys_warehouse_operation",
+            delivery_charge: "sys_delivery_fee",
+            storage_fee: "sys_storage_fee",
+            label_service: "sys_label_fee"
+          }
+        },
+        trucking_bill: {
+          label: "拖车 / 堆场账单",
+          providerFields: [
+            { id: "pickup_charge", label: "Pickup Charge", sample: "USD 180.00" },
+            { id: "return_charge", label: "Return Charge", sample: "USD 120.00" },
+            { id: "chassis_fee", label: "Chassis Fee", sample: "USD 75.00" },
+            { id: "yard_fee", label: "Yard Fee", sample: "USD 50.00" }
+          ],
+          systemFields: [
+            { id: "sys_pickup_fee", label: "提箱费", required: true },
+            { id: "sys_return_fee", label: "还箱费", required: true },
+            { id: "sys_chassis_fee", label: "车架费", required: false },
+            { id: "sys_yard_fee", label: "堆场费", required: false }
+          ],
+          autoMap: {
+            pickup_charge: "sys_pickup_fee",
+            return_charge: "sys_return_fee",
+            chassis_fee: "sys_chassis_fee",
+            yard_fee: "sys_yard_fee"
+          }
+        },
+        customs_bill: {
+          label: "报关 / 其他代理账单",
+          providerFields: [
+            { id: "clearance_charge", label: "Customs Clearance Charge", sample: "USD 300.00" },
+            { id: "doc_charge", label: "Documentation Charge", sample: "USD 55.00" },
+            { id: "inspection_charge", label: "Inspection Charge", sample: "USD 90.00" }
+          ],
+          systemFields: [
+            { id: "sys_customs_fee", label: "报关费", required: true },
+            { id: "sys_document_fee", label: "单证费", required: false },
+            { id: "sys_inspection_fee", label: "查验费", required: false }
+          ],
+          autoMap: {
+            clearance_charge: "sys_customs_fee",
+            doc_charge: "sys_document_fee",
+            inspection_charge: "sys_inspection_fee"
+          }
+        }
+      };
+
+      /* 同一服务商存在不同账单版式时，新建版本而非覆盖旧配置；历史账单按命中的版本保留。 */
+      var TEMPLATES = {
+        pdf_v1: {
+          label: "海外仓费用账单 · PDF-V1",
+          billType: "海外仓应付", currency: "USD", effective: "2026-09-01 起", fingerprint: "页眉 OVERSEAS WAREHOUSE SERVICE BILL + 明细表 6 列",
+          fields: [
+            { id: "provider_name", position: "B2 / 服务商", sample: "Warehouse A", system: "服务商名称", check: "必填；须匹配服务商主数据" },
+            { id: "bill_no", position: "D2 / 账单号", sample: "BILL-***001", system: "账单号", check: "必填；服务商内不可重复" },
+            { id: "bill_date", position: "F2 / 账单日期", sample: "2026-09-18", system: "账单日期", check: "必填；日期格式校验" },
+            { id: "currency", position: "B3 / 币种", sample: "USD", system: "币种", check: "必填；命中币种字典" },
+            { id: "batch_no", position: "D3 / 账单批次", sample: "BATCH-***09", system: "账单批次号", check: "可空；导入批次留痕" },
+            { id: "reference_no", position: "A5:A* / 单号或柜号", sample: "CONT-***001", system: "关联单号/柜号", check: "必填；无法匹配进入核对池" },
+            { id: "raw_fee_name", position: "B5:B* / 费用名称", sample: "Warehouse Handling", system: "原始费用名称", check: "必填；再映射系统费用类型" },
+            { id: "amount", position: "C5:C* / 金额", sample: "320.00", system: "费用金额", check: "必填；金额大于等于 0" },
+            { id: "surcharge_date", position: "D5:D* / 加收时间", sample: "2026-09-16", system: "加收时间", check: "可空；日期格式校验" },
+            { id: "qty", position: "E5:E* / 数量", sample: "4", system: "数量", check: "摊柜开启时必填；柜数≥1 的整数" }
+          ]
+        },
+        pdf_v2: {
+          label: "海外仓费用账单 · PDF-V2",
+          billType: "海外仓应付", currency: "USD", effective: "待配置生效时间", fingerprint: "多页表格 + 合并单元格；需页眉、表头和列序联合识别",
+          fields: [
+            { id: "provider_name", position: "页眉 / Vendor", sample: "Warehouse A", system: "服务商名称", check: "必填；须匹配服务商主数据" },
+            { id: "bill_no", position: "页眉 / Invoice No.", sample: "INV-***008", system: "账单号", check: "必填；服务商内不可重复" },
+            { id: "bill_date", position: "页眉 / Invoice Date", sample: "2026-09-18", system: "账单日期", check: "必填；日期格式校验" },
+            { id: "currency", position: "金额列附近 / Currency", sample: "USD", system: "币种", check: "必填；命中币种字典" },
+            { id: "reference_no", position: "明细列 / Reference", sample: "CONT-***001", system: "关联单号/柜号", check: "必填；无法匹配进入核对池" },
+            { id: "raw_fee_name", position: "明细列 / Description", sample: "Delivery Charge", system: "原始费用名称", check: "必填；再映射系统费用类型" },
+            { id: "amount", position: "明细列 / Total", sample: "1,280.00", system: "费用金额", check: "必填；金额大于等于 0" }
+          ]
+        },
+        excel_v1: {
+          label: "海外仓费用账单 · Excel-V1",
+          billType: "海外仓应付", currency: "由账单列读取", effective: "待配置生效时间", fingerprint: "工作表 Bill Detail + 首行字段名",
+          fields: [
+            { id: "provider_name", position: "Sheet:Summary / B2", sample: "Warehouse A", system: "服务商名称", check: "必填；须匹配服务商主数据" },
+            { id: "bill_no", position: "Sheet:Summary / D2", sample: "BILL-***001", system: "账单号", check: "必填；服务商内不可重复" },
+            { id: "reference_no", position: "Sheet:Bill Detail / A:A", sample: "CONT-***001", system: "关联单号/柜号", check: "必填；无法匹配进入核对池" },
+            { id: "raw_fee_name", position: "Sheet:Bill Detail / B:B", sample: "Storage Fee", system: "原始费用名称", check: "必填；再映射系统费用类型" },
+            { id: "currency", position: "Sheet:Bill Detail / C:C", sample: "USD", system: "币种", check: "必填；命中币种字典" },
+            { id: "amount", position: "Sheet:Bill Detail / D:D", sample: "86.00", system: "费用金额", check: "必填；金额大于等于 0" }
+          ]
+        }
+      };
+      var SYSTEM_FIELD_OPTIONS = ["服务商名称", "账单号", "账单日期", "账单批次号", "币种", "关联单号/柜号", "原始费用名称", "费用金额", "加收时间", "数量", "柜数", "备注", "不导入"];
+
+      var state = {
+        docKey: "warehouse_bill",
+        mappings: {},
+        selectedProv: null,
+        selectedSys: null,
+        transformRules: {},
+        fieldOverrides: {},
+      };
+
+      DOCS.warehouse_bill.mappings = {};
+      DOCS.trucking_bill.mappings = {};
+      DOCS.customs_bill.mappings = {};
+
+      function currentDoc() { return DOCS[state.docKey]; }
+
+      function currentTemplate() {
+        return TEMPLATES[document.getElementById("versionSelect").value] || TEMPLATES.pdf_v1;
+      }
+
+      function getFieldSystem(field) {
+        var key = document.getElementById("versionSelect").value + "." + field.id;
+        return state.fieldOverrides[key] || field.system;
+      }
+
+      function renderTemplateSummary() {
+        var t = currentTemplate();
+        document.getElementById("templateSummary").innerHTML = "<b>" + t.label + "</b><span>账单类型：" + t.billType + " · 币种：" + t.currency + " · 生效：" + t.effective + "</span><br><span class=\"tag\">当前编辑模板</span>";
+      }
+
+      function renderFieldMap() {
+        var t = currentTemplate();
+        var rows = t.fields.map(function (field) {
+          var options = SYSTEM_FIELD_OPTIONS.map(function (option) {
+            return '<option value="' + option + '"' + (getFieldSystem(field) === option ? " selected" : "") + ">" + option + "</option>";
+          }).join("");
+          return "<tr><td>" + field.position + "</td><td>" + field.sample + "</td><td><select data-field-map=\"" + field.id + "\">" + options + "</select></td><td>" + field.check + "</td></tr>";
+        }).join("");
+        document.getElementById("fieldMapRows").innerHTML = rows;
+        document.querySelectorAll("[data-field-map]").forEach(function (select) {
+          select.addEventListener("change", function () {
+            state.fieldOverrides[document.getElementById("versionSelect").value + "." + select.getAttribute("data-field-map")] = select.value;
+            renderJson();
+          });
+        });
+      }
+
+      function getMappings() {
+        return currentDoc().mappings;
+      }
+
+      function renderTabs() {
+        var wrap = document.getElementById("docTabs");
+        wrap.innerHTML = "";
+        Object.keys(DOCS).forEach(function (key) {
+          var d = DOCS[key];
+          var mapped = Object.keys(d.mappings).length;
+          var total = d.systemFields.filter(function (f) { return f.required; }).length;
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "tm-tab" + (key === state.docKey ? " active" : "");
+          btn.innerHTML = d.label + '<span class="cnt">' + mapped + "/" + total + "</span>";
+          btn.addEventListener("click", function () {
+            state.docKey = key;
+            state.selectedProv = null;
+            state.selectedSys = null;
+            renderAll();
+          });
+          wrap.appendChild(btn);
+        });
+      }
+
+      function renderSchemaTree() {
+        var doc = currentDoc();
+        var maps = doc.mappings;
+        var html = doc.systemFields.map(function (f) {
+          var mapped = Object.values(maps).indexOf(f.id) >= 0;
+          return (
+            '<div class="tm-tree-item' + (state.selectedSys === f.id ? " active" : "") + '" data-sys="' + f.id + '">' +
+            '<span class="dot ' + (mapped ? "mapped" : "pending") + '"></span>' +
+            '<span class="name">' + f.label + (f.required ? " *" : "") + "</span>" +
+            '<span class="meta">' + (mapped ? "已映射" : "待映射") + "</span></div>"
+          );
+        }).join("");
+        document.getElementById("schemaTree").innerHTML = html;
+        document.getElementById("schemaTree").querySelectorAll("[data-sys]").forEach(function (el) {
+          el.addEventListener("click", function () {
+            state.selectedSys = el.getAttribute("data-sys");
+            if (state.selectedProv) {
+              getMappings()[state.selectedProv] = state.selectedSys;
+              state.selectedProv = null;
+              state.selectedSys = null;
+              renderAll();
+            } else {
+              renderSchemaTree();
+              renderMatchGrid();
+            }
+          });
+        });
+      }
+
+      function renderMatchGrid() {
+        var doc = currentDoc();
+        var maps = doc.mappings;
+        var grid = document.getElementById("matchGrid");
+        while (grid.children.length > 4) grid.removeChild(grid.lastChild);
+
+        doc.providerFields.forEach(function (pf) {
+          var sysId = maps[pf.id];
+          var sysField = sysId ? doc.systemFields.find(function (s) { return s.id === sysId; }) : null;
+          var row = document.createElement("div");
+          row.className = "tm-match-row";
+          row.innerHTML =
+            '<div class="tm-match-cell prov' + (state.selectedProv === pf.id ? " selected" : "") + '" data-prov="' + pf.id + '">' +
+            pf.label + '<span class="tm-badge ' + (sysField ? "ok" : "wait") + '">' + (sysField ? "已连" : "未连") + "</span></div>" +
+            '<div class="tm-match-cell mid">' + (sysField ? "→" : "·") + "</div>" +
+            '<div class="tm-match-cell sys">' + (sysField ? sysField.label : "—") + "</div>" +
+            '<div class="tm-match-cell rule">' +
+            '<select data-rule="' + pf.id + '">' +
+            '<option value="direct"' + (getRule(pf.id) === "direct" ? " selected" : "") + ">费用名称直接映射（跟模板摊柜）</option>" +
+            '<option value="skip_cntr_split"' + (getRule(pf.id) === "skip_cntr_split" ? " selected" : "") + ">本行不摊柜（已是单柜金额）</option>" +
+            '<option value="split"' + (getRule(pf.id) === "split" ? " selected" : "") + ">拆分为多条费用类型</option>" +
+            '<option value="merge"' + (getRule(pf.id) === "merge" ? " selected" : "") + ">合并到同一费用类型</option>" +
+            '<option value="manual"' + (getRule(pf.id) === "manual" ? " selected" : "") + ">导入前人工确认</option>" +
+            '<option value="exclude"' + (getRule(pf.id) === "exclude" ? " selected" : "") + ">不导入，保留原始行</option>" +
+            "</select></div>";
+          grid.appendChild(row);
+        });
+
+        grid.querySelectorAll("[data-prov]").forEach(function (el) {
+          el.addEventListener("click", function () {
+            state.selectedProv = el.getAttribute("data-prov");
+            if (state.selectedSys) {
+              getMappings()[state.selectedProv] = state.selectedSys;
+              state.selectedProv = null;
+              state.selectedSys = null;
+              renderAll();
+            } else {
+              renderMatchGrid();
+              renderSchemaTree();
+            }
+          });
+        });
+
+        grid.querySelectorAll("[data-rule]").forEach(function (sel) {
+          sel.addEventListener("change", function () {
+            var key = state.docKey + "." + sel.getAttribute("data-rule");
+            state.transformRules[key] = sel.value;
+            renderJson();
+          });
+        });
+      }
+
+      function getRule(provId) {
+        return state.transformRules[state.docKey + "." + provId] || "direct";
+      }
+
+      function countMapped() {
+        var n = 0;
+        var t = 0;
+        Object.keys(DOCS).forEach(function (k) {
+          var d = DOCS[k];
+          t += d.systemFields.filter(function (f) { return f.required; }).length;
+          Object.keys(d.mappings).forEach(function (pk) {
+            if (d.mappings[pk]) n++;
+          });
+        });
+        return { n: n, t: t };
+      }
+
+      function renderJson() {
+        var provider = document.getElementById("providerSelect").value;
+        var version = document.getElementById("versionSelect").value;
+        var strategy = document.getElementById("matchStrategy").value;
+        var template = currentTemplate();
+        var splitOn = document.getElementById("splitEnable").checked;
+        var payload = {
+          config_type: "provider_bill_template_to_system_fee_type",
+          provider_code: provider,
+          provider_bill_template_version: version,
+          bill_template_name: template.label,
+          bill_type: template.billType,
+          effective_period: template.effective,
+          template_fingerprint: template.fingerprint,
+          match_strategy: strategy,
+          multi_container_split: {
+            enabled: splitOn,
+            divisor_source: document.getElementById("splitSource").value,
+            action: document.getElementById("splitAction").value,
+            note: splitOn
+              ? "本模板账单金额为多柜合计；导入时系统自动金额÷柜数，默认一柜一行，不进人工池"
+              : "不摊柜，按账单原金额落费"
+          },
+          sample_file: document.getElementById("fileName").textContent,
+          field_mappings: template.fields.map(function (field) {
+            return {
+              source_location_or_label: field.position,
+              source_sample: field.sample,
+              system_field: getFieldSystem(field),
+              validation: field.check
+            };
+          }),
+          document_mappings: {},
+          import_guard: "未映射费用、低置信度 PDF 行、无法匹配关联单号、柜数为0/拆不出柜号、或摊柜后精度无法落地时，进入人工核对池，不直接写入实际费用",
+        };
+        Object.keys(DOCS).forEach(function (k) {
+          var d = DOCS[k];
+          var fields = [];
+          Object.keys(d.mappings).forEach(function (pk) {
+            var sk = d.mappings[pk];
+            if (!sk) return;
+            var pf = d.providerFields.find(function (p) { return p.id === pk; });
+            var sf = d.systemFields.find(function (s) { return s.id === sk; });
+            fields.push({
+              provider_raw_fee_code: pk,
+              provider_raw_fee_name: pf ? pf.label : pk,
+              system_fee_type_code: sk,
+              system_fee_type_name: sf ? sf.label : sk,
+              import_rule: getRule(pk),
+            });
+          });
+          payload.document_mappings[k] = {
+            bill_template_type: d.label,
+            fee_type_mappings: fields,
+          };
+        });
+
+        var json = JSON.stringify(payload, null, 2);
+        document.getElementById("jsonOut").textContent = json;
+        renderSplitDemo();
+
+        var c = countMapped();
+        document.getElementById("mappedCount").textContent = String(c.n);
+        document.getElementById("totalCount").textContent = String(c.t);
+      }
+
+      function renderSplitDemo() {
+        var el = document.getElementById("splitDemo");
+        if (!el) return;
+        var on = document.getElementById("splitEnable").checked;
+        var src = document.getElementById("splitSource").value;
+        var act = document.getElementById("splitAction").value;
+        if (!on) {
+          el.textContent = "未启用。Delivery Charge 1,280.00 原样入库（一张账单挂多个柜时金额不会自动拆）。";
+          return;
+        }
+        var srcTxt = src === "qty_col" ? "数量列=4" : (src === "ref_count" ? "柜号拆出 4 个" : "账单头柜数=4");
+        if (act === "divide_and_explode") {
+          el.textContent = "试算：账单 1,280.00 / " + srcTxt + " → 4 行 × 320.00，分别挂 CONT-***001～004。尾差（若有）挂第一柜。";
+        } else {
+          el.textContent = "试算：账单 1,280.00 / " + srcTxt + " → 仍 1 行，金额改写为 320.00（仅当系统只能匹配到 1 个柜）。";
+        }
+      }
+
+      function renderAll() {
+        renderTemplateSummary();
+        renderTabs();
+        renderFieldMap();
+        renderSchemaTree();
+        renderMatchGrid();
+        renderJson();
+      }
+
+      document.getElementById("btnAutoMap").addEventListener("click", function () {
+        var doc = currentDoc();
+        Object.keys(doc.autoMap).forEach(function (pk) {
+          doc.mappings[pk] = doc.autoMap[pk];
+        });
+        state.selectedProv = null;
+        state.selectedSys = null;
+        renderAll();
+      });
+
+      document.getElementById("btnUpload").addEventListener("click", function () {
+        document.getElementById("fileInput").click();
+      });
+      document.getElementById("fileInput").addEventListener("change", function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (f) document.getElementById("fileName").textContent = f.name;
+        renderJson();
+      });
+
+      document.getElementById("providerSelect").addEventListener("change", renderJson);
+      document.getElementById("versionSelect").addEventListener("change", renderAll);
+      document.getElementById("matchStrategy").addEventListener("change", renderJson);
+      ["splitEnable", "splitSource", "splitAction"].forEach(function (id) {
+        document.getElementById(id).addEventListener("change", renderJson);
+      });
+
+      document.getElementById("btnNewVersion").addEventListener("click", function () {
+        location.href = "服务商模版版本列表-MVP.html?new=1";
+      });
+
+      document.getElementById("btnCopy").addEventListener("click", function () {
+        var t = document.getElementById("jsonOut").textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(t).then(function () {
+            alert("JSON 已复制到剪贴板");
+          });
+        } else {
+          prompt("复制以下 JSON：", t);
+        }
+      });
+
+      document.getElementById("btnTest").addEventListener("click", function () {
+        var doc = currentDoc();
+        var splitOn = document.getElementById("splitEnable").checked;
+        var lines = ["PDF / Excel 账单试跑结果（示意）", "账单模板：" + doc.label, "",
+          splitOn ? "摊柜：已启用 · 金额÷柜数 · " + (document.getElementById("splitAction").value === "divide_and_explode" ? "一柜一行" : "改金额不拆行") : "摊柜：未启用",
+          "", "规则：未映射费用、低置信度识别行或未匹配单号不直接导入实际费用。"];
+        doc.providerFields.forEach(function (pf) {
+          var sk = doc.mappings[pf.id];
+          if (!sk) {
+            lines.push("  " + pf.label + " → 未映射 · 进入人工核对池 · " + pf.sample);
+            return;
+          }
+          var sf = doc.systemFields.find(function (s) { return s.id === sk; });
+          var extra = "";
+          if (splitOn && getRule(pf.id) !== "skip_cntr_split" && getRule(pf.id) !== "exclude") {
+            extra = pf.id === "delivery_charge" ? " · 1,280.00÷4=320.00×4柜" : " · 柜数=1，金额不变";
+          }
+          lines.push("  " + pf.label + " → " + (sf ? sf.label : sk) + " · " + getRule(pf.id) + extra);
+        });
+        alert(lines.join("\n"));
+      });
+
+      document.getElementById("btnSave").addEventListener("click", function () {
+        alert("配置已保存（原型示意）。正式环境：写入服务商、账单类型、模板版本、版式/字段映射、费用类型映射，以及「多柜一账·金额摊柜」规则。未命中模板、字段缺失、未映射费用、柜数无效均进入人工核对池。");
+      });
+
+      renderAll();
+    })();
+  </script>
+</body>
+</html>

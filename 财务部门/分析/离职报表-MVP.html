@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>离职报表 · 交接与提成2‰ · MVP</title>
+  <style>
+    :root {
+      --nav: #001529; --primary: #1890ff; --ok: #52c41a; --warn: #fa8c16; --danger: #ff4d4f;
+      --bg: #f0f2f5; --line: #e8e8e8; --text: #262626; --muted: #8c8c8c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: 40px; background: var(--nav); color: #fff;
+      display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0;
+    }
+    .topbar .logo { font-weight: 700; margin-right: 12px; }
+    .topbar .tab { padding: 6px 12px; color: rgba(255,255,255,.65); border-radius: 4px 4px 0 0; }
+    .topbar .tab.on { background: #fff; color: var(--warn); font-weight: 600; }
+    .topbar .right { margin-left: auto; font-size: 12px; color: rgba(255,255,255,.75); }
+    .topbar a { color: rgba(255,255,255,.85); text-decoration: none; }
+    .crumb {
+      height: 36px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; color: var(--muted); font-size: 12px;
+    }
+    .crumb b { color: var(--text); }
+    .banner {
+      margin: 10px 16px 0; padding: 8px 12px; background: #e6f7ff; border: 1px solid #91d5ff;
+      border-radius: 4px; font-size: 12px; color: #0958d9; line-height: 1.55;
+    }
+    .banner b { color: #003a8c; }
+    .main { flex: 1; padding: 10px 16px 24px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+    .tabs { display: flex; border-bottom: 1px solid var(--line); background: #fafafa; padding: 0 8px; }
+    .tab-btn {
+      padding: 10px 16px; border: none; background: none; color: var(--muted); position: relative;
+    }
+    .tab-btn.on { color: var(--primary); font-weight: 600; }
+    .tab-btn.on::after {
+      content: ""; position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; background: var(--primary);
+    }
+    .filter { padding: 12px 14px 8px; }
+    .fg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 16px; }
+    .fi { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+    .fi label { flex: 0 0 84px; text-align: right; color: var(--muted); padding-top: 6px; white-space: nowrap; }
+    .fi .ctl { flex: 1; min-width: 0; }
+    .fi input, .fi select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px;
+    }
+    .filter-actions {
+      display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;
+      padding-top: 8px; border-top: 1px dashed #f0f0f0;
+    }
+    .btn {
+      height: 32px; padding: 0 14px; border: 1px solid #d9d9d9; border-radius: 4px;
+      background: #fff; color: var(--text); display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { background: #40a9ff; border-color: #40a9ff; color: #fff; }
+    .btn.warn { background: var(--warn); border-color: var(--warn); color: #fff; }
+    .btn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.link { border: none; background: none; color: var(--primary); height: auto; padding: 0 4px; }
+    .toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 8px 12px; border-top: 1px solid var(--line);
+    }
+    .toolbar .note { margin-left: auto; font-size: 12px; color: var(--muted); }
+    .flow {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 14px; background: #fafafa; border-bottom: 1px solid var(--line); font-size: 12px;
+    }
+    .flow .step {
+      padding: 4px 10px; border-radius: 999px; background: #fff; border: 1px solid #d9d9d9; color: #595959;
+    }
+    .flow .step.on { border-color: var(--primary); color: var(--primary); background: #e6f7ff; font-weight: 600; }
+    .flow .arrow { color: var(--muted); }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 320px); }
+    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+    thead th {
+      position: sticky; top: 0; z-index: 2; background: #fafafa; border-bottom: 1px solid var(--line);
+      padding: 8px 10px; text-align: left; font-weight: 600; white-space: nowrap; color: #595959;
+    }
+    tbody td {
+      padding: 7px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; vertical-align: middle;
+    }
+    tbody tr:hover { background: #f5f9ff; }
+    tbody tr.selected { background: #e6f7ff; }
+    .num { font-variant-numeric: tabular-nums; font-family: Consolas, monospace; text-align: right; }
+    .mono { font-family: Consolas, "SF Mono", monospace; }
+    .tag {
+      display: inline-block; padding: 1px 7px; border-radius: 2px; font-size: 11px; line-height: 18px; font-weight: 600;
+    }
+    .tag.draft { background: #f5f5f5; color: #8c8c8c; border: 1px solid #d9d9d9; }
+    .tag.wait { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .tag.ok { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag.done { background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; }
+    .tag.bad { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .note { font-size: 12px; color: var(--muted); line-height: 1.6; padding: 0 2px; }
+    .toast {
+      position: fixed; top: 56px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 18px; border-radius: 4px;
+      z-index: 200; opacity: 0; pointer-events: none; transition: .2s; font-size: 13px;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+      display: none; align-items: center; justify-content: center;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      width: 640px; max-width: 94vw; max-height: 88vh; background: #fff; border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18); display: flex; flex-direction: column;
+    }
+    .modal.wide { width: 860px; }
+    .modal-hd {
+      padding: 14px 18px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-hd h3 { margin: 0; font-size: 16px; }
+    .modal-bd { padding: 16px 18px; overflow: auto; flex: 1; }
+    .modal-ft {
+      padding: 12px 18px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .form-row { margin-bottom: 12px; }
+    .form-row label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+    .form-row label .req { color: var(--danger); }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 4px; padding: 6px 10px;
+    }
+    .form-row textarea { min-height: 64px; resize: vertical; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .hint {
+      padding: 8px 10px; border-radius: 4px; font-size: 12px; line-height: 1.55; margin-bottom: 12px;
+    }
+    .hint.info { background: #e6f7ff; border: 1px solid #91d5ff; color: #096dd9; }
+    .hint.warn { background: #fff7e6; border: 1px solid #ffd591; color: #ad6800; }
+    .hint.ok { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+    .kpi {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .kpi .box { background: #fafafa; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; }
+    .kpi .lab { font-size: 11px; color: var(--muted); }
+    .kpi .val { font-size: 18px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    @media (max-width: 1100px) {
+      .fg { grid-template-columns: repeat(2, 1fr); }
+      .kpi { grid-template-columns: repeat(2, 1fr); }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei','PingFang SC',sans-serif"><a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a></div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="logo">头程系统</div>
+      <div class="tab">控制台</div>
+      <div class="tab on">离职报表</div>
+      <div class="tab">提成管理</div>
+      <div class="right">
+        <a href="分析-模块导航.html">← 分析导航</a>
+        · <a href="../../提成管理/人员映射表-MVP.html">人员映射</a>
+      </div>
+    </div>
+    <div class="crumb">
+      <span>财务</span><span>/</span><span>分析</span><span>/</span><b>离职报表</b>
+      <span style="margin-left:auto">唐斌议题 · 交接申请提前办 · 确认后自动改客户归属</span>
+    </div>
+    <div class="banner">
+      <b>本期：</b>
+      ① 离职交接申请（一般提前申请）→ 上级审批 → <strong>确认转给谁</strong> → 确认完成后<strong>自动改</strong>客户/在途归属；
+      ② 新业务员<strong>提成 2‰</strong>由部门负责人填写，回写提成管理；
+      ③ 列表展示承接人侧<strong>应收欠款</strong>（新业务员维度）。
+    </div>
+
+    <div class="main">
+      <section class="panel">
+        <div class="tabs" id="mainTabs">
+          <button type="button" class="tab-btn on" data-tab="apply">一、离职交接申请</button>
+          <button type="button" class="tab-btn" data-tab="cust">二、客户交接表</button>
+          <button type="button" class="tab-btn" data-tab="rate">三、提成2‰ · 应收欠款</button>
+        </div>
+
+        <!-- Tab 1 -->
+        <div id="view-apply">
+          <div class="flow">
+            <span class="step on">1 提前申请</span><span class="arrow">→</span>
+            <span class="step">2 上级审批</span><span class="arrow">→</span>
+            <span class="step">3 确认承接人</span><span class="arrow">→</span>
+            <span class="step">4 确认完成 · 自动改归属</span>
+          </div>
+          <div class="filter">
+            <div class="fg">
+              <div class="fi"><label>离职人</label><div class="ctl"><input id="fLeave" placeholder="姓名 / 工号" /></div></div>
+              <div class="fi"><label>部门</label><div class="ctl">
+                <select id="fDept"><option value="">全部</option><option>苏州一部</option><option>苏州二部</option><option>宁波</option></select>
+              </div></div>
+              <div class="fi"><label>状态</label><div class="ctl">
+                <select id="fSt">
+                  <option value="">全部</option>
+                  <option>草稿</option>
+                  <option>待上级审批</option>
+                  <option>待确认承接人</option>
+                  <option>已完成</option>
+                </select>
+              </div></div>
+              <div class="fi"><label>计划离职日</label><div class="ctl"><input type="month" id="fMonth" value="2026-09" /></div></div>
+            </div>
+            <div class="filter-actions">
+              <button type="button" class="btn" id="btnReset">重置</button>
+              <button type="button" class="btn primary" id="btnSearch">查询</button>
+            </div>
+          </div>
+          <div class="toolbar">
+            <button type="button" class="btn primary" id="btnNew">＋ 新建离职交接申请</button>
+            <button type="button" class="btn" id="btnExport">导出</button>
+            <span class="note" id="selHint">一般提前申请；上级确认承接人并点「确认完成」后，系统自动改客户归属</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>申请单号</th>
+                  <th>离职人</th>
+                  <th>部门 / 战队</th>
+                  <th>计划离职日</th>
+                  <th>申请日</th>
+                  <th>上级</th>
+                  <th>承接人（新业务员）</th>
+                  <th>客户数</th>
+                  <th>在途单</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyApply"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 2 -->
+        <div id="view-cust" style="display:none">
+          <div class="hint info" style="margin:12px 14px 0">
+            客户交接表：申请<strong>确认完成</strong>后自动写入。原业务员 → 新业务员；可按交接单 / 客户筛选。未完成申请不改主数据。
+          </div>
+          <div class="filter">
+            <div class="fg">
+              <div class="fi"><label>交接单号</label><div class="ctl"><input id="fHandoverNo" placeholder="HO-…" /></div></div>
+              <div class="fi"><label>客户</label><div class="ctl"><input id="fCust" placeholder="简称 / 编码" /></div></div>
+              <div class="fi"><label>原业务员</label><div class="ctl"><input id="fFrom" /></div></div>
+              <div class="fi"><label>新业务员</label><div class="ctl"><input id="fTo" /></div></div>
+            </div>
+            <div class="filter-actions">
+              <button type="button" class="btn primary" id="btnSearchCust">查询</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>交接单号</th>
+                  <th>客户编码</th>
+                  <th>客户简称</th>
+                  <th>原业务员</th>
+                  <th>新业务员</th>
+                  <th>生效时间</th>
+                  <th>在途运单</th>
+                  <th>应收欠款 RMB</th>
+                  <th>改归属</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyCust"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 3 -->
+        <div id="view-rate" style="display:none">
+          <div class="kpi" id="rateKpi"></div>
+          <div class="hint warn" style="margin:12px 14px 0">
+            <strong>提成 2‰：</strong>部门负责人填写「新业务员提成比例（默认 2‰）」→ 写入提成管理（人员映射 / 规则包引用）。
+            <strong>应收欠款：</strong>按新业务员汇总其承接客户的未核销−余额（演示口径）。
+          </div>
+          <div class="toolbar">
+            <button type="button" class="btn primary" id="btnSaveRate">保存比例并推提成管理</button>
+            <button type="button" class="btn" id="btnOpenMap">打开人员映射表</button>
+            <span class="note">仅部门负责人可改比例（演示角色：陈主管）</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>新业务员</th>
+                  <th>部门</th>
+                  <th>承接客户数</th>
+                  <th>应收欠款 RMB</th>
+                  <th>提成比例</th>
+                  <th>填写人</th>
+                  <th>推送提成管理</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyRate"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <p class="note">
+        口径对齐调研纪要：离职申请 → 上级确认 → 指定承接人 → 生效自动改归属；提成扣/给千分之二由负责人配置后进提成管理。
+        性能：列表分页 / 异步导出（千条以上现网查不出问题另跟）。
+      </p>
+    </div>
+  </div>
+
+  <!-- 新建 / 审批 / 确认承接人 -->
+  <div class="mask" id="applyMask">
+    <div class="modal wide">
+      <div class="modal-hd">
+        <h3 id="applyTitle">新建离职交接申请</h3>
+        <button type="button" class="btn link" id="applyClose">✕</button>
+      </div>
+      <div class="modal-bd">
+        <div class="hint info" id="applyHint">一般提前申请。提交后到上级；上级确认承接人并点「确认完成」后，系统自动改客户归属。</div>
+        <div class="form-grid">
+          <div class="form-row"><label>离职人 <span class="req">*</span></label>
+            <select id="aLeave"><option>张苏宁</option><option>李婷</option><option>周航</option></select>
+          </div>
+          <div class="form-row"><label>部门 / 战队</label>
+            <input id="aDept" value="苏州一部 / 青禾队" />
+          </div>
+          <div class="form-row"><label>计划离职日 <span class="req">*</span></label>
+            <input type="date" id="aDate" value="2026-10-15" />
+          </div>
+          <div class="form-row"><label>上级审批人</label>
+            <input id="aBoss" value="陈主管" disabled />
+          </div>
+          <div class="form-row"><label>承接人（新业务员） <span class="req">*</span></label>
+            <select id="aTo"><option value="">请选择</option><option>王芳</option><option>赵六</option><option>陈静</option></select>
+          </div>
+          <div class="form-row"><label>提成比例（‰）</label>
+            <input id="aRate" type="number" step="0.1" value="2" />
+          </div>
+        </div>
+        <div class="form-row"><label>交接说明</label>
+          <textarea id="aRemark" placeholder="客户范围、在途单、特殊约定等"></textarea>
+        </div>
+        <div class="form-row">
+          <label>将交接的客户（预览）</label>
+          <div id="aCustPreview" style="border:1px solid #f0f0f0;border-radius:4px;max-height:160px;overflow:auto;font-size:12px"></div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="applyCancel">取消</button>
+        <button type="button" class="btn" id="applyDraft">存草稿</button>
+        <button type="button" class="btn primary" id="applySubmit">提交上级</button>
+        <button type="button" class="btn warn" id="applyApprove" style="display:none">上级通过 · 进入确认承接人</button>
+        <button type="button" class="btn ok" id="applyDone" style="display:none">确认完成 · 自动改归属</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    var CUST_POOL = [
+      { code: "C-8801", name: "海拓", ar: 128000 },
+      { code: "C-8802", name: "联洲", ar: 86000 },
+      { code: "C-8803", name: "优拓", ar: 45200 },
+      { code: "C-8804", name: "铭信", ar: 21000 },
+      { code: "C-8805", name: "合创", ar: 67400 },
+      { code: "C-8806", name: "竞拓", ar: 15800 }
+    ];
+
+    var APPLIES = [
+      {
+        id: "HO-202609-001", leave: "张苏宁", dept: "苏州一部", team: "青禾队",
+        planDate: "2026-10-15", applyDate: "2026-09-20", boss: "陈主管",
+        to: "王芳", status: "待确认承接人", custCount: 4, openShip: 12,
+        rate: 2, rateBy: "", ratePushed: false,
+        custs: CUST_POOL.slice(0, 4), remark: "10 月中离职，客户先交接王芳"
+      },
+      {
+        id: "HO-202609-002", leave: "李婷", dept: "苏州一部", team: "青禾队",
+        planDate: "2026-11-01", applyDate: "2026-09-25", boss: "陈主管",
+        to: "", status: "待上级审批", custCount: 3, openShip: 8,
+        rate: 2, rateBy: "", ratePushed: false,
+        custs: CUST_POOL.slice(2, 5), remark: "提前申请"
+      },
+      {
+        id: "HO-202608-018", leave: "周航", dept: "苏州二部", team: "先锋队",
+        planDate: "2026-09-01", applyDate: "2026-08-10", boss: "刘经理",
+        to: "陈静", status: "已完成", custCount: 5, openShip: 0,
+        rate: 2, rateBy: "刘经理", ratePushed: true,
+        custs: CUST_POOL.slice(1, 6), remark: "已生效",
+        doneAt: "2026-08-28 16:20:00"
+      },
+      {
+        id: "HO-202609-003", leave: "钱程", dept: "宁波", team: "—",
+        planDate: "2026-10-30", applyDate: "2026-09-28", boss: "陈主管",
+        to: "", status: "草稿", custCount: 2, openShip: 3,
+        rate: 2, rateBy: "", ratePushed: false,
+        custs: CUST_POOL.slice(4, 6), remark: ""
+      }
+    ];
+
+    // 已完成写入的客户交接结果
+    var HANDOVERS = [];
+    function rebuildHandovers() {
+      HANDOVERS = [];
+      APPLIES.filter(function (a) { return a.status === "已完成"; }).forEach(function (a) {
+        (a.custs || []).forEach(function (c) {
+          HANDOVERS.push({
+            ho: a.id, code: c.code, name: c.name, from: a.leave, to: a.to,
+            at: a.doneAt || "—", open: Math.floor(Math.random() * 3),
+            ar: c.ar, auto: true
+          });
+        });
+      });
+    }
+    rebuildHandovers();
+
+    var editingId = null;
+    var mode = "new"; // new | view | approve | confirm
+
+    function $(id) { return document.getElementById(id); }
+    function toast(msg) {
+      var el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+    }
+    function money(n) {
+      return (Math.round(n * 100) / 100).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function stTag(s) {
+      if (s === "已完成") return '<span class="tag done">已完成</span>';
+      if (s === "待确认承接人") return '<span class="tag wait">待确认承接人</span>';
+      if (s === "待上级审批") return '<span class="tag wait">待上级审批</span>';
+      if (s === "草稿") return '<span class="tag draft">草稿</span>';
+      return '<span class="tag">' + s + '</span>';
+    }
+
+    function filteredApplies() {
+      var leave = $("fLeave").value.trim();
+      var dept = $("fDept").value;
+      var st = $("fSt").value;
+      return APPLIES.filter(function (a) {
+        if (leave && a.leave.indexOf(leave) < 0 && a.id.indexOf(leave) < 0) return false;
+        if (dept && a.dept !== dept) return false;
+        if (st && a.status !== st) return false;
+        return true;
+      });
+    }
+
+    function renderApply() {
+      var rows = filteredApplies();
+      $("tbodyApply").innerHTML = rows.map(function (a) {
+        var ops = '<button type="button" class="btn link js-view" data-id="' + a.id + '">查看</button>';
+        if (a.status === "草稿") ops += ' <button type="button" class="btn link js-edit" data-id="' + a.id + '">编辑</button>';
+        if (a.status === "待上级审批") ops += ' <button type="button" class="btn link js-approve" data-id="' + a.id + '">上级审批</button>';
+        if (a.status === "待确认承接人") ops += ' <button type="button" class="btn link js-confirm" data-id="' + a.id + '">确认承接人</button>';
+        return "<tr>" +
+          '<td class="mono">' + a.id + "</td>" +
+          "<td>" + a.leave + "</td>" +
+          "<td>" + a.dept + " / " + a.team + "</td>" +
+          "<td>" + a.planDate + "</td>" +
+          "<td>" + a.applyDate + "</td>" +
+          "<td>" + a.boss + "</td>" +
+          "<td>" + (a.to || "—") + "</td>" +
+          '<td class="num">' + a.custCount + "</td>" +
+          '<td class="num">' + a.openShip + "</td>" +
+          "<td>" + stTag(a.status) + "</td>" +
+          "<td>" + ops + "</td>" +
+          "</tr>";
+      }).join("") || '<tr><td colspan="11" style="text-align:center;color:#8c8c8c;padding:24px">无数据</td></tr>';
+    }
+
+    function renderCust() {
+      var ho = $("fHandoverNo").value.trim();
+      var cust = $("fCust").value.trim();
+      var from = $("fFrom").value.trim();
+      var to = $("fTo").value.trim();
+      var rows = HANDOVERS.filter(function (h) {
+        if (ho && h.ho.indexOf(ho) < 0) return false;
+        if (cust && h.name.indexOf(cust) < 0 && h.code.indexOf(cust) < 0) return false;
+        if (from && h.from.indexOf(from) < 0) return false;
+        if (to && h.to.indexOf(to) < 0) return false;
+        return true;
+      });
+      $("tbodyCust").innerHTML = rows.map(function (h) {
+        return "<tr>" +
+          '<td class="mono">' + h.ho + "</td>" +
+          '<td class="mono">' + h.code + "</td>" +
+          "<td>" + h.name + "</td>" +
+          "<td>" + h.from + "</td>" +
+          "<td><b>" + h.to + "</b></td>" +
+          "<td>" + h.at + "</td>" +
+          '<td class="num">' + h.open + "</td>" +
+          '<td class="num">' + money(h.ar) + "</td>" +
+          "<td>" + (h.auto ? '<span class="tag ok">已自动改</span>' : "—") + "</td>" +
+          "</tr>";
+      }).join("") || '<tr><td colspan="9" style="text-align:center;color:#8c8c8c;padding:24px">暂无已完成交接（确认完成后自动生成）</td></tr>';
+    }
+
+    function rateRows() {
+      var map = {};
+      APPLIES.forEach(function (a) {
+        if (!a.to) return;
+        if (!map[a.to]) {
+          map[a.to] = {
+            name: a.to, dept: a.dept, custs: 0, ar: 0,
+            rate: a.rate || 2, rateBy: a.rateBy || "", pushed: a.ratePushed, ids: []
+          };
+        }
+        var m = map[a.to];
+        m.custs += (a.custs || []).length;
+        (a.custs || []).forEach(function (c) { m.ar += c.ar; });
+        m.ids.push(a.id);
+        if (a.rate) m.rate = a.rate;
+        if (a.rateBy) m.rateBy = a.rateBy;
+        if (a.ratePushed) m.pushed = true;
+      });
+      return Object.keys(map).map(function (k) { return map[k]; });
+    }
+
+    function renderRate() {
+      var rows = rateRows();
+      var totalAr = rows.reduce(function (s, r) { return s + r.ar; }, 0);
+      var pushed = rows.filter(function (r) { return r.pushed; }).length;
+      $("rateKpi").innerHTML =
+        '<div class="box"><div class="lab">承接新业务员</div><div class="val">' + rows.length + '</div></div>' +
+        '<div class="box"><div class="lab">承接客户应收欠款合计</div><div class="val" style="color:#cf1322">' + money(totalAr) + '</div></div>' +
+        '<div class="box"><div class="lab">默认提成比例</div><div class="val">2‰</div></div>' +
+        '<div class="box"><div class="lab">已推送提成管理</div><div class="val" style="color:#389e0d">' + pushed + '</div></div>';
+      $("tbodyRate").innerHTML = rows.map(function (r, i) {
+        return "<tr data-name=\"" + r.name + "\">" +
+          "<td><b>" + r.name + "</b></td>" +
+          "<td>" + r.dept + "</td>" +
+          '<td class="num">' + r.custs + "</td>" +
+          '<td class="num" style="color:#cf1322">' + money(r.ar) + "</td>" +
+          '<td><input class="js-rate" data-i="' + i + '" type="number" step="0.1" value="' + r.rate + '" style="width:72px;height:28px;border:1px solid #d9d9d9;border-radius:4px;padding:0 6px" /> ‰</td>' +
+          "<td>" + (r.rateBy || "—") + "</td>" +
+          "<td>" + (r.pushed ? '<span class="tag ok">已推送</span>' : '<span class="tag draft">未推送</span>') + "</td>" +
+          '<td><button type="button" class="btn link js-push-one" data-name="' + r.name + '">推送</button></td>' +
+          "</tr>";
+      }).join("") || '<tr><td colspan="8" style="text-align:center;color:#8c8c8c;padding:24px">暂无承接人数据</td></tr>';
+      renderRate._rows = rows;
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll(".tab-btn").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-tab") === tab);
+      });
+      $("view-apply").style.display = tab === "apply" ? "" : "none";
+      $("view-cust").style.display = tab === "cust" ? "" : "none";
+      $("view-rate").style.display = tab === "rate" ? "" : "none";
+      if (tab === "cust") renderCust();
+      if (tab === "rate") renderRate();
+    }
+
+    function fillPreview(custs) {
+      $("aCustPreview").innerHTML = (custs || []).map(function (c) {
+        return '<div style="padding:6px 10px;border-bottom:1px solid #f5f5f5">' +
+          c.code + " · " + c.name + ' · 欠款 <span class="num">' + money(c.ar) + "</span></div>";
+      }).join("") || '<div style="padding:12px;color:#8c8c8c">暂无客户</div>';
+    }
+
+    function openApply(id, m) {
+      mode = m || "new";
+      editingId = id;
+      var a = id ? APPLIES.filter(function (x) { return x.id === id; })[0] : null;
+      $("applyTitle").textContent =
+        mode === "new" ? "新建离职交接申请" :
+        mode === "approve" ? "上级审批" :
+        mode === "confirm" ? "确认承接人 · 完成自动改归属" : "查看申请 " + (a && a.id);
+      $("applyDraft").style.display = mode === "new" || (a && a.status === "草稿") ? "" : "none";
+      $("applySubmit").style.display = mode === "new" || (a && a.status === "草稿") ? "" : "none";
+      $("applyApprove").style.display = mode === "approve" ? "" : "none";
+      $("applyDone").style.display = mode === "confirm" ? "" : "none";
+
+      if (a) {
+        $("aLeave").value = a.leave;
+        $("aDept").value = a.dept + " / " + a.team;
+        $("aDate").value = a.planDate;
+        $("aBoss").value = a.boss;
+        $("aTo").value = a.to || "";
+        $("aRate").value = a.rate || 2;
+        $("aRemark").value = a.remark || "";
+        fillPreview(a.custs);
+        $("applyHint").innerHTML = mode === "confirm"
+          ? "确认承接人后点「确认完成」：系统将<strong>自动改</strong>客户业务员归属，并生成客户交接表；提成比例可一并写入。"
+          : mode === "approve"
+          ? "上级审批通过后进入「待确认承接人」；可先指定建议承接人。"
+          : "一般提前申请；申请完成（确认完成）之后才修改客户归属。";
+      } else {
+        $("aLeave").value = "张苏宁";
+        $("aDept").value = "苏州一部 / 青禾队";
+        $("aDate").value = "2026-10-15";
+        $("aBoss").value = "陈主管";
+        $("aTo").value = "";
+        $("aRate").value = "2";
+        $("aRemark").value = "";
+        fillPreview(CUST_POOL.slice(0, 3));
+        $("applyHint").textContent = "一般提前申请。提交后到上级；确认完成后系统自动改客户归属。";
+      }
+      var lock = mode === "view";
+      ["aLeave", "aDept", "aDate", "aTo", "aRate", "aRemark"].forEach(function (id) {
+        $(id).disabled = lock || (mode === "approve" && id !== "aTo" && id !== "aRemark");
+      });
+      if (mode === "confirm") {
+        $("aTo").disabled = false;
+        $("aRate").disabled = false;
+      }
+      $("applyMask").classList.add("open");
+    }
+
+    function closeApply() { $("applyMask").classList.remove("open"); editingId = null; }
+
+    function upsertDraft(status) {
+      var leave = $("aLeave").value;
+      var to = $("aTo").value;
+      var rate = parseFloat($("aRate").value) || 2;
+      if (status !== "草稿" && !leave) { toast("请选择离职人"); return null; }
+      if ((status === "待确认承接人" || status === "已完成") && !to) { toast("请选择承接人"); return null; }
+      var a = editingId ? APPLIES.filter(function (x) { return x.id === editingId; })[0] : null;
+      if (!a) {
+        a = {
+          id: "HO-202609-" + String(100 + APPLIES.length).slice(-3),
+          leave: leave, dept: "苏州一部", team: "青禾队",
+          planDate: $("aDate").value, applyDate: "2026-09-29", boss: $("aBoss").value,
+          to: to, status: status, custCount: 3, openShip: 5,
+          rate: rate, rateBy: "", ratePushed: false,
+          custs: CUST_POOL.slice(0, 3), remark: $("aRemark").value
+        };
+        APPLIES.unshift(a);
+        editingId = a.id;
+      } else {
+        a.leave = leave;
+        a.planDate = $("aDate").value;
+        a.to = to;
+        a.rate = rate;
+        a.remark = $("aRemark").value;
+        a.status = status;
+        a.custCount = (a.custs || []).length;
+      }
+      return a;
+    }
+
+    // tabs
+    $("mainTabs").onclick = function (e) {
+      var b = e.target.closest("[data-tab]");
+      if (!b) return;
+      switchTab(b.getAttribute("data-tab"));
+    };
+
+    $("btnSearch").onclick = renderApply;
+    $("btnReset").onclick = function () {
+      $("fLeave").value = ""; $("fDept").value = ""; $("fSt").value = "";
+      renderApply();
+    };
+    $("btnSearchCust").onclick = renderCust;
+    $("btnNew").onclick = function () { openApply(null, "new"); };
+    $("btnExport").onclick = function () { toast("已导出离职交接列表（演示）"); };
+    $("applyClose").onclick = $("applyCancel").onclick = closeApply;
+    $("applyMask").onclick = function (e) { if (e.target === $("applyMask")) closeApply(); };
+
+    $("tbodyApply").onclick = function (e) {
+      var id = e.target.getAttribute("data-id");
+      if (!id) return;
+      if (e.target.classList.contains("js-view")) openApply(id, "view");
+      if (e.target.classList.contains("js-edit")) openApply(id, "new");
+      if (e.target.classList.contains("js-approve")) openApply(id, "approve");
+      if (e.target.classList.contains("js-confirm")) openApply(id, "confirm");
+    };
+
+    $("applyDraft").onclick = function () {
+      upsertDraft("草稿");
+      closeApply(); renderApply(); toast("已存草稿");
+    };
+    $("applySubmit").onclick = function () {
+      var a = upsertDraft("待上级审批");
+      if (!a) return;
+      closeApply(); renderApply(); toast(a.id + " 已提交上级");
+    };
+    $("applyApprove").onclick = function () {
+      var a = upsertDraft("待确认承接人");
+      if (!a) return;
+      closeApply(); renderApply(); toast("上级已通过 · 待确认承接人");
+    };
+    $("applyDone").onclick = function () {
+      var a = upsertDraft("已完成");
+      if (!a) return;
+      a.doneAt = "2026-09-29 13:40:00";
+      a.rateBy = a.boss;
+      rebuildHandovers();
+      closeApply();
+      renderApply();
+      toast("确认完成 · 已自动改 " + a.custCount + " 个客户归属 → " + a.to);
+      switchTab("cust");
+    };
+
+    $("btnSaveRate").onclick = function () {
+      var rows = renderRate._rows || rateRows();
+      document.querySelectorAll(".js-rate").forEach(function (inp) {
+        var i = parseInt(inp.getAttribute("data-i"), 10);
+        if (rows[i]) rows[i].rate = parseFloat(inp.value) || 2;
+      });
+      rows.forEach(function (r) {
+        APPLIES.forEach(function (a) {
+          if (a.to === r.name) {
+            a.rate = r.rate;
+            a.rateBy = "陈主管";
+            a.ratePushed = true;
+          }
+        });
+      });
+      renderRate();
+      toast("已保存比例并推送提成管理（演示 · " + rows.length + " 人）");
+    };
+    $("btnOpenMap").onclick = function () {
+      window.open("../../提成管理/人员映射表-MVP.html", "_blank");
+    };
+    $("tbodyRate").onclick = function (e) {
+      var btn = e.target.closest(".js-push-one");
+      if (!btn) return;
+      var name = btn.getAttribute("data-name");
+      APPLIES.forEach(function (a) {
+        if (a.to === name) { a.ratePushed = true; a.rateBy = "陈主管"; }
+      });
+      renderRate();
+      toast(name + " 提成 " + (APPLIES.filter(function (a) { return a.to === name; })[0] || {}).rate + "‰ 已推送提成管理");
+    };
+
+    renderApply();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>付款管理(新) · 报关抵扣 · MVP</title>
+  <style>
+    :root {
+      --nav: #001529; --primary: #1890ff; --ok: #52c41a; --warn: #fa8c16; --danger: #ff4d4f;
+      --bg: #f0f2f5; --line: #e8e8e8; --text: #262626; --muted: #8c8c8c; --red-btn: #f5222d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: 40px; background: var(--nav); color: #fff;
+      display: flex; align-items: center; padding: 0 12px; gap: 4px; flex-shrink: 0; overflow-x: auto;
+    }
+    .topbar .logo { font-weight: 700; margin-right: 10px; white-space: nowrap; }
+    .topbar .tab {
+      padding: 6px 12px; color: rgba(255,255,255,.65); border-radius: 4px 4px 0 0; white-space: nowrap;
+    }
+    .topbar .tab.on { background: #fff; color: var(--warn); font-weight: 600; }
+    .topbar .right { margin-left: auto; font-size: 12px; color: rgba(255,255,255,.75); white-space: nowrap; }
+    .topbar a { color: rgba(255,255,255,.85); text-decoration: none; }
+    .crumb {
+      height: 36px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; color: var(--muted); font-size: 12px;
+    }
+    .crumb b { color: var(--text); }
+    .banner {
+      margin: 8px 12px 0; padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 4px; font-size: 12px; color: #ad6800; line-height: 1.55;
+    }
+    .banner b { color: #873800; }
+    .main { flex: 1; padding: 8px 12px 16px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+    .filter { padding: 10px 12px 6px; }
+    .fg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 14px; }
+    .fi { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+    .fi label { flex: 0 0 78px; text-align: right; color: var(--muted); padding-top: 6px; white-space: nowrap; font-size: 12px; }
+    .fi .ctl { flex: 1; min-width: 0; }
+    .fi input, .fi select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .filter-actions {
+      display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;
+      padding-top: 6px; border-top: 1px dashed #f0f0f0;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; color: var(--text); display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { background: #40a9ff; border-color: #40a9ff; color: #fff; }
+    .btn.danger {
+      background: var(--red-btn); border-color: var(--red-btn); color: #fff; font-weight: 600;
+    }
+    .btn.danger:hover { background: #ff4d4f; border-color: #ff4d4f; color: #fff; }
+    .btn.warn { background: var(--warn); border-color: var(--warn); color: #fff; }
+    .btn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.link { border: none; background: none; color: var(--primary); height: auto; padding: 0 4px; }
+    .toolbar {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding: 6px 10px; border-top: 1px solid var(--line); background: #fafafa;
+    }
+    .toolbar .sep { width: 1px; height: 18px; background: #d9d9d9; margin: 0 2px; }
+    .st-tabs { display: flex; gap: 0; padding: 0 10px; border-top: 1px solid var(--line); background: #fff; }
+    .st-tabs button {
+      border: none; background: none; padding: 8px 14px; color: var(--muted); position: relative;
+    }
+    .st-tabs button.on { color: var(--primary); font-weight: 600; }
+    .st-tabs button.on::after {
+      content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 2px; background: var(--primary);
+    }
+    .table-wrap { overflow: auto; max-height: 280px; }
+    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+    thead th {
+      position: sticky; top: 0; z-index: 2; background: #fafafa; border-bottom: 1px solid var(--line);
+      padding: 6px 8px; text-align: left; font-weight: 600; white-space: nowrap; color: #595959;
+    }
+    tbody td {
+      padding: 5px 8px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; vertical-align: middle;
+    }
+    tbody tr:hover { background: #f5f9ff; }
+    tbody tr.selected { background: #e6f7ff; }
+    .num { font-variant-numeric: tabular-nums; font-family: Consolas, monospace; text-align: right; }
+    .mono { font-family: Consolas, "SF Mono", monospace; }
+    .neg { color: #cf1322; }
+    .pos { color: #389e0d; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; line-height: 18px; font-weight: 600;
+    }
+    .tag.wait { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .tag.done { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag.deduct { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .tag.draft { background: #f5f5f5; color: #8c8c8c; border: 1px solid #d9d9d9; }
+    .tag.info { background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; }
+    .tag.bad { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .tag.ok { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .side-out { color: #1890ff; font-weight: 600; }
+    .side-in { color: #52c41a; font-weight: 600; }
+    .split {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 220px;
+    }
+    .split .pane { display: flex; flex-direction: column; min-height: 0; }
+    .pane-hd {
+      padding: 8px 10px; border-bottom: 1px solid var(--line); background: #fafafa;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px;
+    }
+    .pane-hd b { color: var(--text); }
+    .pane-hd .ctl { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+    .pane-hd input { height: 26px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; width: 140px; }
+    .pane .table-wrap { max-height: 180px; flex: 1; }
+    .note { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .toast {
+      position: fixed; top: 56px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 18px; border-radius: 4px;
+      z-index: 300; opacity: 0; pointer-events: none; transition: .2s; font-size: 13px; max-width: 90vw;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+      display: none; align-items: center; justify-content: center;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      width: 960px; max-width: 96vw; max-height: 92vh; background: #fff; border-radius: 6px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18); display: flex; flex-direction: column;
+    }
+    .modal.sm { width: 520px; }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-hd h3 { margin: 0; font-size: 15px; }
+    .modal-bd { padding: 14px 16px; overflow: auto; flex: 1; }
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
+    }
+    .steps {
+      display: flex; gap: 0; margin-bottom: 14px; border-bottom: 1px solid var(--line);
+    }
+    .steps .s {
+      flex: 1; text-align: center; padding: 10px 6px; font-size: 12px; color: var(--muted);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .steps .s.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+    .steps .s.done { color: var(--ok); }
+    .hint {
+      padding: 8px 10px; border-radius: 4px; font-size: 12px; line-height: 1.55; margin-bottom: 12px;
+    }
+    .hint.info { background: #e6f7ff; border: 1px solid #91d5ff; color: #096dd9; }
+    .hint.warn { background: #fff7e6; border: 1px solid #ffd591; color: #ad6800; }
+    .hint.ok { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+    .hint.bad { background: #fff1f0; border: 1px solid #ffa39e; color: #a8071a; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+    .form-row { margin-bottom: 0; }
+    .form-row label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+    .form-row label .req { color: var(--danger); }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 5px 8px; height: 30px;
+    }
+    .form-row textarea { height: auto; min-height: 56px; resize: vertical; }
+    .radio-row { display: flex; gap: 16px; flex-wrap: wrap; padding: 4px 0; }
+    .radio-row label { display: flex; align-items: center; gap: 6px; color: var(--text); cursor: pointer; }
+    .chk { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; margin: 6px 0; }
+    .chk input { margin-top: 2px; }
+    .kpi {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .kpi .box { background: #fafafa; border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; }
+    .kpi .lab { font-size: 11px; color: var(--muted); }
+    .kpi .val { font-size: 16px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .pair {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;
+    }
+    .pair .card {
+      border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+    }
+    .pair .card h4 {
+      margin: 0; padding: 8px 10px; background: #fafafa; border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .pair .card .body { padding: 8px 10px; font-size: 12px; }
+    .pair .kv { display: grid; grid-template-columns: 88px 1fr; gap: 4px 8px; }
+    .pair .kv b { color: var(--muted); font-weight: 500; }
+    .err-list { margin: 0; padding-left: 18px; font-size: 12px; color: #a8071a; }
+    .err-list li { margin: 4px 0; }
+    @media (max-width: 1100px) {
+      .fg { grid-template-columns: repeat(2, 1fr); }
+      .split { grid-template-columns: 1fr; }
+      .form-grid, .pair, .kpi { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei','PingFang SC',sans-serif"><a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a></div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="logo">头程系统</div>
+      <div class="tab">主单跟进</div>
+      <div class="tab">整柜下单</div>
+      <div class="tab">运单管理</div>
+      <div class="tab on">付款管理(新)</div>
+      <div class="tab">财务统计</div>
+      <div class="right">
+        <a href="成本-模块导航.html">← 成本导航</a>
+        · <a href="../财务部门-模块导航.html">财务导航</a>
+      </div>
+    </div>
+    <div class="crumb">
+      <span>财务</span><span>/</span><span>成本</span><span>/</span><b>付款管理(新)</b>
+      <span style="margin-left:auto">现网对齐 · 红钮「报关抵扣」为本期增量</span>
+    </div>
+    <div class="banner">
+      <b>报关抵扣场景：</b>客户报关费直付给报关行 → 付款侧发起<strong>负抵扣</strong> → 应收侧给客户<strong>加余额</strong>。
+      导入规则：同日同代理汇总一条；多客户须先拆开；报关行名称与系统主数据<strong>完全一致</strong>才能匹配；对方账户=报关行核销账户（可多账户）。
+    </div>
+
+    <div class="main">
+      <section class="panel">
+        <div class="filter">
+          <div class="fg">
+            <div class="fi"><label>服务商名称</label><div class="ctl"><input id="fSp" placeholder="报关行 / 代理简称" /></div></div>
+            <div class="fi"><label>凭证编号</label><div class="ctl"><input id="fVoucher" /></div></div>
+            <div class="fi"><label>运单号</label><div class="ctl"><input id="fWb" /></div></div>
+            <div class="fi"><label>交易流水号</label><div class="ctl"><input id="fFlow" /></div></div>
+            <div class="fi"><label>付款银行</label><div class="ctl"><input /></div></div>
+            <div class="fi"><label>创建时间</label><div class="ctl"><input type="date" value="2026-09-01" /></div></div>
+            <div class="fi"><label>认领时间</label><div class="ctl"><input type="date" value="2026-09-29" /></div></div>
+            <div class="fi"><label>币别</label><div class="ctl">
+              <select><option>全部</option><option selected>CNY</option><option>USD</option></select>
+            </div></div>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn" id="btnReset">数据重置</button>
+            <button type="button" class="btn primary" id="btnSearch">查询数据</button>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button type="button" class="btn primary">新建现金付款</button>
+          <button type="button" class="btn primary">新建非现金付款</button>
+          <span class="sep"></span>
+          <button type="button" class="btn">修改汇率</button>
+          <button type="button" class="btn">修改服务商</button>
+          <button type="button" class="btn">修改备注</button>
+          <button type="button" class="btn">修改收款账号</button>
+          <button type="button" class="btn">修改银行账户</button>
+          <span class="sep"></span>
+          <button type="button" class="btn">快递核销</button>
+          <button type="button" class="btn">快速撤销</button>
+          <button type="button" class="btn">作废付款</button>
+          <button type="button" class="btn">查看凭证</button>
+          <span class="sep"></span>
+          <button type="button" class="btn danger" id="btnDeduct">报关抵扣</button>
+          <button type="button" class="btn" id="btnDeductList">抵扣记录</button>
+        </div>
+
+        <div class="st-tabs" id="stTabs">
+          <button type="button" class="on" data-st="all">全部</button>
+          <button type="button" data-st="wait">待核销</button>
+          <button type="button" data-st="done">已核销</button>
+          <button type="button" data-st="deduct">报关抵扣</button>
+          <button type="button" data-st="void">作废</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="chkAll" /></th>
+                <th>凭证编号</th>
+                <th>凭证状态</th>
+                <th>服务商代码</th>
+                <th>服务商名称</th>
+                <th>币别</th>
+                <th>收支标识</th>
+                <th>付款金额</th>
+                <th>已核金额</th>
+                <th>可核金额</th>
+                <th>账户名称（核销名）</th>
+                <th>数据来源</th>
+                <th>创建时间</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPay"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="pane-hd" style="border-bottom:1px solid var(--line)">
+          <b>核销明细</b>
+          <span class="note">服务商名称：<span id="selSpName">—</span></span>
+          <span class="note" id="selHint">选中上方凭证后加载待核 / 已核明细</span>
+        </div>
+        <div class="split">
+          <div class="pane">
+            <div class="pane-hd">
+              <b>待核明细</b>
+              <div class="ctl">
+                <input id="qLeft" placeholder="运单号 / 客户单号" />
+                <button type="button" class="btn primary" id="btnQLeft">查询</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th></th><th>出货时间</th><th>客户单号</th><th>运单号</th>
+                    <th>总应付</th><th>抵扣金额</th><th>核销时间</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyLeft"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="pane-hd">
+              <b>已核明细</b>
+              <div class="ctl">
+                <input id="qRight" placeholder="运单号" />
+                <button type="button" class="btn" id="btnQRight">查询</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th></th><th>出货时间</th><th>客户单号</th><th>运单号</th>
+                    <th>总应付</th><th>已核金额</th><th>未核金额</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyRight"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+      <p class="note">
+        对齐现网「付款管理(新)」：上方付款凭证 + 下方核销双栏。红钮「报关抵扣」= 本期增量（负抵扣双边导入）。
+        待拍板 D-06：提醒应收 vs 直接双边导入（原型两种模式都可切）。
+      </p>
+    </div>
+  </div>
+
+  <!-- 报关抵扣向导 -->
+  <div class="mask" id="deductMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3>报关抵扣 · 负抵扣双边导入</h3>
+        <button type="button" class="btn link" id="deductClose">✕</button>
+      </div>
+      <div class="modal-bd">
+        <div class="steps" id="deductSteps">
+          <div class="s on" data-step="1">1 导入方式</div>
+          <div class="s" data-step="2">2 校验匹配</div>
+          <div class="s" data-step="3">3 拆分 / 汇总</div>
+          <div class="s" data-step="4">4 账户与确认</div>
+        </div>
+
+        <!-- Step 1 -->
+        <div id="step1">
+          <div class="hint info">
+            场景：客户报关费<strong>直接付给报关行</strong>，我司不垫资 → 付款侧登记<strong>负抵扣</strong>（应付减少）+ 应收侧给客户<strong>加余额</strong>。
+          </div>
+          <div class="form-row" style="margin-bottom:12px">
+            <label>导入形态 <span class="req">*</span>（待拍板 D-06）</label>
+            <div class="radio-row">
+              <label><input type="radio" name="mode" value="bilateral" checked /> 直接双边导入：应收(客户) + 应付(服务商)</label>
+              <label><input type="radio" name="mode" value="remind" /> 先提醒应收，确认后再导应付负抵扣</label>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>业务日期 <span class="req">*</span></label>
+              <input type="date" id="dDate" value="2026-09-29" />
+            </div>
+            <div class="form-row">
+              <label>报关行（服务商） <span class="req">*</span></label>
+              <select id="dBroker">
+                <option value="">请选择 / 粘贴系统全称</option>
+                <option>苏州浩登来报关行</option>
+                <option>上海联检报关有限公司</option>
+                <option>宁波海通报关行</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>粘贴报关行名称（精确匹配）</label>
+              <input id="dBrokerPaste" placeholder="必须与系统主数据 100% 一致" />
+            </div>
+            <div class="form-row">
+              <label>币别</label>
+              <select id="dCur"><option>CNY</option><option>USD</option></select>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <label>导入明细（Excel / 粘贴：客户编码、客户简称、金额、单号可选）</label>
+            <textarea id="dRaw" placeholder="示例（多客户须拆行）：&#10;C-8801&#9;海拓&#9;3200&#9;TX260929001&#10;C-8802&#9;联洲&#9;1800&#9;TX260929002&#10;C-8801&#9;海拓&#9;500&#9;TX260929003"></textarea>
+          </div>
+          <label class="chk"><input type="checkbox" id="dExpress" checked /> 自动带出快递费科目（账户按核销名匹配「快递费」规则）</label>
+          <label class="chk"><input type="checkbox" id="dRemindAr" /> 同时向应收岗推送待办提醒（即使选双边导入也可勾）</label>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="step2" style="display:none">
+          <div class="kpi" id="matchKpi"></div>
+          <div id="matchHint"></div>
+          <div class="table-wrap" style="max-height:260px;border:1px solid var(--line);border-radius:4px">
+            <table>
+              <thead>
+                <tr>
+                  <th>行</th><th>客户编码</th><th>客户简称</th><th>金额</th><th>单号</th>
+                  <th>报关行匹配</th><th>客户匹配</th><th>结果</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyMatch"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="step3" style="display:none">
+          <div class="hint warn">
+            <strong>汇总规则：</strong>同一天 + 同一代理 → 应付侧汇总成<strong>一条</strong>负抵扣凭证；
+            应收侧按客户拆开加余额。若一行混了多个客户且未拆开 → <strong>拦截</strong>。
+          </div>
+          <div class="pair">
+            <div class="card">
+              <h4>应付侧 · 服务商（汇总后）</h4>
+              <div class="body" id="apPreview"></div>
+            </div>
+            <div class="card">
+              <h4>应收侧 · 客户（按客户拆）</h4>
+              <div class="body" id="arPreview"></div>
+            </div>
+          </div>
+          <div class="table-wrap" style="max-height:200px;border:1px solid var(--line);border-radius:4px;margin-top:10px">
+            <table>
+              <thead>
+                <tr><th>客户</th><th>明细行数</th><th>加余额合计</th><th>关联单号</th></tr>
+              </thead>
+              <tbody id="tbodySplit"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div id="step4" style="display:none">
+          <div class="hint info">
+            对方账户 = <strong>报关行核销账户</strong>（按核销名字匹配）。同一报关行可有多个账户，须手工指定或按默认核销名带出。
+            改数后收款侧是否级联：下方评估选项。
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>报关行账户（核销名） <span class="req">*</span></label>
+              <select id="dAccount"></select>
+            </div>
+            <div class="form-row">
+              <label>负抵扣金额（应付）</label>
+              <input id="dApAmt" readonly />
+            </div>
+            <div class="form-row">
+              <label>费用科目</label>
+              <select id="dFee">
+                <option>报关费</option>
+                <option selected>报关费（客户直付抵扣）</option>
+                <option>快递费</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>改数后联动收款侧</label>
+              <select id="dCascade">
+                <option value="eval">评估中 · 能改则级联改应收核销</option>
+                <option value="cascade">允许级联改（已核销也可冲）</option>
+                <option value="offline">不能改 · 出线下沟通单</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:10px">
+            <label>备注</label>
+            <textarea id="dRemark">客户直付报关行 · 负抵扣加客户余额</textarea>
+          </div>
+          <div class="pair" style="margin-top:10px">
+            <div class="card">
+              <h4>将写入 · 付款凭证</h4>
+              <div class="body" id="finalAp"></div>
+            </div>
+            <div class="card">
+              <h4>将写入 · 应收余额 / 提醒</h4>
+              <div class="body" id="finalAr"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="deductCancel">取消</button>
+        <button type="button" class="btn" id="deductPrev" style="display:none">上一步</button>
+        <button type="button" class="btn primary" id="deductNext">下一步</button>
+        <button type="button" class="btn ok" id="deductSubmit" style="display:none">确认生成负抵扣</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 抵扣记录 -->
+  <div class="mask" id="listMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3>报关抵扣记录</h3>
+        <button type="button" class="btn link" id="listClose">✕</button>
+      </div>
+      <div class="modal-bd">
+        <div class="table-wrap" style="max-height:420px">
+          <table>
+            <thead>
+              <tr>
+                <th>抵扣单号</th><th>业务日</th><th>报关行</th><th>负抵扣金额</th>
+                <th>客户数</th><th>账户(核销名)</th><th>导入形态</th><th>收款联动</th><th>状态</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDeductLog"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="listClose2">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 线下沟通 / 不能改 -->
+  <div class="mask" id="offlineMask">
+    <div class="modal sm">
+      <div class="modal-hd">
+        <h3>收款侧不能级联 · 线下沟通单</h3>
+        <button type="button" class="btn link" id="offlineClose">✕</button>
+      </div>
+      <div class="modal-bd">
+        <div class="hint warn">系统评估：对应收款核销已锁账 / 已出报表，不能自动改。请线下沟通应收岗手工调余额。</div>
+        <div class="form-row"><label>沟通对象</label><input value="应收岗 · 徐珍霞组" /></div>
+        <div class="form-row" style="margin-top:8px"><label>事由</label>
+          <textarea>报关抵扣改数后需同步客户余额；系统不能级联，请手工加余额并回写单号。</textarea>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="offlineClose2">取消</button>
+        <button type="button" class="btn primary" id="offlineSend">生成沟通单</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    // —— 主数据：报关行必须全称一致 ——
+    var BROKERS = {
+      "苏州浩登来报关行": {
+        code: "SP-BG-001",
+        accounts: [
+          { id: "A1", name: "浩登来-核销户(工行)", bank: "工行苏州新区", no: "****7781", def: true },
+          { id: "A2", name: "浩登来-快递费户(建行)", bank: "建行苏州分行", no: "****3312", def: false },
+          { id: "A3", name: "浩登来-备用户(农行)", bank: "农行苏州支行", no: "****9901", def: false }
+        ]
+      },
+      "上海联检报关有限公司": {
+        code: "SP-BG-002",
+        accounts: [
+          { id: "B1", name: "联检-核销户(中行)", bank: "中行上海分行", no: "****5520", def: true },
+          { id: "B2", name: "联检-快递费户(招行)", bank: "招行上海支行", no: "****1188", def: false }
+        ]
+      },
+      "宁波海通报关行": {
+        code: "SP-BG-003",
+        accounts: [
+          { id: "C1", name: "海通-核销户(交行)", bank: "交行宁波分行", no: "****4400", def: true }
+        ]
+      }
+    };
+
+    var CUSTS = {
+      "C-8801": "海拓", "C-8802": "联洲", "C-8803": "优拓",
+      "C-8804": "铭信", "C-8805": "合创"
+    };
+
+    var PAYS = [
+      {
+        id: "PV20260929001", st: "待核销", code: "SP-BG-001", sp: "苏州浩登来报关行",
+        cur: "CNY", side: "支出", amt: 92723, done: 0, can: 92723,
+        acct: "浩登来-核销户(工行)", src: "零度银行抓取", at: "2026-09-29 09:12",
+        remark: "", type: "normal"
+      },
+      {
+        id: "PV20260928088", st: "已核销", code: "SP-BG-002", sp: "上海联检报关有限公司",
+        cur: "CNY", side: "支出", amt: 15600, done: 15600, can: 0,
+        acct: "联检-核销户(中行)", src: "手工录入", at: "2026-09-28 14:20",
+        remark: "报关费", type: "normal"
+      },
+      {
+        id: "DD20260927001", st: "待核销", code: "SP-BG-001", sp: "苏州浩登来报关行",
+        cur: "CNY", side: "收入", amt: -5000, done: 0, can: -5000,
+        acct: "浩登来-核销户(工行)", src: "报关抵扣", at: "2026-09-27 16:05",
+        remark: "【报关抵扣】客户直付 · 负抵扣", type: "deduct"
+      },
+      {
+        id: "PV20260926012", st: "待核销", code: "SP-TR-019", sp: "一代代发",
+        cur: "CNY", side: "支出", amt: 3200, done: 800, can: 2400,
+        acct: "泰捷银行(人民币)-776", src: "零度银行抓取", at: "2026-09-26 11:30",
+        remark: "", type: "normal"
+      },
+      {
+        id: "DD20260925003", st: "已核销", code: "SP-BG-003", sp: "宁波海通报关行",
+        cur: "CNY", side: "收入", amt: -2800, done: -2800, can: 0,
+        acct: "海通-核销户(交行)", src: "报关抵扣", at: "2026-09-25 10:18",
+        remark: "【报关抵扣】同日同代理汇总", type: "deduct"
+      }
+    ];
+
+    var DEDUCT_LOG = [
+      {
+        id: "DD20260927001", date: "2026-09-27", broker: "苏州浩登来报关行",
+        amt: -5000, custN: 2, acct: "浩登来-核销户(工行)",
+        mode: "双边导入", cascade: "已级联", st: "待核销"
+      },
+      {
+        id: "DD20260925003", date: "2026-09-25", broker: "宁波海通报关行",
+        amt: -2800, custN: 1, acct: "海通-核销户(交行)",
+        mode: "先提醒应收", cascade: "线下沟通", st: "已核销"
+      }
+    ];
+
+    var LEFT_DEMO = [
+      { ship: "2026-09-20", custNo: "KH-9921", wb: "TX260920881", ap: 1200, ded: 0, at: "—" },
+      { ship: "2026-09-21", custNo: "KH-9922", wb: "TX260921102", ap: 860, ded: 0, at: "—" },
+      { ship: "2026-09-22", custNo: "KH-9930", wb: "TX260922055", ap: 2100, ded: 500, at: "—" }
+    ];
+    var RIGHT_DEMO = [
+      { ship: "2026-09-18", custNo: "KH-9901", wb: "TX260918011", ap: 1500, done: 1500, left: 0 },
+      { ship: "2026-09-19", custNo: "KH-9908", wb: "TX260919044", ap: 980, done: 500, left: 480 }
+    ];
+
+    var selectedPay = null;
+    var step = 1;
+    var matchRows = [];
+    var stFilter = "all";
+
+    function $(id) { return document.getElementById(id); }
+    function toast(msg) {
+      var el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.classList.remove("show"); }, 2600);
+    }
+    function money(n) {
+      var s = (Math.round(Math.abs(n) * 100) / 100).toLocaleString("zh-CN", {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+      });
+      return n < 0 ? "-" + s : s;
+    }
+    function stTag(s, type) {
+      if (type === "deduct") return '<span class="tag deduct">报关抵扣</span> <span class="tag ' +
+        (s === "已核销" ? "done" : "wait") + '">' + s + "</span>";
+      if (s === "已核销") return '<span class="tag done">已核销</span>';
+      if (s === "待核销") return '<span class="tag wait">待核销</span>';
+      return '<span class="tag draft">' + s + "</span>";
+    }
+
+    function filteredPays() {
+      var sp = $("fSp").value.trim();
+      var v = $("fVoucher").value.trim();
+      return PAYS.filter(function (p) {
+        if (stFilter === "wait" && p.st !== "待核销") return false;
+        if (stFilter === "done" && p.st !== "已核销") return false;
+        if (stFilter === "deduct" && p.type !== "deduct") return false;
+        if (stFilter === "void" && p.st !== "作废") return false;
+        if (sp && p.sp.indexOf(sp) < 0 && p.code.indexOf(sp) < 0) return false;
+        if (v && p.id.indexOf(v) < 0) return false;
+        return true;
+      });
+    }
+
+    function renderPay() {
+      var rows = filteredPays();
+      $("tbodyPay").innerHTML = rows.map(function (p) {
+        var sideCls = p.side === "收入" ? "side-in" : "side-out";
+        var amtCls = p.amt < 0 ? "num neg" : "num";
+        var sel = selectedPay && selectedPay.id === p.id ? " selected" : "";
+        return '<tr class="js-pay' + sel + '" data-id="' + p.id + '">' +
+          '<td><input type="checkbox" ' + (sel ? "checked" : "") + " /></td>" +
+          '<td class="mono"><a href="javascript:;" class="btn link">' + p.id + "</a></td>" +
+          "<td>" + stTag(p.st, p.type) + "</td>" +
+          '<td class="mono">' + p.code + "</td>" +
+          "<td>" + p.sp + "</td>" +
+          "<td>" + p.cur + "</td>" +
+          '<td class="' + sideCls + '">' + p.side + "</td>" +
+          '<td class="' + amtCls + '">' + money(p.amt) + "</td>" +
+          '<td class="num">' + money(p.done) + "</td>" +
+          '<td class="num">' + money(p.can) + "</td>" +
+          "<td>" + p.acct + "</td>" +
+          "<td>" + p.src + "</td>" +
+          "<td>" + p.at + "</td>" +
+          "<td>" + (p.remark || "—") + "</td>" +
+          "</tr>";
+      }).join("") || '<tr><td colspan="14" style="text-align:center;color:#8c8c8c;padding:20px">无数据</td></tr>';
+    }
+
+    function renderBottom() {
+      if (!selectedPay) {
+        $("selSpName").textContent = "—";
+        $("tbodyLeft").innerHTML = '<tr><td colspan="7" style="text-align:center;color:#8c8c8c;padding:16px">No Rows To Show</td></tr>';
+        $("tbodyRight").innerHTML = '<tr><td colspan="7" style="text-align:center;color:#8c8c8c;padding:16px">No Rows To Show</td></tr>';
+        return;
+      }
+      $("selSpName").textContent = selectedPay.sp;
+      $("selHint").textContent = selectedPay.type === "deduct"
+        ? "报关抵扣凭证：下方可看关联客户单 / 负抵扣明细"
+        : "可勾选待核明细做快递核销 / 手工核销";
+      $("tbodyLeft").innerHTML = LEFT_DEMO.map(function (r) {
+        return "<tr><td><input type='checkbox'/></td><td>" + r.ship + "</td><td>" + r.custNo +
+          "</td><td class='mono'>" + r.wb + "</td><td class='num'>" + money(r.ap) +
+          "</td><td class='num'>" + money(r.ded) + "</td><td>" + r.at + "</td></tr>";
+      }).join("");
+      $("tbodyRight").innerHTML = RIGHT_DEMO.map(function (r) {
+        return "<tr><td><input type='checkbox'/></td><td>" + r.ship + "</td><td>" + r.custNo +
+          "</td><td class='mono'>" + r.wb + "</td><td class='num'>" + money(r.ap) +
+          "</td><td class='num'>" + money(r.done) + "</td><td class='num'>" + money(r.left) + "</td></tr>";
+      }).join("");
+    }
+
+    function renderDeductLog() {
+      $("tbodyDeductLog").innerHTML = DEDUCT_LOG.map(function (d) {
+        return "<tr>" +
+          '<td class="mono">' + d.id + "</td>" +
+          "<td>" + d.date + "</td>" +
+          "<td>" + d.broker + "</td>" +
+          '<td class="num neg">' + money(d.amt) + "</td>" +
+          '<td class="num">' + d.custN + "</td>" +
+          "<td>" + d.acct + "</td>" +
+          "<td>" + d.mode + "</td>" +
+          "<td>" + d.cascade + "</td>" +
+          "<td>" + stTag(d.st) + "</td>" +
+          '<td><button type="button" class="btn link js-off" data-id="' + d.id + '">改数评估</button></td>' +
+          "</tr>";
+      }).join("");
+    }
+
+    // —— 解析导入 ——
+    function parseRaw() {
+      var text = $("dRaw").value.trim();
+      if (!text) {
+        // demo default
+        text = "C-8801\t海拓\t3200\tTX260929001\nC-8802\t联洲\t1800\tTX260929002\nC-8801\t海拓\t500\tTX260929003";
+        $("dRaw").value = text;
+      }
+      var lines = text.split(/\r?\n/).filter(Boolean);
+      return lines.map(function (line, i) {
+        var parts = line.split(/[\t,，]+/).map(function (x) { return x.trim(); });
+        return {
+          i: i + 1,
+          code: parts[0] || "",
+          name: parts[1] || "",
+          amt: parseFloat(parts[2]) || 0,
+          wb: parts[3] || ""
+        };
+      });
+    }
+
+    function resolveBroker() {
+      var paste = $("dBrokerPaste").value.trim();
+      var sel = $("dBroker").value;
+      var name = paste || sel;
+      var ok = !!BROKERS[name];
+      return { name: name, ok: ok, meta: BROKERS[name] || null };
+    }
+
+    function runMatch() {
+      var broker = resolveBroker();
+      var rows = parseRaw();
+      matchRows = rows.map(function (r) {
+        var custOk = !!CUSTS[r.code] && (!r.name || CUSTS[r.code] === r.name);
+        var nameFix = CUSTS[r.code] || r.name;
+        var ok = broker.ok && custOk && r.amt > 0;
+        return {
+          i: r.i, code: r.code, name: nameFix, amt: r.amt, wb: r.wb,
+          brokerOk: broker.ok, custOk: custOk, ok: ok,
+          brokerName: broker.name
+        };
+      });
+      var okN = matchRows.filter(function (r) { return r.ok; }).length;
+      var badN = matchRows.length - okN;
+      $("matchKpi").innerHTML =
+        '<div class="box"><div class="lab">明细行</div><div class="val">' + matchRows.length + "</div></div>" +
+        '<div class="box"><div class="lab">匹配通过</div><div class="val pos">' + okN + "</div></div>" +
+        '<div class="box"><div class="lab">拦截</div><div class="val neg">' + badN + "</div></div>" +
+        '<div class="box"><div class="lab">报关行</div><div class="val" style="font-size:13px">' +
+          (broker.ok ? '<span class="tag ok">完全一致</span>' : '<span class="tag bad">名称不匹配</span>') +
+        "</div></div>";
+
+      if (!broker.ok) {
+        $("matchHint").innerHTML = '<div class="hint bad"><b>报关行名称无法匹配：</b>「' +
+          (broker.name || "空") + '」不在系统主数据。必须与系统全称完全一致（含「有限公司」等后缀）。</div>';
+      } else if (badN) {
+        $("matchHint").innerHTML = '<div class="hint warn">存在客户编码/金额异常行，须修正后再进入汇总。多客户已按行拆开则可通过。</div>';
+      } else {
+        $("matchHint").innerHTML = '<div class="hint ok">报关行与客户均匹配通过。下一步按「同日同代理」汇总应付、按客户拆应收。</div>';
+      }
+
+      $("tbodyMatch").innerHTML = matchRows.map(function (r) {
+        return "<tr>" +
+          '<td class="num">' + r.i + "</td>" +
+          '<td class="mono">' + r.code + "</td>" +
+          "<td>" + r.name + "</td>" +
+          '<td class="num">' + money(r.amt) + "</td>" +
+          '<td class="mono">' + (r.wb || "—") + "</td>" +
+          "<td>" + (r.brokerOk ? '<span class="tag ok">一致</span>' : '<span class="tag bad">不一致</span>') + "</td>" +
+          "<td>" + (r.custOk ? '<span class="tag ok">命中</span>' : '<span class="tag bad">未命中</span>') + "</td>" +
+          "<td>" + (r.ok ? '<span class="tag ok">通过</span>' : '<span class="tag bad">拦截</span>') + "</td>" +
+          "</tr>";
+      }).join("");
+      return badN === 0 && broker.ok && matchRows.length > 0;
+    }
+
+    function buildSplit() {
+      var byCust = {};
+      matchRows.filter(function (r) { return r.ok; }).forEach(function (r) {
+        if (!byCust[r.code]) byCust[r.code] = { code: r.code, name: r.name, amt: 0, n: 0, wbs: [] };
+        byCust[r.code].amt += r.amt;
+        byCust[r.code].n += 1;
+        if (r.wb) byCust[r.code].wbs.push(r.wb);
+      });
+      var list = Object.keys(byCust).map(function (k) { return byCust[k]; });
+      var total = list.reduce(function (s, x) { return s + x.amt; }, 0);
+      var broker = resolveBroker();
+      var date = $("dDate").value;
+
+      $("apPreview").innerHTML =
+        '<div class="kv">' +
+        "<b>业务日</b><span>" + date + "</span>" +
+        "<b>服务商</b><span>" + broker.name + "</span>" +
+        "<b>汇总条数</b><span>1 条负抵扣凭证</span>" +
+        "<b>负抵扣金额</b><span class='neg'><b>−" + money(total) + "</b></span>" +
+        "<b>规则</b><span>同日 + 同一代理 → 汇总一条</span>" +
+        "</div>";
+
+      $("arPreview").innerHTML =
+        '<div class="kv">' +
+        "<b>客户数</b><span>" + list.length + "（已拆开）</span>" +
+        "<b>加余额合计</b><span class='pos'><b>+" + money(total) + "</b></span>" +
+        "<b>写入</b><span>应收客户余额 / 可选提醒应收岗</span>" +
+        "<b>拦截规则</b><span>未拆多客户混行 → 不允许导</span>" +
+        "</div>";
+
+      $("tbodySplit").innerHTML = list.map(function (c) {
+        return "<tr><td>" + c.code + " · " + c.name + "</td>" +
+          '<td class="num">' + c.n + "</td>" +
+          '<td class="num pos">+' + money(c.amt) + "</td>" +
+          '<td class="mono">' + (c.wbs.join(", ") || "—") + "</td></tr>";
+      }).join("");
+
+      return { list: list, total: total, broker: broker, date: date };
+    }
+
+    function fillAccounts() {
+      var broker = resolveBroker();
+      var sel = $("dAccount");
+      sel.innerHTML = "";
+      if (!broker.meta) {
+        sel.innerHTML = "<option>无可用账户</option>";
+        return;
+      }
+      broker.meta.accounts.forEach(function (a) {
+        var opt = document.createElement("option");
+        opt.value = a.id;
+        opt.textContent = a.name + " · " + a.bank + " · " + a.no + (a.def ? "（默认核销名）" : "");
+        if (a.def) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      // 自动快递费：若勾选，优先切到快递费户
+      if ($("dExpress").checked) {
+        var express = broker.meta.accounts.filter(function (a) {
+          return a.name.indexOf("快递费") >= 0;
+        })[0];
+        if (express) sel.value = express.id;
+        $("dFee").value = "快递费";
+      }
+    }
+
+    function fillFinal() {
+      var split = buildSplit();
+      var broker = split.broker;
+      var acctOpt = $("dAccount").selectedOptions[0];
+      var mode = document.querySelector('input[name="mode"]:checked').value;
+      var cascade = $("dCascade").value;
+      $("dApAmt").value = "−" + money(split.total);
+
+      $("finalAp").innerHTML =
+        '<div class="kv">' +
+        "<b>凭证类型</b><span class='neg'>收入 · 负抵扣（报关抵扣）</span>" +
+        "<b>服务商</b><span>" + broker.name + "（" + (broker.meta && broker.meta.code) + "）</span>" +
+        "<b>金额</b><span class='neg'>−" + money(split.total) + "</span>" +
+        "<b>账户</b><span>" + (acctOpt ? acctOpt.textContent : "—") + "</span>" +
+        "<b>科目</b><span>" + $("dFee").value + "</span>" +
+        "</div>";
+
+      var modeTxt = mode === "bilateral"
+        ? "直接双边：应付负抵扣 + 应收加余额"
+        : "先提醒应收岗，确认后再生应付负抵扣";
+      var casTxt = cascade === "cascade" ? "允许级联改收款核销"
+        : cascade === "offline" ? "不能改 → 出线下沟通单"
+        : "评估中：能改则级联，不能则线下";
+
+      $("finalAr").innerHTML =
+        '<div class="kv">' +
+        "<b>导入形态</b><span>" + modeTxt + "</span>" +
+        "<b>客户条数</b><span>" + split.list.length + "</span>" +
+        "<b>加余额</b><span class='pos'>+" + money(split.total) + "</span>" +
+        "<b>提醒应收</b><span>" + ($("dRemindAr").checked || mode === "remind" ? "是" : "否") + "</span>" +
+        "<b>收款联动</b><span>" + casTxt + "</span>" +
+        "</div>";
+    }
+
+    function showStep(n) {
+      step = n;
+      [1, 2, 3, 4].forEach(function (i) {
+        $("step" + i).style.display = i === n ? "" : "none";
+      });
+      document.querySelectorAll("#deductSteps .s").forEach(function (el) {
+        var s = parseInt(el.getAttribute("data-step"), 10);
+        el.classList.toggle("on", s === n);
+        el.classList.toggle("done", s < n);
+      });
+      $("deductPrev").style.display = n > 1 ? "" : "none";
+      $("deductNext").style.display = n < 4 ? "" : "none";
+      $("deductSubmit").style.display = n === 4 ? "" : "none";
+    }
+
+    function openDeduct() {
+      step = 1;
+      showStep(1);
+      $("deductMask").classList.add("open");
+    }
+    function closeDeduct() { $("deductMask").classList.remove("open"); }
+
+    function submitDeduct() {
+      var split = buildSplit();
+      if (!split.broker.ok || !split.list.length) {
+        toast("校验未通过，无法生成");
+        return;
+      }
+      var cascade = $("dCascade").value;
+      var mode = document.querySelector('input[name="mode"]:checked').value;
+      var acctOpt = $("dAccount").selectedOptions[0];
+      var acctName = acctOpt ? acctOpt.textContent.split(" · ")[0] : "—";
+      var id = "DD" + $("dDate").value.replace(/-/g, "") + String(10 + PAYS.length).slice(-2);
+
+      PAYS.unshift({
+        id: id, st: mode === "remind" ? "待核销" : "待核销",
+        code: split.broker.meta.code, sp: split.broker.name,
+        cur: $("dCur").value, side: "收入", amt: -split.total, done: 0, can: -split.total,
+        acct: acctName, src: "报关抵扣", at: "2026-09-29 13:50",
+        remark: $("dRemark").value || "【报关抵扣】", type: "deduct"
+      });
+
+      DEDUCT_LOG.unshift({
+        id: id, date: split.date, broker: split.broker.name,
+        amt: -split.total, custN: split.list.length, acct: acctName,
+        mode: mode === "bilateral" ? "双边导入" : "先提醒应收",
+        cascade: cascade === "offline" ? "线下沟通" : cascade === "cascade" ? "已级联" : "评估中",
+        st: "待核销"
+      });
+
+      closeDeduct();
+      stFilter = "deduct";
+      document.querySelectorAll("#stTabs button").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-st") === "deduct");
+      });
+      renderPay();
+      selectedPay = PAYS[0];
+      renderBottom();
+
+      var msg = "已生成负抵扣 " + id + " · 应付 −" + money(split.total) +
+        " · 应收 +" + money(split.total) + "（" + split.list.length + " 客户）";
+      if (mode === "remind") msg += " · 已提醒应收岗";
+      toast(msg);
+
+      if (cascade === "offline") {
+        setTimeout(function () { $("offlineMask").classList.add("open"); }, 600);
+      }
+    }
+
+    // —— events ——
+    $("btnSearch").onclick = renderPay;
+    $("btnReset").onclick = function () {
+      $("fSp").value = ""; $("fVoucher").value = ""; $("fWb").value = ""; $("fFlow").value = "";
+      renderPay();
+    };
+    $("stTabs").onclick = function (e) {
+      var b = e.target.closest("[data-st]");
+      if (!b) return;
+      stFilter = b.getAttribute("data-st");
+      document.querySelectorAll("#stTabs button").forEach(function (x) {
+        x.classList.toggle("on", x === b);
+      });
+      renderPay();
+    };
+    $("tbodyPay").onclick = function (e) {
+      var tr = e.target.closest("tr.js-pay");
+      if (!tr) return;
+      var id = tr.getAttribute("data-id");
+      selectedPay = PAYS.filter(function (p) { return p.id === id; })[0] || null;
+      renderPay();
+      renderBottom();
+    };
+    $("btnDeduct").onclick = openDeduct;
+    $("deductClose").onclick = $("deductCancel").onclick = closeDeduct;
+    $("deductMask").onclick = function (e) { if (e.target === $("deductMask")) closeDeduct(); };
+
+    $("deductNext").onclick = function () {
+      if (step === 1) {
+        var broker = resolveBroker();
+        if (!broker.name) { toast("请选择或粘贴报关行名称"); return; }
+        if (!runMatch()) {
+          showStep(2);
+          toast("存在匹配失败项，请先修正");
+          return;
+        }
+        showStep(2);
+        return;
+      }
+      if (step === 2) {
+        if (!runMatch()) { toast("仍有拦截行，无法进入汇总"); return; }
+        buildSplit();
+        showStep(3);
+        return;
+      }
+      if (step === 3) {
+        fillAccounts();
+        fillFinal();
+        showStep(4);
+      }
+    };
+    $("deductPrev").onclick = function () {
+      if (step > 1) showStep(step - 1);
+    };
+    $("deductSubmit").onclick = submitDeduct;
+
+    $("dBroker").onchange = function () {
+      $("dBrokerPaste").value = $("dBroker").value;
+    };
+    $("dExpress").onchange = function () {
+      if (step === 4) { fillAccounts(); fillFinal(); }
+    };
+    $("dAccount").onchange = fillFinal;
+    $("dCascade").onchange = fillFinal;
+    document.querySelectorAll('input[name="mode"]').forEach(function (r) {
+      r.onchange = fillFinal;
+    });
+
+    $("btnDeductList").onclick = function () {
+      renderDeductLog();
+      $("listMask").classList.add("open");
+    };
+    $("listClose").onclick = $("listClose2").onclick = function () {
+      $("listMask").classList.remove("open");
+    };
+    $("tbodyDeductLog").onclick = function (e) {
+      if (!e.target.classList.contains("js-off")) return;
+      $("listMask").classList.remove("open");
+      $("offlineMask").classList.add("open");
+    };
+    $("offlineClose").onclick = $("offlineClose2").onclick = function () {
+      $("offlineMask").classList.remove("open");
+    };
+    $("offlineSend").onclick = function () {
+      $("offlineMask").classList.remove("open");
+      toast("已生成线下沟通单 → 应收岗（演示）");
+    };
+
+    $("btnQLeft").onclick = $("btnQRight").onclick = function () {
+      toast("已按单号过滤核销明细（演示）");
+    };
+
+    renderPay();
+    renderBottom();
+  })();
+  </script>
+</body>
+</html>

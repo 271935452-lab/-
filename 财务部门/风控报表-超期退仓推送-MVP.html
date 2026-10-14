@@ -294,7 +294,7 @@
         <div class="hd-row">
           <div>
             <h1>超期退仓风控推送 <span class="badge new">NEW</span></h1>
-            <p>RISK-006 · 背景：扣件滞留 / 签入时运费低放久涨价 · <strong>终配时提醒</strong>未签出超期 · 已配完舱不追代办 · 财务看全量 · 已签出不退仓</p>
+            <p>RISK-006 · 推送少飞 → 少飞一键推业务员 → <strong>次日 08:30</strong>未操作自动退件退款 · 列表含<strong>预配舱号 / 扣件状态</strong> · 仅命中规则进池 · 已签出不退仓</p>
           </div>
           <a class="btn" href="风控-超期退仓规则配置-MVP.html">超期风控配置</a>
         </div>
@@ -308,13 +308,13 @@
             黄少飞待办
             <span class="badge-dot" id="badgeHuangTab">0</span>
           </button>
-          <span class="role-hint" id="roleHint">财务：全量盯盘；黄少飞：终配时弹退仓提醒</span>
+          <span class="role-hint" id="roleHint">财务：推送少飞；少飞：一键推业务员（次日 08:30 自动退）</span>
         </div>
       </div>
 
       <div class="huang-banner huang-only" id="huangBanner">
-        <strong>黄少飞 · 终配提醒</strong>
-        <span class="muted"> · 主路径：终配舱<strong>登记</strong>时提示「运单：… · 销售产品：… · 签入时间大于N天，请及时办理退仓」· 已配完舱不另塞代办</span>
+        <strong>黄少飞 · 推业务员</strong>
+        <span class="muted"> · 收到财务推送后，点击<strong>一键推送给业务员</strong> · 缓冲截止次日 08:30 · 超时自动退件退款</span>
       </div>
 
       <div class="panel">
@@ -344,10 +344,9 @@
             <div class="fi">
               <label>命中规则</label>
               <select id="qRule">
-                <option value="">全部</option>
-                <option value="lane8">指定销售产品·>8天</option>
-                <option value="other16">其余销售产品·>16天</option>
-                <option value="ok">未超期</option>
+                <option value="">全部（仅命中）</option>
+                <option value="lane8" id="optRuleSpecial">指定销售产品·>8天</option>
+                <option value="other16" id="optRuleOther">其余销售产品·>16天</option>
               </select>
             </div>
             <div class="fi finance-only">
@@ -358,7 +357,6 @@
                 <option value="ok">推送成功</option>
                 <option value="done">已办理</option>
                 <option value="finance">仅财务看</option>
-                <option value="miss">未命中</option>
               </select>
             </div>
             <div class="fi actions">
@@ -375,8 +373,8 @@
             </div>
             <div class="toolbar">
               <button class="btn finance-inline" type="button" id="btnRefresh">模拟每日更新</button>
-              <button class="btn primary finance-inline" type="button" id="btnPushAll">一键代办通知未签出</button>
-              <button class="btn warn huang-inline" type="button" id="btnDemoToast">演示终配提醒</button>
+              <button class="btn primary finance-inline" type="button" id="btnPushAll">一键推送少飞（未签出）</button>
+              <button class="btn warn huang-inline" type="button" id="btnDemoToast">演示收件弹窗</button>
               <button class="btn huang-inline" type="button" id="btnMarkAllRead">全部标已读</button>
             </div>
           </div>
@@ -387,6 +385,8 @@
                   <th>运单/柜号</th>
                   <th>销售产品</th>
                   <th>签出状态</th>
+                  <th>预配舱号</th>
+                  <th>扣件状态</th>
                   <th>签入时间</th>
                   <th>签出时间</th>
                   <th>超期天数</th>
@@ -410,13 +410,13 @@
       </div>
 
       <div class="panel huang-only">
-        <div class="panel-hd">终配提醒说明（黄少飞 10/12）</div>
+        <div class="panel-hd">推送说明（10/13）</div>
         <div class="panel-bd">
           <div class="muted" style="line-height:1.7;">
             1. <strong>背景：</strong>扣件太多放太久；签入时海运费低，放久运费涨 → 超期未签出要退仓<br>
-            2. <strong>主路径：</strong>终配舱<strong>登记</strong>时弹：「运单：{运单} · 销售产品：{产品} · 签入时间大于{N}天，请及时办理退仓」· 稍后处理 / 已知晓继续<br>
-            3. <strong>已配完舱：</strong>一般不另推代办（黄少飞：应该不会）<br>
-            4. <strong>已签出</strong>只在财务清单，不进提醒；办理后退仓提醒关闭，财务全量仍保留（标已办）
+            2. <strong>推送链：</strong>财务推送少飞 → 少飞点击后<strong>一键推送给业务员</strong><br>
+            3. <strong>缓冲：</strong>业务员缓冲约一天，截止 = <strong>次日 08:30</strong>；未操作 → 系统<strong>自动退件退款</strong><br>
+            4. <strong>列表：</strong>新增预配舱号、扣件状态 · 已签出只在财务清单、不退仓
           </div>
         </div>
       </div>
@@ -435,6 +435,7 @@
 <script>
 (function () {
   var LANE_8 = ["美森", "EXX", "T16", "以星快船"];
+  var CFG_KEY = "risk006_config_simple_v1";
   var STORAGE_KEY = "risk006_huang_todos_v1";
   var filterStatus = "all";
   var role = "finance";
@@ -444,6 +445,33 @@
   /** 刚推送成功的行，用于操作区高亮标记 */
   var justPushedIds = {};
   var searchQ = { waybill: "", product: "", inFrom: "", inTo: "", rule: "", push: "" };
+
+  function loadCfg() {
+    var cfg = {
+      daysSpecial: 8,
+      daysOther: 16,
+      specialProducts: LANE_8.slice()
+    };
+    try {
+      var o = JSON.parse(localStorage.getItem(CFG_KEY) || "{}");
+      var ds = parseInt(o.daysSpecial, 10);
+      var doy = parseInt(o.daysOther, 10);
+      if (ds >= 1) cfg.daysSpecial = ds;
+      if (doy >= 1) cfg.daysOther = doy;
+      if (Array.isArray(o.specialProducts) && o.specialProducts.length) {
+        cfg.specialProducts = o.specialProducts.slice();
+      }
+    } catch (e) { /* keep defaults */ }
+    return cfg;
+  }
+
+  function syncRuleOptions() {
+    var cfg = loadCfg();
+    var a = document.getElementById("optRuleSpecial");
+    var b = document.getElementById("optRuleOther");
+    if (a) a.textContent = "指定销售产品·>" + cfg.daysSpecial + "天";
+    if (b) b.textContent = "其余销售产品·>" + cfg.daysOther + "天";
+  }
 
   function readSearchForm() {
     return {
@@ -480,26 +508,49 @@
   }
 
   var baseRows = [
-    { id: "R01", waybill: "MSCU8829101", lane: "美森", status: "已签出", inAt: "2026-09-28 09:12", outAt: "2026-10-08 14:20", days: 10.2 },
-    { id: "R02", waybill: "EXX-771203", lane: "EXX", status: "未签出", inAt: "2026-09-30 11:00", outAt: "—", days: 9.1 },
-    { id: "R03", waybill: "T16-550918", lane: "T16", status: "已签出", inAt: "2026-09-26 08:40", outAt: "2026-10-05 16:10", days: 9.3 },
-    { id: "R04", waybill: "ZIM-FAST-8891", lane: "以星快船", status: "未签出", inAt: "2026-09-29 15:30", outAt: "—", days: 10.0 },
-    { id: "R05", waybill: "COSCO-339210", lane: "其他销售产品", status: "已签出", inAt: "2026-09-18 10:00", outAt: "2026-10-06 09:20", days: 17.9 },
-    { id: "R06", waybill: "OOCL-448812", lane: "其他销售产品", status: "未签出", inAt: "2026-09-20 13:45", outAt: "—", days: 19.2 },
-    { id: "R07", waybill: "ONE-662100", lane: "其他销售产品", status: "已签出", inAt: "2026-09-22 07:50", outAt: "2026-10-07 18:00", days: 15.4 },
-    { id: "R08", waybill: "MSCU9901122", lane: "美森", status: "未签出", inAt: "2026-10-02 10:20", outAt: "—", days: 7.2 }
+    { id: "R01", waybill: "MSCU8829101", lane: "美森", status: "已签出", preAlloc: "YP-260928-01", hold: "已放行", inAt: "2026-09-28 09:12", outAt: "2026-10-08 14:20", days: 10.2 },
+    { id: "R02", waybill: "EXX-771203", lane: "EXX", status: "未签出", preAlloc: "YP-260930-EXX", hold: "扣件中", inAt: "2026-09-30 11:00", outAt: "—", days: 9.1 },
+    { id: "R03", waybill: "T16-550918", lane: "T16", status: "已签出", preAlloc: "YP-260926-T16", hold: "无扣件", inAt: "2026-09-26 08:40", outAt: "2026-10-05 16:10", days: 9.3 },
+    { id: "R04", waybill: "ZIM-FAST-8891", lane: "以星快船", status: "未签出", preAlloc: "—", hold: "扣件中", inAt: "2026-09-29 15:30", outAt: "—", days: 10.0 },
+    { id: "R05", waybill: "COSCO-339210", lane: "其他销售产品", status: "已签出", preAlloc: "YP-260918-03", hold: "已放行", inAt: "2026-09-18 10:00", outAt: "2026-10-06 09:20", days: 17.9 },
+    { id: "R06", waybill: "OOCL-448812", lane: "其他销售产品", status: "未签出", preAlloc: "YP-260920-OOCL", hold: "扣件中", inAt: "2026-09-20 13:45", outAt: "—", days: 19.2 },
+    { id: "R07", waybill: "ONE-662100", lane: "其他销售产品", status: "已签出", preAlloc: "—", hold: "无扣件", inAt: "2026-09-22 07:50", outAt: "2026-10-07 18:00", days: 18.2 },
+    /* 未命中样例：不进财务列表，仅验证过滤 */
+    { id: "R08", waybill: "DEMO-MISS-01", lane: "其他销售产品", status: "已签出", preAlloc: "—", hold: "无扣件", inAt: "2026-10-01 08:00", outAt: "2026-10-05 12:00", days: 4.1 }
   ];
 
+  function nextDay830(fromTs) {
+    var d = fromTs ? new Date(fromTs.replace(/-/g, "/")) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(8, 30, 0, 0);
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " 08:30";
+  }
+  function holdTag(h) {
+    if (h === "扣件中") return '<span class="tag red">扣件中</span>';
+    if (h === "已放行") return '<span class="tag green">已放行</span>';
+    return '<span class="tag gray">' + (h || "—") + "</span>";
+  }
+
+  function isSpecialLane(lane, cfg) {
+    if (cfg.specialProducts.indexOf(lane) >= 0) return true;
+    return LANE_8.indexOf(lane) >= 0;
+  }
+
   function ruleOf(row) {
-    var isLane8 = LANE_8.indexOf(row.lane) >= 0;
-    if (isLane8) {
-      return row.days > 8
-        ? { hit: true, code: "lane8", label: "指定销售产品·>8天", level: "orange" }
-        : { hit: false, code: "lane8_ok", label: "指定销售产品·未超8天", level: "gray" };
+    var cfg = loadCfg();
+    var special = isSpecialLane(row.lane, cfg);
+    var th = special ? cfg.daysSpecial : cfg.daysOther;
+    var hit = Number(row.days) > th;
+    if (special) {
+      return hit
+        ? { hit: true, code: "lane8", label: "指定销售产品·>" + th + "天", level: "orange" }
+        : { hit: false, code: "lane8_ok", label: "指定销售产品·未超" + th + "天", level: "gray" };
     }
-    return row.days > 16
-      ? { hit: true, code: "other16", label: "其余销售产品·>16天", level: "red" }
-      : { hit: false, code: "other_ok", label: "其余销售产品·未超16天", level: "gray" };
+    return hit
+      ? { hit: true, code: "other16", label: "其余销售产品·>" + th + "天", level: "red" }
+      : { hit: false, code: "other_ok", label: "其余销售产品·未超" + th + "天", level: "gray" };
   }
 
   function loadTodos() {
@@ -521,20 +572,28 @@
         waybill: row.waybill,
         lane: row.lane,
         status: row.status,
+        preAlloc: row.preAlloc || "—",
+        hold: row.hold || "—",
         days: row.days,
         ruleLabel: ruleOf(row).label,
         pushedAt: pushedAt || nowStr(),
         unread: unread !== false,
         done: false,
-        doneAt: ""
+        doneAt: "",
+        toSales: false,
+        salesAt: "",
+        salesDeadline: "",
+        autoRefund: false
       };
     } else {
       todos[row.id].pushedAt = pushedAt || todos[row.id].pushedAt;
       if (unread) todos[row.id].unread = true;
-      if (!todos[row.id].done) {
+      if (!todos[row.id].done && !todos[row.id].toSales) {
         todos[row.id].waybill = row.waybill;
         todos[row.id].lane = row.lane;
         todos[row.id].status = row.status;
+        todos[row.id].preAlloc = row.preAlloc || "—";
+        todos[row.id].hold = row.hold || "—";
         todos[row.id].days = row.days;
         todos[row.id].ruleLabel = ruleOf(row).label;
       }
@@ -707,7 +766,8 @@
         return (b.pushedAt || "").localeCompare(a.pushedAt || "");
       });
     }
-    return baseRows.slice();
+    /* 财务列表只展示命中规则的单据，未命中一律不进池 */
+    return hitRows();
   }
 
   function passSearch(row) {
@@ -726,12 +786,11 @@
         var label = row.ruleLabel || "";
         if (q.rule === "lane8" && label.indexOf("指定") < 0) return false;
         if (q.rule === "other16" && label.indexOf("其余") < 0) return false;
-        if (q.rule === "ok") return false;
       } else {
         var rule = ruleOf(row);
+        if (!rule.hit) return false;
         if (q.rule === "lane8" && rule.code !== "lane8") return false;
         if (q.rule === "other16" && rule.code !== "other16") return false;
-        if (q.rule === "ok" && rule.hit) return false;
       }
     }
     if (q.push && role !== "huang") {
@@ -746,6 +805,7 @@
     return true;
   }
   function passFilter(row) {
+    if (role === "finance" && !ruleOf(row).hit) return false;
     return passSearch(row) && passStatus(row);
   }
   function syncChipActive() {
@@ -771,20 +831,36 @@
     if (role === "huang") {
       tb.innerHTML = list.map(function (t) {
         var urgent = (t.days || 0) > 16;
-        var todoTag = t.done
-          ? '<span class="tag green">已办理</span>'
-          : (t.unread ? '<span class="tag red">未读待办</span>' : '<span class="tag orange">待办理</span>');
-        var ops = t.done
-          ? '<span class="muted">完成于 ' + (t.doneAt || "—") + "</span>"
-          : '<div class="ops">' +
-              '<button class="btn primary" data-act="done" data-id="' + t.id + '">办理退仓</button>' +
+        var todoTag = t.autoRefund
+          ? '<span class="tag red">已自动退件退款</span>'
+          : (t.toSales
+            ? '<span class="tag blue">已推业务员</span>'
+            : (t.done
+              ? '<span class="tag green">已办理</span>'
+              : (t.unread ? '<span class="tag red">未读待办</span>' : '<span class="tag orange">待办理</span>')));
+        var deadline = t.salesDeadline || "—";
+        var ops;
+        if (t.autoRefund) {
+          ops = '<span class="muted">截止 ' + deadline + " 自动退件退款</span>";
+        } else if (t.toSales) {
+          ops = '<span class="muted">已推业务员 · 截止 <b>' + deadline + "</b><br>超时未操作将自动退件退款</span>";
+        } else if (t.done) {
+          ops = '<span class="muted">完成于 ' + (t.doneAt || "—") + "</span>";
+        } else {
+          ops = '<div class="ops">' +
+              '<button class="btn primary" data-act="push-sales" data-id="' + t.id + '">一键推送给业务员</button>' +
               (t.unread ? '<button class="btn" data-act="read" data-id="' + t.id + '">标已读</button>' : "") +
             "</div>";
+        }
         return "<tr id=\"row-" + t.id + "\">" +
           "<td><b>" + t.waybill + "</b><div class=\"muted\">" + t.id + "</div></td>" +
           "<td>" + t.lane + "</td>" +
           "<td><span class=\"tag " + (t.status === "已签出" ? "blue" : "gold") + "\">" + t.status + "</span></td>" +
-          "<td colspan=\"2\" class=\"muted\">推送时间 " + (t.pushedAt || "—") + "</td>" +
+          "<td>" + (t.preAlloc || "—") + "</td>" +
+          "<td>" + holdTag(t.hold) + "</td>" +
+          "<td colspan=\"2\" class=\"muted\">收件 " + (t.pushedAt || "—") +
+            (t.toSales ? "<br>推业务员 " + (t.salesAt || "—") : "") +
+          "</td>" +
           "<td><b style=\"color:" + (urgent ? "#cf1322" : "#d46b08") + "\">" + t.days + "</b></td>" +
           "<td><span class=\"tag " + (urgent ? "red" : "orange") + "\">" + t.ruleLabel + "</span></td>" +
           "<td>" + todoTag + "</td>" +
@@ -794,40 +870,48 @@
       return;
     }
 
-    tb.innerHTML = list.map(function (r) {
+    tb.innerHTML = list.filter(function (r) { return ruleOf(r).hit; }).map(function (r) {
       var rule = ruleOf(r);
       var todo = todos[r.id];
       var pushable = canPush(r);
       var pushedOk = !!(todo && !todo.done);
       var pushHtml;
-      if (!rule.hit) {
-        pushHtml = '<span class="tag gray">未命中</span>';
-      } else if (r.status === "已签出") {
+      if (r.status === "已签出") {
         pushHtml = '<span class="tag gray">仅财务看 · 不退仓</span>';
       } else if (!todo) {
-        pushHtml = '<span class="tag orange">未推送</span><div class="muted">待代办通知</div>';
+        pushHtml = '<span class="tag orange">未推送</span><div class="muted">待推送少飞</div>';
+      } else if (todo.autoRefund) {
+        pushHtml = '<span class="tag red">自动退件退款</span>' +
+          '<div class="muted">截止 ' + (todo.salesDeadline || "") + "</div>";
+      } else if (todo.toSales) {
+        pushHtml = '<span class="tag blue">已推业务员</span>' +
+          '<div class="muted">截止 ' + (todo.salesDeadline || "") + " · 超时自动退</div>";
       } else if (todo.done) {
         pushHtml = '<span class="tag green">推送成功</span>' +
-          '<div class="muted">黄少飞已办理 · ' + (todo.doneAt || "") + "</div>";
+          '<div class="muted">少飞已办理 · ' + (todo.doneAt || "") + "</div>";
       } else {
-        pushHtml = '<span class="tag green">推送成功</span>' +
+        pushHtml = '<span class="tag green">已推少飞</span>' +
           '<div class="muted">' +
-            (todo.unread ? "黄少飞未读" : "黄少飞待办中") +
+            (todo.unread ? "少飞未读" : "少飞待办中") +
             " · " + (todo.pushedAt || "") +
           "</div>";
       }
       var ops;
-      if (pushable && !pushedOk && !(todo && todo.done)) {
+      if (pushable && !pushedOk && !(todo && todo.done) && !(todo && todo.toSales)) {
         ops = '<div class="ops">' +
-            '<button class="btn primary" data-act="push-one" data-id="' + r.id + '">代办通知</button>' +
+            '<button class="btn primary" data-act="push-one" data-id="' + r.id + '">推送少飞</button>' +
           "</div>";
-      } else if (pushedOk || (todo && todo.done)) {
+      } else if (pushedOk || (todo && (todo.done || todo.toSales || todo.autoRefund))) {
         ops = '<div class="ops"><span class="push-ok-mark">' +
           '<span class="tick">✓</span>' +
-          '<span>推送成功' +
-            (todo && todo.done
-              ? '<span class="sub">已办理 · ' + (todo.doneAt || "") + "</span>"
-              : '<span class="sub">' + (todo.pushedAt || "") + "</span>") +
+          '<span>已推少飞' +
+            (todo && todo.autoRefund
+              ? '<span class="sub">自动退件退款</span>'
+              : (todo && todo.toSales
+                ? '<span class="sub">已推业务员 · ' + (todo.salesDeadline || "") + "</span>"
+                : (todo && todo.done
+                  ? '<span class="sub">已办理 · ' + (todo.doneAt || "") + "</span>"
+                  : '<span class="sub">' + (todo.pushedAt || "") + "</span>"))) +
           "</span></span></div>";
       } else if (rule.hit && r.status === "已签出") {
         ops = '<span class="muted">—</span>';
@@ -835,13 +919,15 @@
         ops = '<span class="muted">—</span>';
       }
       var rowCls = justPushedIds[r.id] ? " row-push-ok row-highlight" : "";
-      return "<tr id=\"row-" + r.id + "\" class=\"" + rowCls.trim() + "\" style=\"" + (rule.hit ? "" : "opacity:.55") + "\">" +
+      return "<tr id=\"row-" + r.id + "\" class=\"" + rowCls.trim() + "\">" +
         "<td><b>" + r.waybill + "</b></td>" +
         "<td>" + r.lane + "</td>" +
         "<td><span class=\"tag " + (r.status === "已签出" ? "blue" : "gold") + "\">" + r.status + "</span></td>" +
+        "<td>" + (r.preAlloc || "—") + "</td>" +
+        "<td>" + holdTag(r.hold) + "</td>" +
         "<td>" + r.inAt + "</td>" +
         "<td>" + r.outAt + "</td>" +
-        "<td><b style=\"color:" + (rule.hit ? (rule.level === "red" ? "#cf1322" : "#d46b08") : "#667085") + "\">" + r.days + "</b></td>" +
+        "<td><b style=\"color:" + (rule.level === "red" ? "#cf1322" : "#d46b08") + "\">" + r.days + "</b></td>" +
         "<td><span class=\"tag " + rule.level + "\">" + rule.label + "</span></td>" +
         "<td>" + pushHtml + "</td>" +
         "<td>" + ops + "</td>" +
@@ -876,7 +962,7 @@
     renderBadges(true);
     renderTable();
     if (withToast && role === "finance" && notified.length) {
-      showFinanceTip("推送成功 " + notified.length + " 票 → 黄少飞代办（角标已更新）");
+      showFinanceTip("推送成功 " + notified.length + " 票 → 少飞代办（角标已更新）");
     }
     return count;
   }
@@ -889,8 +975,8 @@
       t.classList.toggle("active", t.getAttribute("data-role") === role);
     });
     document.getElementById("roleHint").textContent = role === "finance"
-      ? "财务：全量盯盘（已签+未签）；已签出不退仓；可标记未签出超期"
-      : "黄少飞：终配时弹「办理退仓」· 已配完舱不追代办（同询价文案）";
+      ? "财务：仅命中规则单据（已签+未签）；未命中不进池；已签出不退仓"
+      : "少飞：一键推业务员 · 次日 08:30 未操作自动退件退款";
     document.getElementById("huangBanner").classList.toggle("show", role === "huang");
     syncChipActive();
     renderTable();
@@ -932,23 +1018,28 @@
   document.getElementById("btnPushAll").addEventListener("click", function () {
     var rows = pushableRows();
     if (!rows.length) {
-      logLine("[" + nowStr() + "] 无可推送：命中票中无<strong>未签出</strong>（已签出不推黄少飞）");
+      logLine("[" + nowStr() + "] 无可推送：命中票中无<strong>未签出</strong>（已签出不推少飞）");
       return;
     }
     var skipped = hitRows().length - rows.length;
     var n = pushRows(rows, true);
-    logLine("[" + nowStr() + "] <strong>推送成功</strong>：一键代办通知未签出 <b>" + rows.length + "</b> 票 → 黄少飞（角标 +" + n + "）" +
+    logLine("[" + nowStr() + "] <strong>推送成功</strong>：一键推送未签出 <b>" + rows.length + "</b> 票 → 少飞（角标 +" + n + "）" +
       (skipped ? " · 已签出 " + skipped + " 票跳过" : "") +
-      " · 列表已标「推送成功」", "ok");
+      " · 列表已标「已推少飞」", "ok");
   });
 
   document.getElementById("btnRefresh").addEventListener("click", function () {
-    // 微调演示天数，模拟每日更新
+    // 微调演示天数，模拟每日更新（未命中样例 R08 保持不进池）
+    var cfg = loadCfg();
+    syncRuleOptions();
     baseRows.forEach(function (r) {
-      if (r.id === "R08") r.days = 8.5;
-      else r.days = Math.round((r.days + 0.3) * 10) / 10;
+      if (r.id === "R08") {
+        r.days = Math.min(r.days + 0.2, cfg.daysOther);
+        return;
+      }
+      r.days = Math.round((r.days + 0.3) * 10) / 10;
     });
-    logLine("[" + nowStr() + "] 模拟每日更新完成 · 重新计算超期天数");
+    logLine("[" + nowStr() + "] 模拟每日更新完成 · 重新计算超期天数 · 未命中不进池");
     renderTable();
   });
 
@@ -1000,11 +1091,25 @@
       var row = baseRows.find(function (r) { return r.id === id; });
       if (!row) return;
       if (!canPush(row)) {
-        logLine("[" + nowStr() + "] <strong>推送失败</strong>：<b>" + row.waybill + "</b> 为已签出/未命中，不推黄少飞", "fail");
+        logLine("[" + nowStr() + "] <strong>推送失败</strong>：<b>" + row.waybill + "</b> 为已签出/未命中，不推少飞", "fail");
         return;
       }
       pushRows([row], true);
-      logLine("[" + nowStr() + "] <strong>推送成功</strong>：<b>" + row.waybill + "</b> 已代办通知黄少飞 · 操作列已标记", "ok");
+      logLine("[" + nowStr() + "] <strong>推送成功</strong>：<b>" + row.waybill + "</b> 已推送少飞 · 操作列已标记", "ok");
+      return;
+    }
+    if (act === "push-sales" && todos[id]) {
+      var ts = nowStr();
+      todos[id].unread = false;
+      todos[id].toSales = true;
+      todos[id].salesAt = ts;
+      todos[id].salesDeadline = nextDay830(ts);
+      saveTodos(todos);
+      renderBadges(false);
+      renderTable();
+      logLine("[" + nowStr() + "] <strong>少飞→业务员</strong>：<b>" + todos[id].waybill +
+        "</b> 已一键推送 · 缓冲截止 <b>" + todos[id].salesDeadline + "</b> · 超时未操作自动退件退款", "ok");
+      showFinanceTip("已推业务员 · 截止 " + todos[id].salesDeadline);
       return;
     }
     if (act === "read" && todos[id]) {
@@ -1025,6 +1130,7 @@
     }
   });
 
+  syncRuleOptions();
   // 首次进入：#huang 切黄少飞并弹出未读代办（同询价进列表收通知）
   if (location.hash === "#huang") {
     Object.keys(todos).forEach(function (k) {

@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>资金占用 · MVP（新）</title>
+  <style>
+    :root {
+      --nav: #1677ff; --primary: #1677ff;
+      --bg: #f0f2f5; --line: #e8e8e8; --text: #262626; --muted: #8c8c8c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .topbar {
+      height: 40px; background: var(--nav); color: #fff;
+      display: flex; align-items: center; padding: 0 12px; gap: 2px; flex-shrink: 0;
+    }
+    .topbar .logo { font-weight: 700; margin-right: 10px; letter-spacing: .5px; }
+    .topbar .tab { padding: 6px 10px; color: rgba(255,255,255,.8); font-size: 12px; white-space: nowrap; }
+    .topbar .tab.on { background: #fff; color: var(--primary); font-weight: 700; border-radius: 4px 4px 0 0; }
+    .topbar .right { margin-left: auto; font-size: 12px; display: flex; gap: 12px; align-items: center; }
+    .topbar .right a { color: #fff; text-decoration: none; }
+    .main { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .crumb {
+      height: 34px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; color: var(--muted); font-size: 12px; flex-shrink: 0;
+    }
+    .crumb b { color: var(--text); }
+    .banner {
+      margin: 8px 16px 0; padding: 8px 12px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 4px; font-size: 12px; color: #ad6800; line-height: 1.65; flex-shrink: 0;
+    }
+    .banner b { color: #d46b08; }
+    .tag-new {
+      display: inline-block; margin: 0 2px; padding: 0 4px; border-radius: 2px;
+      background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; font-size: 11px; font-weight: 700; vertical-align: 1px;
+    }
+    .tag-ok {
+      display: inline-block; margin: 0 2px; padding: 0 4px; border-radius: 2px;
+      background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; font-size: 11px; font-weight: 700;
+    }
+    .tag-wait {
+      display: inline-block; margin: 0 2px; padding: 0 4px; border-radius: 2px;
+      background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; font-size: 11px; font-weight: 700;
+    }
+    .views { display: flex; margin: 8px 16px 0; flex-shrink: 0; }
+    .views button {
+      height: 32px; padding: 0 16px; border: 1px solid var(--line); background: #fff; color: var(--muted);
+    }
+    .views button:first-child { border-radius: 4px 0 0 4px; }
+    .views button:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
+    .views button.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; position: relative; z-index: 1; }
+    .filter {
+      margin: 8px 16px 0; background: #fff; border: 1px solid var(--line); border-radius: 4px;
+      padding: 12px 14px 10px; flex-shrink: 0;
+    }
+    .fg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 10px 16px; align-items: center; }
+    .fi { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .fi label { flex: 0 0 88px; text-align: right; color: #595959; white-space: nowrap; }
+    .fi .ctl { flex: 1; min-width: 0; }
+    .fi input, .fi select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; background: #fff; }
+    .range { display: flex; align-items: center; gap: 6px; }
+    .range input { flex: 1; }
+    .more { display: none; grid-column: 1 / -2; }
+    .more.show { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 16px; }
+    .filter-actions { display: flex; justify-content: flex-end; gap: 8px; align-self: start; }
+    .btn {
+      height: 32px; padding: 0 14px; border: 1px solid #d9d9d9; border-radius: 4px;
+      background: #fff; color: var(--text); white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { color: #fff; filter: brightness(1.05); }
+    .toolbar { margin: 8px 16px 0; display: flex; gap: 8px; flex-shrink: 0; }
+    .table-wrap {
+      margin: 8px 16px 12px; flex: 1; min-height: 0; background: #fff;
+      border: 1px solid var(--line); border-radius: 4px; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .table-scroll { flex: 1; overflow: auto; }
+    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+    thead th {
+      position: sticky; top: 0; z-index: 2; background: #fafafa; border-bottom: 1px solid var(--line);
+      padding: 8px 10px; text-align: left; font-weight: 600; white-space: nowrap; color: #595959;
+    }
+    thead th.new-col { background: #fff1f0; color: #cf1322; }
+    tbody td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    tbody td.new-col { background: #fffafa; }
+    tbody tr:hover td { background: #f5f9ff; }
+    tbody tr:hover td.new-col { background: #fff1f0; }
+    tbody tr.pending td.basis { color: #d48806; font-weight: 700; }
+    .mono { font-family: Consolas, "SF Mono", monospace; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+    .neg { color: #cf1322; }
+    .pager {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); flex-shrink: 0;
+    }
+    .rules { margin: 8px 16px 16px; background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; overflow: auto; }
+    .rules h3 { margin: 14px 0 8px; font-size: 14px; }
+    .rules h3:first-child { margin-top: 0; }
+    .rules table { width: 100%; }
+    .rules td, .rules th { border: 1px solid var(--line); padding: 7px 8px; text-align: left; white-space: normal; }
+    .rules th { background: #fafafa; }
+    .note { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .toast {
+      position: fixed; top: 56px; left: 50%; transform: translateX(-50%) translateY(-8px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      opacity: 0; pointer-events: none; transition: .2s; z-index: 20;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei',sans-serif">
+  <a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a>
+  <span style="opacity:.7;margin-left:8px">分析</span>
+</div>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">头程系统</div>
+    <div class="tab">控制台</div>
+    <div class="tab">轨迹配置</div>
+    <div class="tab">船位信息</div>
+    <div class="tab">提单管理</div>
+    <div class="tab">客户管理</div>
+    <div class="tab on">资金占用 <span class="tag-new">新</span></div>
+    <div class="right">
+      <a href="分析-模块导航.html">← 分析导航</a>
+      <span>IT(BT0022)</span>
+    </div>
+  </div>
+  <div class="main">
+    <div class="crumb">
+      <span>财务</span><span>/</span><span>分析</span><span>/</span><b>资金占用</b>
+      <span class="tag-new">新</span>
+      <span style="margin-left:auto">现网列保留 · 红底列为 CAP-001～004 新增 · 2026-10-14</span>
+    </div>
+    <div class="banner">
+      <b>相对现网新增（标红）：</b>
+      <span class="tag-new">新</span> 应结款基准 / 基准时间 / 应结款日期（CAP-001：运费、海运费按到货；其他费用进规则表，<span class="tag-wait">待确认</span>）；
+      <span class="tag-new">新</span> 整柜除关税按开船时间，关税基准待补（CAP-002 <span class="tag-wait">待确认</span>）；
+      <span class="tag-new">新</span> 实际账期（CAP-003，与结算周期关系 <span class="tag-wait">待确认</span>，本页只占位）；
+      <span class="tag-new">新</span> 资金占用时间费用（CAP-004，公式 / 币种 / 是否进损益 <span class="tag-wait">待确认</span>，不编金额）；
+      <span class="tag-ok">已确认</span> 同一费用最终金额为 0 不进明细（CAP-005）。本演示已排除 2 条金额为 0 的费用。
+    </div>
+    <div class="views">
+      <button type="button" class="on" id="tabDetail">资金占用明细</button>
+      <button type="button" id="tabRule">基准规则 <span class="tag-new">新</span></button>
+    </div>
+
+    <div id="viewDetail">
+      <div class="filter">
+        <div class="fg">
+          <div class="fi"><label>业务员</label><div class="ctl"><select id="fSales"><option value="">全部</option></select></div></div>
+          <div class="fi"><label>运单号</label><div class="ctl"><input id="fWb" placeholder="请输入运单号" /></div></div>
+          <div class="fi"><label>收货时间</label><div class="ctl range"><input id="fRecv1" type="date" /><span>至</span><input id="fRecv2" type="date" /></div></div>
+          <div class="filter-actions">
+            <button class="btn" type="button" id="btnMore">更多筛选</button>
+            <button class="btn primary" type="button" id="btnQuery">查询数据</button>
+            <button class="btn" type="button" id="btnReset">数据重置</button>
+          </div>
+          <div class="fi"><label>客户简称</label><div class="ctl"><input id="fCust" placeholder="客户简称" /></div></div>
+          <div class="fi"><label>到期时间</label><div class="ctl range"><input id="fDue1" type="date" /><span>至</span><input id="fDue2" type="date" /></div></div>
+          <div class="fi"><label>结算员</label><div class="ctl"><select id="fSettler"><option value="">全部</option></select></div></div>
+          <div class="more" id="moreBox">
+            <div class="fi"><label>业务类型 <span class="tag-new">新</span></label><div class="ctl"><select id="fBiz"><option value="">全部</option><option>散货</option><option>整柜</option></select></div></div>
+            <div class="fi"><label>应结款基准 <span class="tag-new">新</span></label><div class="ctl"><select id="fBasis"><option value="">全部</option><option>到货时间</option><option>开船时间</option><option>待确认</option></select></div></div>
+            <div class="fi"><label>费用类型</label><div class="ctl"><select id="fFee"><option value="">全部</option><option>运费</option><option>海运费</option><option>拖车费</option><option>关税</option><option>其他费</option></select></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" type="button" id="btnAll">所有数据</button>
+        <button class="btn" type="button" id="btnExport">导出</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>收货预报单号</th>
+                <th>业务员</th>
+                <th>收货时间</th>
+                <th>结算周期（合同账期）</th>
+                <th class="new-col">实际账期 <span class="tag-new">新</span></th>
+                <th>到期时间</th>
+                <th class="new-col">业务类型 <span class="tag-new">新</span></th>
+                <th class="new-col">应结款基准 <span class="tag-new">新</span></th>
+                <th class="new-col">基准时间 <span class="tag-new">新</span></th>
+                <th class="new-col">应结款日期 <span class="tag-new">新</span></th>
+                <th>客户简称</th>
+                <th>运单号</th>
+                <th>客户代码</th>
+                <th>产品代码</th>
+                <th>销售产品</th>
+                <th>客户单号</th>
+                <th>提单号</th>
+                <th>费用编号</th>
+                <th>费用类型</th>
+                <th>币种</th>
+                <th>应收金额</th>
+                <th>汇率</th>
+                <th>应收人民币金额</th>
+                <th>核销金额</th>
+                <th>应收款账号</th>
+                <th>最迟应结款时间</th>
+                <th>资金占用账期</th>
+                <th>资金占用账期日期</th>
+                <th class="new-col">资金占用时间费用 <span class="tag-new">新</span></th>
+                <th>领单时间</th>
+                <th>收货机构</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span id="pagerText">共 0 条</span>
+          <span>白底列=现网 · 红底列=本期新增</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewRule" class="hidden">
+      <div class="rules">
+        <h3>应结款基准规则 <span class="tag-new">新</span></h3>
+        <p class="note">来自需求清单 CAP-001 / CAP-002 与 9/17 纪要。关税、其他费用、混合费用未书面确认前，明细基准显示「待确认」，应结款日期留空。不在本页编造公式金额。</p>
+        <table>
+          <thead>
+            <tr><th>编号</th><th>范围</th><th>费用类型</th><th>应结款时间起点</th><th>状态</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>CAP-001</td><td>散货</td><td>运费、海运费</td><td>到货时间</td><td><span class="tag-wait">待确认</span> 口径已记录，规则表待财务签</td></tr>
+            <tr><td>CAP-001</td><td>散货</td><td>其他费用</td><td>沿用现网其他规则，需落进本表</td><td><span class="tag-wait">待确认</span></td></tr>
+            <tr><td>CAP-002</td><td>整柜</td><td>除关税外</td><td>开船时间</td><td><span class="tag-wait">待确认</span></td></tr>
+            <tr><td>CAP-002</td><td>整柜</td><td>关税</td><td>待书面确认；混合费用如何识别同条</td><td><span class="tag-wait">待确认</span></td></tr>
+          </tbody>
+        </table>
+        <h3>新增字段</h3>
+        <table>
+          <thead><tr><th>字段</th><th>说明</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr><td>实际账期</td><td>相对结算周期（合同账期）新增。与应收账期的关系、历史补数未定，列表占位「待确认」。</td><td>CAP-003 <span class="tag-wait">待确认</span></td></tr>
+            <tr><td>应结款基准 / 基准时间 / 应结款日期</td><td>按上表取起点。现网「到期时间」「最迟应结款时间」保留，不替换。</td><td>CAP-001 / 002 <span class="tag-wait">待确认</span></td></tr>
+            <tr><td>资金占用时间费用</td><td>按占用时间计的费用。费用类型、公式、币种、是否进损益/提成未定，列表不展示计算金额。</td><td>CAP-004 <span class="tag-wait">待确认</span></td></tr>
+            <tr><td>金额为 0 排除</td><td>同一费用最终金额为 0 时，不进入本明细，也不进汇总。</td><td>CAP-005 <span class="tag-ok">已确认</span></td></tr>
+          </tbody>
+        </table>
+        <h3>现网列（截图保留，不改名）</h3>
+        <p class="note">序号、收货预报单号、业务员、收货时间、结算周期（合同账期）、到期时间、客户简称、运单号、客户代码、产品代码、销售产品、客户单号、提单号、费用编号、费用类型、币种、应收金额、汇率、应收人民币金额、核销金额、应收款账号、最迟应结款时间、资金占用账期、资金占用账期日期、领单时间、收货机构。筛选与现网一致：业务员、运单号、收货时间、客户简称、到期时间、结算员；工具栏「所有数据 / 导出」。</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var EXCLUDED_ZERO = 2;
+var ROWS = [
+  { forecast:"2509007664", salesman:"李宁", recv:"2025-08-27 13:12:22", recvDay:"2025-08-27", cycle:"月结+30", due:"2025-09-27", dueDay:"2025-09-27", customer:"北京鑫宇博洋", wb:"TEX000002722", custCode:"PK-1490", prod:"TEX000002722", product:"美森MAX舱", custNo:"ICBU000005034387", bl:"AL12SFC000277-TJ2507290209", feeNo:"A01", feeType:"运费", ccy:"CNY", amt:-2595, rate:1, rmb:-2595, wo:-2595, bank:"2663047248@qq.com", lastDue:"2025-11-30 23:59:59", occ:0, occDate:"2025-11-30", pickup:"2025-10-17 13:22:32", org:"义乌总仓", settler:"陈敏", biz:"散货", basis:"到货时间", basisAt:"2025-08-28", dueNew:"2025-09-28" },
+  { forecast:"2509007664", salesman:"李可", recv:"2025-08-27 13:12:22", recvDay:"2025-08-27", cycle:"月结+30", due:"2025-09-27", dueDay:"2025-09-27", customer:"北京鑫宇博洋", wb:"TEX000002722", custCode:"PK-1450", prod:"TEX000002722", product:"美森MAX舱", custNo:"ICBU000005034387", bl:"AL12SFC000277-TJ2507290209", feeNo:"A02", feeType:"运费", ccy:"CNY", amt:2595, rate:1, rmb:2595, wo:2595, bank:"2663047248@qq.com", lastDue:"2025-08-30 23:59:59", occ:0, occDate:"2025-08-30", pickup:"2025-07-19 11:27:19", org:"义乌总仓", settler:"陈敏", biz:"散货", basis:"到货时间", basisAt:"2025-08-28", dueNew:"2025-09-28" },
+  { forecast:"NZD251014141304647", salesman:"王莉", recv:"2026-10-14 14:13:27", recvDay:"2026-10-14", cycle:"现结", due:"2026-10-15", dueDay:"2026-10-15", customer:"红一木头", wb:"TXA168", custCode:"PK-1267", prod:"TXA168", product:"中美快船", custNo:"ICBU00001314179", bl:"1ZJ2WRDR0313371406", feeNo:"A82", feeType:"拖车费", ccy:"CNY", amt:-0.5, rate:1, rmb:-0.5, wo:-0.5, bank:"1649461023", lastDue:"2026-10-14 22:59:59", occ:0, occDate:"2026-10-14", pickup:"2026-10-14 13:13:17", org:"义乌总仓", settler:"陈敏", biz:"散货", basis:"待确认", basisAt:"—", dueNew:"—" },
+  { forecast:"2610000814", salesman:"刘伟楠", recv:"2026-10-13 10:34:15", recvDay:"2026-10-13", cycle:"现结", due:"2026-10-13", dueDay:"2026-10-13", customer:"红一木头", wb:"TXA168", custCode:"PK-1267", prod:"TXA168", product:"中美快船", custNo:"ICBU00001314179", bl:"1ZJ2WRDR0313371406", feeNo:"A01", feeType:"运费", ccy:"CNY", amt:1006.8, rate:1, rmb:1006.8, wo:1006.8, bank:"1649461023", lastDue:"2026-10-13 23:59:59", occ:1, occDate:"2026-10-14", pickup:"2026-10-14 09:22:17", org:"义乌总仓", settler:"陈敏", biz:"散货", basis:"到货时间", basisAt:"2026-10-13", dueNew:"2026-10-13" },
+  { forecast:"NZD2510131732560", salesman:"黄小根", recv:"2026-10-13 13:17:25", recvDay:"2026-10-13", cycle:"现结", due:"2026-10-13", dueDay:"2026-10-13", customer:"亿达高货", wb:"10002978", custCode:"SZDP", prod:"10002978", product:"欧洲空派-DP", custNo:"ICBU0000131324", bl:"HU2AHYU-1012-1", feeNo:"A01", feeType:"运费", ccy:"CNY", amt:1780, rate:1, rmb:1780, wo:1780, bank:"2663047248@qq.com", lastDue:"2026-10-14 23:59:59", occ:0, occDate:"2026-10-14", pickup:"2026-10-14 18:25:33", org:"义乌总仓", settler:"陈敏", biz:"散货", basis:"到货时间", basisAt:"2026-10-13", dueNew:"2026-10-13" },
+  { forecast:"2610000544", salesman:"张3静", recv:"2026-10-13 16:03:52", recvDay:"2026-10-13", cycle:"现结", due:"2026-10-16", dueDay:"2026-10-16", customer:"花边品质", wb:"100139999", custCode:"M0721", prod:"100139999", product:"科·阿联酋FBA", custNo:"ICBU00001311327", bl:"15054440502408", feeNo:"A01", feeType:"运费", ccy:"CNY", amt:3683, rate:1, rmb:3683, wo:3683, bank:"2663047248@qq.com", lastDue:"2026-10-13 23:59:59", occ:1, occDate:"2026-10-14", pickup:"2026-10-14 11:27:24", org:"义乌总仓", settler:"陈敏", biz:"散货", basis:"到货时间", basisAt:"2026-10-14", dueNew:"2026-10-14" },
+  { forecast:"2610130731311", salesman:"吴凯", recv:"2026-10-13 17:48:58", recvDay:"2026-10-13", cycle:"现结", due:"2026-10-16", dueDay:"2026-10-16", customer:"利欧罗科技", wb:"TXG81543", custCode:"6761", prod:"TXG81543", product:"上海FBA-Z行IP", custNo:"ICBU0000131305", bl:"1ZJ2901FB0209300301", feeNo:"A01", feeType:"运费", ccy:"CNY", amt:901, rate:1, rmb:901, wo:901, bank:"578902803510035", lastDue:"2026-10-13 23:59:59", occ:1, occDate:"2026-10-15", pickup:"2026-10-15 17:48:58", org:"深圳福永", settler:"周倩", biz:"散货", basis:"到货时间", basisAt:"2026-10-13", dueNew:"2026-10-13" },
+  { forecast:"2610003796", salesman:"叶明朗", recv:"2026-10-13 22:43:42", recvDay:"2026-10-13", cycle:"现结", due:"2026-10-13", dueDay:"2026-10-13", customer:"福建有货", wb:"TX07704", custCode:"PK2019", prod:"TX07704", product:"EXX-FBA卡东特价", custNo:"ICBU00001313032", bl:"878023528710", feeNo:"A01", feeType:"运费", ccy:"CNY", amt:200, rate:1, rmb:200, wo:200, bank:"1649461023", lastDue:"2026-10-14 23:59:59", occ:1, occDate:"2026-10-14", pickup:"2026-10-14 19:02:52", org:"义乌总仓", settler:"陈敏", biz:"散货", basis:"到货时间", basisAt:"2026-10-13", dueNew:"2026-10-13" },
+  { forecast:"TXZG26091001", salesman:"周航", recv:"2026-09-02 09:18:00", recvDay:"2026-09-02", cycle:"开船结+30", due:"2026-10-08", dueDay:"2026-10-08", customer:"福建有货", wb:"TXZG26091001", custCode:"FCL-0901", prod:"TXZG26091001", product:"整柜美西", custNo:"FCL-CUST-0901", bl:"COSU7788123", feeNo:"A01", feeType:"海运费", ccy:"USD", amt:3200, rate:7.12, rmb:22784, wo:0, bank:"—", lastDue:"2026-10-08 23:59:59", occ:12, occDate:"2026-10-14", pickup:"2026-09-08 16:00:00", org:"宁波", settler:"周倩", biz:"整柜", basis:"开船时间", basisAt:"2026-09-08", dueNew:"2026-10-08" },
+  { forecast:"TXZG26091001", salesman:"周航", recv:"2026-09-02 09:18:00", recvDay:"2026-09-02", cycle:"开船结+30", due:"2026-10-08", dueDay:"2026-10-08", customer:"福建有货", wb:"TXZG26091001", custCode:"FCL-0901", prod:"TXZG26091001", product:"整柜美西", custNo:"FCL-CUST-0901", bl:"COSU7788123", feeNo:"A66", feeType:"关税", ccy:"USD", amt:860, rate:7.12, rmb:6123.2, wo:0, bank:"—", lastDue:"2026-10-08 23:59:59", occ:12, occDate:"2026-10-14", pickup:"2026-09-08 16:00:00", org:"宁波", settler:"周倩", biz:"整柜", basis:"待确认", basisAt:"—", dueNew:"—" }
+];
+
+function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" })[c]; }); }
+function money(n) {
+  var abs = Math.abs(n);
+  var digits = abs % 1 ? 1 : 0;
+  if (Math.round(abs * 100) % 100 !== 0 && abs % 1) digits = 2;
+  var t = abs.toLocaleString("zh-CN", { minimumFractionDigits: digits, maximumFractionDigits: 2 });
+  return (n < 0 ? "-" : "") + t;
+}
+function fillSelect(id, key) {
+  var set = {};
+  ROWS.forEach(function (r) { set[r[key]] = 1; });
+  var html = '<option value="">全部</option>';
+  Object.keys(set).forEach(function (k) { html += "<option>" + esc(k) + "</option>"; });
+  document.getElementById(id).innerHTML = html;
+}
+function inRange(day, a, b) {
+  if (a && day < a) return false;
+  if (b && day > b) return false;
+  return true;
+}
+function filtered() {
+  var sales = document.getElementById("fSales").value;
+  var wb = document.getElementById("fWb").value.trim();
+  var cust = document.getElementById("fCust").value.trim();
+  var settler = document.getElementById("fSettler").value;
+  var biz = document.getElementById("fBiz").value;
+  var basis = document.getElementById("fBasis").value;
+  var fee = document.getElementById("fFee").value;
+  var r1 = document.getElementById("fRecv1").value;
+  var r2 = document.getElementById("fRecv2").value;
+  var d1 = document.getElementById("fDue1").value;
+  var d2 = document.getElementById("fDue2").value;
+  return ROWS.filter(function (r) {
+    if (r.rmb === 0) return false;
+    if (sales && r.salesman !== sales) return false;
+    if (wb && r.wb.indexOf(wb) < 0) return false;
+    if (cust && r.customer.indexOf(cust) < 0) return false;
+    if (settler && r.settler !== settler) return false;
+    if (biz && r.biz !== biz) return false;
+    if (basis && r.basis !== basis) return false;
+    if (fee && r.feeType !== fee) return false;
+    if (!inRange(r.recvDay, r1, r2)) return false;
+    if (!inRange(r.dueDay, d1, d2)) return false;
+    return true;
+  });
+}
+function render() {
+  var list = filtered();
+  var html = list.map(function (r, i) {
+    var pend = r.basis === "待确认" ? " pending" : "";
+    var amtCls = r.amt < 0 ? "num neg" : "num";
+    var woCls = r.wo < 0 ? "num neg" : "num";
+    return "<tr class=\"" + pend + "\">" +
+      "<td>" + (i + 1) + "</td>" +
+      "<td class=\"mono\">" + esc(r.forecast) + "</td>" +
+      "<td>" + esc(r.salesman) + "</td>" +
+      "<td>" + esc(r.recv) + "</td>" +
+      "<td>" + esc(r.cycle) + "</td>" +
+      "<td class=\"new-col\">待确认</td>" +
+      "<td>" + esc(r.due) + "</td>" +
+      "<td class=\"new-col\">" + esc(r.biz) + "</td>" +
+      "<td class=\"new-col basis\">" + esc(r.basis) + "</td>" +
+      "<td class=\"new-col\">" + esc(r.basisAt) + "</td>" +
+      "<td class=\"new-col\">" + esc(r.dueNew) + "</td>" +
+      "<td>" + esc(r.customer) + "</td>" +
+      "<td class=\"mono\">" + esc(r.wb) + "</td>" +
+      "<td>" + esc(r.custCode) + "</td>" +
+      "<td class=\"mono\">" + esc(r.prod) + "</td>" +
+      "<td>" + esc(r.product) + "</td>" +
+      "<td class=\"mono\">" + esc(r.custNo) + "</td>" +
+      "<td class=\"mono\">" + esc(r.bl) + "</td>" +
+      "<td>" + esc(r.feeNo) + "</td>" +
+      "<td>" + esc(r.feeType) + "</td>" +
+      "<td>" + esc(r.ccy) + "</td>" +
+      "<td class=\"" + amtCls + "\">" + money(r.amt) + "</td>" +
+      "<td class=\"num\">" + r.rate + "</td>" +
+      "<td class=\"" + amtCls + "\">" + money(r.rmb) + "</td>" +
+      "<td class=\"" + woCls + "\">" + money(r.wo) + "</td>" +
+      "<td>" + esc(r.bank) + "</td>" +
+      "<td>" + esc(r.lastDue) + "</td>" +
+      "<td class=\"num\">" + r.occ + "</td>" +
+      "<td>" + esc(r.occDate) + "</td>" +
+      "<td class=\"new-col\">公式待定</td>" +
+      "<td>" + esc(r.pickup) + "</td>" +
+      "<td>" + esc(r.org) + "</td></tr>";
+  }).join("");
+  document.getElementById("tbody").innerHTML = html || "<tr><td colspan=\"32\" style=\"text-align:center;color:#8c8c8c;padding:28px\">无数据</td></tr>";
+  document.getElementById("pagerText").textContent = "共 " + list.length + " 条 · 已排除金额为 0 的费用 " + EXCLUDED_ZERO + " 条（CAP-005）";
+}
+function toast(msg) {
+  var el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function () { el.classList.remove("show"); }, 1600);
+}
+function reset() {
+  ["fWb","fCust","fRecv1","fRecv2","fDue1","fDue2"].forEach(function (id) {
+    document.getElementById(id).value = "";
+  });
+  ["fSales","fSettler","fBiz","fBasis","fFee"].forEach(function (id) { document.getElementById(id).value = ""; });
+  render();
+}
+document.getElementById("btnQuery").onclick = function () { render(); toast("已按条件查询 " + filtered().length + " 条"); };
+document.getElementById("btnReset").onclick = function () { reset(); toast("已重置"); };
+document.getElementById("btnAll").onclick = function () { reset(); toast("已显示全部（不含金额为 0）"); };
+document.getElementById("btnExport").onclick = function () { toast("已导出当前 " + filtered().length + " 条（演示）"); };
+document.getElementById("btnMore").onclick = function () {
+  var box = document.getElementById("moreBox");
+  box.classList.toggle("show");
+  document.getElementById("btnMore").textContent = box.classList.contains("show") ? "收起筛选" : "更多筛选";
+};
+document.getElementById("tabDetail").onclick = function () {
+  document.getElementById("viewDetail").classList.remove("hidden");
+  document.getElementById("viewRule").classList.add("hidden");
+  document.getElementById("tabDetail").classList.add("on");
+  document.getElementById("tabRule").classList.remove("on");
+};
+document.getElementById("tabRule").onclick = function () {
+  document.getElementById("viewDetail").classList.add("hidden");
+  document.getElementById("viewRule").classList.remove("hidden");
+  document.getElementById("tabRule").classList.add("on");
+  document.getElementById("tabDetail").classList.remove("on");
+};
+fillSelect("fSales", "salesman");
+fillSelect("fSettler", "settler");
+render();
+</script>
+</body>
+</html>

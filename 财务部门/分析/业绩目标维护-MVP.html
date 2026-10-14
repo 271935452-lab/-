@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>业绩目标维护 · MVP</title>
+  <style>
+    :root {
+      --nav: #001529; --primary: #1890ff; --ok: #52c41a; --warn: #fa8c16; --danger: #ff4d4f;
+      --bg: #f0f2f5; --line: #e8e8e8; --text: #262626; --muted: #8c8c8c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: 40px; background: var(--nav); color: #fff;
+      display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0;
+    }
+    .topbar .logo { font-weight: 700; margin-right: 12px; }
+    .topbar .tab { padding: 6px 12px; color: rgba(255,255,255,.65); border-radius: 4px 4px 0 0; }
+    .topbar .tab.on { background: #fff; color: var(--warn); font-weight: 600; }
+    .topbar .right { margin-left: auto; font-size: 12px; color: rgba(255,255,255,.75); }
+    .topbar a { color: rgba(255,255,255,.85); text-decoration: none; margin-left: 10px; }
+    .crumb {
+      height: 36px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; color: var(--muted); font-size: 12px;
+    }
+    .crumb b { color: var(--text); }
+    .banner {
+      margin: 10px 16px 0; padding: 8px 12px; background: #e6f7ff; border: 1px solid #91d5ff;
+      border-radius: 4px; font-size: 12px; color: #0958d9; line-height: 1.55;
+    }
+    .banner b { color: #003a8c; }
+    .main { flex: 1; padding: 10px 16px 24px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+    .tabs { display: flex; border-bottom: 1px solid var(--line); background: #fafafa; padding: 0 8px; }
+    .tab-btn {
+      padding: 10px 16px; border: none; background: none; color: var(--muted); position: relative;
+    }
+    .tab-btn.on { color: var(--primary); font-weight: 600; }
+    .tab-btn.on::after {
+      content: ""; position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; background: var(--primary);
+    }
+    .filter { padding: 12px 14px 8px; }
+    .fg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 16px; }
+    .fi { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+    .fi label { flex: 0 0 84px; text-align: right; color: var(--muted); padding-top: 6px; white-space: nowrap; }
+    .fi .ctl { flex: 1; min-width: 0; }
+    .fi input, .fi select {
+      width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px;
+    }
+    .filter-actions {
+      display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;
+      padding-top: 8px; border-top: 1px dashed #f0f0f0;
+    }
+    .btn {
+      height: 32px; padding: 0 14px; border: 1px solid #d9d9d9; border-radius: 4px;
+      background: #fff; color: var(--text); display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { background: #40a9ff; border-color: #40a9ff; color: #fff; }
+    .btn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+    .btn.ok:hover { color: #fff; border-color: #73d13d; background: #73d13d; }
+    .btn.link { border: none; background: none; color: var(--primary); height: auto; padding: 0 4px; }
+    .toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 8px 12px; border-top: 1px solid var(--line);
+    }
+    .toolbar .note { margin-left: auto; font-size: 12px; color: var(--muted); }
+    .table-wrap { overflow: auto; max-height: calc(100vh - 420px); }
+    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+    thead th {
+      position: sticky; top: 0; z-index: 2; background: #fafafa; border-bottom: 1px solid var(--line);
+      padding: 8px 10px; text-align: left; font-weight: 600; white-space: nowrap; color: #595959;
+    }
+    tbody td {
+      padding: 7px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; vertical-align: middle;
+    }
+    tbody tr:hover { background: #f5f9ff; }
+    .num { font-variant-numeric: tabular-nums; font-family: Consolas, monospace; text-align: right; }
+    .tag {
+      display: inline-block; padding: 1px 7px; border-radius: 2px; font-size: 11px; line-height: 18px; font-weight: 600;
+    }
+    .tag.draft { background: #f5f5f5; color: #8c8c8c; border: 1px solid #d9d9d9; }
+    .tag.ok { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag.done { background: #e6f7ff; color: #096dd9; border: 1px solid #91d5ff; }
+    .tag.bad { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .gap { padding: 0 12px 12px; }
+    .gap h4 { margin: 10px 0 6px; font-size: 13px; }
+    .gap .sub { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+    .miss { color: var(--danger); font-weight: 600; }
+    .toast {
+      position: fixed; top: 56px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 18px; border-radius: 4px;
+      z-index: 200; opacity: 0; pointer-events: none; transition: .2s; font-size: 13px;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+      display: none; align-items: center; justify-content: center;
+    }
+    .mask.open { display: flex; }
+    .modal {
+      width: 640px; max-width: 94vw; max-height: 88vh; background: #fff; border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18); display: flex; flex-direction: column;
+    }
+    .modal-hd {
+      padding: 14px 18px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-hd h3 { margin: 0; font-size: 16px; }
+    .modal-bd { padding: 16px 18px; overflow: auto; flex: 1; }
+    .modal-ft {
+      padding: 12px 18px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .form-row { margin-bottom: 12px; }
+    .form-row label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+    .form-row label .req { color: var(--danger); }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 4px; padding: 6px 10px;
+    }
+    .form-row textarea { min-height: 88px; resize: vertical; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .hint {
+      padding: 8px 10px; border-radius: 4px; font-size: 12px; line-height: 1.55; margin-bottom: 12px;
+    }
+    .hint.info { background: #e6f7ff; border: 1px solid #91d5ff; color: #096dd9; }
+    .hint.warn { background: #fff7e6; border: 1px solid #ffd591; color: #ad6800; }
+    .kpi {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .kpi .box { background: #fafafa; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; }
+    .kpi .lab { font-size: 11px; color: var(--muted); }
+    .kpi .val { font-size: 18px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .logs { padding: 8px 12px 12px; border-top: 1px solid var(--line); }
+    .logs h4 { margin: 4px 0 8px; font-size: 13px; }
+    @media (max-width: 1100px) {
+      .fg, .kpi, .form-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei','PingFang SC',sans-serif"><a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a></div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="logo">头程系统</div>
+      <div class="tab">控制台</div>
+      <div class="tab on">业绩目标</div>
+      <div class="tab">数据播报</div>
+      <div class="right">
+        <a href="分析-模块导航.html">← 分析导航</a>
+        <a href="../唐斌看板专题-MVP.html">看板专题</a>
+      </div>
+    </div>
+    <div class="crumb">
+      <span>财务</span><span>/</span><span>分析</span><span>/</span><b>业绩目标维护</b>
+      <span style="margin-left:auto">唐斌议题 · 月初填到人 · 看板只读已生效</span>
+    </div>
+    <div class="banner">
+      <b>口径：</b>
+      部门在月初填当月实时目标，最小单位到<strong>人</strong>，按<strong>实际姓名、实际部门</strong>。
+      另维护<strong>整体目标</strong>（部门 + 战队）和<strong>公司年初目标</strong>（经营分析完成率的分母）。
+      数据播报、经营分析只读取<strong>已生效</strong>的数。个人已生效合计和整体目标对不上时，页面标出差额。
+    </div>
+    <div class="main">
+      <section class="panel" id="view"></section>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <div class="mask" id="editMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3 id="editTitle">编辑目标</h3>
+        <button type="button" class="btn" id="editClose">关闭</button>
+      </div>
+      <div class="modal-bd" id="editBody"></div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="editCancel">取消</button>
+        <button type="button" class="btn primary" id="editSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="importMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <h3>导入个人目标</h3>
+        <button type="button" class="btn" data-close="importMask">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="hint info">按当前筛选月份导入，状态为草稿。列顺序：实际部门、战队、实际姓名、营业额(万元)、货量(吨)，Tab 或逗号分隔。</div>
+        <div class="form-row">
+          <label>粘贴内容</label>
+          <textarea id="importText">苏州一部	青禾队	陈静	180	260</textarea>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" data-close="importMask">取消</button>
+        <button type="button" class="btn primary" id="importOk">导入为草稿</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  var DEPTS = ["苏州一部", "苏州二部", "宁波销售"];
+  var TEAMS = ["青禾队", "先锋队", "飞虎队", "破浪队"];
+  var seq = 20;
+  var state = { tab: "person", ym: "2026-09", dept: "", team: "", name: "", status: "", picked: {} };
+  var editing = null;
+
+  var years = [
+    { id: "Y2026", year: "2026", sales: 32200, volume: 20950, status: "locked", by: "财务", at: "2026-01-06", note: "年初锁定，看板完成率用这个数做分母" },
+    { id: "Y2025", year: "2025", sales: 29800, volume: 18600, status: "locked", by: "财务", at: "2025-01-08", note: "" }
+  ];
+  var overall = [
+    { id: "O1", ym: "2026-09", dept: "苏州一部", team: "青禾队", sales: 720, volume: 1100, status: "on", by: "陈主管", at: "2026-09-01" },
+    { id: "O2", ym: "2026-09", dept: "苏州二部", team: "先锋队", sales: 190, volume: 300, status: "on", by: "陈主管", at: "2026-09-01" },
+    { id: "O3", ym: "2026-08", dept: "苏州一部", team: "青禾队", sales: 680, volume: 1040, status: "on", by: "陈主管", at: "2026-08-01" },
+    { id: "O4", ym: "2026-08", dept: "苏州二部", team: "先锋队", sales: 180, volume: 290, status: "on", by: "陈主管", at: "2026-08-01" }
+  ];
+  var people = [
+    { id: "P1", ym: "2026-09", dept: "苏州一部", team: "青禾队", name: "张苏宁", sales: 280, volume: 420, status: "on", by: "陈主管", at: "2026-09-02" },
+    { id: "P2", ym: "2026-09", dept: "苏州一部", team: "青禾队", name: "李婷", sales: 220, volume: 360, status: "on", by: "陈主管", at: "2026-09-02" },
+    { id: "P3", ym: "2026-09", dept: "苏州一部", team: "青禾队", name: "周航", sales: 200, volume: 280, status: "draft", by: "陈主管", at: "2026-09-03" },
+    { id: "P4", ym: "2026-09", dept: "苏州二部", team: "先锋队", name: "王芳", sales: 190, volume: 300, status: "on", by: "陈主管", at: "2026-09-02" },
+    { id: "P5", ym: "2026-09", dept: "", team: "青禾队", name: "赵六", sales: 160, volume: 240, status: "draft", by: "陈主管", at: "2026-09-04" },
+    { id: "P6", ym: "2026-08", dept: "苏州一部", team: "青禾队", name: "张苏宁", sales: 260, volume: 400, status: "on", by: "陈主管", at: "2026-08-02" },
+    { id: "P7", ym: "2026-08", dept: "苏州一部", team: "青禾队", name: "李婷", sales: 210, volume: 340, status: "on", by: "陈主管", at: "2026-08-02" },
+    { id: "P8", ym: "2026-08", dept: "苏州一部", team: "青禾队", name: "周航", sales: 190, volume: 260, status: "on", by: "陈主管", at: "2026-08-02" },
+    { id: "P9", ym: "2026-08", dept: "苏州二部", team: "先锋队", name: "王芳", sales: 180, volume: 290, status: "on", by: "陈主管", at: "2026-08-02" }
+  ];
+  var logs = [
+    { at: "2026-09-05 10:12", who: "陈主管", what: "张苏宁 2026-09 营业额 260 → 280 万", why: "月初追加重点客户" }
+  ];
+
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function n(v) { return Number(v) || 0; }
+  function wan(v) { return n(v).toLocaleString("zh-CN"); }
+  function yi(v) { return (n(v) / 10000).toFixed(2) + " 亿"; }
+  function tag(st) {
+    if (st === "on") return '<span class="tag ok">已生效</span>';
+    if (st === "locked") return '<span class="tag done">已锁定</span>';
+    return '<span class="tag draft">草稿</span>';
+  }
+  function prevYm(ym) {
+    var p = ym.split("-");
+    var y = +p[0], m = +p[1];
+    if (m === 1) return (y - 1) + "-12";
+    return y + "-" + (m < 11 ? "0" : "") + (m - 1);
+  }
+  function opts(list, cur, blank) {
+    var html = blank ? '<option value="">' + blank + "</option>" : "";
+    list.forEach(function (x) {
+      html += '<option value="' + esc(x) + '"' + (x === cur ? " selected" : "") + ">" + esc(x) + "</option>";
+    });
+    return html;
+  }
+  function matchPerson(r) {
+    if (state.ym && r.ym !== state.ym) return false;
+    if (state.dept && r.dept !== state.dept) return false;
+    if (state.team && r.team !== state.team) return false;
+    if (state.name && r.name.indexOf(state.name) < 0) return false;
+    if (state.status && r.status !== state.status) return false;
+    return true;
+  }
+  function personReason(r) {
+    if (!r.dept) return "缺实际部门";
+    if (!r.name) return "缺实际姓名";
+    if (n(r.sales) <= 0 || n(r.volume) <= 0) return "营业额和货量都要大于 0";
+    return "";
+  }
+
+  function gaps() {
+    var rows = {};
+    overall.filter(function (o) { return o.ym === state.ym && o.status === "on"; }).forEach(function (o) {
+      var k = o.dept + "|" + o.team;
+      rows[k] = { dept: o.dept, team: o.team, sales: n(o.sales), volume: n(o.volume), ps: 0, pv: 0, drafts: 0 };
+    });
+    people.filter(function (p) { return p.ym === state.ym && p.dept; }).forEach(function (p) {
+      var k = p.dept + "|" + p.team;
+      if (!rows[k]) rows[k] = { dept: p.dept, team: p.team, sales: 0, volume: 0, ps: 0, pv: 0, drafts: 0, missing: true };
+      if (p.status === "on") { rows[k].ps += n(p.sales); rows[k].pv += n(p.volume); }
+      else rows[k].drafts += 1;
+    });
+    return Object.keys(rows).map(function (k) { return rows[k]; });
+  }
+
+  function kpiHtml() {
+    var ymPeople = people.filter(function (p) { return p.ym === state.ym; });
+    var on = ymPeople.filter(function (p) { return p.status === "on"; });
+    var draft = ymPeople.length - on.length;
+    var sales = on.reduce(function (s, p) { return s + n(p.sales); }, 0);
+    var vol = on.reduce(function (s, p) { return s + n(p.volume); }, 0);
+    var year = years.filter(function (y) { return y.year === state.ym.slice(0, 4) && y.status === "locked"; })[0];
+    return '<div class="kpi">' +
+      '<div class="box"><div class="lab">' + esc(state.ym) + " 已生效人数</div><div class=\"val\">" + on.length + "</div></div>" +
+      '<div class="box"><div class="lab">已生效营业额</div><div class="val">' + wan(sales) + " 万</div></div>" +
+      '<div class="box"><div class="lab">已生效货量</div><div class="val">' + wan(vol) + " T</div></div>" +
+      '<div class="box"><div class="lab">草稿未进看板</div><div class="val">' + draft + "</div></div>" +
+      "</div>" +
+      (year ? '<div class="hint info" style="margin:12px 14px 0">公司 ' + year.year + " 年初目标：销售额 " + yi(year.sales) + "（" + wan(year.sales) + " 万），货量 " + wan(year.volume) + " T。这个数是全年分母，不会按月均分到人。</div>" : "");
+  }
+
+  function gapHtml() {
+    var list = gaps();
+    if (!list.length) return "";
+    var body = list.map(function (g) {
+      var ds = g.ps - g.sales;
+      var dv = g.pv - g.volume;
+      var bad = ds !== 0 || dv !== 0 || g.missing;
+      return "<tr>" +
+        "<td>" + esc(g.dept) + "</td><td>" + esc(g.team) + "</td>" +
+        '<td class="num">' + wan(g.sales) + "</td>" +
+        '<td class="num">' + wan(g.ps) + "</td>" +
+        '<td class="num' + (ds ? " miss" : "") + '">' + (ds > 0 ? "+" : "") + wan(ds) + "</td>" +
+        '<td class="num">' + wan(g.volume) + "</td>" +
+        '<td class="num">' + wan(g.pv) + "</td>" +
+        '<td class="num' + (dv ? " miss" : "") + '">' + (dv > 0 ? "+" : "") + wan(dv) + "</td>" +
+        "<td>" + (g.missing ? '<span class="tag bad">缺整体目标</span>' : (bad ? '<span class="tag bad">有差额</span>' : '<span class="tag ok">对齐</span>')) +
+        (g.drafts ? " · 草稿 " + g.drafts + " 人" : "") + "</td></tr>";
+    }).join("");
+    return '<div class="gap"><h4>个人已生效 vs 整体目标</h4>' +
+      '<p class="sub">只加已生效的人。草稿不进看板，所以周航、赵六还没算进合计。差额 = 已生效个人 − 整体目标。</p>' +
+      '<div class="table-wrap" style="max-height:220px"><table><thead><tr>' +
+      "<th>实际部门</th><th>战队</th><th class=\"num\">整体营业额(万)</th><th class=\"num\">已生效个人</th><th class=\"num\">差额</th>" +
+      "<th class=\"num\">整体货量(T)</th><th class=\"num\">已生效个人</th><th class=\"num\">差额</th><th>核对</th>" +
+      "</tr></thead><tbody>" + body + "</tbody></table></div></div>";
+  }
+
+  function filters() {
+    return '<div class="filter"><div class="fg">' +
+      '<div class="fi"><label>月份</label><div class="ctl"><input type="month" id="fYm" value="' + esc(state.ym) + '"></div></div>' +
+      '<div class="fi"><label>实际部门</label><div class="ctl"><select id="fDept">' + opts(DEPTS, state.dept, "全部") + "</select></div></div>" +
+      '<div class="fi"><label>战队</label><div class="ctl"><select id="fTeam">' + opts(TEAMS, state.team, "全部") + "</select></div></div>" +
+      '<div class="fi"><label>实际姓名</label><div class="ctl"><input id="fName" value="' + esc(state.name) + '" placeholder="到人"></div></div>' +
+      "</div>" +
+      '<div class="filter-actions"><button type="button" class="btn primary" id="btnQ">查询</button>' +
+      '<button type="button" class="btn" id="btnR">重置</button></div></div>';
+  }
+
+  function personHtml() {
+    var rows = people.filter(matchPerson);
+    var body = rows.map(function (r) {
+      var why = personReason(r);
+      return "<tr>" +
+        '<td><input type="checkbox" data-pick="' + r.id + '"' + (state.picked[r.id] ? " checked" : "") + "></td>" +
+        "<td>" + esc(r.ym) + "</td>" +
+        "<td>" + (r.dept ? esc(r.dept) : '<span class="miss">未填</span>') + "</td>" +
+        "<td>" + esc(r.team) + "</td><td>" + esc(r.name) + "</td>" +
+        '<td class="num">' + wan(r.sales) + '</td><td class="num">' + wan(r.volume) + "</td>" +
+        "<td>" + tag(r.status) + (why && r.status !== "on" ? ' <span class="tag bad">' + esc(why) + "</span>" : "") + "</td>" +
+        "<td>" + esc(r.by) + " · " + esc(r.at) + "</td>" +
+        '<td><button type="button" class="btn link" data-edit="person" data-id="' + r.id + '">' + (r.status === "on" ? "调整" : "编辑") + "</button></td></tr>";
+    }).join("");
+    if (!body) body = '<tr><td colspan="10" style="color:#8c8c8c;padding:18px">这个月还没有个人目标。可以新增，或点「复制上月」。</td></tr>';
+    var logBody = logs.slice(0, 6).map(function (l) {
+      return "<tr><td>" + esc(l.at) + "</td><td>" + esc(l.who) + "</td><td>" + esc(l.what) + "</td><td>" + esc(l.why) + "</td></tr>";
+    }).join("");
+    return '<div class="tabs">' + tabBtns() + "</div>" + kpiHtml() + filters() +
+      '<div class="toolbar">' +
+      '<button type="button" class="btn primary" id="btnAdd">新增</button>' +
+      '<button type="button" class="btn" id="btnCopy">复制上月到本月</button>' +
+      '<button type="button" class="btn" id="btnImport">导入</button>' +
+      '<button type="button" class="btn ok" id="btnOn">生效</button>' +
+      '<span class="note">已生效后要改，走「调整」并留下原因。看板不读草稿。</span></div>' +
+      '<div class="table-wrap"><table><thead><tr>' +
+      '<th style="width:36px"></th><th>月份</th><th>实际部门</th><th>战队</th><th>实际姓名</th>' +
+      '<th class="num">营业额目标(万)</th><th class="num">货量目标(T)</th><th>状态</th><th>填写</th><th>操作</th>' +
+      "</tr></thead><tbody>" + body + "</tbody></table></div>" +
+      gapHtml() +
+      '<div class="logs"><h4>最近调整</h4><div class="table-wrap" style="max-height:160px"><table><thead><tr><th>时间</th><th>人</th><th>内容</th><th>原因</th></tr></thead><tbody>' +
+      logBody + "</tbody></table></div></div>";
+  }
+
+  function overallHtml() {
+    var rows = overall.filter(function (r) {
+      if (state.ym && r.ym !== state.ym) return false;
+      if (state.dept && r.dept !== state.dept) return false;
+      if (state.team && r.team !== state.team) return false;
+      return true;
+    });
+    var body = rows.map(function (r) {
+      return "<tr><td>" + esc(r.ym) + "</td><td>" + esc(r.dept) + "</td><td>" + esc(r.team) + "</td>" +
+        '<td class="num">' + wan(r.sales) + '</td><td class="num">' + wan(r.volume) + "</td>" +
+        "<td>" + tag(r.status) + "</td><td>" + esc(r.by) + " · " + esc(r.at) + "</td>" +
+        '<td><button type="button" class="btn link" data-edit="overall" data-id="' + r.id + '">' + (r.status === "on" ? "调整" : "编辑") + "</button></td></tr>";
+    }).join("");
+    if (!body) body = '<tr><td colspan="8" style="color:#8c8c8c;padding:18px">这个月还没有整体目标。</td></tr>';
+    return '<div class="tabs">' + tabBtns() + "</div>" +
+      '<div class="hint info" style="margin:12px">整体目标按实际部门 + 战队，不拆到人。部门先定这一版，再把数拆到个人目标。生效后用来和已生效个人合计对差额。</div>' +
+      filters() +
+      '<div class="toolbar"><button type="button" class="btn primary" id="btnAdd">新增整体目标</button>' +
+      '<span class="note">同一月份、同一部门、同一战队只保留一条。</span></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>月份</th><th>实际部门</th><th>战队</th>' +
+      '<th class="num">营业额目标(万)</th><th class="num">货量目标(T)</th><th>状态</th><th>填写</th><th>操作</th>' +
+      "</tr></thead><tbody>" + body + "</tbody></table></div>" + gapHtml();
+  }
+
+  function yearHtml() {
+    var body = years.map(function (r) {
+      return "<tr><td>" + esc(r.year) + "</td>" +
+        '<td class="num">' + yi(r.sales) + "</td>" +
+        '<td class="num">' + wan(r.sales) + "</td>" +
+        '<td class="num">' + wan(r.volume) + "</td>" +
+        "<td>" + tag(r.status) + "</td><td>" + esc(r.note) + "</td>" +
+        "<td>" + esc(r.by) + " · " + esc(r.at) + "</td>" +
+        '<td><button type="button" class="btn link" data-edit="year" data-id="' + r.id + '">' + (r.status === "locked" ? "调整" : "编辑") + "</button>" +
+        (r.status === "draft" ? ' <button type="button" class="btn link" data-lock="' + r.id + '">锁定</button>' : "") +
+        "</td></tr>";
+    }).join("");
+    return '<div class="tabs">' + tabBtns() + "</div>" +
+      '<div class="hint info" style="margin:12px">公司年初目标一年一条。锁定之后，经营分析里的货量完成率、销售额完成率都用它做分母。要改必须写调整原因。</div>' +
+      '<div class="toolbar"><button type="button" class="btn primary" id="btnAdd">新增年度</button>' +
+      '<span class="note">单位：销售额万元（页面同时换成亿），货量吨。</span></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>年度</th><th class="num">销售额</th><th class="num">销售额(万)</th>' +
+      '<th class="num">货量目标(T)</th><th>状态</th><th>说明</th><th>填写</th><th>操作</th></tr></thead><tbody>' +
+      body + "</tbody></table></div>";
+  }
+
+  function tabBtns() {
+    return [
+      ["person", "个人目标"],
+      ["overall", "整体目标"],
+      ["year", "公司年初目标"]
+    ].map(function (t) {
+      return '<button type="button" class="tab-btn' + (state.tab === t[0] ? " on" : "") + '" data-tab="' + t[0] + '">' + t[1] + "</button>";
+    }).join("");
+  }
+
+  function render() {
+    var html = state.tab === "overall" ? overallHtml() : state.tab === "year" ? yearHtml() : personHtml();
+    document.getElementById("view").innerHTML = html;
+  }
+
+  function readFilters() {
+    var ym = document.getElementById("fYm");
+    if (!ym) return;
+    state.ym = ym.value || state.ym;
+    state.dept = document.getElementById("fDept").value;
+    state.team = document.getElementById("fTeam").value;
+    state.name = (document.getElementById("fName").value || "").trim();
+  }
+
+  function openEdit(kind, id) {
+    editing = { kind: kind, id: id || "" };
+    var title = "新增";
+    var row = null;
+    if (kind === "person") row = people.filter(function (r) { return r.id === id; })[0];
+    if (kind === "overall") row = overall.filter(function (r) { return r.id === id; })[0];
+    if (kind === "year") row = years.filter(function (r) { return r.id === id; })[0];
+    var locked = row && (row.status === "on" || row.status === "locked");
+    if (kind === "year") {
+      title = row ? (locked ? "调整年初目标" : "编辑年初目标") : "新增年初目标";
+      document.getElementById("editBody").innerHTML =
+        (locked ? '<div class="hint warn">已锁定。保存后写进调整记录，看板分母跟着变。</div>' : "") +
+        '<div class="form-grid">' +
+        field("年度", "eYear", "number", row ? row.year : "2027") +
+        field("销售额目标(万元)", "eSales", "number", row ? row.sales : "") +
+        field("货量目标(吨)", "eVol", "number", row ? row.volume : "") +
+        "</div>" +
+        '<div class="form-row"><label>说明</label><input id="eNote" value="' + esc(row ? row.note : "") + '"></div>' +
+        (locked ? reasonField() : "");
+    } else if (kind === "overall") {
+      title = row ? (locked ? "调整整体目标" : "编辑整体目标") : "新增整体目标";
+      document.getElementById("editBody").innerHTML =
+        (locked ? '<div class="hint warn">已生效。保存后保留调整原因，个人差额按新数重算。</div>' : '<div class="hint info">同一月份 + 部门 + 战队只能有一条。</div>') +
+        '<div class="form-grid">' +
+        '<div class="form-row"><label>月份 <span class="req">*</span></label><input type="month" id="eYm" value="' + esc(row ? row.ym : state.ym) + '"></div>' +
+        '<div class="form-row"><label>实际部门 <span class="req">*</span></label><select id="eDept">' + opts(DEPTS, row ? row.dept : state.dept) + "</select></div>" +
+        '<div class="form-row"><label>战队 <span class="req">*</span></label><select id="eTeam">' + opts(TEAMS, row ? row.team : state.team) + "</select></div>" +
+        field("营业额目标(万元)", "eSales", "number", row ? row.sales : "") +
+        field("货量目标(吨)", "eVol", "number", row ? row.volume : "") +
+        "</div>" + (locked ? reasonField() : "");
+    } else {
+      title = row ? (locked ? "调整个人目标" : "编辑个人目标") : "新增个人目标";
+      document.getElementById("editBody").innerHTML =
+        (locked ? '<div class="hint warn">已生效的目标给看板用。改完要写原因，调整记录留在页面下方。</div>' : '<div class="hint info">缺实际部门、姓名，或营业额、货量为 0 时不能生效。</div>') +
+        '<div class="form-grid">' +
+        '<div class="form-row"><label>月份 <span class="req">*</span></label><input type="month" id="eYm" value="' + esc(row ? row.ym : state.ym) + '"></div>' +
+        '<div class="form-row"><label>实际部门 <span class="req">*</span></label><select id="eDept"><option value="">请选择</option>' + opts(DEPTS, row ? row.dept : "") + "</select></div>" +
+        '<div class="form-row"><label>战队 <span class="req">*</span></label><select id="eTeam">' + opts(TEAMS, row ? row.team : "青禾队") + "</select></div>" +
+        field("实际姓名", "eName", "text", row ? row.name : "") +
+        field("营业额目标(万元)", "eSales", "number", row ? row.sales : "") +
+        field("货量目标(吨)", "eVol", "number", row ? row.volume : "") +
+        "</div>" + (locked ? reasonField() : "");
+    }
+    document.getElementById("editTitle").textContent = title;
+    document.getElementById("editMask").classList.add("open");
+  }
+  function field(label, id, type, val) {
+    return '<div class="form-row"><label>' + label + '</label><input id="' + id + '" type="' + type + '" value="' + esc(val) + '"></div>';
+  }
+  function reasonField() {
+    return '<div class="form-row"><label>调整原因 <span class="req">*</span></label><input id="eWhy" placeholder="给财务留一句为什么改"></div>';
+  }
+  function closeEdit() {
+    document.getElementById("editMask").classList.remove("open");
+    editing = null;
+  }
+
+  function saveEdit() {
+    if (!editing) return;
+    var kind = editing.kind;
+    var whyEl = document.getElementById("eWhy");
+    var why = whyEl ? whyEl.value.trim() : "";
+    if (whyEl && !why) { toast("调整要填写原因"); return; }
+    var sales = n(document.getElementById("eSales") && document.getElementById("eSales").value);
+    var vol = n(document.getElementById("eVol") && document.getElementById("eVol").value);
+    if (kind === "year") {
+      var year = String(document.getElementById("eYear").value || "").trim();
+      if (!/^\d{4}$/.test(year)) { toast("年度填四位年份"); return; }
+      if (sales <= 0 || vol <= 0) { toast("销售额和货量都要大于 0"); return; }
+      var dup = years.filter(function (r) { return r.year === year && r.id !== editing.id; })[0];
+      if (dup) { toast(year + " 年已经有年初目标"); return; }
+      var yrow = years.filter(function (r) { return r.id === editing.id; })[0];
+      if (yrow) {
+        if (yrow.status === "locked") {
+          logs.unshift({ at: "2026-09-29 15:10", who: "财务", what: yrow.year + " 年初目标 销售额 " + wan(yrow.sales) + "→" + wan(sales) + " 万，货量 " + wan(yrow.volume) + "→" + wan(vol) + " T", why: why });
+        }
+        yrow.year = year; yrow.sales = sales; yrow.volume = vol;
+        yrow.note = document.getElementById("eNote").value.trim();
+        yrow.by = "财务"; yrow.at = "2026-09-29";
+      } else {
+        years.unshift({ id: "Y" + (++seq), year: year, sales: sales, volume: vol, status: "draft", by: "财务", at: "2026-09-29", note: document.getElementById("eNote").value.trim() });
+      }
+    } else if (kind === "overall") {
+      var ym = document.getElementById("eYm").value;
+      var dept = document.getElementById("eDept").value;
+      var team = document.getElementById("eTeam").value;
+      if (!ym || !dept || !team) { toast("月份、部门、战队都要填"); return; }
+      if (sales <= 0 || vol <= 0) { toast("营业额和货量都要大于 0"); return; }
+      var odup = overall.filter(function (r) { return r.ym === ym && r.dept === dept && r.team === team && r.id !== editing.id; })[0];
+      if (odup) { toast("这个月这个战队已经有整体目标"); return; }
+      var orow = overall.filter(function (r) { return r.id === editing.id; })[0];
+      if (orow) {
+        if (orow.status === "on") {
+          logs.unshift({ at: "2026-09-29 15:10", who: "陈主管", what: dept + " " + team + " " + ym + " 整体营业额 " + wan(orow.sales) + "→" + wan(sales) + " 万", why: why });
+        }
+        orow.ym = ym; orow.dept = dept; orow.team = team; orow.sales = sales; orow.volume = vol; orow.at = "2026-09-29";
+      } else {
+        overall.push({ id: "O" + (++seq), ym: ym, dept: dept, team: team, sales: sales, volume: vol, status: "on", by: "陈主管", at: "2026-09-29" });
+      }
+    } else {
+      var pym = document.getElementById("eYm").value;
+      var pdept = document.getElementById("eDept").value;
+      var pteam = document.getElementById("eTeam").value;
+      var pname = document.getElementById("eName").value.trim();
+      if (!pym || !pname) { toast("月份和实际姓名必填"); return; }
+      if (sales <= 0 || vol <= 0) { toast("营业额和货量都要大于 0"); return; }
+      var pdup = people.filter(function (r) { return r.ym === pym && r.name === pname && r.id !== editing.id; })[0];
+      if (pdup) { toast(pname + " 在 " + pym + " 已经有目标"); return; }
+      var prow = people.filter(function (r) { return r.id === editing.id; })[0];
+      if (prow) {
+        if (prow.status === "on") {
+          logs.unshift({ at: "2026-09-29 15:10", who: "陈主管", what: pname + " " + pym + " 营业额 " + wan(prow.sales) + "→" + wan(sales) + " 万，货量 " + wan(prow.volume) + "→" + wan(vol) + " T", why: why });
+        }
+        prow.ym = pym; prow.dept = pdept; prow.team = pteam; prow.name = pname;
+        prow.sales = sales; prow.volume = vol; prow.by = "陈主管"; prow.at = "2026-09-29";
+      } else {
+        people.push({ id: "P" + (++seq), ym: pym, dept: pdept, team: pteam, name: pname, sales: sales, volume: vol, status: "draft", by: "陈主管", at: "2026-09-29" });
+      }
+      state.ym = pym;
+    }
+    closeEdit();
+    toast("已保存");
+    render();
+  }
+
+  function activate() {
+    var ids = Object.keys(state.picked).filter(function (id) { return state.picked[id]; });
+    if (!ids.length) { toast("先勾选要生效的草稿"); return; }
+    var ok = 0, bad = [];
+    ids.forEach(function (id) {
+      var r = people.filter(function (p) { return p.id === id; })[0];
+      if (!r || r.status === "on") return;
+      var why = personReason(r);
+      if (why) { bad.push(r.name + "：" + why); return; }
+      r.status = "on"; r.at = "2026-09-29"; ok += 1;
+    });
+    state.picked = {};
+    if (bad.length) toast((ok ? "已生效 " + ok + " 人。" : "") + bad[0] + (bad.length > 1 ? " 等 " + bad.length + " 人未生效" : "，未生效"));
+    else toast("已生效 " + ok + " 人，看板可以读到");
+    render();
+  }
+
+  function copyPrev() {
+    var src = prevYm(state.ym);
+    var added = 0;
+    people.filter(function (p) { return p.ym === src && p.status === "on"; }).forEach(function (p) {
+      var exists = people.some(function (x) { return x.ym === state.ym && x.name === p.name; });
+      if (exists) return;
+      people.push({
+        id: "P" + (++seq), ym: state.ym, dept: p.dept, team: p.team, name: p.name,
+        sales: p.sales, volume: p.volume, status: "draft", by: "陈主管", at: "2026-09-29"
+      });
+      added += 1;
+    });
+    var oAdded = 0;
+    overall.filter(function (o) { return o.ym === src && o.status === "on"; }).forEach(function (o) {
+      var exists = overall.some(function (x) { return x.ym === state.ym && x.dept === o.dept && x.team === o.team; });
+      if (exists) return;
+      overall.push({ id: "O" + (++seq), ym: state.ym, dept: o.dept, team: o.team, sales: o.sales, volume: o.volume, status: "on", by: "陈主管", at: "2026-09-29" });
+      oAdded += 1;
+    });
+    if (!added && !oAdded) toast(state.ym + " 已经有上月那些人，没有新草稿");
+    else toast("已从 " + src + " 复制 " + added + " 条个人草稿" + (oAdded ? "、" + oAdded + " 条整体目标" : ""));
+    render();
+  }
+
+  function doImport() {
+    var text = document.getElementById("importText").value || "";
+    var lines = text.split(/\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var added = 0, skip = 0;
+    lines.forEach(function (line) {
+      var c = line.split(/[\t,，]/).map(function (s) { return s.trim(); });
+      if (c.length < 5) { skip += 1; return; }
+      var name = c[2];
+      if (people.some(function (p) { return p.ym === state.ym && p.name === name; })) { skip += 1; return; }
+      people.push({
+        id: "P" + (++seq), ym: state.ym, dept: c[0], team: c[1], name: name,
+        sales: n(c[3]), volume: n(c[4]), status: "draft", by: "陈主管", at: "2026-09-29"
+      });
+      added += 1;
+    });
+    document.getElementById("importMask").classList.remove("open");
+    toast("导入草稿 " + added + " 条" + (skip ? "，跳过 " + skip + " 条" : ""));
+    render();
+  }
+
+  document.getElementById("view").addEventListener("click", function (e) {
+    var tab = e.target.closest("[data-tab]");
+    if (tab) { state.tab = tab.getAttribute("data-tab"); state.picked = {}; render(); return; }
+    if (e.target.id === "btnQ") { readFilters(); render(); return; }
+    if (e.target.id === "btnR") {
+      state.dept = ""; state.team = ""; state.name = ""; state.status = "";
+      render(); return;
+    }
+    if (e.target.id === "btnAdd") { readFilters(); openEdit(state.tab === "year" ? "year" : state.tab === "overall" ? "overall" : "person", ""); return; }
+    if (e.target.id === "btnCopy") { readFilters(); copyPrev(); return; }
+    if (e.target.id === "btnImport") { readFilters(); document.getElementById("importMask").classList.add("open"); return; }
+    if (e.target.id === "btnOn") { readFilters(); activate(); return; }
+    var ed = e.target.closest("[data-edit]");
+    if (ed) { openEdit(ed.getAttribute("data-edit"), ed.getAttribute("data-id")); return; }
+    var lk = e.target.closest("[data-lock]");
+    if (lk) {
+      var y = years.filter(function (r) { return r.id === lk.getAttribute("data-lock"); })[0];
+      if (y) { y.status = "locked"; y.at = "2026-09-29"; toast(y.year + " 年初目标已锁定"); render(); }
+    }
+  });
+  document.getElementById("view").addEventListener("change", function (e) {
+    var pick = e.target.getAttribute("data-pick");
+    if (pick) state.picked[pick] = e.target.checked;
+  });
+  document.getElementById("editClose").onclick = closeEdit;
+  document.getElementById("editCancel").onclick = closeEdit;
+  document.getElementById("editSave").onclick = saveEdit;
+  document.getElementById("importOk").onclick = doImport;
+  document.querySelectorAll("[data-close]").forEach(function (b) {
+    b.onclick = function () { document.getElementById(b.getAttribute("data-close")).classList.remove("open"); };
+  });
+
+  render();
+})();
+  </script>
+</body>
+</html>
