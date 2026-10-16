@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>地址库管理 · 尾端收货条件沉淀 · MVP</title>
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --orange: #fa8c16;
+      --new: #cf1322; --chg: #d46b08;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      font-size: 12px; color: var(--text); background: #eef1f6;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    .topbar {
+      height: 40px; background: #001529; color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .logo { font-weight: 700; font-size: 14px; white-space: nowrap; }
+    .topbar .nav { display: flex; gap: 2px; overflow-x: auto; flex: 1; }
+    .topbar .nav a {
+      color: rgba(255,255,255,.72); padding: 0 10px; height: 40px;
+      display: inline-flex; align-items: center; white-space: nowrap; font-size: 12px;
+    }
+    .topbar .nav a.on { color: #fff; font-weight: 600; background: var(--orange); }
+    .topbar .right { margin-left: auto; color: rgba(255,255,255,.65); white-space: nowrap; }
+
+    .layout { display: flex; min-height: calc(100vh - 40px); }
+    .sider {
+      width: 168px; background: #001529; color: rgba(255,255,255,.75);
+      padding: 8px 0; flex: none;
+    }
+    .sider .g { padding: 8px 16px 4px; font-size: 11px; color: rgba(255,255,255,.45); }
+    .sider a {
+      display: block; padding: 8px 16px; color: rgba(255,255,255,.75); font-size: 12px;
+    }
+    .sider a.on { background: #1890ff; color: #fff; }
+
+    .main { flex: 1; min-width: 0; padding: 10px 12px 24px; overflow: auto; }
+
+    .badge {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px;
+      font-weight: 700; line-height: 16px; vertical-align: middle; margin-left: 4px;
+    }
+    .badge.new { background: #fff1f0; color: var(--new); border: 1px solid #ffa39e; }
+    .badge.chg { background: #fff7e6; color: var(--chg); border: 1px solid #ffd591; }
+
+    .page-hd {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px;
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); line-height: 1.55; }
+
+    .panel {
+      background: #fff; border: 1px solid var(--line); border-radius: 2px; margin-bottom: 8px;
+    }
+
+    .filters {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+      gap: 8px 10px; padding: 10px 12px; align-items: end; border-bottom: 1px solid var(--line);
+    }
+    @media (max-width: 1100px) {
+      .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .fi label {
+      display: block; color: var(--sub); margin-bottom: 2px; font-size: 11px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .fi input, .fi select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font: inherit;
+    }
+    .filter-side {
+      display: flex; flex-direction: column; gap: 6px; justify-content: flex-end;
+    }
+    .filter-side .btn { width: 110px; }
+
+    .acts {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+      border-bottom: 1px solid var(--line); align-items: center;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; background: #fff;
+      border-radius: 2px; font: inherit; cursor: pointer; white-space: nowrap;
+    }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.light { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .btn.danger { color: #cf1322; border-color: #ffa39e; }
+
+    .fn-tabs {
+      display: flex; gap: 0; margin: 0 0 8px; background: #fff;
+      border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+    }
+    .fn {
+      border: none; background: #fafafa; padding: 10px 18px; cursor: pointer;
+      font: inherit; color: var(--sub); border-right: 1px solid var(--line);
+    }
+    .fn.on { background: #fff; color: var(--orange); font-weight: 700; }
+    .view { display: none; }
+    .view.on { display: block; }
+    .status-tabs {
+      display: flex; gap: 0; padding: 0 8px; border-bottom: 1px solid var(--line);
+      overflow-x: auto; background: #fafafa;
+    }
+    .st {
+      border: none; background: transparent; padding: 10px 14px; cursor: pointer;
+      font: inherit; color: var(--sub); white-space: nowrap; border-bottom: 2px solid transparent;
+    }
+    .st.on { color: var(--orange); font-weight: 600; border-bottom-color: var(--orange); background: #fff; }
+    .st .n { margin-left: 2px; }
+
+    .oversea-pending {
+      margin: 10px 0 0; padding: 8px 10px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 4px; font-size: 11px; line-height: 1.55; color: #873800;
+    }
+    .oversea-pending ul { margin: 6px 0 0; padding-left: 18px; }
+
+    .table-wrap { overflow: auto; max-height: calc(100vh - 320px); }
+    table.grid {
+      width: 100%; border-collapse: collapse; min-width: 1480px; font-size: 11px;
+    }
+    table.grid th, table.grid td {
+      border: 1px solid #f0f0f0; padding: 5px 6px; white-space: nowrap;
+      text-align: left; vertical-align: middle;
+    }
+    table.grid th {
+      background: #fafafa; position: sticky; top: 0; z-index: 2; font-weight: 600;
+    }
+    table.grid th.core { background: #fff1f0; }
+    table.grid th input.filter {
+      display: block; width: 100%; min-width: 70px; height: 22px; margin-top: 4px;
+      border: 1px solid #e8e8e8; border-radius: 2px; padding: 0 4px; font: inherit; font-weight: 400;
+    }
+    table.grid tr:nth-child(even) td { background: #fcfcfc; }
+    table.grid tr:hover td { background: #e6f7ff; }
+    .link { color: var(--blue); cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+    .tag {
+      display: inline-block; padding: 0 5px; border-radius: 2px; font-size: 10px; border: 1px solid;
+      margin: 1px 2px 1px 0;
+    }
+    .tag.ok { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.warn { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.blue { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.gray { color: #8c8c8c; background: #f5f5f5; border-color: #d9d9d9; }
+    .tag.cust { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .tag.src-both { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .tag.src-out { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .tag.src-pod { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .tag.src-fix { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .tag.src-quote { color: #595959; background: #fafafa; border-color: #d9d9d9; }
+    .cell-wrap { white-space: normal; max-width: 280px; line-height: 1.45; }
+    .muted { color: #8c8c8c; }
+    .addr-sub { color: #8c8c8c; font-size: 10px; margin-top: 2px; white-space: normal; max-width: 280px; }
+
+    .foot {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; border-top: 1px solid var(--line); color: var(--sub);
+    }
+    .pager { display: flex; gap: 6px; align-items: center; }
+    .pager select { height: 24px; border: 1px solid #d9d9d9; border-radius: 2px; font: inherit; }
+
+    .drawer {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40;
+      justify-content: flex-end;
+    }
+    .drawer.on { display: flex; }
+    .drawer-panel {
+      width: min(560px, 96vw); height: 100%; background: #fff; overflow: auto;
+      box-shadow: -4px 0 20px rgba(0,0,0,.12);
+    }
+    .drawer-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+      position: sticky; top: 0; background: #fff; z-index: 1;
+    }
+    .drawer-hd h2 { margin: 0; font-size: 15px; }
+    .drawer-bd { padding: 14px 16px 28px; }
+    .kv { display: grid; grid-template-columns: 108px 1fr; gap: 6px 8px; font-size: 12px; margin: 0 0 12px; }
+    .kv span { color: var(--sub); }
+    .sect-title { margin: 14px 0 8px; font-size: 13px; font-weight: 700; }
+    .hist {
+      border: 1px solid var(--line); border-radius: 2px; padding: 8px 10px;
+      margin-top: 8px; font-size: 12px; background: #fafafa;
+    }
+    .ticket-hd {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+      margin: 14px 0 6px; flex-wrap: wrap;
+    }
+    .ticket-hd b { font-size: 13px; }
+    .ticket-hd .meta { font-size: 11px; color: var(--sub); }
+    .ticket-tl { position: relative; margin: 0; padding: 0 0 0 14px; }
+    .ticket-tl::before {
+      content: ""; position: absolute; left: 3px; top: 6px; bottom: 6px;
+      width: 2px; background: #e8e8e8;
+    }
+    .ticket-card {
+      position: relative; margin: 0 0 10px; padding: 10px 12px;
+      border: 1px solid var(--line); border-radius: 4px; background: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    }
+    .ticket-card::before {
+      content: ""; position: absolute; left: -13px; top: 14px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #1890ff; border: 2px solid #fff; box-shadow: 0 0 0 1px #91d5ff;
+    }
+    .ticket-card.latest { border-color: #91d5ff; background: #f0f9ff; }
+    .ticket-card.latest::before { background: #096dd9; }
+    .ticket-card.patch { border-color: #ffd591; background: #fffbe6; }
+    .ticket-card.patch::before { background: #fa8c16; box-shadow: 0 0 0 1px #ffd591; }
+    .ticket-top {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+      margin-bottom: 8px; font-size: 12px;
+    }
+    .ticket-top .no { font-weight: 700; color: #102a43; }
+    .ticket-top .src {
+      font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 2px; line-height: 18px;
+      border: 1px solid; white-space: nowrap;
+    }
+    .ticket-top .src.out { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .ticket-top .src.pod { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+    .ticket-top .src.both { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+    .ticket-top .src.fix { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .ticket-top .src.quote { color: #595959; background: #fafafa; border-color: #d9d9d9; }
+    .ticket-top .who { color: var(--sub); font-size: 11px; margin-left: auto; }
+    .ticket-row { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; font-size: 11px; }
+    .ticket-row .lab {
+      flex: none; min-width: 36px; color: #8c8c8c; padding-top: 2px; font-weight: 600;
+    }
+    .ticket-chips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0; }
+    .ticket-chip {
+      display: inline-block; padding: 1px 7px; border-radius: 2px;
+      background: #f5f5f5; border: 1px solid #e8e8e8; color: #595959; line-height: 18px;
+    }
+    .ticket-chip.on { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .ticket-chip.warn { background: #fff7e6; border-color: #ffd591; color: #d46b08; }
+    .ticket-chip.ok { background: #f6ffed; border-color: #b7eb8f; color: #389e0d; }
+    .ticket-more {
+      margin-top: 4px; border: 1px dashed #d9d9d9; background: #fff; color: #595959;
+      height: 28px; padding: 0 12px; border-radius: 2px; font: inherit; cursor: pointer; width: 100%;
+    }
+    .ticket-more:hover { border-color: #1890ff; color: #1890ff; }
+    .ticket-empty { color: var(--sub); font-size: 12px; margin: 8px 0 0; }
+    .photo-block { margin: 0 0 14px; }
+    .photo-block > b { display: block; margin-bottom: 6px; font-size: 12px; }
+    .photo-list { display: flex; flex-direction: column; gap: 6px; }
+    .photo-item {
+      display: flex; align-items: center; gap: 8px;
+      border: 1px solid var(--line); border-radius: 2px;
+      padding: 6px 8px; background: #fafafa; font-size: 12px;
+    }
+    .photo-item .cat {
+      flex: none; min-width: 72px; color: var(--sub); font-size: 11px;
+    }
+    .photo-item a { color: var(--blue); word-break: break-all; }
+    .photo-empty { color: var(--sub); font-size: 12px; }
+
+    .mask {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 50; align-items: center; justify-content: center; padding: 16px;
+    }
+    .mask.on { display: flex; }
+    .modal {
+      width: min(760px, 96vw); max-height: 90vh; background: #fff; border-radius: 4px;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-hd h2 { margin: 0; font-size: 15px; }
+    .modal-bd { padding: 12px 16px; overflow: auto; flex: 1; }
+    .modal-ft {
+      padding: 10px 16px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .preset-hint {
+      margin: 0 0 10px; font-size: 11px; color: var(--sub); line-height: 1.55;
+      background: #f6ffed; border: 1px solid #b7eb8f; padding: 8px 10px; border-radius: 2px;
+    }
+    .l1-card {
+      border: 1px solid var(--line); border-radius: 2px; margin-bottom: 10px; background: #fafafa;
+    }
+    .l1-hd {
+      display: flex; gap: 8px; align-items: center; padding: 8px 10px;
+      border-bottom: 1px solid var(--line); background: #fff; flex-wrap: wrap;
+    }
+    .l1-hd input, .l1-hd select {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+    .l1-hd .name { flex: 1; min-width: 120px; }
+    .l2-table { width: 100%; border-collapse: collapse; font-size: 11px; background: #fff; }
+    .l2-table th, .l2-table td {
+      border-top: 1px solid #f0f0f0; padding: 6px 8px; text-align: left; vertical-align: middle;
+    }
+    .l2-table input, .l2-table select {
+      width: 100%; height: 26px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 6px; font: inherit;
+    }
+    .chip-edit {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border: 1px solid #d3adf7; background: #f9f0ff;
+      border-radius: 2px; color: #531dab; font-size: 11px;
+    }
+    .chip button {
+      border: 0; background: none; color: #531dab; cursor: pointer; padding: 0; font: inherit;
+    }
+    .chip-add {
+      display: flex; gap: 6px; align-items: center; margin-top: 8px;
+    }
+    .chip-add input {
+      height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">腾信物流</div>
+    <div class="nav">
+      <a href="报价组-导航.html#s-v2">← 报价组 V2</a>
+      <a href="地址库管理-MVP-PRD-交互稿.html">PRD · 交互稿</a>
+      <a href="地址库沉淀-验收用例-MVP.html">验收用例</a>
+      <a href="ESS询价编辑-MVP.html">发起询价</a>
+      <a href="ESS散货询价方案详情-MVP.html">报价员详情</a>
+      <a href="ESS散货询价详情-MVP.html">询价详情</a>
+      <a class="on" href="#">地址库</a>
+      <a href="../海外对接组/海外对接组-卡派跟进新-MVP.html">卡派跟进新</a>
+    </div>
+    <div class="right">报价组 · 地址沉淀 · MVP</div>
+  </div>
+
+  <div class="layout">
+    <aside class="sider">
+      <div class="g">报价组</div>
+      <a href="报价组-导航.html">本组导航</a>
+      <a href="ESS询价编辑-MVP.html">发起询价</a>
+      <a href="ESS询价报价-报价员列表-MVP.html">报价员列表</a>
+      <a href="ESS散货询价方案详情-MVP.html">报价员详情</a>
+      <a href="ESS散货询价详情-MVP.html">询价详情</a>
+      <a class="on" href="地址库管理-MVP.html">地址库 <span class="badge new">NEW</span></a>
+      <a href="报价时效统计看板-MVP.html">报价时效看板</a>
+      <div class="g">海外</div>
+      <a href="../海外对接组/海外对接组-卡派跟进新-MVP.html">卡派跟进新 · 核准</a>
+    </aside>
+
+    <div class="main">
+      <div class="page-hd">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%">
+          <div>
+            <h1>地址库管理 <span class="badge new">NEW</span></h1>
+            <p>按第一轮评审：一级场景自动带默认最大车（住宅/无卸货台→26尺，有卸货台→53尺）；<strong>不采集围墙/封闭</strong>。业务询价按详细地址匹配并提示等时费/尾板次数与平均派送时效；<strong>同一地址类型与核实迈数一次确认</strong>；生效类型<strong>海外已核准优先</strong>，海外无则报价员核实。</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:none">
+            <span id="quoteV2DocMount"></span>
+            <a href="地址库管理-MVP-PRD-交互稿.html" style="font-size:12px;color:#047857;text-decoration:none;border:1px solid #6ee7b7;padding:4px 10px;border-radius:2px;background:#ecfdf5">PRD·交互稿</a>
+          </div>
+        </div>
+        <p id="pinDistSect" style="margin:10px 0 0;font-size:12px;color:var(--sub)">距离核实：<strong>地址主档 + 始发仓距离从表</strong>（仅报价员在报价详情维护）；点「打开档案」查看从表。</p>
+      </div>
+
+      <div class="fn-tabs" id="fnTabs">
+        <button type="button" class="fn on" data-view="master">地址主档</button>
+        <button type="button" class="fn" data-view="facts">事实数据 <span class="badge new">NEW</span></button>
+      </div>
+
+      <div class="panel view on" id="viewMaster">
+        <div class="filters">
+          <div class="fi">
+            <label>地址编号</label>
+            <input id="fId" placeholder="如 ADDR-1008" />
+          </div>
+          <div class="fi">
+            <label>街道 / 城市 / 邮编</label>
+            <input id="fQ" placeholder="关键字" />
+          </div>
+          <div class="fi">
+            <label>一级场景</label>
+            <select id="fL1"></select>
+          </div>
+          <div class="fi">
+            <label>二级场景</label>
+            <select id="fL2"><option value="">全部</option></select>
+          </div>
+          <div class="fi">
+            <label>最大可进车型</label>
+            <select id="fTruck">
+              <option value="">全部</option>
+              <option>26尺</option>
+              <option>48尺</option>
+              <option>53尺</option>
+            </select>
+          </div>
+          <div class="filter-side">
+            <button type="button" class="btn primary" id="btnSearch">查询</button>
+            <button type="button" class="btn" id="btnReset">重置</button>
+          </div>
+        </div>
+
+        <div class="acts">
+          <button type="button" class="btn primary" id="btnOpen">打开档案</button>
+          <button type="button" class="btn light" id="btnPreset">地址类型预设 · 可编辑</button>
+          <span class="muted" style="margin-left:8px">已选 <b id="selCount">0</b> 条</span>
+        </div>
+
+        <div class="status-tabs" id="statusTabs">
+          <button type="button" class="st on" data-f="all">全部<span class="n" id="nAll">(0)</span></button>
+          <button type="button" class="st" data-f="quote">待报价核实<span class="n" id="nQuote">(0)</span></button>
+          <button type="button" class="st" data-f="oversea">待海外核准<span class="n" id="nOversea">(0)</span></button>
+          <button type="button" class="st" data-f="done">海外已核准<span class="n" id="nDone">(0)</span></button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="grid" id="grid">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="chkAll" /></th>
+                <th>地址编号<input class="filter" id="colId" placeholder="编号" /></th>
+                <th class="core">标准化地址 <span class="badge new">NEW</span><input class="filter" id="colAddr" placeholder="街道/邮编" /></th>
+                <th>州</th>
+                <th class="core">一级场景 <span class="badge chg">报价锁</span><input class="filter" id="colL1" /></th>
+                <th class="core">二级场景 · 用途 <span class="badge new">NEW</span><input class="filter" id="colL2" /></th>
+                <th>状态</th>
+                <th>最大可进<input class="filter" id="colTruck" /></th>
+                <th>等时/尾板</th>
+                <th>客户特征</th>
+                <th>均派送时效</th>
+                <th>历史票</th>
+                <th>最近核准</th>
+                <th style="position:sticky;right:0;background:#fafafa;z-index:3">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tb"></tbody>
+          </table>
+        </div>
+
+        <div class="foot">
+          <span>共 <b id="totalN">0</b> 条</span>
+          <div class="pager">
+            <select><option>50条/页</option><option>100条/页</option></select>
+            <button type="button" class="btn">‹</button>
+            <span>1 / 1</span>
+            <button type="button" class="btn">›</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel view" id="viewFacts">
+        <div class="filters">
+          <div class="fi">
+            <label>运单号</label>
+            <input id="fFactWaybill" placeholder="CUS-…" />
+          </div>
+          <div class="fi">
+            <label>地址编号</label>
+            <input id="fFactAddrId" placeholder="ADDR-1008" />
+          </div>
+          <div class="fi">
+            <label>地址关键字</label>
+            <input id="fFactAddrQ" placeholder="街道 / 邮编" />
+          </div>
+          <div class="fi">
+            <label>来源</label>
+            <select id="fFactSrc">
+              <option value="">全部</option>
+              <option value="both">出发+签收</option>
+              <option value="out">仅出发</option>
+              <option value="pod">仅签收</option>
+              <option value="fix">档案补录</option>
+              <option value="quote">报价核实</option>
+            </select>
+          </div>
+          <div class="fi">
+            <label>登记时间（起）</label>
+            <input id="fFactFrom" placeholder="2026-01-01" />
+          </div>
+          <div class="filter-side">
+            <button type="button" class="btn primary" id="btnFactSearch">查询</button>
+            <button type="button" class="btn" id="btnFactReset">重置</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th>运单号</th>
+                <th>地址编号</th>
+                <th>标准化地址</th>
+                <th>来源</th>
+                <th>出发登记</th>
+                <th>签收录入</th>
+                <th>说明</th>
+                <th>登记人</th>
+                <th>登记时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="factTb"></tbody>
+          </table>
+        </div>
+        <div class="foot">
+          <span>共 <b id="factTotalN">0</b> 条事实</span>
+          <span class="muted">按运单只追加 · 默认登记时间倒序</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer" id="drawer">
+    <div class="drawer-panel">
+      <div class="drawer-hd">
+        <h2 id="dTitle">地址档案</h2>
+        <button type="button" class="btn" id="dClose">关闭</button>
+      </div>
+      <div class="drawer-bd" id="panel"></div>
+    </div>
+  </div>
+
+  <div class="mask" id="presetMask">
+    <div class="modal">
+      <div class="modal-hd">
+        <h2>地址类型预设 · 二级目录</h2>
+        <button type="button" class="btn" id="presetClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div id="presetTree"></div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="btn" id="presetCancel">取消</button>
+        <button type="button" class="btn primary" id="presetSave">保存预设</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="地址库沉淀-demo-data.js"></script>
+  <script>
+    /* 一级 = 报价车型锁；二级 = 场景用途（可编辑预设） */
+    var TYPE_TREE = [
+      {
+        id: "res", name: "住宅", quoteLock: "仅26尺", defaultTruck: "26尺",
+        children: [
+          { id: "res-sf", name: "独立屋 / 单户", purpose: "私人住宅收货", maxTruck: "26尺" },
+          { id: "res-apt", name: "公寓 / 多层", purpose: "住户单元收货", maxTruck: "26尺" },
+          { id: "res-school", name: "学校 / 宿舍区", purpose: "限制区域，需预约", maxTruck: "26尺" }
+        ]
+      },
+      {
+        id: "com-no", name: "商业无卸货台", quoteLock: "仅26尺", defaultTruck: "26尺",
+        children: [
+          { id: "com-store", name: "临街商铺", purpose: "零售门店收货", maxTruck: "26尺" },
+          { id: "com-office", name: "办公楼无卸货台", purpose: "办公场所收货", maxTruck: "26尺" },
+          { id: "com-gov", name: "政府 / 机关", purpose: "限制区域，常需预约安检", maxTruck: "26尺" }
+        ]
+      },
+      {
+        id: "com-dock", name: "商业有卸货台", quoteLock: "可26/53尺", defaultTruck: "53尺",
+        children: [
+          { id: "wh-dock", name: "仓库 / 物流园有卸货台", purpose: "仓储卸货", maxTruck: "53尺" },
+          { id: "factory", name: "工厂有卸货台", purpose: "工厂收货", maxTruck: "53尺" },
+          { id: "prison", name: "监狱 / 军事基地", purpose: "限制区域，大车可能进不去", maxTruck: "26尺" }
+        ]
+      }
+    ];
+
+    /* 第一轮：无特殊、孕妇、老人、残疾、需预约、托盘大口朝外 */
+    var CUST_PRESETS = ["无特殊", "孕妇", "老人", "残疾人", "需预约", "托盘大口朝外"];
+
+    var ROWS = window.ADDR_LIB_DEMO_ROWS || [];
+
+    var filter = "all";
+    var selected = {};
+    var draftTree = null;
+
+    function stTag(s) {
+      if (s === "done") return '<span class="tag ok">海外已核准</span>';
+      if (s === "oversea") return '<span class="tag blue">待海外核准</span>';
+      return '<span class="tag warn">待报价核实</span>';
+    }
+    function stLabel(s) {
+      return s === "done" ? "海外已核准" : s === "oversea" ? "待海外核准" : "待报价核实";
+    }
+    function val(id) {
+      var el = document.getElementById(id);
+      return el ? (el.value || "").trim().toLowerCase() : "";
+    }
+    function findL1(name) {
+      for (var i = 0; i < TYPE_TREE.length; i++) if (TYPE_TREE[i].name === name) return TYPE_TREE[i];
+      return null;
+    }
+    function fillL1Select(selId, withAll) {
+      var sel = document.getElementById(selId);
+      if (!sel) return;
+      var html = withAll ? '<option value="">全部</option>' : '<option value="">请选择</option>';
+      TYPE_TREE.forEach(function (t) {
+        html += '<option value="' + t.name + '">' + t.name + "（" + t.quoteLock + "）</option>";
+      });
+      sel.innerHTML = html;
+    }
+    function fillL2Select(l1Name, selId, withAll) {
+      var sel = document.getElementById(selId);
+      if (!sel) return;
+      var l1 = findL1(l1Name);
+      var html = withAll ? '<option value="">全部</option>' : '<option value="">请选择二级场景</option>';
+      if (l1) {
+        l1.children.forEach(function (c) {
+          html += '<option value="' + c.name + '">' + c.name + "</option>";
+        });
+      }
+      sel.innerHTML = html;
+    }
+
+    function filtered() {
+      return ROWS.filter(function (r) {
+        if (filter !== "all" && r.st !== filter) return false;
+        var id = val("fId") || val("colId");
+        var q = val("fQ") || val("colAddr");
+        var l1 = document.getElementById("fL1").value || "";
+        var l2 = document.getElementById("fL2").value || "";
+        var colL1 = val("colL1");
+        var colL2 = val("colL2");
+        var truck = document.getElementById("fTruck").value || val("colTruck");
+        if (id && r.id.toLowerCase().indexOf(id) < 0) return false;
+        if (q && (r.show + " " + r.key).toLowerCase().indexOf(q) < 0) return false;
+        if (l1 && r.l1 !== l1) return false;
+        if (l2 && r.l2 !== l2) return false;
+        if (colL1 && (r.l1 || "").toLowerCase().indexOf(colL1) < 0) return false;
+        if (colL2 && ((r.l2 || "") + " " + (r.purpose || "")).toLowerCase().indexOf(colL2) < 0) return false;
+        if (truck && (r.maxTruck || "").indexOf(truck) < 0) return false;
+        return true;
+      });
+    }
+
+    function syncCounts() {
+      document.getElementById("nAll").textContent = "(" + ROWS.length + ")";
+      document.getElementById("nQuote").textContent = "(" + ROWS.filter(function (r) { return r.st === "quote"; }).length + ")";
+      document.getElementById("nOversea").textContent = "(" + ROWS.filter(function (r) { return r.st === "oversea"; }).length + ")";
+      document.getElementById("nDone").textContent = "(" + ROWS.filter(function (r) { return r.st === "done"; }).length + ")";
+    }
+
+    function custHtml(list) {
+      if (!list || !list.length) return '<span class="muted">—</span>';
+      return list.map(function (c) { return '<span class="tag cust">' + c + "</span>"; }).join("");
+    }
+
+    function render() {
+      var list = filtered();
+      document.getElementById("totalN").textContent = list.length;
+      document.getElementById("tb").innerHTML = list.map(function (r) {
+        var ck = selected[r.id] ? " checked" : "";
+        var tw = "等时 " + (r.wait || 0) + " / 尾板 " + (r.tail || 0);
+        var avg = r.avgDays === "—" || r.avgDays == null ? "—" : (r.avgDays + " 天");
+        return '<tr data-id="' + r.id + '">' +
+          '<td><input type="checkbox" class="rowchk" data-id="' + r.id + '"' + ck + " /></td>" +
+          "<td>" + r.id + "</td>" +
+          "<td><div>" + r.show + '</div><div class="addr-sub">' + r.key + "</div></td>" +
+          "<td>" + r.state + "</td>" +
+          "<td>" + (r.l1 || "—") + "</td>" +
+          "<td><div>" + (r.l2 || "—") + '</div><div class="addr-sub">' + (r.purpose || "") + "</div></td>" +
+          "<td>" + stTag(r.st) + "</td>" +
+          "<td>" + (r.maxTruck || "—") + "</td>" +
+          "<td>" + tw + "</td>" +
+          "<td>" + custHtml(r.cust) + "</td>" +
+          "<td>" + avg + "</td>" +
+          "<td>" + r.n + "</td>" +
+          "<td>" + r.at + "</td>" +
+          '<td style="position:sticky;right:0;background:#fff;z-index:1"><button type="button" class="link" data-open="' + r.id + '">档案</button></td>' +
+          "</tr>";
+      }).join("") || '<tr><td colspan="13" class="muted" style="text-align:center;padding:24px">无匹配地址</td></tr>';
+      document.getElementById("selCount").textContent = Object.keys(selected).length;
+      document.getElementById("chkAll").checked = false;
+    }
+
+    function srcLabel(src) {
+      if (src === "both") return { cls: "both", text: "出发+签收" };
+      if (src === "out") return { cls: "out", text: "仅出发" };
+      if (src === "pod") return { cls: "pod", text: "仅签收" };
+      if (src === "fix") return { cls: "fix", text: "档案补录" };
+      if (src === "quote") return { cls: "quote", text: "报价核实" };
+      return { cls: "quote", text: src || "事实" };
+    }
+    function chip(txt, cls) {
+      if (!txt) return "";
+      return '<span class="ticket-chip' + (cls ? " " + cls : "") + '">' + txt + "</span>";
+    }
+    function outChips(out) {
+      if (!out) return '<span class="muted">未录出发</span>';
+      return chip(out.l1, "on") +
+        (out.l2 ? chip(out.l2) : "") +
+        (out.truck ? chip("车型 " + out.truck, "on") : "") +
+        (out.tail ? chip("尾板" + out.tail, out.tail === "是" ? "warn" : "") : "") +
+        (out.window ? chip(out.window) : "") +
+        (out.maxTruck ? chip("默认可进 " + out.maxTruck) : "");
+    }
+    function podChips(pod) {
+      if (!pod) return '<span class="muted">未录签收</span>';
+      var html = "";
+      (pod.cust || []).forEach(function (c) { html += chip(c, c === "无特殊" ? "" : "warn"); });
+      if (pod.wait === "是") html += chip("等时费" + (pod.waitAmt ? " " + pod.waitAmt : ""), "warn");
+      else if (pod.wait === "否") html += chip("无等时费", "ok");
+      if (pod.photos) html += chip(pod.photos, "ok");
+      return html || '<span class="muted">—</span>';
+    }
+    function normalizeTickets(list) {
+      return (list || []).map(function (t) {
+        if (typeof t === "string") {
+          return { no: "补录", by: "—", at: "", src: "fix", note: t, out: null, pod: null };
+        }
+        if (t.what && !t.out && !t.pod) {
+          return { no: t.no, by: t.by, at: t.at || "", src: t.src || "both", note: t.what, out: null, pod: null };
+        }
+        return t;
+      });
+    }
+    function renderTicketCard(t, idx) {
+      var src = srcLabel(t.src);
+      var cls = "ticket-card" + (idx === 0 ? " latest" : "") + (t.src === "fix" ? " patch" : "");
+      var body = "";
+      if (t.out || t.pod) {
+        body += '<div class="ticket-row"><span class="lab">出发</span><div class="ticket-chips">' + outChips(t.out) + "</div></div>";
+        body += '<div class="ticket-row"><span class="lab">签收</span><div class="ticket-chips">' + podChips(t.pod) + "</div></div>";
+      }
+      if (t.note) body += '<div class="ticket-row"><span class="lab">说明</span><div class="ticket-chips">' + chip(t.note) + "</div></div>";
+      if (!body) body = '<div class="muted">无结构化内容</div>';
+      return '<div class="' + cls + '">' +
+        '<div class="ticket-top">' +
+        '<span class="no">' + (t.no || "—") + "</span>" +
+        '<span class="src ' + src.cls + '">' + src.text + "</span>" +
+        (idx === 0 ? '<span class="src both">最新</span>' : "") +
+        '<span class="who">' + (t.by || "—") + (t.at ? " · " + t.at : "") + "</span>" +
+        "</div>" + body + "</div>";
+    }
+    function renderTicketTimeline(tickets, patch) {
+      var list = normalizeTickets(tickets).slice();
+      if (patch) {
+        list.unshift({
+          no: "档案补录", by: patch.by || "港后补录", at: patch.at || "", src: "fix",
+          out: {
+            l1: patch.l1, l2: patch.l2, truck: patch.truck, tail: patch.tail,
+            window: patch.window, maxTruck: patch.maxTruck
+          },
+          pod: patch.cust || patch.wait ? { cust: patch.cust || [], wait: patch.wait || "" } : null
+        });
+      }
+      if (!list.length) return '<p class="ticket-empty">尚无单票事实 · 出库/签收或档案补录后在此叠加</p>';
+      var show = 3;
+      var head =
+        '<div class="ticket-hd"><b>单票事实</b><span class="meta">共 ' + list.length + " 条 · 最新在上 · 只追加不覆盖</span></div>" +
+        '<div class="ticket-tl" id="ticketTl">';
+      var html = head;
+      list.forEach(function (t, i) {
+        html += '<div class="ticket-item" data-i="' + i + '"' + (i >= show ? ' hidden' : "") + ">" + renderTicketCard(t, i) + "</div>";
+      });
+      if (list.length > show) {
+        html += '<button type="button" class="ticket-more" id="ticketMore" data-show="' + show + '">展开其余 ' + (list.length - show) + " 条</button>";
+      }
+      html += "</div>";
+      return html;
+    }
+
+    function openArch(id) {
+      var r = ROWS.filter(function (x) { return x.id === id; })[0];
+      if (!r) return;
+      var photos = r.photos || [];
+      var photoHtml = photos.length
+        ? '<div class="photo-list">' + photos.map(function (p) {
+            return '<div class="photo-item"><span class="cat">' + p.cat + '</span><a href="javascript:;" data-preview="' + p.name + '">' + p.name + '</a><span class="muted" style="margin-left:auto;white-space:nowrap">' + p.by + " · " + p.at + "</span></div>";
+          }).join("") + "</div>"
+        : '<p class="photo-empty">' + (r.st === "done" ? "暂无附件" : "待海外核准 / 签收时上传门头与外景照视频") + "</p>";
+      document.getElementById("dTitle").textContent = r.id;
+      var waitPct = r.n ? Math.round((r.wait || 0) / r.n * 100) : 0;
+      var tailPct = r.n ? Math.round((r.tail || 0) / r.n * 100) : 0;
+      var distHtml = (r.dists || []).length
+        ? (r.dists || []).map(function (d) {
+            return '<div class="hist"><b>' + d.origin + "</b> · " + d.product + "<div>核实距离 <b>" + d.miles + "</b> 迈 · " + d.by + "</div></div>";
+          }).join("")
+        : '<p class="muted">尚无报价员核实距离</p>';
+      var aliasHtml = (r.aliases && r.aliases.length)
+        ? (r.aliases || []).map(function (a) {
+            return '<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border:1px solid #e8e8e8;border-radius:2px;background:#fafafa;font-size:11px">' + a + "</span>";
+          }).join("")
+        : '<span class="muted">暂无别名</span>';
+      var patch = null;
+      try {
+        var p = JSON.parse(localStorage.getItem("addrArchPatch_v1") || "null");
+        if (p && p.id === r.id) patch = p;
+      } catch (eP) {}
+      document.getElementById("panel").innerHTML =
+        '<p class="muted" style="margin:0 0 10px">' + r.show + "</p>" +
+        '<div class="sect-title">别名（历史写法 / 客户原文）</div>' +
+        '<div style="margin-bottom:12px">' + aliasHtml + "</div>" +
+        '<div class="kv">' +
+        "<span>状态</span><b>" + stLabel(r.st) + "</b>" +
+        "<span>一级场景</span><b>" + r.l1 + "</b>" +
+        "<span>二级场景</span><b>" + r.l2 + "</b>" +
+        "<span>地址用途</span><div>" + (r.purpose || "—") + "</div>" +
+        "<span>最大可进</span><b>" + (r.maxTruck || "—") + "（随一级默认，可被实际车覆盖）</b>" +
+        "<span>收货时段</span><b>" + (r.window || "—") + "</b>" +
+        "</div>" +
+        '<div class="sect-title">历史派送提示（给业务员）</div>' +
+        '<div class="kv">' +
+        "<span>累计票数</span><b>" + r.n + "</b>" +
+        "<span>等时费</span><div>" + (r.wait || 0) + " 次（签收录费用后 +1）· 约 " + waitPct + "% · 业务自判</div>" +
+        "<span>尾板</span><div>" + (r.tail || 0) + " 次（出库勾选带尾板 +1）· 约 " + tailPct + "%</div>" +
+        "<span>海外仓出库后签收时效</span><b>" + (r.avgDays === "—" || r.avgDays == null ? "—" : r.avgDays + " 天") + "</b>" +
+        "</div>" +
+        '<div class="sect-title">报价员核实距离（按始发仓/销售产品）</div>' + distHtml +
+        '<div class="photo-block" style="margin-top:12px"><b>签收外景照 / 视频</b>' + photoHtml + "</div>" +
+        '<div class="sect-title">单票事实</div>' +
+        '<p class="muted" style="margin:0 0 8px;line-height:1.55">出库/签收/补录按运单<strong>只追加</strong>，不在档案内展开。在本页「事实数据」按该地址查看。</p>' +
+        '<button type="button" class="btn light" id="btnOpenFacts">事实数据（' + (normalizeTickets(r.tickets).length + (patch ? 1 : 0)) + " 条）</button>";
+      document.getElementById("drawer").classList.add("on");
+    }
+
+    /* —— 预设编辑 —— */
+    function cloneTree(tree) {
+      return JSON.parse(JSON.stringify(tree));
+    }
+    function renderPresetTree() {
+      var box = document.getElementById("presetTree");
+      box.innerHTML = draftTree.map(function (l1, i) {
+        var rows = l1.children.map(function (c, j) {
+          return "<tr data-i=\"" + i + "\" data-j=\"" + j + "\">" +
+            '<td><input data-f="name" value="' + c.name.replace(/"/g, "&quot;") + '" /></td>' +
+            '<td><input data-f="purpose" value="' + (c.purpose || "").replace(/"/g, "&quot;") + '" /></td>' +
+            '<td><button type="button" class="link" data-del-l2="' + i + "-" + j + '">删</button></td>' +
+            "</tr>";
+        }).join("");
+        return '<div class="l1-card" data-i="' + i + '">' +
+          '<div class="l1-hd">' +
+          '<input class="name" data-l1="name" value="' + l1.name.replace(/"/g, "&quot;") + '" />' +
+          '<select data-l1="quoteLock"><option' + (l1.quoteLock.indexOf("53") >= 0 ? "" : " selected") + '>仅26尺</option><option' + (l1.quoteLock.indexOf("53") >= 0 ? " selected" : "") + '>可26/53尺</option></select>' +
+          '<button type="button" class="btn" data-add-l2="' + i + '">+ 二级</button>' +
+          '<button type="button" class="btn danger" data-del-l1="' + i + '">删一级</button>' +
+          "</div>" +
+          '<table class="l2-table"><thead><tr><th>二级场景名</th><th>用途 / 限制说明</th><th></th></tr></thead><tbody>' +
+          rows + "</tbody></table></div>";
+      }).join("");
+    }
+    function openPreset() {
+      draftTree = cloneTree(TYPE_TREE);
+      renderPresetTree();
+      document.getElementById("presetMask").classList.add("on");
+    }
+    function closePreset() {
+      document.getElementById("presetMask").classList.remove("on");
+    }
+    function savePreset() {
+      TYPE_TREE = draftTree;
+      try {
+        localStorage.setItem("addrTypeTree_v2", JSON.stringify(TYPE_TREE));
+      } catch (e) {}
+      fillL1Select("fL1", true);
+      fillL2Select(document.getElementById("fL1").value, "fL2", true);
+      closePreset();
+      alert("预设已保存（第一轮口径：无围墙字段）。");
+      render();
+    }
+
+    document.getElementById("presetTree").onclick = function (e) {
+      var add = e.target.getAttribute("data-add-l2");
+      var del1 = e.target.getAttribute("data-del-l1");
+      var del2 = e.target.getAttribute("data-del-l2");
+      if (add != null) {
+        draftTree[+add].children.push({
+          id: "custom-" + Date.now(), name: "新场景", purpose: "说明这个地址是做什么的",
+          maxTruck: "26尺"
+        });
+        renderPresetTree();
+        return;
+      }
+      if (del1 != null) {
+        if (draftTree.length <= 1) { alert("至少保留一个一级场景"); return; }
+        draftTree.splice(+del1, 1);
+        renderPresetTree();
+        return;
+      }
+      if (del2 != null) {
+        var p = del2.split("-");
+        draftTree[+p[0]].children.splice(+p[1], 1);
+        renderPresetTree();
+      }
+    };
+    document.getElementById("presetTree").onchange = function (e) {
+      var t = e.target;
+      var card = t.closest(".l1-card");
+      if (!card) return;
+      var i = +card.getAttribute("data-i");
+      if (t.getAttribute("data-l1")) {
+        draftTree[i][t.getAttribute("data-l1")] = t.value;
+        return;
+      }
+      var tr = t.closest("tr");
+      if (!tr) return;
+      var j = +tr.getAttribute("data-j");
+      var f = t.getAttribute("data-f");
+      if (f) draftTree[i].children[j][f] = t.value;
+    };
+    document.getElementById("statusTabs").onclick = function (e) {
+      var b = e.target.closest(".st"); if (!b) return;
+      filter = b.getAttribute("data-f");
+      document.querySelectorAll(".st").forEach(function (x) { x.classList.toggle("on", x === b); });
+      render();
+    };
+
+    function srcMeta(src) {
+      if (src === "both") return { cls: "src-both", text: "出发+签收" };
+      if (src === "out") return { cls: "src-out", text: "仅出发" };
+      if (src === "pod") return { cls: "src-pod", text: "仅签收" };
+      if (src === "fix") return { cls: "src-fix", text: "档案补录" };
+      if (src === "quote") return { cls: "src-quote", text: "报价核实" };
+      return { cls: "src-quote", text: src || "事实" };
+    }
+    function summarizeOut(out) {
+      if (!out) return '<span class="muted">—</span>';
+      var p = [];
+      if (out.l1) p.push(out.l1);
+      if (out.l2) p.push(out.l2);
+      if (out.truck) p.push("车型 " + out.truck);
+      if (out.tail) p.push("尾板" + out.tail);
+      if (out.window) p.push(out.window);
+      return p.join(" · ") || '<span class="muted">—</span>';
+    }
+    function summarizePod(pod) {
+      if (!pod) return '<span class="muted">—</span>';
+      var p = [];
+      (pod.cust || []).forEach(function (c) { p.push(c); });
+      if (pod.wait === "是") p.push("等时" + (pod.waitAmt ? " " + pod.waitAmt : ""));
+      else if (pod.wait === "否") p.push("无等时");
+      if (pod.photos) p.push(pod.photos);
+      return p.join(" · ") || '<span class="muted">—</span>';
+    }
+    function loadPatch(addrId) {
+      try {
+        var p = JSON.parse(localStorage.getItem("addrArchPatch_v1") || "null");
+        if (p && p.id === addrId) return p;
+      } catch (ePatch) {}
+      return null;
+    }
+    function flattenFacts() {
+      var rows = [];
+      ROWS.forEach(function (addr) {
+        normalizeTickets(addr.tickets).forEach(function (t) {
+          rows.push({ addr: addr, ticket: t });
+        });
+        var patch = loadPatch(addr.id);
+        if (patch) {
+          rows.push({
+            addr: addr,
+            ticket: {
+              no: patch.waybill || "档案补录",
+              by: patch.by || "港后补录",
+              at: patch.at || "",
+              src: "fix",
+              out: {
+                l1: patch.l1, l2: patch.l2, truck: patch.truck, tail: patch.tail,
+                window: patch.window, maxTruck: patch.maxTruck
+              },
+              pod: patch.cust || patch.wait ? { cust: patch.cust || [], wait: patch.wait || "" } : null
+            }
+          });
+        }
+      });
+      rows.sort(function (a, b) {
+        return String(b.ticket.at || "").localeCompare(String(a.ticket.at || ""));
+      });
+      return rows;
+    }
+    function filteredFacts() {
+      var wb = val("fFactWaybill");
+      var aid = val("fFactAddrId");
+      var aq = val("fFactAddrQ");
+      var src = document.getElementById("fFactSrc").value;
+      var from = val("fFactFrom");
+      return flattenFacts().filter(function (row) {
+        var t = row.ticket;
+        var a = row.addr;
+        if (wb && String(t.no || "").toLowerCase().indexOf(wb) < 0) return false;
+        if (aid && String(a.id || "").toLowerCase().indexOf(aid) < 0) return false;
+        if (aq && (a.show + " " + a.key).toLowerCase().indexOf(aq) < 0) return false;
+        if (src && t.src !== src) return false;
+        if (from && String(t.at || "") < from) return false;
+        return true;
+      });
+    }
+    function renderFacts() {
+      var list = filteredFacts();
+      document.getElementById("factTotalN").textContent = list.length;
+      document.getElementById("factTb").innerHTML = list.map(function (row) {
+        var t = row.ticket;
+        var a = row.addr;
+        var sm = srcMeta(t.src);
+        return "<tr>" +
+          "<td><b>" + (t.no || "—") + "</b></td>" +
+          '<td><button type="button" class="link" data-arch="' + a.id + '">' + a.id + "</button></td>" +
+          '<td><div class="cell-wrap">' + a.show + '</div><div class="addr-sub">' + a.key + "</div></td>" +
+          '<td><span class="tag ' + sm.cls + '">' + sm.text + "</span></td>" +
+          '<td class="cell-wrap">' + summarizeOut(t.out) + "</td>" +
+          '<td class="cell-wrap">' + summarizePod(t.pod) + "</td>" +
+          '<td class="cell-wrap">' + (t.note ? t.note : '<span class="muted">—</span>') + "</td>" +
+          "<td>" + (t.by || "—") + "</td>" +
+          "<td>" + (t.at || "—") + "</td>" +
+          '<td><button type="button" class="link" data-arch="' + a.id + '">档案</button></td>' +
+          "</tr>";
+      }).join("") || '<tr><td colspan="10" class="muted" style="text-align:center;padding:24px">无匹配事实</td></tr>';
+    }
+    function showView(name) {
+      document.querySelectorAll("#fnTabs .fn").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-view") === name);
+      });
+      document.getElementById("viewMaster").classList.toggle("on", name === "master");
+      document.getElementById("viewFacts").classList.toggle("on", name === "facts");
+      if (name === "facts") {
+        renderFacts();
+        if (location.hash !== "#facts") location.hash = "facts";
+      } else if (location.hash === "#facts") {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
+    }
+    function showFacts(addrId) {
+      document.getElementById("drawer").classList.remove("on");
+      if (addrId) document.getElementById("fFactAddrId").value = addrId;
+      showView("facts");
+    }
+    document.getElementById("fnTabs").onclick = function (e) {
+      var btn = e.target.closest ? e.target.closest("[data-view]") : null;
+      if (!btn) return;
+      showView(btn.getAttribute("data-view"));
+    };
+    document.getElementById("btnFactSearch").onclick = renderFacts;
+    document.getElementById("btnFactReset").onclick = function () {
+      ["fFactWaybill", "fFactAddrId", "fFactAddrQ", "fFactFrom"].forEach(function (id) {
+        document.getElementById(id).value = "";
+      });
+      document.getElementById("fFactSrc").value = "";
+      renderFacts();
+    };
+    ["fFactWaybill", "fFactAddrId", "fFactAddrQ", "fFactFrom"].forEach(function (id) {
+      document.getElementById(id).addEventListener("input", renderFacts);
+    });
+    document.getElementById("fFactSrc").addEventListener("change", renderFacts);
+    document.getElementById("factTb").onclick = function (e) {
+      var id = e.target.getAttribute("data-arch");
+      if (id) openArch(id);
+    };
+
+    document.getElementById("btnSearch").onclick = render;
+    document.getElementById("btnReset").onclick = function () {
+      ["fId", "fQ", "colId", "colAddr", "colL1", "colL2", "colTruck"].forEach(function (id) {
+        var el = document.getElementById(id); if (el) el.value = "";
+      });
+      document.getElementById("fL1").value = "";
+      fillL2Select("", "fL2", true);
+      document.getElementById("fTruck").value = "";
+      filter = "all";
+      document.querySelectorAll(".st").forEach(function (x) { x.classList.toggle("on", x.getAttribute("data-f") === "all"); });
+      selected = {};
+      render();
+    };
+    document.getElementById("fL1").onchange = function () {
+      fillL2Select(this.value, "fL2", true);
+      render();
+    };
+    ["fId", "fQ", "colId", "colAddr", "colL1", "colL2", "colTruck"].forEach(function (id) {
+      document.getElementById(id).addEventListener("input", render);
+    });
+    ["fL2", "fTruck"].forEach(function (id) {
+      document.getElementById(id).addEventListener("change", render);
+    });
+
+    document.getElementById("chkAll").onchange = function () {
+      var on = this.checked;
+      document.querySelectorAll(".rowchk").forEach(function (c) {
+        c.checked = on;
+        if (on) selected[c.getAttribute("data-id")] = true;
+        else delete selected[c.getAttribute("data-id")];
+      });
+      document.getElementById("selCount").textContent = Object.keys(selected).length;
+    };
+    document.getElementById("tb").onclick = function (e) {
+      var open = e.target.getAttribute("data-open");
+      if (open) { openArch(open); return; }
+      if (e.target.classList.contains("rowchk")) {
+        var id = e.target.getAttribute("data-id");
+        if (e.target.checked) selected[id] = true; else delete selected[id];
+        document.getElementById("selCount").textContent = Object.keys(selected).length;
+      }
+    };
+    document.getElementById("panel").onclick = function (e) {
+      var p = e.target.getAttribute("data-preview");
+      if (p) alert("原型：预览 " + p);
+      if (e.target.id === "btnOpenFacts") showFacts(document.getElementById("dTitle").textContent);
+    };
+    document.getElementById("btnOpen").onclick = function () {
+      var ids = Object.keys(selected);
+      if (!ids.length) { alert("请先勾选一条地址"); return; }
+      openArch(ids[0]);
+    };
+    document.getElementById("btnPreset").onclick = openPreset;
+    document.getElementById("presetClose").onclick = document.getElementById("presetCancel").onclick = closePreset;
+    document.getElementById("presetSave").onclick = savePreset;
+    document.getElementById("presetMask").onclick = function (e) {
+      if (e.target.id === "presetMask") closePreset();
+    };
+    document.getElementById("dClose").onclick = function () { document.getElementById("drawer").classList.remove("on"); };
+    document.getElementById("drawer").onclick = function (e) {
+      if (e.target.id === "drawer") e.currentTarget.classList.remove("on");
+    };
+
+    try {
+      var savedTree = localStorage.getItem("addrTypeTree_v2");
+      var savedCust = localStorage.getItem("addrCustPreset_v2");
+      if (savedTree) TYPE_TREE = JSON.parse(savedTree);
+      if (savedCust) CUST_PRESETS = JSON.parse(savedCust);
+    } catch (e) {}
+
+    try {
+      var bump = JSON.parse(localStorage.getItem("addrLibStats_v1") || "{}");
+      ROWS.forEach(function (r) {
+        var zip = (r.key || "").split("|").pop();
+        var s = bump[zip] || bump[r.id];
+        if (!s) return;
+        r.n = (r.n || 0) + (s.n || 0);
+        r.wait = (r.wait || 0) + (s.wait || 0);
+        r.tail = (r.tail || 0) + (s.tail || 0);
+      });
+    } catch (e2) {}
+
+    fillL1Select("fL1", true);
+    fillL2Select("", "fL2", true);
+    syncCounts();
+    render();
+    try {
+      var q = new URLSearchParams(location.search || "");
+      var addrId = q.get("addrId");
+      var hash = (location.hash || "").replace(/^#/, "");
+      if (addrId || hash === "facts") {
+        if (addrId) document.getElementById("fFactAddrId").value = addrId;
+        showView("facts");
+      }
+      var openId = q.get("id");
+      if (!openId && hash && hash !== "facts") openId = hash;
+      if (openId && ROWS.some(function (x) { return x.id === openId; })) openArch(openId);
+    } catch (eOpen) {}
+  </script>
+  <script src="quote-v2-review-points.js"></script>
+  <script src="quote-v2-prd-doc-bar.js" data-page="5"></script>
+  <script src="quote-v2-review-bridge.js" data-page="5"></script>
+</body>
+</html>

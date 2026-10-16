@@ -200,6 +200,45 @@
       font-size: 14px;
       line-height: 1.65;
     }
+    .addr-hint {
+      margin: 10px 12px 0;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      background: #f0fdf4;
+      padding: 10px 12px;
+    }
+    .addr-hint[hidden] { display: none; }
+    .addr-hint-hd {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #166534;
+    }
+    .addr-hint-tag {
+      font-size: 10px;
+      padding: 0 6px;
+      border-radius: 4px;
+      line-height: 18px;
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #86efac;
+      font-weight: 600;
+    }
+    .addr-hint-list { margin: 0; padding: 0; list-style: none; font-size: 12px; color: #14532d; line-height: 1.7; }
+    .addr-hint-list li { display: flex; gap: 8px; }
+    .addr-hint-list .lab { flex: none; width: 112px; color: #15803d; font-weight: 600; }
+    .addr-hint-note { margin: 8px 0 0; font-size: 11px; color: #64748b; line-height: 1.5; }
+    .q-note {
+      display: flex; align-items: center; gap: 6px; margin-top: 8px;
+      padding: 8px 10px; border-radius: 8px; background: #fafafa; border: 1px solid var(--line);
+      white-space: nowrap; overflow: hidden;
+    }
+    .q-note .lab { flex: none; font-size: 11px; color: var(--sub); font-weight: 600; }
+    .q-note .txt { font-size: 12px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .qcard {
       padding: 12px 14px;
       border-bottom: 1px solid var(--line);
@@ -429,6 +468,10 @@
   </div>
 
   <section class="panel active" id="panelQuotes" aria-label="报价信息">
+    <div class="addr-hint" id="addrHint" hidden>
+      <div class="addr-hint-hd"><span>地址提示</span></div>
+      <ul class="addr-hint-list" id="addrHintList"></ul>
+    </div>
     <div class="sec">
       <div class="sec-hd">渠道报价 · 单选确认</div>
       <div id="quoteList"></div>
@@ -458,8 +501,10 @@
           vol: "2.50 m³",
           clerk: "王报价",
           reject: "",
+          addr: { l1: "商业有卸货台", truck: "53 尺", n: 6, wait: 2, tail: 2, avgDays: 9.5 },
+          detail: "邮编 92374，城市 Redlands，州 CA，商业有卸货台，总重量 625 KG，总体积 2.50 m³，交货仓义乌总仓。",
           quotes: [
-            { id: "SP-LA-LCL", channel: "中美快运私人卡派(洛杉矶)", unit: 5, cheap: true, valid: "2026-05-20 至 2026-05-27" },
+            { id: "SP-LA-LCL", channel: "中美快运私人卡派(洛杉矶)", unit: 5, cheap: true, valid: "2026-05-20 至 2026-05-27", note: "客户约定：私人地址限工作日派送；尾门高度限制" },
             { id: "SP-OAK-LCL", channel: "中美快运私人卡派(奥克兰)", unit: 7, cheap: false, valid: "2026-05-20 至 2026-05-27" },
             { id: "SP-LA-AIR", channel: "美国空派 LAX", unit: 9, cheap: false, valid: "2026-05-20 至 2026-05-27" }
           ]
@@ -474,8 +519,10 @@
           vol: "1.042 m³",
           clerk: "王报价",
           reject: "",
+          addr: { l1: "商业有卸货台", truck: "53 尺", n: 6, wait: 2, tail: 2, avgDays: 9.5 },
+          detail: "邮编 74532-9865，总重量 12.54 KG，总体积 1.042 m³，交货仓福永仓。",
           quotes: [
-            { id: "SP-LA-LCL", channel: "中美快运私人卡派(洛杉矶)", unit: 6, cheap: true, valid: "2026-10-17 至 2026-10-24" }
+            { id: "SP-LA-LCL", channel: "中美快运私人卡派(洛杉矶)", unit: 6, cheap: true, valid: "2026-10-17 至 2026-10-24", note: "" }
           ]
         },
         XJ1778226168576: {
@@ -512,8 +559,10 @@
           vol: "0.35 m³",
           clerk: "王报价",
           reject: "",
+          addr: { l1: "商业有卸货台", truck: "53 尺", n: 6, wait: 2, tail: 2, avgDays: 9.5 },
+          detail: "邮编 92374，总重量 45 KG，总体积 0.35 m³，交货仓义乌总仓。",
           quotes: [
-            { id: "SP-LA-LCL", channel: "中美快运私人卡派(洛杉矶)", unit: 32.5, cheap: true, valid: "2026-05-10 至 2026-05-17" }
+            { id: "SP-LA-LCL", channel: "中美快运私人卡派(洛杉矶)", unit: 32.5, cheap: true, valid: "2026-05-10 至 2026-05-17", note: "" }
           ],
           confirmedId: "SP-LA-LCL"
         }
@@ -589,29 +638,63 @@
         }
       }
 
+      function pctText(count, n) {
+        n = Number(n) || 0;
+        if (!n) return "—";
+        return Math.round((Number(count) || 0) / n * 100) + "%";
+      }
+      function avgText(days) {
+        if (days == null || days === "" || days === "—" || !isFinite(Number(days))) return "—";
+        var s = (Math.round(Number(days) * 10) / 10).toFixed(1);
+        if (s.slice(-2) === ".0") s = s.slice(0, -2);
+        return s + " 天";
+      }
+      function paintAddrHint(show) {
+        var box = document.getElementById("addrHint");
+        var list = document.getElementById("addrHintList");
+        if (!box || !list) return;
+        if (!show) {
+          box.hidden = true;
+          return;
+        }
+        var c = caseData.addr || { l1: "—", truck: "—", n: 0, wait: 0, tail: 0, avgDays: null };
+        var n = Number(c.n) || 0;
+        box.hidden = false;
+        list.innerHTML =
+          '<li><span class="lab">地址类型</span><span>' + (c.l1 || "—") + "</span></li>" +
+          '<li><span class="lab">默认可进</span><span>' + (c.truck || "—") + "</span></li>" +
+          '<li><span class="lab">产生等时费比例</span><span>' + pctText(c.wait, n) + "</span></li>" +
+          '<li><span class="lab">使用尾板比例</span><span>' + pctText(c.tail, n) + "</span></li>" +
+          '<li><span class="lab">平均签收时效</span><span>' + avgText(c.avgDays) + "</span></li>";
+      }
+
       function renderQuotes() {
         var list = document.getElementById("quoteList");
         var tip = document.getElementById("tipBox");
         var quotes = caseData.quotes || [];
 
         if (currentState === "pending") {
+          paintAddrHint(false);
           list.innerHTML = '<div class="empty-quote">报价员尚未核对确认，本页暂无单价。<br />请稍后在列表刷新，或联系报价员。</div>';
           tip.className = "tip-box warn";
           tip.textContent = "当前仍为「待报价」：AI / 报价员核对过程业务员无感知，确认前不展示单价。";
           return;
         }
         if (currentState === "reject") {
+          paintAddrHint(false);
           list.innerHTML = '<div class="empty-quote">询价已打回，请编辑后重新提交。</div>';
           tip.className = "tip-box warn";
           tip.textContent = "打回后需补充资料并重新发起询价。";
           return;
         }
         if (!quotes.length) {
+          paintAddrHint(false);
           list.innerHTML = '<div class="empty-quote">暂无渠道报价。</div>';
           tip.className = "tip-box warn";
           tip.textContent = "暂无报价数据。";
           return;
         }
+        paintAddrHint(true);
 
         if (bizConfirmed || currentState === "done") {
           tip.className = "tip-box ok";
@@ -641,7 +724,8 @@
                 '</div>' +
                 '<div class="qmeta">有效期 ' + q.valid + "</div></div>" +
               "</div>" +
-              '<div class="price-unit"><div class="lab">单价（USD/KG）</div><div class="num">USD ' + q.unit + "</div></div>" +
+              '<div class="price-unit"><div class="lab">单价（CNY/KG）</div><div class="num">CNY ' + q.unit + "</div></div>" +
+              '<div class="q-note"><div class="lab">报价员备注</div><div class="txt">' + (String(q.note || "").trim() || "—") + "</div></div>" +
             "</div>"
           );
         }).join("");
@@ -751,7 +835,7 @@
           if (!q) return;
           bizConfirmed = true;
           applyState("done");
-          showToast("已确认：" + q.channel + " · USD " + q.unit + "/KG");
+          showToast("已确认：" + q.channel + " · CNY " + q.unit + "/KG");
         }
       });
 

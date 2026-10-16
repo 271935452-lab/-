@@ -160,6 +160,13 @@
       margin-top: 10px;
       flex-wrap: wrap;
     }
+    .btn-ai-ico {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; margin-left: 4px; padding: 0;
+      border: 1px solid #93c5fd; border-radius: 4px;
+      background: #eff6ff; color: #1d4ed8;
+      font-size: 10px; font-weight: 800; line-height: 1; vertical-align: middle;
+    }
     .btn-ai {
       border: none;
       border-radius: 4px;
@@ -270,13 +277,17 @@
 <body>
   <div class="app-hd-wrap">
     <header class="app-hd">
-      <a href="报价组-导航.html" class="cancel">导航</a>
+      <a href="报价组-导航.html#s-v2" class="cancel">V2</a>
       <h1 class="title">询价编辑</h1>
       <span class="ref">X31-11</span>
     </header>
     <div class="app-mode-bar" role="tablist" aria-label="询价维度">
       <a class="app-mode-btn active" href="ESS询价编辑-APP-散货-MVP.html#lcl" role="tab" aria-current="page">散货（LCL）</a>
       <a class="app-mode-btn" href="../../APP/ESS询价编辑-APP-整柜-MVP.html" role="tab">整柜（FCL）</a>
+    </div>
+    <div class="quotev2-app-doc" style="padding:6px 12px 8px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span id="quoteV2DocMount"></span>
+      <a href="ESS询价编辑-APP-散货-MVP-PRD-交互稿.html" style="font-size:12px;color:#047857;text-decoration:none;border:1px solid #6ee7b7;padding:4px 10px;border-radius:2px;background:#ecfdf5">PRD·交互稿</a>
     </div>
   </div>
 
@@ -318,13 +329,13 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="label">收货城市<span class="req">*</span><span class="tag-new">NEW</span></div>
+      <div class="label">收货城市<span class="tag-new">NEW</span> <span style="color:#8c8c8c;font-weight:400">选填</span></div>
       <div class="value">
         <input id="destCity" type="text" placeholder="如 New York" />
       </div>
     </div>
     <div class="form-row">
-      <div class="label">收货州<span class="req">*</span><span class="tag-new">NEW</span></div>
+      <div class="label">收货州<span class="tag-new">NEW</span> <span style="color:#8c8c8c;font-weight:400">选填</span></div>
       <div class="value">
         <select id="destState">
           <option value="">请选择</option>
@@ -345,6 +356,16 @@
       </div>
     </div>
     <p class="field-err" id="destStateErr" style="display:none;margin:-4px 16px 8px;font-size:12px;color:#dc2626;"></p>
+    <div class="form-row" id="pinDestStreet">
+      <div class="label">详细地址<span class="tag-new">NEW</span>
+        <button type="button" class="btn-ai-ico" id="btnAiParse" title="AI 识别" aria-label="AI 识别">AI</button>
+      </div>
+      <div class="value">
+        <input id="destStreet" type="text" placeholder="粘贴整段地址，或只填街道" autocomplete="street-address" />
+      </div>
+    </div>
+    <p id="addrPasteHint" style="display:none;margin:-4px 16px 8px;font-size:12px;color:#166534;"></p>
+    <p id="pinAddrLib" style="margin:-4px 16px 10px;font-size:12px;color:#64748b;line-height:1.5">保存时按邮编+门牌匹配地址库；命中带出类型，未命中新增 ADDR 主档。</p>
     <div class="form-row">
       <div class="label">目的国<span class="req">*</span></div>
       <div class="value">
@@ -394,11 +415,7 @@
 
   <section class="block">
     <div class="block-title">询价详情</div>
-    <textarea id="inquiryDetail" placeholder="请填写询价详情，如超长超重、托盘包装等特殊说明。"></textarea>
-    <div class="ai-row">
-      <button type="button" class="btn-ai" id="btnAiParse">AI 识别</button>
-      <span class="ai-hint" id="aiParseHint">提示：邮编 92374，重量 1000，体积 5，产品信息：家具</span>
-    </div>
+    <textarea id="inquiryDetail" placeholder="询价详情（识别请点详细地址旁 AI）"></textarea>
   </section>
 
   <div class="section-gap"></div>
@@ -424,7 +441,7 @@
 
   <footer class="footer-bar">
     <button type="button" class="draft" id="btnDraft">草稿</button>
-    <button type="button" class="confirm" id="btnConfirm">确认</button>
+    <button type="button" class="confirm" id="btnSave">确认</button>
   </footer>
 
   <script src="../../整柜下单/ess-fcl-multiselect.js"></script>
@@ -497,9 +514,7 @@
             addr: addrPart,
             zip: a.zip || "",
             trigger: whPart ? p.label + " · " + whPart : p.label,
-            selectLine: whPart
-              ? p.label + " · " + whPart + (addrPart ? " " + addrPart : "")
-              : p.label
+            selectLine: whPart ? p.label + " · " + whPart : p.label
           });
         });
       });
@@ -512,12 +527,11 @@
       function productOptionLabelHtml(opt) {
         if (!opt) return "";
         var sub = opt.whName || "";
-        if (opt.addr) sub += (sub ? " " : "") + opt.addr;
         if (!sub) return '<span class="prod-opt-line"><span class="prod-opt-name">' + opt.product + "</span></span>";
         return (
           '<span class="prod-opt-line">' +
             '<span class="prod-opt-name">' + opt.product + "</span>" +
-            '<span class="prod-opt-addrs" title="' + String(opt.selectLine).replace(/"/g, "&quot;") + '">' + sub + "</span>" +
+            '<span class="prod-opt-addrs">' + sub + "</span>" +
           "</span>"
         );
       }
@@ -544,7 +558,7 @@
           defaultSelected: selectedProducts.slice(),
           maxSelect: PRODUCT_OPTIONS.length,
           placeholder: "请选择（可多选）",
-          searchPlaceholder: "搜索产品 / 仓址",
+          searchPlaceholder: "搜索产品 / 仓名",
           emptyText: "无匹配产品",
           limitTip: "已达可选上限",
           getLabelHtml: function (c) {
@@ -600,7 +614,45 @@
         }
         return "";
       }
-      var ZIP_ST = { "92374":"CA","90210":"CA","10001":"NY","10118":"NY","61604":"IL","80202":"CO","31408":"GA","94591":"CA","94607":"CA","07001":"NJ" };
+      var ZIP_ST = { "92374":"CA","90210":"CA","90058":"CA","08817":"NJ","10001":"NY","10118":"NY","61604":"IL","80202":"CO","31408":"GA","94591":"CA","94607":"CA","07001":"NJ" };
+      var ZIP_CITY = { "90058":"Los Angeles","08817":"Edison","10118":"New York","10001":"New York","92374":"Redlands","80202":"Denver" };
+
+      function parseUsAddressBlob(raw) {
+        var text = String(raw || "").replace(/[\r\n]+/g, ", ").replace(/\s+/g, " ").trim();
+        if (!text || !/\d{5}/.test(text)) return null;
+        var zipM = text.match(/\b(\d{5})(?:-\d{4})?\b/);
+        var zip = zipM ? zipM[1] : "";
+        var m = text.match(/^(.+?),\s*([^,]+?),\s*([A-Za-z]{2}|[A-Za-z][A-Za-z .]+?)\s*,?\s*\d{5}(?:-\d{4})?\s*$/);
+        if (m) {
+          return { street: m[1].trim(), city: m[2].trim(), state: (m[3].length === 2 ? m[3].toUpperCase() : ""), zip: zip };
+        }
+        m = text.match(/^(.+?),\s*([^,]+?)\s+([A-Z]{2})\s+\d{5}(?:-\d{4})?\s*$/i);
+        if (m) return { street: m[1].trim(), city: m[2].trim(), state: m[3].toUpperCase(), zip: zip };
+        var stM = text.match(/\b([A-Z]{2})\s+\d{5}\b/i);
+        var state = stM ? stM[1].toUpperCase() : (ZIP_ST[zip] || "");
+        var street = text.replace(/\b\d{5}(?:-\d{4})?\b/, "").replace(new RegExp("\\b" + state + "\\b", "i"), "").replace(/^[\s,]+|[\s,]+$/g, "").trim();
+        return { street: street || text, city: ZIP_CITY[zip] || "", state: state, zip: zip };
+      }
+      function trySplitStreetPaste(raw) {
+        var p = parseUsAddressBlob(raw);
+        if (!p || !p.zip) return false;
+        if (!p.state && !p.city) return false;
+        var bits = [];
+        if (p.zip && setInput("zipcode", p.zip)) bits.push("邮编");
+        if (p.city && setInput("destCity", p.city)) bits.push("城市");
+        if (p.state && setInput("destState", p.state)) bits.push("州");
+        if (p.street && setInput("destStreet", p.street)) bits.push("街道");
+        checkDestState();
+        var hint = document.getElementById("addrPasteHint");
+        if (hint && bits.length) {
+          hint.style.display = "block";
+          hint.textContent = "已自动拆分：" + bits.join(" · ");
+          window.clearTimeout(hint._t);
+          hint._t = window.setTimeout(function () { hint.style.display = "none"; }, 3500);
+        }
+        return bits.length > 0;
+      }
+
       function checkDestState() {
         var dest = (document.getElementById("destState").value || "").trim();
         var zip = (document.getElementById("zipcode").value || "").trim();
@@ -633,9 +685,16 @@
       }
 
       function runAiParse() {
-        var text = document.getElementById("inquiryDetail").value.trim();
+        var detail = document.getElementById("inquiryDetail").value.trim();
+        var street = (document.getElementById("destStreet").value || "").trim();
+        var text = detail || street;
         if (!text) {
-          alert("请先在询价详情中粘贴或输入文本");
+          alert("请先粘贴详细地址或询价详情，再点 AI");
+          document.getElementById("destStreet").focus();
+          return;
+        }
+        if (!detail && trySplitStreetPaste(street)) {
+          alert("AI 已拆分地址到邮编/城市/州");
           return;
         }
         var n = 0;
@@ -664,28 +723,32 @@
         if (setInput("totalVolume", pick(text, [/总体积[:：\s]*([\d.]+)/i, /体积[:：\s]*([\d.]+)/i]))) n++;
         var cat = pick(text, [/产品品类[:：\s]*([^\n，,；;]+)/i, /产品信息[:：\s]*([^\n，,；;]+)/i, /品名[:：\s]*([^\n，,；;]+)/i]);
         if (cat) setInput("productInfo", cat);
-        var city = pick(text, [/收货城市[:：\s]*([^\n,，;；]+)/, /城市[:：\s]*([^\n,，;；]+)/i]);
-        if (!city) {
-          var usAddr = text.match(/,\s*([A-Za-z][A-Za-z .'-]+)\s*,\s*([A-Za-z][A-Za-z .]+)\s*,?\s*\d{5}/);
-          if (usAddr) city = usAddr[1];
+        var addrBlob = pick(text, [/详细地址[:：\s]*([^\n]+)/, /收货地址[:：\s]*([^\n]+)/]);
+        if (trySplitStreetPaste(addrBlob || text)) n += 3;
+        else {
+          var city = pick(text, [/收货城市[:：\s]*([^\n,，;；]+)/, /城市[:：\s]*([^\n,，;；]+)/i]);
+          if (!city) {
+            var usAddr = text.match(/,\s*([A-Za-z][A-Za-z .'-]+)\s*,\s*([A-Za-z][A-Za-z .]+)\s*,?\s*\d{5}/);
+            if (usAddr) city = usAddr[1];
+          }
+          if (city && setInput("destCity", city)) n++;
+          var stRaw = pick(text, [/收货州[:：\s]*([A-Za-z\u4e00-\u9fa5 .]+)/, /州[:：\s]*([A-Za-z\u4e00-\u9fa5 .]+)/]);
+          if (!stRaw) {
+            var stM = text.match(/,\s*([A-Za-z][A-Za-z .]+)\s*,?\s*\d{5}/) || text.match(/\b([A-Z]{2})\s+\d{5}\b/);
+            if (stM) stRaw = stM[1];
+          }
+          var map = { California:"CA", Illinois:"IL", Colorado:"CO", Georgia:"GA", Texas:"TX", Washington:"WA", "纽约":"NY", "加州":"CA", "伊利诺伊":"IL" };
+          var code = "";
+          if (stRaw) {
+            var t = stRaw.trim();
+            code = map[t] || (t.length === 2 ? t.toUpperCase() : "");
+          }
+          var zip = (document.getElementById("zipcode").value || "").trim();
+          var geo = { "92374":["Redlands","CA"], "61604":["Belleville","IL"], "80202":["Denver","CO"], "10118":["New York","NY"], "10001":["New York","NY"], "90058":["Los Angeles","CA"] }[zip];
+          if (!code && geo) code = geo[1];
+          if (code && setInput("destState", code)) n++;
+          if (geo && !(document.getElementById("destCity").value || "").trim() && setInput("destCity", geo[0])) n++;
         }
-        if (city && setInput("destCity", city)) n++;
-        var stRaw = pick(text, [/收货州[:：\s]*([A-Za-z\u4e00-\u9fa5 .]+)/, /州[:：\s]*([A-Za-z\u4e00-\u9fa5 .]+)/]);
-        if (!stRaw) {
-          var stM = text.match(/,\s*([A-Za-z][A-Za-z .]+)\s*,?\s*\d{5}/) || text.match(/\b([A-Z]{2})\s+\d{5}\b/);
-          if (stM) stRaw = stM[1];
-        }
-        var map = { California:"CA", Illinois:"IL", Colorado:"CO", Georgia:"GA", Texas:"TX", Washington:"WA", "纽约":"NY", "加州":"CA", "伊利诺伊":"IL" };
-        var code = "";
-        if (stRaw) {
-          var t = stRaw.trim();
-          code = map[t] || (t.length === 2 ? t.toUpperCase() : "");
-        }
-        var zip = (document.getElementById("zipcode").value || "").trim();
-        var geo = { "92374":["Redlands","CA"], "61604":["Belleville","IL"], "80202":["Denver","CO"], "10118":["New York","NY"], "10001":["New York","NY"] }[zip];
-        if (!code && geo) code = geo[1];
-        if (code && setInput("destState", code)) n++;
-        if (geo && !(document.getElementById("destCity").value || "").trim() && setInput("destCity", geo[0])) n++;
         updateChargeWeight();
         alert(n ? "已识别并回填 " + n + " 项" : "未识别到可回填字段，请检查文本格式");
       }
@@ -696,17 +759,23 @@
         whDestMismatchConfirmed = false;
         checkDestState();
       });
+      document.getElementById("destStreet").addEventListener("paste", function () {
+        var el = this;
+        window.setTimeout(function () { trySplitStreetPaste(el.value || ""); }, 0);
+      });
+      document.getElementById("destStreet").addEventListener("blur", function () {
+        var v = (this.value || "").trim();
+        if (/\d{5}/.test(v) && (v.indexOf(",") >= 0 || /\s[A-Z]{2}\s+\d{5}/.test(v))) trySplitStreetPaste(v);
+      });
       document.getElementById("btnAiParse").addEventListener("click", runAiParse);
       document.getElementById("btnDraft").addEventListener("click", function () {
         alert("【MVP演示】已保存散货询价草稿");
       });
-      document.getElementById("btnConfirm").addEventListener("click", function () {
+      document.getElementById("btnSave").addEventListener("click", function () {
         var miss = [];
         if (!(parseFloat(document.getElementById("totalVolume").value) > 0)) miss.push("总体积");
         if (!(parseFloat(document.getElementById("totalWeight").value) > 0)) miss.push("总重量");
         if (!document.getElementById("zipcode").value.trim()) miss.push("收货邮编");
-        if (!document.getElementById("destCity").value.trim()) miss.push("收货城市");
-        if (!document.getElementById("destState").value) miss.push("收货州");
         var stSave = checkDestState();
         if (stSave) miss.push(stSave);
         if (!getAddrType()) miss.push("地址类型");
@@ -721,12 +790,10 @@
       initProductMs();
     })();
   </script>
-  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="散货AI询价报价-需求PRD.html">
-    <span class="ess-prd-chip">PRD · 散货 AI 询价报价</span>
-  </div>
-  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
   <script src="../../APP/ess-app-mobile.js?v=20260831" defer></script>
-  <script src="../../二期/ess-prototype-prd.js" defer></script>
   <script src="../ess-branch-back.js" defer></script>
+  <script src="quote-v2-review-points.js"></script>
+  <script src="quote-v2-prd-doc-bar.js" data-page="1"></script>
+  <script src="quote-v2-review-bridge.js" data-page="1"></script>
 </body>
 </html>

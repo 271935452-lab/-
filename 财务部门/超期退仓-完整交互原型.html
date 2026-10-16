@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>超期退仓｜完整交互原型（RISK-006）</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px "Microsoft YaHei", sans-serif; background: #f4f6f8; color: #111; }
+    .review {
+      height: 48px; background: #fff; display: flex; align-items: center; gap: 10px;
+      padding: 0 16px; border-bottom: 1px solid #ddd; flex-wrap: wrap;
+    }
+    .review button {
+      padding: 7px 12px; border: 1px solid #2a6bbd; color: #2a6bbd; background: #fff;
+      border-radius: 4px; cursor: pointer; font: inherit;
+    }
+    .review button.on { background: #2a6bbd; color: #fff; }
+    .hint { font-size: 12px; color: #64748b; margin-left: auto; }
+    #business {
+      border: 0; width: 100%; height: calc(100vh - 48px); display: block; background: #eef1f6;
+    }
+    dialog#pointDialog {
+      border: 0; border-radius: 10px; padding: 0; width: min(520px, 92vw);
+      max-height: min(80vh, 640px); box-shadow: 0 16px 60px #0003;
+    }
+    dialog#pointDialog::backdrop { background: rgba(15, 23, 42, .35); }
+    .point-dialog-hd {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 16px 18px 12px; border-bottom: 1px solid #e2e8f0;
+    }
+    .point-dialog-hd h2 { margin: 0; font-size: 17px; line-height: 1.4; flex: 1; }
+    .point-dialog-bd { padding: 12px 18px 18px; overflow: auto; max-height: calc(80vh - 72px); }
+    .pin-no {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 22px; height: 22px; border-radius: 50%; background: #ff8a00; color: #fff;
+      font-size: 12px; font-weight: 700; margin-right: 8px; vertical-align: middle;
+    }
+    .kind {
+      color: #2a6bbd; background: #eff6ff; padding: 4px 8px;
+      display: inline-block; border-radius: 4px; font-size: 11px; margin-bottom: 8px;
+    }
+    .sum { margin: 0 0 10px; font-size: 13px; color: #475569; line-height: 1.6; }
+    .detail { display: grid; grid-template-columns: 48px 1fr; gap: 4px 8px; margin: 6px 0; font-size: 13px; line-height: 1.65; }
+    .detail b { color: #64748b; font-weight: 600; }
+    .detail p { margin: 0; }
+    dialog#featureDialog { border: 0; border-radius: 10px; padding: 20px 22px; width: min(620px, 90vw); box-shadow: 0 16px 60px #0003; }
+    #featureItems > div { padding: 12px 0; border-top: 1px solid #e2e8f0; line-height: 1.75; }
+  </style>
+</head>
+<body>
+  <div class="review">
+    <button type="button" id="tabPush" class="on">超期退仓推送</button>
+    <button type="button" id="tabCfg">超期风控配置</button>
+    <a href="风控报表-超期退仓推送-MVP-PRD-交互稿.html" style="font-size:12px;color:#2a6bbd;text-decoration:none;margin-left:8px">PRD·交互稿</a>
+    <span class="hint">标题栏右侧有「逐点开发说明 / 功能说明」；橙色数字可点开单条说明</span>
+  </div>
+
+  <iframe id="business" title="业务交互原型" src="风控报表-超期退仓推送-MVP.html?review=1"></iframe>
+
+  <dialog id="pointDialog" aria-labelledby="pointDialogTitle">
+    <div class="point-dialog-hd">
+      <h2 id="pointDialogTitle"></h2>
+      <button type="button" id="btnPointClose">关闭</button>
+    </div>
+    <div class="point-dialog-bd" id="pointDialogBody"></div>
+  </dialog>
+
+  <dialog id="featureDialog" aria-labelledby="featureTitle">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <h2 id="featureTitle" style="margin:0;font-size:18px;">功能说明（摘要）</h2>
+      <button type="button" id="btnFeatureClose">关闭</button>
+    </div>
+    <div id="featureItems"></div>
+  </dialog>
+
+  <script src="risk006-review-points.js"></script>
+  <script>
+(function () {
+  var points = window.RISK006_REVIEW_POINTS || [];
+  var selectedPage = 0;
+  var labels = ["为啥做", "页面上", "系统里"];
+  var PAGE_SRC = [
+    "风控报表-超期退仓推送-MVP.html?review=1",
+    "风控-超期退仓规则配置-MVP.html?review=1"
+  ];
+
+  function findPoint(anchorId) {
+    for (var i = 0; i < points.length; i++) {
+      if (points[i].id === anchorId) return points[i];
+    }
+    return null;
+  }
+
+  function renderPointHtml(p) {
+    var title = (p.title || "").replace(/^[①②③④⑤⑥⑦⑧]\s*/, "");
+    return "<div class=\"kind\">" + (p.kind || "") + "</div>" +
+      "<p class=\"sum\">" + (p.summary || "") + "</p>" +
+      labels.map(function (k, i) {
+        return "<div class=\"detail\"><b>" + k + "</b><p>" + (p.body[i] || "—") + "</p></div>";
+      }).join("");
+  }
+
+  function openPointDialog(anchorId) {
+    var p = findPoint(anchorId);
+    if (!p) return;
+    var title = (p.title || "").replace(/^[①②③④⑤⑥⑦⑧]\s*/, "");
+    document.getElementById("pointDialogTitle").innerHTML =
+      "<span class=\"pin-no\" aria-hidden=\"true\">" + p.pin + "</span>" + title;
+    document.getElementById("pointDialogBody").innerHTML = renderPointHtml(p);
+    document.getElementById("pointDialog").showModal();
+  }
+
+  function show(page, hash) {
+    selectedPage = page;
+    document.getElementById("tabPush").classList.toggle("on", page === 0);
+    document.getElementById("tabCfg").classList.toggle("on", page === 1);
+    var fr = document.getElementById("business");
+    fr.onload = function () { fr.onload = null; };
+    fr.src = PAGE_SRC[page] + (hash || "");
+  }
+
+  function featureInfo() {
+    var feat = (window.RISK006_FEATURE_PAGES || []).filter(function (f) { return f.page === selectedPage; })[0];
+    var pinIds = (window.RISK006_REVIEW_PIN_IDS || {})[selectedPage] || [];
+    var byId = {};
+    points.forEach(function (p) { if (p.page === selectedPage) byId[p.id] = p; });
+    var head = feat
+      ? "<div style=\"margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #e2e8f0\">" +
+        "<div style=\"font-weight:700;margin-bottom:6px\">" + feat.title + "</div>" +
+        "<p style=\"margin:0 0 8px;font-size:13px;color:#475569\">" + feat.summary + "</p>" +
+        "<ul style=\"margin:0;padding-left:1.2em;font-size:13px;line-height:1.65\">" +
+        feat.bullets.map(function (b) { return "<li>" + b + "</li>"; }).join("") +
+        "</ul></div><div style=\"font-size:12px;color:#64748b;margin-bottom:8px\">逐点编号（与页面橙色数字一致）</div>"
+      : "";
+    document.getElementById("featureItems").innerHTML = head + pinIds.map(function (id) {
+      var p = byId[id];
+      if (!p) return "";
+      return "<div><b><span style=\"color:#ff8a00\">" + p.pin + "</span> " + p.title + "</b>" +
+        "<p style=\"margin:6px 0 0;font-size:13px\">" + p.summary + "</p></div>";
+    }).join("");
+    document.getElementById("featureDialog").showModal();
+  }
+
+  document.getElementById("tabPush").addEventListener("click", function () { show(0); });
+  document.getElementById("tabCfg").addEventListener("click", function () { show(1); });
+  document.getElementById("btnFeatureClose").addEventListener("click", function () {
+    document.getElementById("featureDialog").close();
+  });
+  document.getElementById("btnPointClose").addEventListener("click", function () {
+    document.getElementById("pointDialog").close();
+  });
+
+  window.addEventListener("message", function (e) {
+    if (e.source !== document.getElementById("business").contentWindow) return;
+    if (e.data && e.data.type === "note" && e.data.id) openPointDialog(e.data.id);
+    if (e.data && e.data.type === "navigate") show(e.data.page, e.data.hash || "");
+  });
+})();
+  </script>
+</body>
+</html>

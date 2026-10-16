@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>超期退仓 RISK-006 · 操作日志模板</title>
+  <style>
+    :root { --line: #e8e8e8; --sub: rgba(0,0,0,.45); --blue: #1890ff; --red: #cf1322; }
+    body {
+      margin: 0; padding: 24px 20px 48px; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      font-size: 13px; color: rgba(0,0,0,.85); background: #f5f7fa; line-height: 1.6;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    .meta { color: var(--sub); margin-bottom: 20px; }
+    a { color: var(--blue); }
+    .card {
+      background: #fff; border: 1px solid var(--line); border-radius: 4px;
+      padding: 16px 18px; margin-bottom: 16px;
+    }
+    h2 { font-size: 15px; margin: 0 0 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; vertical-align: top; text-align: left; }
+    th { background: #fafafa; font-weight: 600; }
+    code { background: #f5f5f5; padding: 1px 4px; border-radius: 2px; font-size: 11px; }
+    .tag { display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; font-weight: 600; }
+    .tag.key { background: #fff1f0; color: var(--red); border: 1px solid #ffa39e; }
+    .tag.sys { background: #f5f5f5; color: #595959; }
+    ul { margin: 8px 0; padding-left: 20px; }
+    pre {
+      background: #fafafa; border: 1px dashed var(--line); padding: 12px;
+      font-size: 12px; overflow: auto; border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>超期退仓 RISK-006 · 操作日志模板</h1>
+    <p class="meta">
+      版本：MVP 口径 · 关联原型
+      <a href="风控报表-超期退仓推送-MVP.html">风控报表-超期退仓推送-MVP.html</a>
+      · PRD <a href="风控报表-超期退仓推送-MVP-PRD-交互稿.html">逐点交互稿</a>
+      · 组件 <code>二期/ess-oplog.js</code>
+    </p>
+
+    <div class="card">
+      <h2>一、两层日志</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:120px">层级</th>
+            <th>展示位置</th>
+            <th>对象 Key</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>批次推送日志</strong></td>
+            <td>后台/审计（<strong>不在</strong>退仓列表页展示）</td>
+            <td>—（按时间流）</td>
+            <td>跑批、推接收人、推业务员、自动退等汇总事件</td>
+          </tr>
+          <tr>
+            <td><strong>运单挂载日志</strong></td>
+            <td>列表「日志」/ 运单详情 · 右侧抽屉</td>
+            <td><code>运单号</code></td>
+            <td><strong>仅 1 条</strong>：<code>系统自动退件退款</code>（见 PRD §三附）</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin:12px 0 0;color:var(--sub);font-size:12px;">
+        口径：业务提交成功才写；查询、打开抽屉不写。系统任务操作人=<span class="tag sys">系统</span>（灰字）。
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>二、日志类型字典 <span class="tag key">开发对照</span></h2>
+      <table>
+        <thead>
+          <tr>
+            <th>类型（type）</th>
+            <th>触发时机</th>
+            <th>操作人</th>
+            <th>写批次日志</th>
+            <th>写运单挂载日志</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>跑批命中</code></td>
+            <td>每日跑批重算超期，运单进入风控池</td>
+            <td>系统</td>
+            <td>可选</td>
+            <td>否</td>
+          </tr>
+          <tr>
+            <td><code>系统推接收人</code></td>
+            <td>未签出命中，跑批后自动推配置接收人</td>
+            <td>系统</td>
+            <td>是</td>
+            <td><strong>否</strong></td>
+          </tr>
+          <tr>
+            <td><code>接收人推业务员</code></td>
+            <td>列表「一键推送给业务员」成功</td>
+            <td>接收人</td>
+            <td>是</td>
+            <td><strong>否</strong></td>
+          </tr>
+          <tr>
+            <td><code>业务员消息</code></td>
+            <td>消息中心下发退仓跟进</td>
+            <td>系统</td>
+            <td>否</td>
+            <td><strong>否</strong></td>
+          </tr>
+          <tr>
+            <td><code>系统自动退件退款</code></td>
+            <td>已推业务员且缓冲截止（次日 08:30）仍无有效操作；且运单非<strong>已放行</strong>、非<strong>已退款</strong></td>
+            <td>系统</td>
+            <td>是</td>
+            <td><strong>是（唯一）</strong></td>
+          </tr>
+          <tr>
+            <td><code>列表刷新</code> 等</td>
+            <td>配置重匹配、刷新列表</td>
+            <td>用户/系统</td>
+            <td>是</td>
+            <td>否</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>三、运单挂载日志字段（单条）</h2>
+      <table>
+        <thead>
+          <tr><th>字段</th><th>必填</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>key</code></td><td>是</td><td>运单号</td></tr>
+          <tr><td><code>at</code></td><td>是</td><td>执行时间 <code>YYYY-MM-DD HH:mm:ss</code></td></tr>
+          <tr><td><code>user</code></td><td>是</td><td>固定「系统」</td></tr>
+          <tr><td><code>type</code></td><td>是</td><td>固定 <code>系统自动退件退款</code></td></tr>
+          <tr><td><code>text</code></td><td>是</td><td>见 §4.2</td></tr>
+          <tr><td><code>sys</code></td><td>是</td><td>true</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>四、文案模板</h2>
+      <h3 style="font-size:13px;margin:16px 0 8px;">4.1 批次推送日志（后台，列表页不展示）</h3>
+      <pre>[{时间}] &lt;strong&gt;系统自动推接收人&lt;/strong&gt;（{来源}）：未签出 &lt;b&gt;{N}&lt;/b&gt; 票
+[{时间}] &lt;strong&gt;接收人→业务员&lt;/strong&gt;：运单 &lt;b&gt;{waybill}&lt;/b&gt; · 缓冲截止 &lt;b&gt;{deadline}&lt;/b&gt;
+[{时间}] &lt;strong class="red"&gt;系统自动退件退款&lt;/strong&gt; · 运单 &lt;b&gt;{waybill}&lt;/b&gt;</pre>
+
+      <h3 style="font-size:13px;margin:16px 0 8px;">4.2 运单挂载日志（仅本条）</h3>
+      <pre>【系统自动退件退款】缓冲截止 {salesDeadline} 前业务员无有效操作，系统执行退件退款；运单 {waybill}；规则：{ruleLabel}；超期 {overdueDays} 天。</pre>
+    </div>
+
+    <div class="card">
+      <h2>五、列表「退仓标记」与日志</h2>
+      <ul>
+        <li>未签出流转：<strong>待推送业务</strong> → <strong>业务员跟进中</strong> → <strong>系统自动退件退款</strong> 或 <strong>业务已处理</strong>（详见 PRD §三附）。</li>
+        <li>仅「系统自动退件退款」与运单挂载日志类型 <code>系统自动退件退款</code> 同时出现；「业务已处理」不写运单挂载日志。</li>
+        <li>未自动退前，打开「日志」可为空或提示暂无记录。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>六、验收抽查</h2>
+      <table>
+        <thead>
+          <tr><th>编号</th><th>步骤</th><th>预期</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>L1</td>
+            <td>跑批 / 推接收人 / 推业务员</td>
+            <td>运单挂载日志<strong>无新增</strong></td>
+          </tr>
+          <tr>
+            <td>L2</td>
+            <td>到期自动退（原型：模拟到期自动退）</td>
+            <td>退仓标记=系统自动退件退款；运单挂载<strong>仅 1 条</strong>系统自动退件退款</td>
+          </tr>
+          <tr>
+            <td>L3</td>
+            <td>到点运单已放行或已退款</td>
+            <td>不自动退；运单挂载日志<strong>无新增</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="meta" style="margin-top:24px;">
+      <a href="风控报表-超期退仓推送-MVP.html">← 返回退仓主原型</a>
+      ·
+      <a href="风控报表-超期退仓推送-MVP-PRD-交互稿.html">PRD · 交互稿</a>
+    </p>
+  </div>
+</body>
+</html>

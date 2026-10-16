@@ -75,6 +75,29 @@
     .btn-primary:hover { background: #40a9ff; border-color: #40a9ff; }
     .btn-add { background: #13c2c2; border-color: #13c2c2; color: #fff; }
     .btn-add:hover { background: #36cfc9; border-color: #36cfc9; }
+    .btn-order { background: #fa8c16; border-color: #fa8c16; color: #fff; }
+    .btn-order:hover { background: #ffa940; border-color: #ffa940; }
+    .btn-order:disabled { opacity: .45; cursor: not-allowed; }
+    .order-modal-backdrop {
+      position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.45);
+      display: none; align-items: stretch; justify-content: center; padding: 24px 16px;
+    }
+    .order-modal-backdrop.show { display: flex; }
+    .order-modal {
+      flex: 1; max-width: 1680px; background: #fff; border-radius: 4px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 12px 48px rgba(0,0,0,.2);
+    }
+    .order-modal-hd {
+      flex: none; display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid #e8e8e8; background: #fafafa;
+      font-size: 14px; font-weight: 700;
+    }
+    .order-modal-hd button {
+      border: none; background: transparent; font-size: 22px; line-height: 1;
+      cursor: pointer; color: #8c8c8c; padding: 0 4px;
+    }
+    .order-modal iframe { flex: 1; width: 100%; border: none; min-height: 0; }
     .tag-new {
       display: inline-block; margin-left: 4px; padding: 0 4px; border-radius: 2px;
       font-size: 10px; font-weight: 700; line-height: 14px;
@@ -327,8 +350,8 @@
 <body data-ess-nav="off">
   <div class="bj-topbar">
     <div class="logo">报价组</div>
-    <a href="报价组-导航.html">← 导航</a>
-    <a href="散货AI询价报价-需求PRD.html">需求 PRD</a>
+    <a href="报价组-导航.html#s-v2">← V2导航</a>
+    <a href="ESS我的报价-列表-MVP-PRD-交互稿.html">PRD·交互稿</a>
     <a href="ESS我的报价-列表-MVP.html" class="on">我的询价</a>
     <a href="ESS询价编辑-MVP.html">询价编辑</a>
     <a href="ESS询价编辑-APP-散货-MVP.html#lcl">询价编辑·APP</a>
@@ -460,6 +483,9 @@
             <button type="button" class="btn btn-primary">刷新数据</button>
             <button type="button" class="btn btn-add" id="btnNew">+ 新增询价 <span class="tag-chg">改</span></button>
             <button type="button" class="btn btn-primary" id="btnLinkWaybill" hidden title="整柜询价本期不支持关联运单">关联运单</button>
+            <button type="button" class="btn btn-order" id="btnQuickOrder" title="勾选 1 条询价；迈数以报价员核实为准；地址类型海外优先，无则报价员">一键下单 <span class="tag-new">NEW</span></button>
+            <span id="quoteV2DocMount" style="margin-left:8px"></span>
+            <a href="ESS我的报价-列表-MVP-PRD-交互稿.html" style="font-size:12px;color:#047857;text-decoration:none;border:1px solid #6ee7b7;padding:4px 10px;border-radius:2px;background:#ecfdf5;margin-left:4px">PRD·交互稿</a>
           </div>
         </div>
 
@@ -510,7 +536,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr class="inquiry-row" data-dim="lcl" data-status="submitted" data-quote-ready="1" data-bind="" data-valid="2026-08-19">
+                  <tr class="inquiry-row" data-dim="lcl" data-status="submitted" data-quote-ready="1" data-bind="" data-valid="2026-08-19" data-verified-miles="142" data-inquiry-addr-type="商业有卸货台">
                     <td class="col-check"><input type="checkbox" /></td>
                     <td>1</td>
                     <td><a class="link" href="ESS询价编辑-MVP.html">XJ1779516168576</a></td>
@@ -522,7 +548,7 @@
                     <td class="ellipsis" title="华南某贸易">华南某贸易</td>
                     <td>王报价</td>
                     <td><span class="tag tag-green">人工已报价</span></td>
-                    <td class="ellipsis" title="单价 USD 5 / KG · 私人卡派(洛杉矶)">单价 USD 5 / KG · 卡派洛杉矶</td>
+                    <td class="ellipsis" title="单价 CNY 5 / KG · 私人卡派(洛杉矶)">单价 CNY 5 / KG · 卡派洛杉矶</td>
                     <td>2026-05-20</td>
                     <td>张立明</td>
                     <td><span class="tag tag-blue">已提交</span></td>
@@ -749,6 +775,16 @@
     </div>
   </div>
 
+  <div class="order-modal-backdrop" id="orderModalBackdrop" aria-hidden="true">
+    <div class="order-modal" role="dialog" aria-labelledby="orderModalTitle">
+      <div class="order-modal-hd">
+        <span id="orderModalTitle">一键下单 · FBA下单</span>
+        <button type="button" id="orderModalClose" aria-label="关闭">×</button>
+      </div>
+      <iframe id="orderFrame" title="FBA录入下单页"></iframe>
+    </div>
+  </div>
+
   <div class="inquiry-toast-stack" id="toastStack" aria-live="polite"></div>
 
   <script>
@@ -762,6 +798,11 @@
       var tableFcl = document.getElementById("tableFcl");
       var btnNew = document.getElementById("btnNew");
       var btnLinkWaybill = document.getElementById("btnLinkWaybill");
+      var btnQuickOrder = document.getElementById("btnQuickOrder");
+      var orderBackdrop = document.getElementById("orderModalBackdrop");
+      var orderFrame = document.getElementById("orderFrame");
+      var PREFILL_KEY = "ess_inquiry_fba_prefill_v1";
+      var FBA_ORDER_URL = "../船务/船务组-下单-FBA录入-合规策略-MVP.html?prefill=1";
       var badgeLcl = document.getElementById("badgeLcl");
       var badgeFcl = document.getElementById("badgeFcl");
 
@@ -868,6 +909,108 @@
           alert("【MVP演示】关联运单（仅散货流程；整柜本期不支持）");
         });
       }
+
+      function cellText(tr, idx) {
+        var td = tr.querySelectorAll("td")[idx];
+        if (!td) return "";
+        var a = td.querySelector("a");
+        return (a ? a.textContent : td.textContent).trim();
+      }
+
+      function rowToPrefill(tr) {
+        var dim = tr.getAttribute("data-dim") || currentDim;
+        if (dim === "fcl") {
+          return {
+            dim: "fcl",
+            inquiryNo: cellText(tr, 2),
+            quoteNo: cellText(tr, 3),
+            pol: cellText(tr, 4),
+            pod: cellText(tr, 5),
+            container: cellText(tr, 6),
+            amount: cellText(tr, 7),
+            carrier: cellText(tr, 8),
+            service: cellText(tr, 9),
+            zip: cellText(tr, 10),
+            customer: cellText(tr, 11),
+            quoter: cellText(tr, 12),
+            remark: "",
+            readyDate: cellText(tr, 14),
+            inquirer: cellText(tr, 15)
+          };
+        }
+        var remark = cellText(tr, 11);
+        return {
+          dim: "lcl",
+          inquiryNo: cellText(tr, 2),
+          quoteNo: cellText(tr, 3),
+          deliveryWh: cellText(tr, 4),
+          wh: cellText(tr, 4),
+          cbm: cellText(tr, 5),
+          weight: cellText(tr, 6),
+          zip: cellText(tr, 7),
+          customer: cellText(tr, 8),
+          quoter: cellText(tr, 9),
+          quoteStatus: cellText(tr, 10),
+          remark: remark,
+          channelProduct: "",
+          verifiedMiles: tr.getAttribute("data-verified-miles") || "",
+          inquiryAddrType: tr.getAttribute("data-inquiry-addr-type") || "",
+          readyDate: cellText(tr, 12),
+          inquirer: cellText(tr, 13),
+          waybill: cellText(tr, 15)
+        };
+      }
+
+      function getSelectedRows() {
+        var panel = currentDim === "lcl" ? tableLcl : tableFcl;
+        var out = [];
+        panel.querySelectorAll("tbody .inquiry-row").forEach(function (tr) {
+          if (tr.style.display === "none") return;
+          var chk = tr.querySelector(".col-check input[type=checkbox]");
+          if (chk && chk.checked) out.push(tr);
+        });
+        return out;
+      }
+
+      function openQuickOrderModal(prefill) {
+        try {
+          sessionStorage.setItem(PREFILL_KEY, JSON.stringify(prefill));
+        } catch (e) {}
+        document.getElementById("orderModalTitle").textContent =
+          "一键下单 · " + (prefill.inquiryNo || "询价") + " → FBA下单";
+        orderFrame.src = FBA_ORDER_URL;
+        orderBackdrop.classList.add("show");
+        orderBackdrop.setAttribute("aria-hidden", "false");
+      }
+
+      function closeQuickOrderModal() {
+        orderBackdrop.classList.remove("show");
+        orderBackdrop.setAttribute("aria-hidden", "true");
+        orderFrame.src = "about:blank";
+      }
+
+      if (btnQuickOrder) {
+        btnQuickOrder.addEventListener("click", function () {
+          var picked = getSelectedRows();
+          if (picked.length !== 1) {
+            alert("请勾选且仅勾选 1 条询价记录，再点「一键下单」。");
+            return;
+          }
+          var row = picked[0];
+          if (currentDim === "fcl") {
+            alert("【MVP演示】整柜一键下单待对接；当前仅演示散货 → FBA录入。");
+            return;
+          }
+          if (row.getAttribute("data-quote-ready") !== "1") {
+            if (!confirm("该询价尚未「人工已报价」，仍要打开下单页并带入已有字段吗？")) return;
+          }
+          openQuickOrderModal(rowToPrefill(row));
+        });
+      }
+      document.getElementById("orderModalClose").addEventListener("click", closeQuickOrderModal);
+      orderBackdrop.addEventListener("click", function (e) {
+        if (e.target === orderBackdrop) closeQuickOrderModal();
+      });
 
       document.querySelectorAll(".status-tab").forEach(function (tab) {
         tab.addEventListener("click", function () {
@@ -1012,10 +1155,8 @@
       renderBadges(false);
     })();
   </script>
-  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="散货AI询价报价-需求PRD.html">
-    <span class="ess-prd-chip">PRD · 散货 AI 询价报价</span>
-  </div>
-  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
-  <script src="../../二期/ess-prototype-prd.js" defer></script>
+  <script src="quote-v2-review-points.js"></script>
+  <script src="quote-v2-prd-doc-bar.js" data-page="3"></script>
+  <script src="quote-v2-review-bridge.js" data-page="3"></script>
 </body>
 </html>

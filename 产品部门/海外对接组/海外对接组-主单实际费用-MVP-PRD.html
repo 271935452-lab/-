@@ -24,63 +24,215 @@
   <div class="page">
     <section class="hero">
       <h1>主单实际费用</h1>
-      <p>旁支 · 计划一。只写本期新增修改口径；列表筛 / 现网列不复述。
+      <p>旁支 · 计划一。按<strong>账单批次</strong>对账；日常改数<strong>覆盖当前值</strong>，不再堆对冲。
         <a href="海外对接组-主单实际费用-MVP.html">本页原型</a>
         · <a href="../产品部门-导航.html#s-branch-report">产品旁支 · 计划一</a>
       </p>
     </section>
     <nav class="toc">
       <a href="#s-scope">范围</a>
-      <a href="#s-cols">列表字段</a>
-      <a href="#s-logic">修改逻辑</a>
-      <a href="#s-alloc">分摊</a>
+      <a href="#s-batch">批次对账</a>
+      <a href="#s-model">批次核销（对冲退役）</a>
+      <a href="#s-pay">批次与请款联动</a>
+      <a href="#s-cols">字段</a>
+      <a href="#s-logic">修改 / 附件</a>
+      <a href="#s-est">缺预估待办</a>
+      <a href="#s-alloc">分摊 / 撤销</a>
+      <a href="#s-import">导入 / 导出</a>
     </nav>
 
     <section class="card" id="s-scope">
       <h2>一、范围</h2>
-      <p class="note">入口：财务结算 → 费用管理 → 主单实际费用。编辑对象是费用行上的<strong>修改后金额</strong>（海外口径）；归集到运单后与尾程预估对照。</p>
+      <p class="note">入口：财务结算 → 费用管理 → 主单实际费用。编辑对象是费用行上的<strong>修改后金额</strong>（海外口径）；应付 / 实际费用新增<strong>账单批次号</strong>维度。</p>
       <table>
         <thead><tr><th>点</th><th>说明</th><th class="proto">原型</th></tr></thead>
         <tbody>
           <tr>
-            <td>修改实际费用</td>
-            <td><ol class="steps"><li>行内「修改」或勾选后「修改实际费用」开抽屉</li><li>编辑<strong>修改后金额</strong>；默认可带出预估；须填修改原因</li><li>未确认实际金额只读展示，修改保存时不改</li></ol></td>
-            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">修改抽屉</a></td>
+            <td>对账主视角</td>
+            <td><ol class="steps"><li>页面按账单批次号汇总展示，不默认铺全部费用明细</li><li>需查看时再点「看明细」展开本批费用行</li></ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">批次列表</a></td>
+          </tr>
+          <tr>
+            <td>一批柜子</td>
+            <td><ol class="steps"><li>同一账单批次可含多柜、多费用行</li><li>可同时含<strong>正常费用</strong>与<strong>补收</strong>费用</li></ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">展开明细</a></td>
           </tr>
         </tbody>
       </table>
     </section>
 
+    <section class="card" id="s-batch">
+      <h2>二、账单批次对账</h2>
+      <table>
+        <thead><tr><th>规则</th><th>页面表现</th><th class="proto">原型</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>BR-BATCH-001：批次汇总</td>
+            <td>列表行 = 账单批次号；展示服务商简称/全称、柜数、费用行数、含补收、实际/预估/差额 RMB、批次状态、预估缺口。</td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">汇总表</a></td>
+          </tr>
+          <tr>
+            <td>BR-BATCH-002：点开看明细</td>
+            <td>默认不展示费用明细；点 ▸ /「看明细」展开本批柜子费用；可再勾选费用行做改金额、分摊、撤销。</td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">看明细</a></td>
+          </tr>
+          <tr>
+            <td>BR-BATCH-003：对冲噪音</td>
+            <td>历史对冲行默认隐藏。新逻辑见「三、批次核销」——日常改数不再生成对冲行。</td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">隐藏对冲</a></td>
+          </tr>
+          <tr>
+            <td>BR-BATCH-004：换单差额挂原单</td>
+            <td>换单差额更新<strong>原单当前金额</strong>并打标；不靠正负两笔对冲堆明细。</td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">对冲行</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="s-model">
+      <h2>三、批次核销（对冲退役）</h2>
+      <p class="note">问题：分摊 / 撤销每次写正负对冲，再改再对冲 → 单票明细指数涨（可达数十万行）。方案：用<strong>批次 + 覆盖当前值</strong>代替日常对冲。</p>
+      <table>
+        <thead><tr><th>层</th><th>干什么</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>当前费用（Current）</td>
+            <td>主单费用只保留<strong>一行当前金额</strong>。列表、成本、提成都读这层。</td>
+          </tr>
+          <tr>
+            <td>账单批次（Batch）</td>
+            <td>导入 / 补收 / 调整 = 一个批次。批次<strong>确认后覆盖</strong>当前费用；不在当前表插 ± 对冲行。</td>
+          </tr>
+          <tr>
+            <td>变更日志（Audit）</td>
+            <td>谁、何时、改了多少、关联哪个批次。审计看日志，不靠对冲流水轧差。</td>
+          </tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>场景</th><th>怎么做</th></tr></thead>
+        <tbody>
+          <tr><td>未请款改金额 / 分摊 / 撤销</td><td>直接改当前值 + 写日志；<strong>不对冲</strong>。</td></tr>
+          <tr><td>补收、二次账单、已确认后再调</td><td>开<strong>新批次</strong> → 确认后覆盖/合并进当前值。</td></tr>
+          <tr><td>已请款 / 已付款</td><td>按请款状态联动，见<strong>第四节</strong>；禁止静默改已付金额。</td></tr>
+          <tr><td>历史脏数据</td><td>超限单票轧差固化后归档旧对冲；新单走本规则。</td></tr>
+        </tbody>
+      </table>
+      <p class="ok">一句话：<strong>批次是确认边界，当前金额是唯一真相，对冲不再当日常写库方式。</strong></p>
+      <table>
+        <thead><tr><th>原型交互</th><th>怎么演示</th><th class="proto">入口</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>账单确认覆盖</td>
+            <td>勾选「待确认」批次 →「账单确认（覆盖当前）」→ 确认后状态待分摊，<strong>无对冲行</strong></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">账单确认</a></td>
+          </tr>
+          <tr>
+            <td>未请款改金额</td>
+            <td>展开已分摊·未请款行 → 修改 → 提示「覆盖当前、不对冲」→ 保存</td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">修改抽屉</a></td>
+          </tr>
+          <tr>
+            <td>已请未付改金额</td>
+            <td>改后覆盖当前，行标「已请未付·待重算」</td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">请款状态标</a></td>
+          </tr>
+          <tr>
+            <td>已付开调整批</td>
+            <td>勾选已付款行 →「开调整批次」→ 生成 BATCH-ADJ-* 并覆盖当前；原请款锁定</td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">开调整批次</a></td>
+          </tr>
+          <tr>
+            <td>请款</td>
+            <td>「＋ 付款请款」按当前金额生成请款单（核销仍用请款单）</td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">付款请款</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="s-pay">
+      <h2>四、批次与请款单联动</h2>
+      <p class="note">批次管「费用认不认、怎么改」；请款单管「怎么付钱、怎么核销」。核销维度仍用<strong>请款单</strong>，批次不取代请款单。</p>
+      <p>主流程：<strong>导入批次 → 核对确认（覆盖当前费用）→ 按请款单请款 / 付款 / 核销</strong>。</p>
+      <table>
+        <thead><tr><th>请款状态</th><th>批次有调整时怎么联动</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>还未请款</td>
+            <td>只改当前费用。请款时按<strong>最新金额</strong>勾选生成请款单，无旧单可改。</td>
+          </tr>
+          <tr>
+            <td>已请款、未付款<br/>（或未核销完）</td>
+            <td>
+              <ol class="steps">
+                <li>金额变少：请款单标「待重算」；未付可改请款金额，或作废重提</li>
+                <li>金额变多 / 补收：新开调整批次 → 再生成<strong>补请款单</strong>（或原单追加，二选一；建议补请款）</li>
+                <li>整笔撤销：请款单作废或冲减；费用回待分摊 / 待请款</li>
+                <li>未付请款单可改或作废；禁止静默改已锁定金额</li>
+              </ol>
+            </td>
+          </tr>
+          <tr>
+            <td>已付款 / 已核销</td>
+            <td>
+              <ol class="steps">
+                <li>原请款单<strong>锁死不改</strong></li>
+                <li>只能：新调整批次（补收 / 冲减）→ 新请款单（补付 / 收回）→ 再核销</li>
+                <li>原请款单与调整批次互挂 <code>batch_no</code>、<code>pay_req_no</code> 留痕</li>
+              </ol>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>挂接</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>费用当前行</td><td>可关联多个来源批次（原批 + 调整批）</td></tr>
+          <tr><td>请款单明细</td><td>勾选费用行，并带对应 <code>batch_no</code></td></tr>
+          <tr><td>调整批次</td><td>若费用已请过款，关联原请款单号</td></tr>
+          <tr><td>列表状态</td><td>费用需能看出：已请款 / 有调整待补请 / 已付锁定</td></tr>
+        </tbody>
+      </table>
+      <p class="warn"><strong>待拍板：</strong>已请未付时，改金额是「改原请款单」还是「作废 + 新请款」——与财务确认后定一条。原型暂按「覆盖当前 + 请款待重算」演示。</p>
+    </section>
+
     <section class="card" id="s-cols">
-      <h2>二、列表字段（本期）</h2>
+      <h2>五、字段（本期）</h2>
       <table>
         <thead><tr><th>字段</th><th>说明</th><th class="proto">原型</th></tr></thead>
         <tbody>
           <tr>
-            <td>未确认实际金额</td>
-            <td><ol class="steps">
-              <li>账单 / 导入落库的原始实际金额，待财务确认</li>
-              <li>新建或首次导入时，与修改后金额<strong>默认相同</strong></li>
-              <li>用户修改修改后金额后，本列<strong>不变</strong></li>
-            </ol></td>
-            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">列表</a></td>
+            <td>账单批次号</td>
+            <td><ol class="steps"><li>应付 / 实际费用新增维度；代理主单实际费用按批次账单对账</li><li>筛选、导出、推待办均可按批次</li></ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">批次列</a></td>
           </tr>
           <tr>
-            <td>修改后金额</td>
+            <td>服务商简称</td>
+            <td><ol class="steps"><li>主单实际费用新增服务商简称字段（列表汇总与明细均展示）</li><li>与结算服务商全称并存；筛选支持简称</li></ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">简称列</a></td>
+          </tr>
+          <tr>
+            <td>未确认实际金额 / 修改后金额</td>
             <td><ol class="steps">
-              <li>原列表「金额」列；经人工修改后的实际金额口径</li>
-              <li>默认 = 未确认实际金额；修改后与未确认列可不一致</li>
-              <li>折合 RMB、分摊、对冲均按本列计算</li>
+              <li>未确认 = 账单/导入原始实际金额，待财务确认；修改后默认相同，改后可不一致</li>
+              <li>折合 RMB、分摊按修改后金额；日常<strong>不生成对冲分录</strong>（见第三节）</li>
             </ol></td>
-            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">列表</a></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">明细列</a></td>
+          </tr>
+          <tr>
+            <td>虚拟运单</td>
+            <td><ol class="steps"><li>提单未挂运单时，系统造虚拟运单承接费用，明细打「虚拟运单」标</li><li>导入某运单费用未进应付 → 标记「未进应付·待找运单」</li></ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">运单列</a></td>
           </tr>
         </tbody>
       </table>
     </section>
 
     <section class="card" id="s-logic">
-      <h2>三、修改逻辑</h2>
-      <p class="note">按费用行是否已<strong>分摊</strong>分流，不得混用。</p>
+      <h2>六、修改逻辑与附件</h2>
+      <p class="note">按费用行是否已<strong>分摊</strong>分流；调整必须填理由，并支持截图粘贴 / 上传附件。</p>
       <table>
         <thead><tr><th>状态</th><th>说明</th><th class="proto">原型</th></tr></thead>
         <tbody>
@@ -88,45 +240,119 @@
             <td>未分摊</td>
             <td>
               <ol class="steps">
-                <li>含：待确认、待分摊、待重新分摊等<strong>尚未完成分摊</strong>的费用行</li>
-                <li><strong>直接修改</strong>修改后金额 / 币别 / 汇率，写修改原因与备注；未确认实际金额不变</li>
-                <li>不生成对冲分录；保存后仍可点「分摊」按修改后金额分摊到运单/票</li>
-                <li>测：待分摊行改金额保存后，修改后金额更新、未确认列不变，无对冲痕迹</li>
+                <li>含待确认、待分摊、待重新分摊等尚未完成分摊的费用行</li>
+                <li>直接改修改后金额 / 币别 / 汇率；须选调整理由；须粘贴截图或上传附件</li>
+                <li>覆盖当前值 + 写日志；未确认实际金额不变</li>
               </ol>
             </td>
-            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">未分摊行 · 修改</a></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">修改抽屉</a></td>
           </tr>
           <tr>
-            <td>已分摊</td>
+            <td>已分摊（未请款）</td>
             <td>
               <ol class="steps">
-                <li>分摊状态 = <strong>已分摊</strong>（已分摊到运单/票）</li>
-                <li>修改<strong>不直接覆盖</strong>已落库的分摊结果，走现网<strong>对冲逻辑</strong>（按现网财务对冲规则记差额 / 对冲分录，轧平后再落到新修改后金额口径）</li>
-                <li>对冲完成后：本费用行进入待重新分摊或等价状态；再次「分摊」只重摊本费用项修改后金额，不整柜重摊其它费用项</li>
-                <li>测：已分摊行点修改保存后，走对冲而非静默改数；列表可见待重摊或对冲留痕（以实现为准）</li>
+                <li><strong>直接覆盖</strong>当前分摊结果 + 写日志；不再生成正负对冲</li>
+                <li>换单差额挂<strong>原单</strong>当前值并打标；本行可再分摊</li>
               </ol>
             </td>
-            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">已分摊行 · 修改</a></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">已分摊 · 修改</a></td>
+          </tr>
+          <tr>
+            <td>已请款后再改</td>
+            <td>
+              <ol class="steps">
+                <li>按请款状态分流，细则见<strong>第四节 · 批次与请款联动</strong></li>
+                <li>已付：只开调整批次 + 新请款；禁止静默覆盖已付金额</li>
+              </ol>
+            </td>
+            <td class="proto">—</td>
+          </tr>
+          <tr>
+            <td>依据附件</td>
+            <td>
+              <ol class="steps">
+                <li>调整理由必填；附件至少 1 个（Ctrl+V 粘贴截图或本地上传 jpg/png/pdf）</li>
+                <li>附件随修改记录留痕，便于复核</li>
+              </ol>
+            </td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">粘贴区</a></td>
           </tr>
         </tbody>
       </table>
-      <p class="warn">对冲细则（科目、凭证形态、可否部分对冲）对齐现网财务实现，本 PRD 只定分流：未分摊=直接改修改后金额，已分摊=对冲。</p>
+    </section>
+
+    <section class="card" id="s-est">
+      <h2>七、缺预估 → 推产品部</h2>
+      <table>
+        <thead><tr><th>点</th><th>说明</th><th class="proto">原型</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>触发</td>
+            <td><ol class="steps">
+              <li>实际账单已出，但预估费用未生成 / 缺口行</li>
+              <li>由<strong>财务主动发起</strong>待办给产品部（工具栏「推产品部确认预估」或批次行「推待办」）</li>
+            </ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">推待办</a></td>
+          </tr>
+          <tr>
+            <td>确认回填</td>
+            <td><ol class="steps">
+              <li>产品确认后回填预估费用</li>
+              <li>保留处理记录（发起 / 确认时间、说明）</li>
+            </ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">模拟回填</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="ok"><strong>测：</strong>打开缺预估批次 → 财务推待办 → 状态「待产品确认」→ 产品确认后预估回填、留痕可见。</p>
     </section>
 
     <section class="card" id="s-alloc">
-      <h2>四、分摊（沿用）</h2>
+      <h2>八、分摊 / 撤销分摊</h2>
       <table>
         <thead><tr><th>点</th><th>说明</th><th class="proto">原型</th></tr></thead>
         <tbody>
           <tr>
             <td>按费用项分摊</td>
-            <td><ol class="steps"><li>只对勾选费用行，用<strong>修改后金额</strong>（含已调整）分摊到运单/票</li><li>同柜未勾选费用项保持原分摊，不整柜重算</li></ol></td>
+            <td><ol class="steps"><li>只对勾选费用行，用修改后金额分摊到运单/票</li><li>未挂运单落虚拟运单；同柜未勾选费用项不重算</li><li>写当前值，不生成对冲</li></ol></td>
             <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">分摊</a></td>
+          </tr>
+          <tr>
+            <td>撤销分摊</td>
+            <td><ol class="steps">
+              <li>勾选已分摊费用行/批次 →「撤销分摊」→ 填原因 → 状态回待分摊（覆盖当前，不对冲）</li>
+              <li>若柜子数据相对分摊时点已变化：提示<strong>付款管理明细可能与当前货态不一致</strong>，确认后再撤</li>
+            </ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">撤销分摊</a></td>
           </tr>
         </tbody>
       </table>
     </section>
-    <p class="foot">海外对接组 · 主单实际费用 · 旁支计划一</p>
+
+    <section class="card" id="s-import">
+      <h2>九、导入 / 导出</h2>
+      <table>
+        <thead><tr><th>点</th><th>说明</th><th class="proto">原型</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>导入模版</td>
+            <td><ol class="steps"><li>服务商费用类型取<strong>最新</strong>字典</li><li>提单未挂运单时导入自动造虚拟运单；找不到运单的费用标「未进应付·待找运单」</li></ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">导入 ▾</a></td>
+          </tr>
+          <tr>
+            <td>导出</td>
+            <td><ol class="steps">
+              <li>导出「预估与实际差异」——便于复核差额</li>
+              <li>导出「已处理账单」——便于追溯</li>
+              <li>可另导当前批次汇总</li>
+            </ol></td>
+            <td class="proto"><a href="海外对接组-主单实际费用-MVP.html">导出 ▾</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="foot">海外对接组 · 主单实际费用 · 旁支计划一 · 批次核销 / 请款联动</p>
   </div>
 </body>
 </html>
