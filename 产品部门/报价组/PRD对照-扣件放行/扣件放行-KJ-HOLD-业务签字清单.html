@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>扣件放行 · 需求签字清单（业务版）</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --card: #fff; --line: #e5e7eb; --text: #111827; --sub: #6b7280;
+      --primary: #2563eb; --accent: #c2410c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px;
+    }
+    a { color: var(--primary); }
+    .hub-bar {
+      position: sticky; top: 0; z-index: 50; background: #9a3412; color: #fff;
+      padding: 7px 14px; font-size: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    }
+    .hub-bar a { color: #fff; text-decoration: none; }
+    .hub-bar .btn {
+      height: 26px; padding: 0 10px; border: 1px solid rgba(255,255,255,.5);
+      background: transparent; color: #fff; border-radius: 4px; cursor: pointer; font: inherit;
+    }
+    .hub-bar .btn.primary { background: #fff; color: #9a3412; font-weight: 700; border-color: #fff; }
+    .hub-bar .btn:disabled { opacity: .55; cursor: wait; }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+      background: #7c2d12; color: #fff; padding: 10px 16px; border-radius: 6px;
+      font-size: 13px; font-weight: 600; z-index: 10050; opacity: 0;
+      pointer-events: none; transition: opacity .2s ease; max-width: 92vw; text-align: center;
+    }
+    .toast.show { opacity: 1; }
+    .page { max-width: 980px; margin: 0 auto; padding: 16px 14px 56px; }
+    .hero {
+      background: linear-gradient(135deg, #9a3412, #2563eb); color: #fff;
+      border-radius: 8px; padding: 16px 18px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 20px; }
+    .hero p { margin: 0; font-size: 12px; line-height: 1.7; opacity: .95; }
+    .meta {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .meta .box {
+      background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+    }
+    .meta .k { font-size: 11px; color: var(--sub); }
+    .meta .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 8px; font-size: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    }
+    .card .lead { margin: 0 0 8px; font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .rule {
+      margin: 0 0 10px; padding: 8px 10px; background: #fff7ed; border: 1px solid #fdba74;
+      border-radius: 6px; font-size: 12px; color: var(--accent); line-height: 1.65;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      border: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top;
+    }
+    th { background: #f8fafc; font-weight: 700; color: #475569; }
+    .chk { width: 44px; text-align: center; }
+    .chk input { width: 16px; height: 16px; }
+    .id { font-family: Consolas, monospace; font-size: 11px; white-space: nowrap; }
+    tr.sec td {
+      background: #fff7ed; font-weight: 700; color: #9a3412; font-size: 12px;
+    }
+    tr.out td { background: #f8fafc; color: #64748b; }
+    .brief td:first-child { width: 108px; font-weight: 700; background: #f8fafc; }
+    .sign-note { margin: 8px 0 0; font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+    .ref { font-size: 11px; color: var(--sub); margin-bottom: 12px; line-height: 1.6; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; }
+      .page { max-width: none; padding: 0; }
+    }
+    @media (max-width: 720px) { .meta { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body data-file="扣件放行-KJ-HOLD-签字清单-V1.0.png">
+  <div class="no-print hub-bar">
+    <a href="对照说明.html"><strong>← KJ-HOLD 入口</strong></a>
+    · <a href="扣件放行-价格重算-KJ-PRD-交互稿.html">PRD · 交互稿</a>
+    · <a href="扣件放行-价格重算-KJ-PRD-完整skill版.html">完整 skill 版</a>
+    <button type="button" class="btn primary" id="btnCopyImg">复制图片发群</button>
+    <button type="button" class="btn" id="btnDownloadImg">下载 PNG</button>
+    <button type="button" class="btn" onclick="window.print()">打印 / 另存 PDF</button>
+  </div>
+  <div class="toast no-print" id="toast" role="status"></div>
+
+  <div class="page" id="shot">
+    <section class="hero">
+      <h1>扣件放行 · 价格重算与报价推送 · 需求签字清单</h1>
+    </section>
+
+    <div class="meta">
+      <div class="box"><div class="k">编号</div><div class="v">KJ-HOLD-SIGN-20261020</div></div>
+      <div class="box"><div class="k">版本</div><div class="v">V1.2</div></div>
+      <div class="box"><div class="k">条数</div><div class="v">A–E 共 21 条</div></div>
+      <div class="box"><div class="k">日期</div><div class="v">2026-10-20</div></div>
+    </div>
+
+    <section class="card" id="sec-a">
+      <h2>A. 在哪里点「放行」会用到本需求</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-01</td>
+            <td>在<strong>问题件跟踪</strong>点「放行」成功后，按本清单规则处理价格。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-02</td>
+            <td>在<strong>查货操作</strong>做扣件放行并点「确定」、运单解除扣件成功后，与问题件跟踪用<strong>同一套</strong>规则。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="sec-b">
+      <h2>B. 有价格表的扣件 · 放行时涨价才重算</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="3">按什么时间取价</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-04</td>
+            <td>以<strong>每次扣件放行成功的时间</strong>去取价、算价；<strong>每放行一次就按规则走一遍</strong>。事后在系统里点「重算」时，用<strong>最近一次放行且费用确实改过</strong>的那次放行时间。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-05</td>
+            <td>取价、重算都按<strong>放行成功时间</strong>，不改运单页面上原来的「到货时间」。<strong>直客</strong>按<strong>业务员成本报价</strong>取价；<strong>同行</strong>按<strong>销售报价 + 业务员成本报价</strong>取价。</td>
+          </tr>
+          <tr class="sec"><td colspan="3">什么时候自动改费用</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-06</td>
+            <td>同时满足：产品有对应价格表；本次是<strong>扣件放行</strong>（不是下面 D 节那种整柜/私卡无价格表）；放行时间能取到有效价；且<strong>放行时的单价高于签入时的单价</strong>，才自动改费用。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-07</td>
+            <td>改费用与系统现有「费用重算」一致：可改<strong>应收运费</strong>、<strong>业务成本运费</strong>。<strong>直客</strong>只改业务成本运费；<strong>同行</strong>应收运费和业务成本运费都可改。重算时带上放行时间。</td>
+          </tr>
+          <tr class="sec"><td colspan="3">取不到价 / 手工改过的费用</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-09</td>
+            <td>放行时间<strong>取不到</strong>对应价格 → <strong>不能放行</strong>，提示：<code>请联系产品同事维护报价</code>。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-10</td>
+            <td>业务员成本或应收若已是<strong>手工录入</strong> → <strong>不再按价格表改这笔费用</strong>；放行仍可成功，也不发涨价通知。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="sec-c">
+      <h2>C. 涨价后怎么通知业务员</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-11</td>
+            <td>放行时自动改价成功后，给运单<strong>业务员</strong>发系统通知（与现网「我的通知」一致）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-12</td>
+            <td>通知内容固定为：<code>运单{运单号}因扣件放行时价格上涨，已按最新的价格表更新价格，请知悉。</code></td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-13</td>
+            <td>运单操作日志要写清放行时间与涨价金额，固定为：<code>扣件放行同时说明，放行时间价格已上涨{上涨金额}￥，价格已按最新价格表更新。</code>；同时计费日志再记一轮，并带上放行时间。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-14</td>
+            <td>业务员端提醒样式与现网询价、签入代办类似：页面右下角弹出提醒。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="sec-d">
+      <h2>D. 整柜 / 私卡无价格表 · 过期仍放行，并通知报价员</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-15</td>
+            <td><strong>整柜、私卡</strong>且没有销售价格表、靠询价绑单的：放行时检查报价/绑单是否还在有效期内；私卡看绑定询价的「有效期至」是否不早于放行当天。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-16</td>
+            <td>已过期或对不上有效报价 → 运单<strong>照常放行</strong>，同时给配置好的<strong>报价员</strong>发待办；操作人可看到提示：<code>报价已过期或无有效价格，已通知报价员处理。</code></td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-17</td>
+            <td>给报价员的是<strong>待办清单</strong>（说明扣件放行报价待处理），只负责提醒，<strong>不要求</strong>报价员在待办里直接点放行。私卡常见后续：解绑运单 → 重新询价 → 在「我的报价」再绑。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-18</td>
+            <td>报价员点「去处理」→ 打开<strong>我的报价</strong>页面，自动用待办里的<strong>询价单号</strong>筛选列表；整柜常常没有询价单号时，只打开页面、不做单号筛选。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-19</td>
+            <td>待办里至少能看到：运单号、销售产品/业务类型、询价单号（有则带）、有效期至、客户、业务员、扣件类型、触发时间等。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="sec-e">
+      <h2>E. 放行之后再点「重算」</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-21</td>
+            <td>事后「重算」在<strong>运单</strong>、<strong>业务数据统计</strong>页面；可重算<strong>应收运费</strong>、<strong>业务成本运费</strong>（与现网费用重算一致）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-22</td>
+            <td>运单已经做过扣件放行：事后重算仍按<strong>最近一次放行且费用改过</strong>的放行时间取价（直客/同行规则同 B 节），<strong>不能</strong>按「今天」或运单页面上的到货时间取价。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-23</td>
+            <td>事后重算取不到价格 → 提示 <code>请联系产品同事维护报价</code>；<strong>不影响</strong>运单已经放行成功的状态。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">KJ-S-24</td>
+            <td>放行时已经发过涨价通知的，事后再点重算<strong>默认不再发一遍</strong>同样内容的通知。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card out-scope">
+      <h2>本期不做</h2>
+      <table>
+        <thead><tr><th class="chk">知悉</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-01</td>
+            <td>不在本期做：报价员在系统里一键完成「解绑 → 重询价 → 再绑」（仍用现有「我的报价」+ 线下沟通）。</td>
+          </tr>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-02</td>
+            <td>不在本期做：整柜没有询价单时的自动报价、自动绑单。</td>
+          </tr>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-03</td>
+            <td>不在本期做：销售报价批量维护（继续用船务/配置现有功能）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>签字栏</h2>
+      <table class="brief">
+        <tbody>
+          <tr><td>报价 / 产品</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>客服 / 业务员</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>财务 / 计费</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>项目负责人</td><td>签字 _________________ 日期 ______</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="foot">KJ-HOLD-SIGN-20261020 · V1.2 · 业务签字版 · A–E 21 条 + 3 条 OUT · 报价组</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+  (function () {
+    var shot = document.getElementById("shot");
+    var btnCopy = document.getElementById("btnCopyImg");
+    var btnDl = document.getElementById("btnDownloadImg");
+    var toast = document.getElementById("toast");
+    var FILE = document.body.getAttribute("data-file") || "扣件放行-KJ-HOLD-签字清单.png";
+    var toastTimer = null;
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2800);
+    }
+
+    function capture() {
+      if (typeof html2canvas !== "function") {
+        return Promise.reject(new Error("截图库未加载，请检查网络后刷新"));
+      }
+      return html2canvas(shot, {
+        backgroundColor: "#f5f7fb",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        scrollX: 0,
+        scrollY: -window.scrollY
+      }).then(function (canvas) {
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob);
+            else reject(new Error("生成图片失败"));
+          }, "image/png");
+        });
+      });
+    }
+
+    function download(blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = FILE;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function setBusy(busy) {
+      btnCopy.disabled = busy;
+      btnDl.disabled = busy;
+      btnCopy.textContent = busy ? "生成中…" : "复制图片发群";
+    }
+
+    btnCopy.addEventListener("click", function () {
+      setBusy(true);
+      capture().then(function (blob) {
+        if (navigator.clipboard && window.ClipboardItem) {
+          return navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
+            .then(function () { showToast("已复制图片，可直接粘贴到微信/飞书群"); })
+            .catch(function () {
+              download(blob);
+              showToast("无法写入剪贴板，已改为下载 PNG");
+            });
+        }
+        download(blob);
+        showToast("浏览器不支持复制图片，已下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "复制失败");
+      }).finally(function () { setBusy(false); });
+    });
+
+    btnDl.addEventListener("click", function () {
+      setBusy(true);
+      capture().then(function (blob) {
+        download(blob);
+        showToast("已开始下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "下载失败");
+      }).finally(function () { setBusy(false); });
+    });
+  })();
+  </script>
+</body>
+</html>
