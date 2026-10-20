@@ -105,17 +105,18 @@
         长稿 <a href="扣件放行-价格重算-KJ-PRD-完整skill版.html">完整 skill 版</a> ·
         <a href="对照说明.html">入口</a> ·
         <a href="扣件放行-KJ-HOLD-业务签字清单.html">签字清单</a> ·
-        双入口：<code>#/ProblemFollowUp</code> 放行 · <code>#/StockChecking</code> 扣件放行确定
+        唯一放行入口：<code>#/ProblemFollowUp</code> 问题件跟踪「放行」；仅处理<strong>预报即扣件</strong>与<strong>客服/业务员/客户手动扣件</strong>
       </p>
     </header>
 
     <section class="card" id="bg">
       <h3>背景</h3>
       <p class="lead" style="margin:0">
-        货在仓<strong>扣件</strong>期间，<strong>销售报价</strong>可能已调价；若仍按<strong>签入单价</strong>出库，公司与客户口径不一致。放行时按 <strong>T<sub>放行</sub></strong> 对齐有效价：
-        <strong>有销售报价的扣件</strong> → §1 涨价则重算；
+        货在仓<strong>扣件</strong>期间，<strong>销售报价</strong>可能已调价；若仍按<strong>签入单价</strong>出库，公司与客户口径不一致。仅在<strong>问题件跟踪</strong>点「放行」、且扣件类型为<strong>预报即扣件</strong>或<strong>客服/业务员/客户自行手动扣件</strong>时，按 <strong>T<sub>放行</sub></strong> 对齐有效价；
+        <strong>其他系统自动扣件</strong> → <strong>正常放行</strong>，不走本需求计价。
+        范围内：<strong>有价表的扣件</strong> → §1：<strong>直客</strong>按放行时间直接更新业务成本（不与签入价比大小）；<strong>同行</strong>仅放行价高于签入价才重算应收+成本；
         <strong>整柜 / 私卡无价格表</strong> → §2 校有效期，过期仍正常放行并推报价员代办；
-        <strong>非扣件</strong>（集货、拼货、等柜等）价差由<strong>公司承担</strong>，不走 §1 自动涨价。
+        <strong>非扣件</strong>（集货、拼货、等柜等）价差由<strong>公司承担</strong>，不走 §1。
       </p>
     </section>
 
@@ -125,17 +126,25 @@
         <li><span class="hl">计价时点</span>：每次扣件<strong>放行成功</strong>的服务器时间记为当次 <strong>T<sub>放行</sub></strong>。查价、算「放行单价」、调用<strong>重新计费</strong>时，均把该次 <strong>T<sub>放行</sub> 当作到货时间</strong>（不改运单界面「到货时间」字段）。</li>
         <li><span class="hl">匹配哪张价表</span>：在 T<sub>放行</sub> 下，按销售产品等现网维度取价——<strong>直客</strong>只匹配<strong>业务员成本报价表</strong>；<strong>同行</strong>匹配<strong>销售报价</strong> + <strong>业务员成本报价表</strong>。未匹配到有效价 → <strong>拦截放行</strong>，提示 <code>请联系产品同事维护报价</code>。</li>
         <li><span class="hl">费用类型</span>：对齐现网<strong>费用重算</strong>能力，本需求触发的重算类型为：<strong>应收运费重算</strong>、<strong>业务成本运费重算</strong>（与运单/业务数据统计费用重算同口径）。</li>
-        <li><span class="hl">须同时满足才重新计费</span>：非 §2 无价格表；走对应价表维护范围；本次为扣件放行；能匹配到 T<sub>放行</sub> 有效价；<strong>放行单价 &gt; 签入单价</strong>。</li>
-        <li><span class="hl">重新计费结果</span>：<strong>直客</strong>走业务成本运费重算（业务员成本）；<strong>同行</strong>走应收运费重算 + 业务成本运费重算。入参<strong>到货时间 = 当次 T<sub>放行</sub></strong>。失败则放行回滚并提示。</li>
-        <li><span class="hl">多次放行</span>：运单有多条扣件放行记录时，<strong>每一次放行都完整走一遍</strong>本逻辑。事后在运单/业务数据统计点「重算」时，计价时点取<strong>最近一次「放行且实际更新了费用」</strong>的 T<sub>放行</sub>（未涨价、未改费的放行不作为重算时点）。</li>
-        <li><span class="hl">触达与日志</span>（涨价重算成功时同时发生）：
+        <li><span class="hl">须同时满足才进入更新</span>：扣件类型为<strong>预报即扣件</strong>或<strong>客服/业务员/客户手动扣件</strong>（其他系统自动扣件 → 正常放行、不进 §1）；非 §2 无价格表；走对应价表维护范围；本次为问题件跟踪扣件放行；能匹配到 T<sub>放行</sub> 有效价。</li>
+        <li><span class="hl">直客 vs 同行</span>：
           <ul style="margin:6px 0 0;padding-left:1.2em">
-            <li>通知业务员：<code>运单{运单号}因扣件放行时价格上涨，已按最新的价格表更新价格，请知悉。</code></li>
-            <li>运单日志：<code>扣件放行同时说明，放行时间价格已上涨{上涨金额}￥，价格已按最新价格表更新。</code>（须带<strong>放行时间</strong>说明；{上涨金额}为本次涨价差额）</li>
+            <li><strong>直客</strong>：匹配到业务员成本报价后，<strong>不比较</strong>签入单价与放行单价谁大，<strong>直接按放行时间价</strong>做业务成本运费重算并更新；相对签入价<strong>上调或下调</strong>均发调价通知。</li>
+            <li><strong>同行</strong>：仅当<strong>放行单价 &gt; 签入单价</strong>时，做应收运费重算 + 业务成本运费重算并通知；否则维持原价、不通知。</li>
+          </ul>
+          入参<strong>到货时间 = 当次 T<sub>放行</sub></strong>。失败则放行回滚并提示。
+        </li>
+        <li><span class="hl">多次放行</span>：运单有多条扣件放行记录时，<strong>每一次放行都完整走一遍</strong>本逻辑。事后在运单/业务数据统计点「重算」时，计价时点取<strong>最近一次「放行且实际更新了费用」</strong>的 T<sub>放行</sub>（未调价、未改费的放行不作为重算时点）。</li>
+        <li><span class="hl">触达与日志</span>（费用按放行时间更新成功后同时发生）：
+          <ul style="margin:6px 0 0;padding-left:1.2em">
+            <li><strong>直客</strong>：相对签入价<strong>上调或下调</strong>均发通知；<strong>同行</strong>：仅放行价高于签入价时发通知。</li>
+            <li>通知业务员：<code>运单{运单号}因扣件放行时调价，已按最新的价格表更新价格，请知悉。</code></li>
+            <li>右下角弹窗（通知/代办）与现网一致，约<strong>3 秒</strong>自动消失；须到<strong>我的通知</strong> / <strong>代办列表</strong>查看并处理。</li>
+            <li>运单日志：<code>扣件放行同时说明，放行时间价格已调价{调价金额}￥，价格已按最新价格表更新。</code>（须带<strong>放行时间</strong>；{调价金额}=放行价−签入价，下调为负）</li>
             <li>计费日志：按费用重算<strong>再计一轮</strong>，参数带<strong>放行时间 = T<sub>放行</sub></strong>。</li>
           </ul>
         </li>
-        <li><span class="hl">手工录入费用</span>：若运单对应费用项（业务员成本 / 应收运费）已为<strong>手工录入</strong>，则<strong>不再匹配价表、不更新该费用</strong>（放行可成功；不触发对该项的涨价重算与 §1 通知）。</li>
+        <li><span class="hl">手工录入费用</span>：若运单对应费用项（业务员成本 / 应收运费）已为<strong>手工录入</strong>，则<strong>不再匹配价表、不更新该费用</strong>（放行可成功；不触发对该项的调价重算与 §1 通知）。</li>
       </ol>
     </section>
 
@@ -148,23 +157,28 @@
       <div class="mermaid-wrap">
         <div class="mermaid">
 flowchart TD
-  START(["扣件放行提交"]) --> B{"整柜或私卡且无价格表?"}
+  START(["问题件跟踪 · 放行提交"]) --> HOLD{"预报即扣件 或 客服/业务员/客户手动扣件?"}
+  HOLD -->|否| OK["正常放行"]
+  HOLD -->|是| B{"整柜或私卡且无价格表?"}
   B -->|是| C{"报价/绑单在有效期内?"}
   C -->|否| D["正常放行 · 推报价员代办 §2"]
   D --> OFF(["报价员线下处理"])
-  C -->|是| OK["现网放行成功"]
+  C -->|是| OK
   D --> OK
   B -->|否| F{"销售报价产品且扣件放行?"}
   F -->|否| OK
   F -->|是| G["T放行匹配价表 直客成本表/同行销售+成本"]
   G --> H{"匹配到有效价格?"}
   H -->|否| I["拦截 · 请联系产品同事维护报价"]
-  H -->|是| J{"放行单价大于签入单价?"}
+  H -->|是| CUST{"直客?"}
+  CUST -->|是| K["直接按放行价更新业务成本"]
+  CUST -->|否| J{"放行单价大于签入单价?"}
   J -->|否| OK
-  J -->|是| K["应收/业务成本运费重算 到货时间=T放行"]
+  J -->|是| K2["应收+业务成本运费重算"]
   K --> L{"计费成功?"}
+  K2 --> L
   L -->|否| M["放行失败或回滚"]
-  L -->|是| N["通知+运单日志含放行时间涨价+计费日志"]
+  L -->|是| N["调价则通知+运单日志+计费日志"]
   N --> OK
         </div>
       </div>
@@ -173,13 +187,14 @@ flowchart TD
     <h2 class="sec" id="detail">规则明细（展开阅读，无需点击）</h2>
 
     <div class="card">
-      <h3>入口（共用后端）</h3>
+      <h3>入口与扣件范围</h3>
       <table>
-        <thead><tr><th>页面</th><th>操作</th><th>说明</th></tr></thead>
+        <thead><tr><th>页面 / 范围</th><th>操作 / 类型</th><th>说明</th></tr></thead>
         <tbody>
-          <tr><td>问题件跟踪</td><td>工具栏「放行」</td><td>提交成功后走同一套计价分支</td></tr>
-          <tr><td>查货操作</td><td>扣件放行弹窗「确定」</td><td>弹窗交互见 <a href="../../风控组/风控组-查货合规-需求PRD.html#m7-release">风控 §7.3</a>；计价规则与本 PRD 一致</td></tr>
-          <tr><td>运单管理 · 运单页</td><td><strong>重算 / 费用重算</strong>（应收运费 / 业务成本运费）</td><td>时点 = 最近一次<strong>放行且更新了费用</strong>的 T<sub>放行</sub></td></tr>
+          <tr><td>问题件跟踪（唯一放行入口）</td><td>工具栏「放行」</td><td>提交成功后按扣件类型分支；查货操作等其他页面放行<strong>不</strong>触发本需求</td></tr>
+          <tr><td rowspan="2">走本需求计价的扣件类型</td><td>① 预报即扣件</td><td rowspan="2">仅此两类进入 §1 / §2；其余系统自动扣件 → <strong>正常放行</strong>，不重算、不推报价代办</td></tr>
+          <tr><td>② 客服、业务员、客户自行手动操作扣件</td></tr>
+          <tr><td>运单管理 · 运单页</td><td><strong>重算 / 费用重算</strong>（应收运费 / 业务成本运费）</td><td>时点 = 最近一次<strong>放行且更新了费用</strong>的 T<sub>放行</sub>（仅上述两类扣件放行产生）</td></tr>
           <tr><td>业务数据统计</td><td>同上</td><td>同运单页；财务侧若共用同一重算服务则规则一致</td></tr>
         </tbody>
       </table>
@@ -190,17 +205,20 @@ flowchart TD
       <table>
         <thead><tr><th>条件</th><th>不满足时</th></tr></thead>
         <tbody>
+          <tr><td>扣件类型 = 预报即扣件 或 客服/业务员/客户手动扣件</td><td>其他系统自动扣件 → 正常放行，不进 §1</td></tr>
           <tr><td>到货时间（计价）= 当次 <strong>T<sub>放行</sub></strong></td><td>—（每次放行各记各的）</td></tr>
           <tr><td>直客 → 业务员成本报价表；同行 → 销售报价 + 业务员成本报价表</td><td>未匹配 → 拦截：<code>请联系产品同事维护报价</code></td></tr>
           <tr><td>费用类型：应收运费重算、业务成本运费重算</td><td>对齐现网费用重算</td></tr>
-          <tr><td>放行单价 &gt; 签入单价</td><td>放行成功，维持原价，不通知</td></tr>
+          <tr><td><strong>直客</strong>：匹配到价后<strong>直接按放行时间更新</strong>（不比签入/放行谁大）；上调/下调均通知</td><td>—</td></tr>
+          <tr><td><strong>同行</strong>：放行单价 &gt; 签入单价 才更新并通知</td><td>不高于签入价 → 维持原价，不通知</td></tr>
           <tr><td>多次放行后手动「重算」</td><td>时点 = 最近一次<strong>放行且更新了费用</strong>的 T<sub>放行</sub></td></tr>
           <tr><td>对应费用已手工录入</td><td><strong>不匹配价表、不更新该费用</strong>；放行可成功</td></tr>
         </tbody>
       </table>
-      <p class="lead" style="margin-top:10px"><strong>通知业务员：</strong><code>运单{运单号}因扣件放行时价格上涨，已按最新的价格表更新价格，请知悉。</code></p>
-      <button type="button" class="btn-demo" data-preview="sales">点击预览 · 业务员右下角代办（同询价）</button>
-      <p class="lead"><strong>运单日志：</strong><code>扣件放行同时说明，放行时间价格已上涨{上涨金额}￥，价格已按最新价格表更新。</code></p>
+      <p class="lead" style="margin-top:10px"><strong>通知业务员：</strong><code>运单{运单号}因扣件放行时调价，已按最新的价格表更新价格，请知悉。</code>（直客上调/下调均发；同行仅上调）</p>
+      <p class="lead">右下角弹窗约<strong>3 秒</strong>自动消失；正式处理入口为<strong>我的通知</strong> / <strong>代办列表</strong>。</p>
+      <button type="button" class="btn-demo" data-preview="sales">点击预览 · 业务员右下角弹窗（约 3 秒消失）</button>
+      <p class="lead"><strong>运单日志：</strong><code>扣件放行同时说明，放行时间价格已调价{调价金额}￥，价格已按最新价格表更新。</code></p>
       <p class="lead"><strong>计费日志：</strong>费用重算再计一轮，参数带<strong>放行时间 = T<sub>放行</sub></strong>。</p>
     </div>
 
@@ -209,21 +227,16 @@ flowchart TD
       <table>
         <thead><tr><th>类型</th><th>校验</th><th>过期 / 无对标</th></tr></thead>
         <tbody>
-          <tr><td>私卡</td><td>绑定询价<strong>有效期至</strong> ≥ 放行日</td><td>过期仍<strong>正常放行</strong> + 推报价员代办；处理范例：解绑 → 重询价 → <code>#/MyQuote</code> 再绑</td></tr>
-          <tr><td>整柜</td><td>有合约/报价有效期则校验；常无询价</td><td>过期/无对标仍<strong>正常放行</strong> + 推报价员清单（可无询价单号）；报价员与业务员线下沟通</td></tr>
+          <tr><td>整柜 / 私卡（规则相同）</td><td>报价/绑单<strong>有效期至</strong> ≥ 放行日；无有效期数据视为无对标</td><td>过期/无对标仍<strong>正常放行</strong> + 推报价员代办；后续：解绑 → 重询价 → <code>#/MyQuote</code> 再绑（有绑单时）</td></tr>
         </tbody>
       </table>
       <p class="lead" style="margin-top:8px">操作人提示（不拦放行）：<code>报价已过期或无有效价格，已通知报价员处理。</code></p>
-      <p class="lead"><strong>代办去处理：</strong><code>#/MyQuote</code> · 询价单号筛选项 = 清单询价单号（例 <code>XJ202610200031</code>）并自动查询。</p>
-      <button type="button" class="btn-demo sec" data-preview="quote">点击预览 · 报价员右下角代办（同询价）</button>
-      <p class="preview-hint">样式对齐
-        <a href="../../../运单管理-签入代办角标弹窗-MVP.html">运单 · 签入代办</a>、
-        <a href="../../../APP/ESS询价报价-APP-列表-MVP.html">询价 APP 列表</a>、
-        <a href="../../../财务部门/风控报表-超期退仓推送-MVP.html">RISK-006 退仓代办</a>。
-        报价员代办「<strong>去处理</strong>」→ <code>#/MyQuote</code>（我的报价），将清单中的<strong>询价单号</strong>带入列表筛选项并触发查询；<strong>无询价单号</strong>（整柜常见）时仅打开我的报价页，不做询价单过滤。本期仅清单，不要求在代办内点放行。</p>
+      <p class="lead"><strong>代办去处理（整柜=私卡）：</strong><code>#/MyQuote</code> · 有询价单号则筛选项带入并自动查询；无则只打开页面。</p>
+      <button type="button" class="btn-demo sec" data-preview="quote">点击预览 · 报价员右下角弹窗（约 3 秒消失）</button>
+      <p class="preview-hint">弹窗约<strong>3 秒</strong>自动消失；须到<strong>代办列表</strong>处理。整柜/私卡相同：代办「<strong>去处理</strong>」→ <code>#/MyQuote</code>，有询价单号则筛选，无则仅打开页面。本期仅清单，不要求在代办内点放行。</p>
     </div>
 
-    <p class="foot">KJ-HOLD v0.8 · 调研项 <a href="扣件放行-价格重算-KJ-PRD-完整skill版.html#pool">完整版调研池</a></p>
+    <p class="foot">KJ-HOLD v1.1 · 调研项 <a href="扣件放行-价格重算-KJ-PRD-完整skill版.html#pool">完整版调研池</a></p>
   </div>
 
   <div class="inquiry-toast-stack" id="kjToastStack" aria-live="polite"></div>
@@ -257,7 +270,7 @@ flowchart TD
             '<button type="button" class="toast-close" aria-label="关闭">×</button>' +
             '<div class="toast-ico">i</div>' +
             '<p class="toast-title">张三，您收到一条<em>扣件放行价格更新</em>消息</p>' +
-            '<p class="toast-meta">运单 TXZG26082001826 · 因扣件放行时价格上涨，已按最新的价格表更新价格，请知悉。 · 运单日志：放行时间价格已上涨 1￥</p>' +
+            '<p class="toast-meta">运单 TXZG26082001826 · 因扣件放行时调价，已按最新的价格表更新价格，请知悉。 · 运单日志：放行时间价格已调价 1￥</p>' +
             '<div class="toast-actions">' +
             '<button type="button" class="toast-btn">稍后</button>' +
             '<button type="button" class="toast-btn primary">知道了</button>' +
@@ -292,7 +305,7 @@ flowchart TD
             dismissToast(toast);
           });
         });
-        setTimeout(function () { if (toast.parentNode) dismissToast(toast); }, 12000);
+        setTimeout(function () { if (toast.parentNode) dismissToast(toast); }, 3000);
       }
 
       document.querySelectorAll("[data-preview]").forEach(function (btn) {
