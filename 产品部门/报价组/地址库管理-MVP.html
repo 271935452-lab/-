@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>地址库管理 · 尾端收货条件沉淀 · MVP</title>
+  <title>地址库管理 · 尾端收货条件沉淀 · MVP v1.1</title>
   <style>
     :root {
       --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
@@ -356,14 +356,14 @@
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%">
           <div>
             <h1>地址库管理 <span class="badge new">NEW</span></h1>
-            <p>按第一轮评审：一级场景自动带默认最大车（住宅/无卸货台→26尺，有卸货台→53尺）；<strong>不采集围墙/封闭</strong>。业务询价按详细地址匹配并提示等时费/尾板次数与平均派送时效；<strong>同一地址类型与核实迈数一次确认</strong>；生效类型<strong>海外已核准优先</strong>，海外无则报价员核实。</p>
+            <p>PRD <strong>v1.1</strong>：询价 Google 标准址+测距；报价员<strong>只核实地址类型</strong>。一级场景自动带默认最大车；<strong>不采集围墙/封闭</strong>。生效类型<strong>海外已核实优先</strong>，海外无则报价员核实。</p>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:none">
             <span id="quoteV2DocMount"></span>
             <a href="地址库管理-MVP-PRD-交互稿.html" style="font-size:12px;color:#047857;text-decoration:none;border:1px solid #6ee7b7;padding:4px 10px;border-radius:2px;background:#ecfdf5">PRD·交互稿</a>
           </div>
         </div>
-        <p id="pinDistSect" style="margin:10px 0 0;font-size:12px;color:var(--sub)">距离核实：<strong>地址主档 + 始发仓距离从表</strong>（仅报价员在报价详情维护）；点「打开档案」查看从表。</p>
+        <p id="pinDistSect" style="margin:10px 0 0;font-size:12px;color:var(--sub)">配送距离：询价提交时 <strong>Google</strong> 测算，见询价试算日志；<strong>v1.1 起不在地址主档维护报价员核实距离</strong>。</p>
       </div>
 
       <div class="fn-tabs" id="fnTabs">
@@ -412,9 +412,9 @@
 
         <div class="status-tabs" id="statusTabs">
           <button type="button" class="st on" data-f="all">全部<span class="n" id="nAll">(0)</span></button>
-          <button type="button" class="st" data-f="quote">待报价核实<span class="n" id="nQuote">(0)</span></button>
-          <button type="button" class="st" data-f="oversea">待海外核准<span class="n" id="nOversea">(0)</span></button>
-          <button type="button" class="st" data-f="done">海外已核准<span class="n" id="nDone">(0)</span></button>
+          <button type="button" class="st" data-f="quote">业务提交<span class="n" id="nQuote">(0)</span></button>
+          <button type="button" class="st" data-f="oversea">报价已核实<span class="n" id="nOversea">(0)</span></button>
+          <button type="button" class="st" data-f="done">海外已核实<span class="n" id="nDone">(0)</span></button>
         </div>
 
         <div class="table-wrap">
@@ -579,12 +579,12 @@
     var draftTree = null;
 
     function stTag(s) {
-      if (s === "done") return '<span class="tag ok">海外已核准</span>';
-      if (s === "oversea") return '<span class="tag blue">待海外核准</span>';
-      return '<span class="tag warn">待报价核实</span>';
+      if (s === "done") return '<span class="tag ok">海外已核实</span>';
+      if (s === "oversea") return '<span class="tag blue">报价已核实</span>';
+      return '<span class="tag warn">业务提交</span>';
     }
     function stLabel(s) {
-      return s === "done" ? "海外已核准" : s === "oversea" ? "待海外核准" : "待报价核实";
+      return s === "done" ? "海外已核实" : s === "oversea" ? "报价已核实" : "业务提交";
     }
     function val(id) {
       var el = document.getElementById(id);
@@ -702,7 +702,10 @@
       if (!pod) return '<span class="muted">未录签收</span>';
       var html = "";
       (pod.cust || []).forEach(function (c) { html += chip(c, c === "无特殊" ? "" : "warn"); });
-      if (pod.wait === "是") html += chip("等时费" + (pod.waitAmt ? " " + pod.waitAmt : ""), "warn");
+      if (pod.waitFee && (pod.waitFee.code || pod.waitFee.name)) {
+        var wf = pod.waitFee;
+        html += chip((wf.code || "W15") + "·" + (wf.name || "待时费") + (wf.amt ? " " + wf.amt : ""), "warn");
+      } else if (pod.wait === "是") html += chip("等时费" + (pod.waitAmt ? " " + pod.waitAmt : ""), "warn");
       else if (pod.wait === "否") html += chip("无等时费", "ok");
       if (pod.photos) html += chip(pod.photos, "ok");
       return html || '<span class="muted">—</span>';
@@ -772,15 +775,10 @@
         ? '<div class="photo-list">' + photos.map(function (p) {
             return '<div class="photo-item"><span class="cat">' + p.cat + '</span><a href="javascript:;" data-preview="' + p.name + '">' + p.name + '</a><span class="muted" style="margin-left:auto;white-space:nowrap">' + p.by + " · " + p.at + "</span></div>";
           }).join("") + "</div>"
-        : '<p class="photo-empty">' + (r.st === "done" ? "暂无附件" : "待海外核准 / 签收时上传门头与外景照视频") + "</p>";
+        : '<p class="photo-empty">' + (r.st === "done" ? "暂无附件" : "报价已核实 / 签收时上传门头与外景照视频") + "</p>";
       document.getElementById("dTitle").textContent = r.id;
       var waitPct = r.n ? Math.round((r.wait || 0) / r.n * 100) : 0;
       var tailPct = r.n ? Math.round((r.tail || 0) / r.n * 100) : 0;
-      var distHtml = (r.dists || []).length
-        ? (r.dists || []).map(function (d) {
-            return '<div class="hist"><b>' + d.origin + "</b> · " + d.product + "<div>核实距离 <b>" + d.miles + "</b> 迈 · " + d.by + "</div></div>";
-          }).join("")
-        : '<p class="muted">尚无报价员核实距离</p>';
       var aliasHtml = (r.aliases && r.aliases.length)
         ? (r.aliases || []).map(function (a) {
             return '<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border:1px solid #e8e8e8;border-radius:2px;background:#fafafa;font-size:11px">' + a + "</span>";
@@ -806,11 +804,10 @@
         '<div class="sect-title">历史派送提示（给业务员）</div>' +
         '<div class="kv">' +
         "<span>累计票数</span><b>" + r.n + "</b>" +
-        "<span>等时费</span><div>" + (r.wait || 0) + " 次（签收录费用后 +1）· 约 " + waitPct + "% · 业务自判</div>" +
+        "<span>等时费</span><div>" + (r.wait || 0) + " 次（绑定运单添加 <strong>W15·待时费</strong> +1/票）· 约 " + waitPct + "% · 业务自判</div>" +
         "<span>尾板</span><div>" + (r.tail || 0) + " 次（出库勾选带尾板 +1）· 约 " + tailPct + "%</div>" +
         "<span>海外仓出库后签收时效</span><b>" + (r.avgDays === "—" || r.avgDays == null ? "—" : r.avgDays + " 天") + "</b>" +
         "</div>" +
-        '<div class="sect-title">报价员核实距离（按始发仓/销售产品）</div>' + distHtml +
         '<div class="photo-block" style="margin-top:12px"><b>签收外景照 / 视频</b>' + photoHtml + "</div>" +
         '<div class="sect-title">单票事实</div>' +
         '<p class="muted" style="margin:0 0 8px;line-height:1.55">出库/签收/补录按运单<strong>只追加</strong>，不在档案内展开。在本页「事实数据」按该地址查看。</p>' +

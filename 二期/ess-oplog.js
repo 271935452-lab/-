@@ -20,7 +20,9 @@
   var opts = {
     title: "操作日志",
     operator: "当前用户",
-    toast: null
+    toast: null,
+    hideSummary: false,
+    hideTypeFilter: false
   };
 
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
@@ -50,7 +52,7 @@
           '<button type="button" class="ess-oplog-close" id="essOplogClose">关闭</button>' +
         "</div>" +
         '<div class="ess-oplog-sum" id="essOplogSum"></div>' +
-        '<div class="ess-oplog-filter"><select id="essOplogType"><option value="">全部类型</option></select></div>' +
+        '<div class="ess-oplog-filter" id="essOplogFilter"><select id="essOplogType"><option value="">全部类型</option></select></div>' +
         '<div class="ess-oplog-bd"><table class="ess-oplog-tbl">' +
           "<thead><tr><th style='width:150px'>时间</th><th style='width:72px'>操作人</th>" +
           "<th style='width:96px'>类型</th><th>内容</th></tr></thead>" +
@@ -72,19 +74,29 @@
     return store.filter(function (e) { return e.key === key; });
   }
 
+  function applyLayoutOpts() {
+    var sum = document.getElementById("essOplogSum");
+    var fil = document.getElementById("essOplogFilter");
+    if (sum) sum.style.display = opts.hideSummary ? "none" : "";
+    if (fil) fil.style.display = opts.hideTypeFilter ? "none" : "";
+  }
+
   function renderTable() {
     var body = document.getElementById("essOplogBody");
     var sel = document.getElementById("essOplogType");
-    if (!body || !sel) return;
+    if (!body) return;
     var all = listFor(currentKey);
-    var types = {};
-    all.forEach(function (e) { types[e.type] = true; });
-    var keep = sel.value;
-    sel.innerHTML = '<option value="">全部类型</option>' +
-      Object.keys(types).map(function (t) {
-        return '<option value="' + esc(t) + '"' + (t === keep ? " selected" : "") + ">" + esc(t) + "</option>";
-      }).join("");
-    var typeF = sel.value;
+    var typeF = "";
+    if (sel && !opts.hideTypeFilter) {
+      var types = {};
+      all.forEach(function (e) { types[e.type] = true; });
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">全部类型</option>' +
+        Object.keys(types).map(function (t) {
+          return '<option value="' + esc(t) + '"' + (t === keep ? " selected" : "") + ">" + esc(t) + "</option>";
+        }).join("");
+      typeF = sel.value;
+    }
     var list = all.filter(function (e) { return !typeF || e.type === typeF; })
       .slice().sort(function (a, b) { return a.at < b.at ? 1 : (a.at > b.at ? -1 : 0); });
     body.innerHTML = list.length
@@ -117,8 +129,11 @@
         if (o.title) opts.title = o.title;
         if (o.operator) opts.operator = o.operator;
         if (o.toast) opts.toast = o.toast;
+        if (o.hideSummary != null) opts.hideSummary = !!o.hideSummary;
+        if (o.hideTypeFilter != null) opts.hideTypeFilter = !!o.hideTypeFilter;
       }
       ensureDom();
+      applyLayoutOpts();
       var t = document.getElementById("essOplogTitle");
       if (t) t.textContent = opts.title;
     },
@@ -143,11 +158,23 @@
     open: function (key, meta) {
       if (!key) { say("无法打开操作日志：缺少对象"); return; }
       ensureDom();
+      applyLayoutOpts();
       currentKey = String(key);
       currentMeta = meta || {};
       var sel = document.getElementById("essOplogType");
       if (sel) sel.value = "";
-      renderHeader();
+      if (opts.hideSummary) {
+        var sum = document.getElementById("essOplogSum");
+        if (sum) sum.innerHTML = "";
+      } else {
+        renderHeader();
+      }
+      var t = document.getElementById("essOplogTitle");
+      if (t) {
+        t.textContent = opts.hideSummary
+          ? (opts.title + " · " + currentKey)
+          : opts.title;
+      }
       renderTable();
       var mask = document.getElementById("essOplogMask");
       mask.classList.add("open");
@@ -159,6 +186,8 @@
       mask.classList.remove("open");
       mask.setAttribute("aria-hidden", "true");
       currentKey = "";
+      var t = document.getElementById("essOplogTitle");
+      if (t) t.textContent = opts.title;
     },
     list: function (key) { return listFor(key); }
   };

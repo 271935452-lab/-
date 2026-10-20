@@ -1410,13 +1410,13 @@
           </p>
           <div class="out-addr-grid">
             <div class="full">
-              <label>客户特征 · 收货人标记 <span class="req">*</span></label>
+              <label>客户特征 · 收货人标记</label>
               <div id="podCustBox" class="addr-cust-box"></div>
             </div>
           </div>
           <div class="out-att-grid" style="margin-top:10px">
             <div class="out-att-slot">
-              <strong>门头 / 外观 <span class="req">*</span></strong>
+              <strong>门头 / 外观 <span class="opt">选填</span></strong>
               <input type="file" id="podPhotoFacade" accept=".jpg,.jpeg,.png,.webp,.heic" multiple />
               <div class="file-name empty" id="podPhotoFacadeName">未上传</div>
             </div>
@@ -1426,12 +1426,12 @@
               <div class="file-name empty" id="podPhotoUnloadName">未上传</div>
             </div>
             <div class="out-att-slot">
-              <strong>签收外景照片 <span class="req">*</span></strong>
+              <strong>签收外景照片 <span class="opt">选填</span></strong>
               <input type="file" id="podExtPhoto" accept=".jpg,.jpeg,.png,.webp,.heic" multiple />
               <div class="file-name empty" id="podExtPhotoName">未上传</div>
             </div>
             <div class="out-att-slot">
-              <strong>签收外景视频 <span class="req">*</span></strong>
+              <strong>签收外景视频 <span class="opt">选填</span></strong>
               <input type="file" id="podExtVideo" accept=".mp4,.mov,.webm,.avi" multiple />
               <div class="file-name empty" id="podExtVideoName">未上传</div>
             </div>
@@ -1520,10 +1520,9 @@
               <label>客户特征 · 收货人标记</label>
               <div id="archCustBox" class="addr-cust-box"></div>
             </div>
-            <div>
-              <label>本票是否录等时费 <span style="font-weight:400;color:#8c8c8c">选填</span></label>
-              <input type="hidden" id="archWait" value="" />
-              <div class="addr-pick" id="archWaitPick" role="radiogroup" aria-label="是否录等时费"></div>
+            <div class="full">
+              <label>等时次数回写</label>
+              <p class="muted" style="margin:4px 0 0;font-size:12px;line-height:1.55">绑定运单在费用明细添加 <strong>W15·待时费</strong>（销售/渠道费用 · 海外仓）后，地址库等时次数自动 +1/票；本页不手工勾选。</p>
             </div>
             <div>
               <label for="archPodNote">其他特殊需求</label>
@@ -1756,10 +1755,15 @@
     var fbaLabel = String(r.fba || "").indexOf("私人") >= 0 ? "私人地址" : (r.fba || "—");
     for (var i = 0; i < n; i++) {
       var awb = "ICBU" + ("00000000000" + (1224000 + r.id * 100 + i)).slice(-11);
+      var fees = [];
+      if (isPrivateType(r) && (i === 1 || (r.id % 4 === 1 && i === 2))) {
+        fees.push({ code: "W15", name: "待时费", category: "销售/渠道费用", scope: "海外仓" });
+      }
       list.push({
         wbId: r.id + "-" + i,
         parentId: r.id,
         awb: awb,
+        fees: fees,
         custNo: String(2608000 + r.id * 17 + i),
         bookSt: r.bookAt ? (i === 0 ? "已约仓" : "未统计") : "未统计",
         sales: SALES[r.id % SALES.length],
@@ -2331,7 +2335,46 @@
   function saveAddrLibStats(all) {
     try { localStorage.setItem("addrLibStats_v1", JSON.stringify(all || {})); } catch (e) {}
   }
-  /** 地址库埋点：出发带尾板「是」→ tail+1；签收完成 → n+1 */
+  var ADDR_WAIT_FEE = { code: "W15", name: "待时费" };
+  function waybillHasWaitFee(w) {
+    if (!w) return false;
+    var fees = w.fees || w.feeLines || [];
+    for (var i = 0; i < fees.length; i++) {
+      var f = fees[i] || {};
+      var c = String(f.code || f.feeCode || "").toUpperCase();
+      var n = f.name || f.feeName || "";
+      if (c === ADDR_WAIT_FEE.code || n === ADDR_WAIT_FEE.name) return true;
+    }
+    return false;
+  }
+  function loadWaitCountedAwbs() {
+    try { return JSON.parse(localStorage.getItem("addrLibWaitCounted_v1") || "[]"); }
+    catch (e) { return []; }
+  }
+  function markWaitCountedAwb(awb) {
+    if (!awb) return;
+    var set = loadWaitCountedAwbs();
+    if (set.indexOf(awb) < 0) {
+      set.push(awb);
+      try { localStorage.setItem("addrLibWaitCounted_v1", JSON.stringify(set)); } catch (e2) {}
+    }
+  }
+  function isWaitCountedAwb(awb) {
+    return loadWaitCountedAwbs().indexOf(awb) >= 0;
+  }
+  /** 绑定运单已挂 W15·待时费 → 地址库 wait +1（每运单号计一次） */
+  function syncWaitFromBoundWaybills(row) {
+    if (!row || !isPrivateType(row)) return 0;
+    var bumped = 0;
+    waybillsOf(row).forEach(function (w) {
+      if (!waybillHasWaitFee(w) || isWaitCountedAwb(w.awb)) return;
+      bumpAddrLibStat(row, { wait: 1 });
+      markWaitCountedAwb(w.awb);
+      bumped++;
+    });
+    return bumped;
+  }
+  /** 地址库埋点：出发带尾板「是」→ tail+1；签收完成 → n+1；运单 W15·待时费 → wait+1 */
   function bumpAddrLibStat(r, patch) {
     if (!r || !patch) return null;
     var key = addrStatsKey(r);
@@ -2427,7 +2470,7 @@
         {
           no: "CUS-202607-088", by: "港后·李婷", at: "2026-07-22", src: "both",
           out: { l1: "商业有卸货台", truck: "53尺", tail: "是" },
-          pod: { cust: ["无特殊"], wait: "是", waitAmt: "USD 85", photos: "外景已传" }
+          pod: { cust: ["无特殊"], waitFee: { code: "W15", name: "待时费", amt: "USD 85" }, photos: "外景已传" }
         },
         {
           no: "CUS-202606-041", by: "港后·王芳", at: "2026-06-18", src: "both",
@@ -2505,7 +2548,10 @@
     if (!pod) return '<span class="muted">未录签收</span>';
     var html = "";
     (pod.cust || []).forEach(function (c) { html += archChip(c, c === "无特殊" ? "" : "warn"); });
-    if (pod.wait === "是") html += archChip("等时费" + (pod.waitAmt ? " " + pod.waitAmt : ""), "warn");
+    if (pod.waitFee && (pod.waitFee.code || pod.waitFee.name)) {
+      var wf = pod.waitFee;
+      html += archChip((wf.code || "W15") + "·" + (wf.name || "待时费") + (wf.amt ? " " + wf.amt : ""), "warn");
+    } else if (pod.wait === "是") html += archChip("等时费" + (pod.waitAmt ? " " + pod.waitAmt : ""), "warn");
     else if (pod.wait === "否") html += archChip("无等时费", "ok");
     if (pod.photos) html += archChip(pod.photos, "ok");
     return html || '<span class="muted">—</span>';
@@ -2586,7 +2632,6 @@
     fillArchL2(($("archL1") && $("archL1").value) || "");
     renderAddrPick("archTruckPick", "archTruck", ["26尺", "48尺", "53尺", "其他"], "archTruckPick");
     renderAddrPick("archTailPick", "archTail", ["是", "否"], "archTailPick");
-    renderAddrPick("archWaitPick", "archWait", ["是", "否"], "archWaitPick");
   }
   function fillArchL2(l1Name) {
     var l1 = findAddrL1(l1Name);
@@ -2594,7 +2639,7 @@
     renderAddrPick("archL2Pick", "archL2", items, "archL2Pick");
   }
   function resetArchFormFields() {
-    ["archL1", "archL2", "archTruck", "archTail", "archWait"].forEach(function (id) {
+    ["archL1", "archL2", "archTruck", "archTail"].forEach(function (id) {
       if ($(id)) $(id).value = "";
     });
     ["archWindow", "archMiles", "archCorrNote", "archSuppNote", "archPodNote", "archAliasAdd"].forEach(function (id) {
@@ -2689,7 +2734,6 @@
     var l2 = ($("archL2") && $("archL2").value) || "";
     var actTruck = ($("archTruck") && $("archTruck").value) || "";
     var tail = ($("archTail") && $("archTail").value) || "";
-    var wait = ($("archWait") && $("archWait").value) || "";
     var maxTruck = ($("archMaxTruck") && $("archMaxTruck").value) || "";
     var win = ($("archWindow").value || "").trim();
     var corr = ($("archCorrNote").value || "").trim();
@@ -2718,7 +2762,7 @@
     }
 
     var hasOut = !!(l1 || l2 || actTruck || tail || win || maxTruck || miles);
-    var hasPod = !!(cust.length || wait || nFiles || podNote);
+    var hasPod = !!(cust.length || nFiles || podNote);
     if (!hasOut && !hasPod && !corr && !note && !aliasAdd) {
       toast("请至少补一项出发或签收内容");
       return;
@@ -2740,7 +2784,6 @@
       } : null,
       pod: hasPod ? {
         cust: cust.slice(),
-        wait: wait || "",
         photos: nFiles ? ("补传 " + nFiles + " 个") : ""
       } : null,
       note: noteBits.join(" · ") || (podNote || "")
@@ -2752,14 +2795,14 @@
       var key = arch.zip || arch.id;
       bump[key] = bump[key] || { n: 0, wait: 0, tail: 0 };
       if (tail === "是") bump[key].tail = (bump[key].tail || 0) + 1;
-      if (wait === "是") bump[key].wait = (bump[key].wait || 0) + 1;
       localStorage.setItem("addrLibStats_v1", JSON.stringify(bump));
       localStorage.setItem("addrArchPatch_v1", JSON.stringify({
         id: arch.id,
         l1: arch.l1, l2: arch.l2, truck: arch.truck, tail: arch.tail,
         maxTruck: arch.maxTruck, window: arch.window, cust: arch.cust || [],
-        wait: wait, at: "2026-08-07", by: "港后补录"
+        at: "2026-08-07", by: "港后补录"
       }));
+      if (row) syncWaitFromBoundWaybills(row);
     } catch (e) {}
 
     toast("已写入地址库档案 " + arch.id + "（出发+签收只追加）");
@@ -3582,25 +3625,6 @@
       return;
     }
     var hasPriv = podTargets.some(isPrivateType);
-    if (hasPriv) {
-      var podCust = selectedCust("pod-cust-ck");
-      if (!podCust.length) {
-        toast("请勾选签收时收货人标记");
-        return;
-      }
-      if (!podSitePhotos.facade.length) {
-        toast("私卡签收请上传门头/外观照片");
-        return;
-      }
-      if (!podExtPhotos.length) {
-        toast("私卡签收请上传外景照片");
-        return;
-      }
-      if (!podExtVideos.length) {
-        toast("私卡签收请上传外景视频");
-        return;
-      }
-    }
     var podCust = hasPriv ? selectedCust("pod-cust-ck") : [];
     var siteSettle = hasPriv ? {
       note: ($("podNote").value || "").trim(),
@@ -3698,10 +3722,8 @@
     if (e.target === podMask) closePod();
   });
 
+  ROWS.filter(isPrivateType).forEach(syncWaitFromBoundWaybills);
   render();
-  window.addEventListener("load", function () {
-    if (typeof window.quoteV2AttachReviewPins === "function") window.quoteV2AttachReviewPins();
-  });
 })();
   </script>
   <script src="../报价组/quote-v2-review-points.js"></script>

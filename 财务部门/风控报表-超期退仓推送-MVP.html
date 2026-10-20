@@ -77,6 +77,22 @@
     .sider-demo .btn-demo.primary { border-color: rgba(24,144,255,.55); color: #91d5ff; }
     .sider-demo .btn-demo.warn { border-color: rgba(250,140,22,.45); color: #ffd591; }
     .sider-demo .btn-demo.danger { border-color: rgba(255,77,79,.45); color: #ffa39e; }
+    .sales-act-mask {
+      position: fixed; inset: 0; z-index: 10020; background: rgba(0,0,0,.45);
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .sales-act-mask.open { display: flex; }
+    .sales-act-dlg {
+      width: min(420px, 96vw); background: #fff; border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 16px 18px 14px;
+    }
+    .sales-act-dlg h3 { margin: 0 0 8px; font-size: 15px; }
+    .sales-act-dlg p { margin: 0 0 12px; font-size: 12px; color: var(--sub); line-height: 1.55; }
+    .sales-act-dlg label {
+      display: flex; align-items: flex-start; gap: 8px; margin: 0 0 8px;
+      font-size: 13px; cursor: pointer;
+    }
+    .sales-act-dlg .ft { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
     .main { flex: 1; min-width: 0; padding: 10px 12px 24px; overflow: auto; }
 
     .badge {
@@ -413,7 +429,7 @@
                   <th class="col-wb-status" title="运单主数据·状态字典">运单状态</th>
                     <th>签出状态</th>
                   <th>预配舱</th>
-                  <th id="colThHold" title="正常件 / 普通扣件 / 特殊扣件；进池为普通扣件或特殊扣件">扣件状态</th>
+                  <th id="colThHold" title="运单列表扣件类型，仅展示；进池不看扣件">扣件状态</th>
                     <th>签入时间</th>
                     <th>签出时间</th>
                   <th id="colThOverdue">超期天数</th>
@@ -434,6 +450,19 @@
 
   <div class="inquiry-toast-stack" id="toastStack" aria-live="polite"></div>
   <div class="finance-tip" id="financeTip" role="status" aria-live="polite"></div>
+
+  <div class="sales-act-mask" id="salesActMask" aria-hidden="true">
+    <div class="sales-act-dlg" role="dialog" aria-labelledby="salesActTitle">
+      <h3 id="salesActTitle">退仓跟进 · 请选择处理方式</h3>
+      <p id="salesActSub">运单页已按单号筛选（原型演示在本页查询区）。<strong>必须二选一</strong>后点确定。</p>
+      <label><input type="radio" name="salesActPick" value="refund" /> 退件退款</label>
+      <label><input type="radio" name="salesActPick" value="arrival" /> 刷新到货时间为今天</label>
+      <div class="ft">
+        <button type="button" class="btn" id="salesActCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="salesActOk">确定</button>
+      </div>
+    </div>
+  </div>
 
   <script src="../二期/ess-oplog.js"></script>
 
@@ -628,11 +657,11 @@
         '<div class="muted">执行 ' + (todo.autoRefundAt || "—") + "</div>";
     }
     if (row.status === "已签出") {
-      return '<span class="tag gray">仅财务看 · 不退仓</span>';
+      return '<span class="muted">—</span>';
     }
     if (todo && (todo.businessHandled || todo.salesHandled)) {
       return '<span class="tag green">业务已处理</span>' +
-        '<div class="muted">登记 ' + (todo.businessHandledAt || todo.salesHandledAt || "—") + "</div>";
+        '<div class="muted">识别 ' + (todo.businessHandledAt || todo.salesHandledAt || "—") + "</div>";
     }
     if (todo && todo.toSales) {
       return '<span class="tag gold">业务员跟进中</span>' +
@@ -670,23 +699,107 @@
     row.wbStatus = "已退件";
     saveTodos(todos);
     var deadline = todo.salesDeadline || "—";
-    var detail = "缓冲截止 " + deadline + " 前业务员无有效操作，触发退件退款；运单 " + row.waybill +
-      " · " + row.lane + " · 超期 " + (todo.days || overdueDaysOf(row)) + " 天";
+    var is2h = reason && reason.indexOf("2小时") >= 0;
+    var detail = is2h
+      ? "推送业务员后 2 小时内未点击「去处理」，系统调用问题件跟踪·退件（处理方式=退件退款）；运单 " + row.waybill +
+        " · " + row.lane + " · 超期 " + (todo.days || overdueDaysOf(row)) + " 天"
+      : "缓冲截止 " + deadline + " 前仍未业务已处理，系统调用问题件跟踪·退件（处理方式=退件退款）；运单 " + row.waybill +
+        " · " + row.lane + " · 超期 " + (todo.days || overdueDaysOf(row)) + " 天";
     writeWaybillLog(row.waybill, LOG_TYPE.AUTO_REFUND, detail, { sys: true });
-    logLine("[" + ts + "] <strong class=\"red\">系统自动退件退款</strong> · 运单 <b>" + row.waybill +
-      "</b> · 截止 <b>" + deadline + "</b> 无操作 · " + (reason || "定时任务"), "fail");
+    logLine("[" + ts + "] <strong class=\"red\">系统自动退件退款</strong> · 问题件跟踪·退件 · 运单 <b>" + row.waybill +
+      "</b> · " + (reason || "定时任务"), "fail");
     return true;
   }
 
+  function salesOver2hNoGoHandle(t) {
+    if (!t || !t.salesAt || t.salesGoHandleClicked) return false;
+    var d = new Date(String(t.salesAt).replace(/-/g, "/"));
+    if (isNaN(d.getTime())) return false;
+    return (Date.now() - d.getTime()) >= 2 * 60 * 60 * 1000;
+  }
+
+  var pendingSalesActTodoId = null;
+
+  function closeSalesActMask() {
+    var mask = document.getElementById("salesActMask");
+    if (mask) {
+      mask.classList.remove("open");
+      mask.setAttribute("aria-hidden", "true");
+    }
+    document.querySelectorAll('input[name="salesActPick"]').forEach(function (el) { el.checked = false; });
+    pendingSalesActTodoId = null;
+  }
+
+  function openSalesHandleFlow(todoId) {
+    var row = baseRows.find(function (r) { return r.id === todoId; });
+    var t = todos[todoId];
+    if (!row || !t) return;
+    t.salesGoHandleClicked = true;
+    t.salesGoHandleAt = nowStr();
+    saveTodos(todos);
+    pendingSalesActTodoId = todoId;
+    var q = document.getElementById("qWaybill");
+    if (q) q.value = row.waybill;
+    searchQ = readSearchForm();
+    renderTable();
+    var sub = document.getElementById("salesActSub");
+    if (sub) sub.innerHTML = "运单 <b>" + row.waybill + "</b> 已写入查询条件（正式环境跳转运单管理页）。<strong>必须二选一</strong>后点确定。";
+    var mask = document.getElementById("salesActMask");
+    if (mask) {
+      mask.classList.add("open");
+      mask.setAttribute("aria-hidden", "false");
+    }
+    logLine("[" + nowStr() + "] 业务员点击<strong>去处理</strong> · 运单 <b>" + row.waybill + "</b> · 待必选退件退款/刷新到货", "ok");
+  }
+
+  function confirmSalesActChoice() {
+    var pick = document.querySelector('input[name="salesActPick"]:checked');
+    if (!pick) {
+      showFinanceTip("请选择「退件退款」或「刷新到货时间为今天」");
+      return;
+    }
+    var id = pendingSalesActTodoId;
+    if (!id || !todos[id]) return;
+    var ts = nowStr();
+    var wb = todos[id].waybill;
+    if (pick.value === "refund") {
+      logLine("[" + ts + "] 调用<strong>问题件跟踪·退件</strong> · 运单 <b>" + wb + "</b> · 处理方式=退件退款（原型演示）", "ok");
+      todos[id].salesAction = "退件退款";
+    } else {
+      var row = baseRows.find(function (r) { return r.id === id; });
+      var orig = todos[id].origArrivalTime;
+      if (!orig) {
+        orig = (row && row.inAt && row.inAt !== "—") ? row.inAt : "—";
+        todos[id].origArrivalTime = orig;
+      }
+      logLine("[" + ts + "] 保存原到货时间=<strong>" + orig + "</strong> · 新到货时间=<strong>" + ts + "</strong> · 运单 <b>" + wb + "</b> · <strong>重新计费</strong>（原型演示）", "ok");
+      logLine("[" + ts + "] 运单日志：签入时间超过阈值后操作更新到货时间：由<strong>" + orig + "</strong>更新为<strong>" + ts + "</strong>", "ok");
+      todos[id].salesAction = "刷新到货时间为今天";
+      todos[id].arrivalRefreshedAt = ts;
+    }
+    todos[id].salesHandled = true;
+    todos[id].salesHandledAt = ts;
+    todos[id].businessHandled = true;
+    todos[id].businessHandledAt = ts;
+    saveTodos(todos);
+    logLine("[" + ts + "] 业务员处理完成 · 退仓标记→业务已处理", "ok");
+    closeSalesActMask();
+    renderTable();
+    showFinanceTip("已记录：" + todos[id].salesAction + " · 业务已处理");
+  }
+
   function scanAutoRefundDue(simulateAll) {
+    syncBusinessHandledFromWaybill();
     var n = 0;
     Object.keys(todos).forEach(function (id) {
       var t = todos[id];
       if (!t || t.autoRefund || !t.toSales || t.businessHandled || t.salesHandled) return;
       var row = baseRows.find(function (r) { return r.id === id; });
       if (!row || row.status !== "未签出") return;
-      if (simulateAll || t.simRefundDue) {
-        if (applyAutoRefund(id, "模拟到期扫描")) n += 1;
+      var due2h = salesOver2hNoGoHandle(t);
+      if (simulateAll || t.simRefundDue || due2h) {
+        var reason = due2h ? "推送后2小时未点去处理" : "模拟到期扫描";
+        if (applyAutoRefund(id, reason)) n += 1;
       }
     });
     if (n) {
@@ -783,13 +896,9 @@
     return Math.round(dwell * 10) / 10;
   }
 
-  /** 退仓进池：超期命中 +（普通扣件或特殊扣件）+ 运单非已退件 */
-  function poolEligibleHold(h) {
-    return h === "普通扣件" || h === "特殊扣件";
-  }
+  /** 退仓进池：超期命中 + 运单非已退件（不看扣件类型） */
   function poolHit(row) {
     if (!row || !ruleOf(row).hit) return false;
-    if (!poolEligibleHold(row.hold)) return false;
     if (waybillStatusLabel(row) === "已退件") return false;
     return true;
   }
@@ -1009,7 +1118,7 @@
       '<p class="toast-meta">' + meta + "</p>" +
       '<div class="toast-actions">' +
       '<button type="button" class="toast-btn">稍后</button>' +
-      '<button type="button" class="toast-btn primary">查看运单</button>' +
+      '<button type="button" class="toast-btn primary">去处理</button>' +
       "</div>";
 
     toastStack.appendChild(toast);
@@ -1026,7 +1135,7 @@
     toast.querySelector(".toast-btn").addEventListener("click", function () { dismissSales(toast); });
     toast.querySelector(".toast-btn.primary").addEventListener("click", function () {
       dismissSales(toast);
-      goHandleTodo(todo.id, true);
+      openSalesHandleFlow(todo.id);
     });
   }
 
@@ -1094,24 +1203,29 @@
     if (todo && (todo.autoRefund || todo.toSales || todo.done || todo.businessHandled || todo.salesHandled)) return false;
     return true;
   }
-  function salesFollowEligible(row, todo) {
-    if (!row || row.status !== "未签出" || !poolHit(row) || !todo) return false;
-    if (!todo.toSales || todo.autoRefund || todo.businessHandled || todo.salesHandled) return false;
-    return true;
+  /** 业务员侧有效处理：系统按运单主数据识别，接收人不手工登记 */
+  function waybillBizHandled(row) {
+    var s = String((row && row.wbStatus) || "").trim();
+    return s === "已放行" || s === "已退款";
   }
-  function executeBusinessHandled(id) {
-    var row = baseRows.find(function (r) { return r.id === id; });
-    var todo = todos[id];
-    if (!salesFollowEligible(row, todo)) return false;
-    var ts = nowStr();
-    todo.businessHandled = true;
-    todo.businessHandledAt = ts;
-    todo.salesHandled = true;
-    todo.unread = false;
-    saveTodos(todos);
-    logLine("[" + ts + "] <strong>业务已处理</strong> · 运单 <b>" + todo.waybill +
-      "</b> · 不再参与次日 08:30 自动退", "ok");
-    return true;
+  function syncBusinessHandledFromWaybill() {
+    var changed = false;
+    baseRows.forEach(function (row) {
+      var todo = todos[row.id];
+      if (!todo || row.status !== "未签出" || !todo.toSales || todo.autoRefund) return;
+      if (todo.businessHandled || todo.salesHandled) return;
+      if (!waybillBizHandled(row)) return;
+      var ts = nowStr();
+      todo.businessHandled = true;
+      todo.businessHandledAt = ts;
+      todo.salesHandled = true;
+      todo.unread = false;
+      changed = true;
+      logLine("[" + ts + "] <strong>业务已处理</strong>（系统识别）· 运单 <b>" + row.waybill +
+        "</b> · 状态 " + row.wbStatus + " · 不再参与次日 08:30 自动退", "ok");
+    });
+    if (changed) saveTodos(todos);
+    return changed;
   }
   function buildRowOps(r, todo) {
     var logBtn = '<button class="btn" type="button" data-act="wb-log" data-id="' + r.id + '">日志</button>';
@@ -1128,10 +1242,6 @@
       parts.push(
         '<button class="btn primary" type="button" data-act="push-sales" data-id="' + r.id + '">' +
         "一键推送给业务员</button>"
-      );
-    } else if (salesFollowEligible(r, todo)) {
-      parts.push(
-        '<button class="btn primary" type="button" data-act="biz-done" data-id="' + r.id + '">业务已处理</button>'
       );
     }
     parts.push(logBtn);
@@ -1198,6 +1308,8 @@
     todos[id].salesAt = ts;
     todos[id].salesDeadline = nextDay830(ts);
     todos[id].simRefundDue = false;
+    todos[id].salesGoHandleClicked = false;
+    todos[id].salesGoHandleAt = "";
     todos[id].salesName = src.salesRep || "负责业务员";
     saveTodos(todos);
     logLine("[" + nowStr() + "] <strong>接收人→业务员</strong>：<b>" + todos[id].waybill +
@@ -1316,6 +1428,7 @@
   }
 
   function renderTable() {
+    syncBusinessHandledFromWaybill();
     updateStatusCounts();
     var tb = document.getElementById("tbody");
     var list = rowsForView().filter(passFilter);
@@ -1602,6 +1715,12 @@
     logLine("[" + nowStr() + "] 演示业务员推送弹窗（模拟已推业务员）· 运单 <b>" + demoTodo.waybill + "</b>");
   });
 
+  document.getElementById("salesActCancel").addEventListener("click", closeSalesActMask);
+  document.getElementById("salesActOk").addEventListener("click", confirmSalesActChoice);
+  document.getElementById("salesActMask").addEventListener("click", function (e) {
+    if (e.target.id === "salesActMask") closeSalesActMask();
+  });
+
   document.getElementById("btnResetPushDemo").addEventListener("click", function () {
     resetDemoRowsAwaitingSales();
     logLine("[" + nowStr() + "] 演示：已恢复 R02/R06 为「待推送业务」", "ok");
@@ -1641,14 +1760,6 @@
         renderBadges(false);
         renderTable();
         showFinanceTip("已推业务员 · 截止 " + todos[id].salesDeadline);
-      }
-      return;
-    }
-    if (act === "biz-done") {
-      if (executeBusinessHandled(id)) {
-        renderBadges(false);
-        renderTable();
-        showFinanceTip("已登记业务已处理 · 不再自动退");
       }
       return;
     }

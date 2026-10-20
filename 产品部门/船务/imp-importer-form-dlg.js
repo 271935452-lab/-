@@ -103,7 +103,14 @@
       legalPwd: "Mc#legal88",
       hasSeal: "是",
       addrType: "真实地址",
-      address: "1200 Figueroa St, Los Angeles, CA 90015",
+      address: "1200 Figueroa St",
+      partyCountryCode: "US",
+      partyCountry: "美国",
+      partyRegion: "California",
+      partyRegionCode: "CA",
+      partyCity: "Los Angeles",
+      partyZip: "90015",
+      partyAddress: "1200 Figueroa St",
       assignType: "散货专用",
       useChannel: "海运与空运共用",
       consignorIds: [],
@@ -150,7 +157,14 @@
       legalPwd: "",
       hasSeal: "否",
       addrType: "虚拟地址",
-      address: "221B Virtual Ave, Suite 800, New York, NY 10001",
+      address: "221B Virtual Ave, Suite 800",
+      partyCountryCode: "US",
+      partyCountry: "美国",
+      partyRegion: "New York",
+      partyRegionCode: "NY",
+      partyCity: "New York",
+      partyZip: "10001",
+      partyAddress: "221B Virtual Ave, Suite 800",
       assignType: "苏州整柜专用",
       useChannel: "海运",
       consignorIds: [],
@@ -197,7 +211,14 @@
       legalPwd: "",
       hasSeal: "否",
       addrType: "真实地址",
-      address: "88 Harbor Blvd, Long Beach, CA 90802",
+      address: "88 Harbor Blvd",
+      partyCountryCode: "US",
+      partyCountry: "美国",
+      partyRegion: "California",
+      partyRegionCode: "CA",
+      partyCity: "Long Beach",
+      partyZip: "90802",
+      partyAddress: "88 Harbor Blvd",
       assignType: "散货专用",
       useChannel: "海运",
       consignorIds: [],
@@ -244,7 +265,14 @@
       legalPwd: "Sg#legal25",
       hasSeal: "否",
       addrType: "虚拟地址",
-      address: "900 Virtual Park, Irvine, CA 92614",
+      address: "900 Virtual Park",
+      partyCountryCode: "US",
+      partyCountry: "美国",
+      partyRegion: "California",
+      partyRegionCode: "CA",
+      partyCity: "Irvine",
+      partyZip: "92614",
+      partyAddress: "900 Virtual Park",
       assignType: "散货专用",
       useChannel: "空运",
       consignorIds: [],
@@ -599,6 +627,60 @@
     cell.title = formatBrokerTitle(auth, refuse);
   }
 
+  var COUNTRY_CODE = { "美国": "US", "中国": "CN", "加拿大": "CA", "韩国": "KR" };
+
+  function countryCodeOf(name) {
+    return COUNTRY_CODE[name] || "";
+  }
+
+  function hasHan(s) {
+    return /[\u4e00-\u9fff]/.test(s || "");
+  }
+
+  function readParty() {
+    return {
+      partyCountryCode: ($("dlgPartyCountryCode") ? $("dlgPartyCountryCode").value : "").trim().toUpperCase(),
+      partyCountry: $("dlgPartyCountry") ? $("dlgPartyCountry").value : "",
+      partyRegion: ($("dlgPartyRegion") ? $("dlgPartyRegion").value : "").trim(),
+      partyRegionCode: ($("dlgPartyRegionCode") ? $("dlgPartyRegionCode").value : "").trim().toUpperCase(),
+      partyCity: ($("dlgPartyCity") ? $("dlgPartyCity").value : "").trim(),
+      partyZip: ($("dlgPartyZip") ? $("dlgPartyZip").value : "").trim(),
+      partyAddress: ($("dlgPartyAddress") ? $("dlgPartyAddress").value : "").trim(),
+    };
+  }
+
+  function validateParty(p) {
+    if (!/^[A-Z]{2}$/.test(p.partyCountryCode)) return "国家代码须为 ISO 2 位字母，如 US";
+    if (!p.partyCountry) return "请填写国家全称";
+    if (!p.partyRegion) return "请填写州/省名称";
+    if (hasHan(p.partyRegion)) return "州/省名称不能传入中文字符";
+    if (!/^[A-Z]{2}$/.test(p.partyRegionCode)) return "州/省代码须为 ISO 2 位字母，如 KY";
+    if (!p.partyCity) return "请填写城市";
+    if (hasHan(p.partyCity)) return "城市名称不能传入中文字符";
+    if (!p.partyZip) return "请填写邮政编码";
+    if (p.partyCountryCode === "US" && !/^\d{5}$/.test(p.partyZip)) return "美国邮政编码须为 5 位数字";
+    if (p.partyCountryCode === "CN" && !/^\d{6}$/.test(p.partyZip)) return "中国邮政编码须为 6 位数字";
+    if (!p.partyAddress) return "请填写详细地址";
+    if (hasHan(p.partyAddress)) return "详细地址不能传入中文字符";
+    if (p.partyAddress.length > 70) return "详细地址最大长度 70";
+    return "";
+  }
+
+  function syncListIsfAddr(code, p) {
+    var btn = document.querySelector('.js-open-importer-form[data-code="' + code + '"]');
+    if (!btn) return;
+    var row = btn.closest("tr");
+    if (!row) return;
+    var cell = row.querySelector("[data-isf-addr]");
+    if (!cell) return;
+    cell.textContent = p.partyCity + ", " + p.partyRegionCode + " " + p.partyZip;
+    cell.title =
+      p.partyCountryCode + " " + p.partyCountry +
+      " · " + p.partyRegion + " " + p.partyRegionCode +
+      " · " + p.partyCity + " · " + p.partyZip +
+      " · " + p.partyAddress;
+  }
+
   function fillForm(rec) {
     $("dlgCode").value = rec.code || "";
     $("dlgCode").readOnly = !!rec.code;
@@ -647,7 +729,13 @@
     $("dlgPassport").value = rec.passport || "";
     if ($("dlgHasSeal")) $("dlgHasSeal").value = rec.hasSeal || "否";
     if ($("dlgAddrType")) $("dlgAddrType").value = rec.addrType || "真实地址";
-    if ($("dlgAddress")) $("dlgAddress").value = rec.address || "";
+    if ($("dlgPartyCountry")) $("dlgPartyCountry").value = rec.partyCountry || rec.shipperCountry || "美国";
+    if ($("dlgPartyCountryCode")) $("dlgPartyCountryCode").value = rec.partyCountryCode || countryCodeOf(rec.partyCountry || rec.shipperCountry || "美国");
+    if ($("dlgPartyRegion")) $("dlgPartyRegion").value = rec.partyRegion || "";
+    if ($("dlgPartyRegionCode")) $("dlgPartyRegionCode").value = rec.partyRegionCode || "";
+    if ($("dlgPartyCity")) $("dlgPartyCity").value = rec.partyCity || "";
+    if ($("dlgPartyZip")) $("dlgPartyZip").value = rec.partyZip || "";
+    if ($("dlgPartyAddress")) $("dlgPartyAddress").value = rec.partyAddress || rec.address || "";
     if ($("dlgAssignType")) $("dlgAssignType").value = rec.assignType || "散货专用";
     if ($("dlgUseChannel")) $("dlgUseChannel").value = rec.useChannel || "海运";
     $("dlgPhone").value = rec.phone || "";
@@ -699,7 +787,13 @@
       legalPwd: "",
       hasSeal: "否",
       addrType: "真实地址",
-      address: "",
+      partyCountryCode: "US",
+      partyCountry: "美国",
+      partyRegion: "",
+      partyRegionCode: "",
+      partyCity: "",
+      partyZip: "",
+      partyAddress: "",
       assignType: "散货专用",
       useChannel: "海运",
       email: "",
@@ -760,6 +854,12 @@
     }
     if (!$("dlgBondExpireDate").value) {
       alert("请填写 Bond 失效时间");
+      return;
+    }
+    var party = readParty();
+    var partyErr = validateParty(party);
+    if (partyErr) {
+      alert(partyErr);
       return;
     }
     var bond = evalBond();
@@ -834,7 +934,10 @@
     if ($("dlgPassport")) RECORDS[code].passport = $("dlgPassport").value.trim();
     if ($("dlgHasSeal")) RECORDS[code].hasSeal = $("dlgHasSeal").value;
     if ($("dlgAddrType")) RECORDS[code].addrType = $("dlgAddrType").value;
-    if ($("dlgAddress")) RECORDS[code].address = $("dlgAddress").value.trim();
+    Object.keys(party).forEach(function (k) { RECORDS[code][k] = party[k]; });
+    RECORDS[code].address = party.partyAddress;
+    RECORDS[code].shipperCountry = party.partyCountry;
+    syncListIsfAddr(code, party);
     if ($("dlgAssignType")) RECORDS[code].assignType = $("dlgAssignType").value;
     if ($("dlgUseChannel")) RECORDS[code].useChannel = $("dlgUseChannel").value;
     if ($("dlgBondInsCode")) RECORDS[code].bondInsCode = $("dlgBondInsCode").value;
@@ -849,6 +952,14 @@
         (RECORDS[code].consigneePwd ? "已维护" : "未维护") +
         "\n地址：" +
         (RECORDS[code].addrType || "") +
+        " · " +
+        (RECORDS[code].partyCountryCode || "") +
+        " " +
+        (RECORDS[code].partyCity || "") +
+        ", " +
+        (RECORDS[code].partyRegionCode || "") +
+        " " +
+        (RECORDS[code].partyZip || "") +
         "\nBond 分配：" +
         (RECORDS[code].assignType || "—") +
         "\n使用渠道：" +
@@ -948,6 +1059,13 @@
     if ($("dlgNationality")) {
       $("dlgNationality").addEventListener("change", function () {
         syncIdTypeOptions();
+      });
+    }
+    if ($("dlgPartyCountry")) {
+      $("dlgPartyCountry").addEventListener("change", function () {
+        var opt = $("dlgPartyCountry").selectedOptions && $("dlgPartyCountry").selectedOptions[0];
+        var code = opt ? opt.getAttribute("data-code") : countryCodeOf($("dlgPartyCountry").value);
+        if ($("dlgPartyCountryCode") && code) $("dlgPartyCountryCode").value = code;
       });
     }
 
