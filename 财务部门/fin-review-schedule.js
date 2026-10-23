@@ -87,7 +87,14 @@
       designEnd: "2026-10-15",
       internalLabel: "已完成"
     },
-    { id: "1.1", count: 1, designDays: 1 },
+    {
+      id: "1.1",
+      count: 1,
+      designDays: 1,
+      internalStart: "2026-10-23",
+      internalEnd: "2026-10-26",
+      internalNote: "内部评审 10/23–10/26 完成（跨周末，仅工作日开会）"
+    },
     { id: "1.2", count: 1, designDays: 2, designDaysNote: "整柜方案/原型偏重" },
     { id: "2", count: 15 },
     { id: "3", count: 21 },
@@ -150,6 +157,10 @@
       var split = splitDesignBizFinance(designStart, dd);
       var intStart = addWorkdays(split.financeReview, 1);
       var intEnd = addWorkdays(intStart, 1);
+      if (phase.internalStart && phase.internalEnd) {
+        intStart = parseYmd(phase.internalStart);
+        intEnd = parseYmd(phase.internalEnd);
+      }
       prevInternalEnd = intEnd;
 
       out[phase.id] = {
@@ -164,7 +175,8 @@
         internalEnd: intEnd,
         designDays: dd,
         count: phase.count,
-        designDaysNote: phase.designDaysNote || null
+        designDaysNote: phase.designDaysNote || null,
+        internalNote: phase.internalNote || null
       };
     });
 
@@ -223,7 +235,10 @@
       if (elSignFin) {
         elSignFin.textContent = row.signFinLabel || row.financeReviewLabel || row.bizSignLabel || "—";
       }
-      if (elInt) elInt.textContent = row.internalLabel || "—";
+      if (elInt) {
+        elInt.textContent = row.internalLabel || "—";
+        if (row.internalNote) elInt.title = row.internalNote;
+      }
     });
   }
 

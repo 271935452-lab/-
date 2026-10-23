@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜应付同步业务员成本 · 方案确认稿</title>
+  <style>
+    :root { --line:#e5e7eb; --sub:#6b7280; --blue:#2563eb; --ok:#389e0d; --warn:#d46b08; }
+    body { margin:0; font:14px/1.65 "Microsoft YaHei",sans-serif; background:#f5f7fb; color:#111827; }
+    a { color:var(--blue); }
+    .page { max-width:880px; margin:0 auto; padding:20px 16px 48px; }
+    .hero { background:linear-gradient(135deg,#0f766e,#1d4ed8); color:#fff; border-radius:12px; padding:16px 18px; margin-bottom:12px; }
+    .hero h1 { margin:0 0 6px; font-size:20px; }
+    .hero p { margin:0; font-size:13px; opacity:.95; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+    .card h2 { margin:0 0 10px; font-size:16px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+    th,td { border:1px solid var(--line); padding:7px 8px; vertical-align:top; }
+    th { background:#f8fafc; white-space:nowrap; }
+    .tag { font-size:11px; padding:0 6px; border-radius:4px; border:1px solid; margin-right:4px; font-weight:700; }
+    .tag.ok { background:#f6ffed; color:var(--ok); border-color:#b7eb8f; }
+    .tag.warn { background:#fff7e6; color:var(--warn); border-color:#ffd591; }
+    .tag.new { background:#fff1f0; color:#cf1322; border-color:#ffa39e; }
+    .note { font-size:12px; color:#1d39c4; background:#f0f5ff; border:1px solid #adc6ff; padding:8px 10px; border-radius:6px; margin-top:8px; }
+    ol.steps { margin:2px 0 0; padding-left:1.35em; }
+    ol.steps li { margin:0 0 5px; }
+    .foot { text-align:center; font-size:12px; color:var(--sub); margin-top:8px; }
+    code { font-size:12px; background:#f1f5f9; padding:1px 4px; border-radius:3px; }
+    .mermaid-wrap { background:#fafafa; border:1px solid var(--line); border-radius:8px; padding:10px 12px; overflow-x:auto; max-width:560px; }
+    .mermaid { display:flex; justify-content:flex-start; font-size:12px; }
+    /* 对齐扣件放行 · 询价代办右下角 toast */
+    .btn-demo {
+      margin-top:10px; height:32px; padding:0 14px; border:1px solid #91d5ff; border-radius:2px;
+      background:#e6f7ff; color:#096dd9; font:inherit; font-size:13px; cursor:pointer;
+    }
+    .btn-demo:hover { background:#bae7ff; }
+    .preview-hint { font-size:12px; color:var(--sub); margin:8px 0 0; line-height:1.55; }
+    .inquiry-toast-stack {
+      position:fixed; right:20px; bottom:20px; z-index:10000;
+      display:flex; flex-direction:column; gap:10px; pointer-events:none;
+    }
+    .inquiry-toast {
+      pointer-events:auto; width:360px; max-width:calc(100vw - 40px);
+      background:#fff; border-radius:8px; border:1px solid #e8e8e8;
+      box-shadow:0 6px 16px rgba(0,0,0,.12); padding:14px 16px 12px 14px;
+      position:relative; transform:translateX(calc(100% + 40px)); opacity:0;
+      transition:transform .28s ease, opacity .28s ease;
+    }
+    .inquiry-toast.show { transform:translateX(0); opacity:1; }
+    .inquiry-toast.hide { transform:translateX(calc(100% + 40px)); opacity:0; }
+    .inquiry-toast .toast-ico {
+      width:28px; height:28px; border-radius:50%; background:#e6f7ff; color:#1890ff;
+      display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;
+      float:left; margin:0 10px 0 0;
+    }
+    .inquiry-toast.type-sales .toast-ico { background:#f6ffed; color:#52c41a; }
+    .inquiry-toast .toast-title { font-size:14px; font-weight:600; margin:0 0 6px; line-height:1.45; color:rgba(0,0,0,.85); }
+    .inquiry-toast .toast-title em { font-style:normal; color:#1890ff; }
+    .inquiry-toast.type-sales .toast-title em { color:#389e0d; }
+    .inquiry-toast .toast-meta { font-size:12px; color:rgba(0,0,0,.45); margin:0 0 10px; line-height:1.5; clear:both; }
+    .inquiry-toast .toast-actions { display:flex; gap:8px; justify-content:flex-end; }
+    .inquiry-toast .toast-btn {
+      height:28px; padding:0 12px; border:1px solid #d9d9d9; border-radius:2px;
+      background:#fff; font:inherit; font-size:12px; cursor:pointer;
+    }
+    .inquiry-toast .toast-btn.primary { background:#1890ff; border-color:#1890ff; color:#fff; }
+    .inquiry-toast .toast-close {
+      position:absolute; top:8px; right:10px; border:none; background:none;
+      color:#bfbfbf; font-size:16px; cursor:pointer; line-height:1;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+<div data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei',sans-serif">
+  <a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a>
+</div>
+<div class="page">
+  <section class="hero">
+    <h1>整柜 · 导入应付同步业务员成本</h1>
+    <p>需求编号 <strong>BDS-1022-001</strong> · 方案确认稿 v0.5.2 · 2026-10-23。排除 D01/Q01；同步失败不回滚应付；业务员通知<strong>对齐扣件放行</strong>（右下角 toast≈3s）。<strong>同步触发方式、财务待办、扩网点/散货</strong>见下文「评审确认项」。现网锚点：传统运单管理 / 业务数据统计 / 外部成本管理(实际)。</p>
+  </section>
+
+  <section class="card">
+    <h2>已确认口径</h2>
+    <table>
+      <thead><tr><th>#</th><th>结论</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>触发入口<strong>两个都做</strong>：① 外部成本管理 → <strong>导入对账单</strong>；② 业务数据统计相关导入（与应付落账同源批次时同步写成本）</td>
+          <td><span class="tag ok">已确认</span></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>同步金额默认与应付等额，但<strong>不含海运费、不含关税</strong>。排除编码：<code>D01</code> 海运费、<code>Q01</code> 关税（导入前按费用类型过滤）</td>
+          <td><span class="tag ok">已确认</span></td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>同运单同费用类型<strong>已有业务员成本</strong>时：跳过 / 覆盖 / 仅空才写 → <strong>待定</strong></td>
+          <td><span class="tag warn">待定</span></td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>节奏：短期苏青配置表 + 同步勾选/结果回显；长期通用策略（多网点可配）</td>
+          <td><span class="tag ok">已确认</span></td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>成本同步失败时<strong>不回滚</strong>已成功的应付；记失败清单，支持按批次重跑同步</td>
+          <td><span class="tag ok">已确认</span></td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>整柜应付<strong>新增费用</strong>（策略命中且成本写入成功）后通知运单业务员。交互对齐<strong>扣件放行</strong>：写入「我的通知」+ 右下角 toast 约<strong>3 秒</strong>消失，须到通知列表处理；同批次同人合并一条；D01/Q01 不通知</td>
+          <td><span class="tag new">本期加</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card" id="flow">
+    <h2>业务流程图</h2>
+    <p style="margin:0 0 8px;font-size:12px;color:var(--sub)">给业务过口径用 · 苏青整柜 · 不含技术落库细节</p>
+    <div class="mermaid-wrap">
+      <div class="mermaid">
+flowchart LR
+  A[导入应付] --> B{同步业务员成本?}
+  B -->|否| Z([只记应付])
+  B -->|是·默认勾| C{苏青整柜?}
+  C -->|否| Z2([不同步])
+  C -->|是| D[海运费/关税不同步<br/>其余费用等额进成本]
+  D --> E[通知业务员]
+  D --> F[同步失败：应付保留<br/>可事后重跑]
+      </div>
+    </div>
+    <p class="note" style="margin-top:8px">业务关注三点：① 哪些费进成本（不含海运/关税）；② 同步失败应付不丢；③ 业务员会收到通知。同步是否「导入即写」或「财务二次/预览后再写」见 <a href="#review-confirm">评审确认项 · R-7</a>；已有成本冲突见 R-1。</p>
+  </section>
+
+  <section class="card" id="review-confirm">
+    <h2>评审确认项 <span class="tag warn">待拍板</span></h2>
+    <p style="margin:0 0 10px;font-size:13px;color:var(--sub)">以下三项影响 P0 交互与待办设计；<strong>未定前</strong>原型可按「导入默认勾选 → 落应付后同步写成本」出稿，评审选定后再改分支。</p>
+    <table>
+      <thead><tr><th>#</th><th>确认问题</th><th>可选口径（供选型）</th><th>建议默认 / 备注</th><th>决策人</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>R-7</strong></td>
+          <td><strong>财务二次确认或预览后再同步业务员成本？</strong><br/>与现稿「导入成功且勾选同步 → 当场写成本」的关系。</td>
+          <td>
+            <strong>A</strong> 导入即同步（现稿）：勾选后随应付落库同步写成本；结果页展示成功/跳过/失败。<br/>
+            <strong>B</strong> 应付落账后<strong>二次确认</strong>：导入只记应付；在账单批次/应付批次上提供「同步业务员成本」，财务点确认后执行（失败清单可重跑，逻辑同 R-3）。<br/>
+            <strong>C</strong> <strong>预览确认再写入</strong>：导入或点同步前展示将写入/跳过/冲突行预览，财务确认后批量写成本。
+          </td>
+          <td>苏青若冲突少、追求少一步操作 → 倾向 <strong>A</strong>；若强调防误写 → <strong>B 或 C</strong>（C 开发量大于 B）。选定后更新流程图与导入弹窗文案。</td>
+          <td>财务 + 产品</td>
+        </tr>
+        <tr>
+          <td><strong>R-8</strong></td>
+          <td><strong>是否推财务待办？</strong><br/>（与业务员知悉通知 §6 并列，对象与场景不同。）</td>
+          <td>
+            <strong>否</strong>：仅结果页 + 失败清单 + 批次重跑入口；不新增财务待办。<br/>
+            <strong>是 · 按场景</strong>（可多选，评审勾选）：<br/>
+            · 应付已落账、勾选同步但<strong>尚未执行</strong>同步（配合 R-7 方案 B）；<br/>
+            · 同步<strong>失败</strong>行待重跑；<br/>
+            · 预览/同步存在<strong>冲突行</strong>待财务处理（配合 R-1）；<br/>
+            · 批次部分成功、部分跳过需复核。<br/>
+            通道：对齐现网财务「我的待办」/任务中心（具体菜单产品对稿）；本期不做企微/钉钉 → 同 R-5。
+          </td>
+          <td>若 R-7 选 <strong>A</strong> 且无预览，财务待办价值主要在<strong>失败重跑</strong>；若选 B/C，建议至少「待同步批次」+「失败重跑」推待办。</td>
+          <td>财务 + 产品</td>
+        </tr>
+        <tr>
+          <td><strong>R-9</strong></td>
+          <td><strong>其他分公司、散货后续是否纳入同一能力？</strong><br/>避免 P0 写死仅苏青，又避免范围失控。</td>
+          <td>
+            <strong>P0</strong>：仅整柜 + 网点 ∈ {苏州分公司, 青岛分公司}（配置表 ID，见短期章节）。<br/>
+            <strong>P1+</strong>：其他分公司整柜 → 同一策略引擎<strong>加配置行</strong>（深圳/义乌等），排除类型与冲突策略可 per 策略配置。<br/>
+            <strong>散货 / 非传统整柜</strong>：本期<strong>不承诺</strong>；若后续有需求，需单独确认：运单类型、费用结构（是否同样排除 D01/Q01）、入口是否仍为应付导入、是否与 BDS-002 合并立项。<br/>
+            评审需确认：P1 是否按「整柜全网点可复制」立项，散货是否<strong>单独立项</strong>或<strong>永不自动同步</strong>。
+          </td>
+          <td>方案默认：<strong>P0 苏青整柜</strong>；P1 多分公司整柜复用配置；<strong>散货待业务调研</strong>后再定是否进同一表。</td>
+          <td>业务 + 财务 + 产品</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note">R-7 / R-8 / R-9 定稿后：更新「短期 P0 · 界面/触发」一行、业务流程图节点，并在调研池关闭对应行。</p>
+  </section>
+
+  <section class="card" id="sales-notify">
+    <h2>业务员通知 <span class="tag new">NEW</span> · 对齐扣件放行</h2>
+    <p style="margin:0 0 8px;font-size:13px;color:var(--sub)">
+      交互参考
+      <a href="../../产品部门/报价组/PRD对照-扣件放行/扣件放行-价格重算-KJ-PRD-交互稿.html" target="_blank" rel="noopener">扣件放行 · 业务员右下角弹窗</a>
+      ：知悉类通知，不以弹窗为唯一入口。
+    </p>
+    <table>
+      <thead><tr><th>项</th><th>口径</th></tr></thead>
+      <tbody>
+        <tr><td>触发</td><td>策略命中且至少 1 行业务员成本<strong>写入成功</strong>（含批次重跑补写成功）</td></tr>
+        <tr><td>接收人</td><td>运单<strong>业务员</strong>；同批次多票同一业务员 → <strong>合并一条</strong></td></tr>
+        <tr><td>通道</td><td>与现网「我的通知」一致；右下角 toast 约<strong>3 秒</strong>自动消失；须到<strong>我的通知</strong>列表查看（对齐扣件放行 §1.3）</td></tr>
+        <tr>
+          <td>固定文案</td>
+          <td>
+            标题态：<code>{业务员}，您收到一条<em>整柜应付费用同步</em>消息</code><br/>
+            正文：<code>运单{运单号}因整柜应付导入同步，已将费用写入业务员成本（已排除海运费/关税），请知悉。</code>
+            多票合并时运单号用顿号拼接或写「等共 N 票」（评审定稿）。
+          </td>
+        </tr>
+        <tr><td>不通知</td><td>未勾选同步；网点未命中；D01/Q01；冲突策略下整行跳过未写入</td></tr>
+        <tr><td>弹窗按钮</td><td>「稍后」/「知道了」仅关闭 toast；正式查阅以通知列表为准（知悉类，无强制「去处理」）</td></tr>
+      </tbody>
+    </table>
+    <button type="button" class="btn-demo" id="btnPreviewSalesToast">点击预览 · 业务员右下角弹窗（约 3 秒消失）</button>
+    <p class="preview-hint">弹窗约 <strong>3 秒</strong>自动消失；正式处理入口为<strong>我的通知</strong>。样式 / 动效与扣件放行业务员调价通知一致。</p>
+    <p class="note">企业微信 / 钉钉本期不做 → R-5。多票正文拼接规则 → R-6。</p>
+  </section>
+
+  <section class="card">
+    <h2>短期（P0 · 苏青）</h2>
+    <table>
+      <thead><tr><th>项</th><th>口径</th></tr></thead>
+      <tbody>
+        <tr><td>命中</td><td>运单类型=整柜（传统运单）且所属网点 ∈ {苏州分公司, 青岛分公司}（网点主数据 ID 落配置表，禁止写死文案）</td></tr>
+        <tr><td>触发</td><td>入口①导入对账单成功落库后；入口②业务数据统计侧应付/成本相关导入落库后（与①共用同步服务）</td></tr>
+        <tr><td>过滤</td><td>费用类型编码 ∈ {<code>D01</code> 海运费, <code>Q01</code> 关税} → <strong>不同步</strong>；其余应付明细默认同步为业务员成本行</td></tr>
+        <tr><td>金额</td><td>同步行金额 = 应付行金额（等额）；币别/汇率跟应付行</td></tr>
+        <tr><td>界面</td><td>导入弹窗默认勾选「同步业务员成本（苏青整柜）」；结果页展示成功 / 跳过 / 失败条数。<strong>若 R-7 选 B/C</strong>：导入阶段改为「仅落应付」或「先预览」；同步按钮/预览页按评审稿实现</td></tr>
+        <tr><td>财务待办</td><td>是否推送、推送场景 → <strong>R-8</strong>；与业务员通知独立配置</td></tr>
+        <tr><td>通知</td><td>成本写入成功后通知运单业务员（我的通知 + 右下角 toast≈3s，对齐扣件放行）</td></tr>
+        <tr><td>配置</td><td>后台表：启用网点列表、排除费用类型（种子：<code>D01</code> / <code>Q01</code>）、冲突策略占位（待定后再填）</td></tr>
+        <tr><td>失败</td><td>应付已成功、成本同步失败 → <strong>不回滚应付</strong>；记失败清单 + 可按批次重跑同步</td></tr>
+      </tbody>
+    </table>
+    <p class="note">现网业务数据统计上「应收费用导入」「业务员成本导入」仍保留作补录；策略命中且已同步的票，提示勿重复手工导入（文案随冲突策略定稿后补）。</p>
+  </section>
+
+  <section class="card">
+    <h2>长期（P1+ · 多分公司）</h2>
+    <ol class="steps">
+      <li>策略配置：网点多选、运单类型、销售产品可选、触发动作、费用类型映射、排除类型、金额规则、冲突策略、生效期</li>
+      <li>苏青仅作第一条策略种子；深圳/义乌等只加配置行（扩范围口径 → <strong>R-9</strong>）</li>
+      <li>散货是否纳入：本期不做；后续单独立项或与 BDS-002 合并，以 R-9 评审结论为准</li>
+      <li>与 BDS-002（默认带出业务员成本）收口优先级建议：手工录入 &gt; 应付同步 &gt; 价表默认（最终以评审为准）</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>调研池（未定不得开发冲突分支）</h2>
+    <table>
+      <thead><tr><th>#</th><th>问题</th><th>影响</th><th>决策人</th></tr></thead>
+      <tbody>
+        <tr><td>R-1</td><td>已有业务员成本：跳过 / 覆盖 / 仅空才写？</td><td>同步写库</td><td>业务 + 财务</td></tr>
+        <tr><td>R-2</td><td>排除编码已确认：<code>D01</code> 海运费、<code>Q01</code> 关税</td><td>排除过滤</td><td><span class="tag ok">已确认</span></td></tr>
+        <tr><td>R-3</td><td>成本同步失败<strong>不回滚</strong>应付；失败清单可重跑</td><td>事务</td><td><span class="tag ok">已确认</span></td></tr>
+        <tr><td>R-4</td><td>入口②「业务数据统计相关导入」具体点哪个按钮（应收导入 / 成本导入 / 两者）</td><td>挂钩点</td><td>产品对稿</td></tr>
+        <tr><td>R-5</td><td>业务员通知是否同步推企业微信 / 钉钉（本期默认仅「我的通知」+ toast）</td><td>触达</td><td>业务</td></tr>
+        <tr><td>R-6</td><td>同批次多票合并时，通知正文运单号如何拼接（顿号 / 「等共 N 票」）</td><td>文案</td><td>产品</td></tr>
+        <tr><td>R-7</td><td>同步时机：导入即写（A）/ 应付后二次确认（B）/ 预览后写入（C）？</td><td>P0 交互 · 流程图</td><td>见 <a href="#review-confirm">评审确认项</a></td></tr>
+        <tr><td>R-8</td><td>是否推财务待办；推送场景（待同步批次、失败重跑、冲突复核等）</td><td>待办 · 触达</td><td>见 <a href="#review-confirm">评审确认项</a></td></tr>
+        <tr><td>R-9</td><td>其他分公司整柜、散货后续是否纳入同一应付→成本同步能力</td><td>P1 范围 · 立项</td><td>见 <a href="#review-confirm">评审确认项</a></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>现网锚点（test.txfba.com）</h2>
+    <table>
+      <tbody>
+        <tr><td>整柜运单</td><td>运单 &gt; 传统运单管理 <code>#/TraditionalOrderManager</code>（含所属网点、业务员成本列）</td></tr>
+        <tr><td>业务数据统计</td><td>财务 &gt; 业务数据统计 <code>#/BusineSalesman</code>（应收费用导入 / 业务员成本导入）</td></tr>
+        <tr><td>应付导入</td><td>财务 &gt; 成本管理 &gt; 外部成本管理(实际) <code>#/ExternalCosts</code>（导入对账单）</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p class="foot">BDS-1022-001 · v0.5.2 · R-7 同步时机 / R-8 财务待办 / R-9 扩网点与散货 · R-1 冲突策略待定</p>
+</div>
+
+<div class="inquiry-toast-stack" id="bdsToastStack" aria-live="polite"></div>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: "neutral",
+  flowchart: { htmlLabels: true, curve: "basis", nodeSpacing: 28, rankSpacing: 36 },
+  themeVariables: { fontSize: "12px" }
+});
+
+(function () {
+  var stack = document.getElementById("bdsToastStack");
+  function dismissToast(node) {
+    if (!node || !node.parentNode) return;
+    node.classList.remove("show");
+    node.classList.add("hide");
+    setTimeout(function () { if (node.parentNode) node.remove(); }, 320);
+  }
+  document.getElementById("btnPreviewSalesToast").onclick = function () {
+    stack.querySelectorAll(".inquiry-toast").forEach(dismissToast);
+    var toast = document.createElement("div");
+    toast.className = "inquiry-toast type-sales show";
+    toast.setAttribute("role", "alertdialog");
+    toast.innerHTML =
+      '<button type="button" class="toast-close" aria-label="关闭">×</button>' +
+      '<div class="toast-ico">i</div>' +
+      '<p class="toast-title">王超，您收到一条<em>整柜应付费用同步</em>消息</p>' +
+      '<p class="toast-meta">运单 TXF2609220881、TXF2609220912 · 因整柜应付导入同步，已将费用写入业务员成本（已排除海运费/关税），请知悉。 · 批次 AP20261022018</p>' +
+      '<div class="toast-actions">' +
+      '<button type="button" class="toast-btn">稍后</button>' +
+      '<button type="button" class="toast-btn primary">知道了</button>' +
+      "</div>";
+    stack.appendChild(toast);
+    requestAnimationFrame(function () { toast.classList.add("show"); });
+    toast.querySelector(".toast-close").addEventListener("click", function () { dismissToast(toast); });
+    toast.querySelectorAll(".toast-btn").forEach(function (b) {
+      b.addEventListener("click", function () { dismissToast(toast); });
+    });
+    setTimeout(function () { if (toast.parentNode) dismissToast(toast); }, 3000);
+  };
+})();
+</script>
+</body>
+</html>
