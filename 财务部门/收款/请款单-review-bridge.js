@@ -170,7 +170,10 @@
 
     if (el.classList.contains("panel-hd") || el.classList.contains("sec-title") ||
         el.classList.contains("fee-prod-tabs-wrap") || el.id === "feeProdTabs" ||
-        el.id === "billBasisGroup" || el.id === "nbPickModeGroup" || el.id === "saveCustRuleRow") {
+        el.id === "billBasisGroup" || el.id === "cfgSeedSourceRow" || el.id === "nbPickModeGroup" ||
+        el.id === "nbBillDayRow" ||
+        el.id === "batchPickModeRow" || el.id === "exportTplPickRow" || el.id === "export9810ConfigLine" || el.id === "saveCustRuleRow" ||
+        el.id === "writebackCostArRow" || el.id === "cfgSeedSourceRow") {
       el.appendChild(btn);
       return;
     }
