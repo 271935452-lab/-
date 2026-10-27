@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>提单汇总 · MVP（评审原型）</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <link rel="stylesheet" href="ship-review-common.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --sidebar: #001529; --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45); --blue: #1890ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; font-size: 13px; color: var(--text); background: var(--bg); }
+    a { color: var(--blue); }
+    .proto-banner {
+      background: #f9f0ff; border-bottom: 1px solid #d3adf7; padding: 8px 14px; font-size: 12px; line-height: 1.65; color: #391085;
+    }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header { background: var(--header); color: #fff; min-height: 48px; display: flex; align-items: center; padding: 0 14px; }
+    .nav-tab { margin-left: 12px; padding: 0 12px; height: 48px; line-height: 48px; background: var(--bg); color: var(--text); font-weight: 600; }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar { width: 208px; background: var(--sidebar); color: rgba(255,255,255,.78); padding: 8px 0; flex-shrink: 0; }
+    .side-item { display: block; padding: 9px 16px; font-size: 13px; color: inherit; text-decoration: none; }
+    .side-item:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .side-item.active { background: rgba(24,144,255,.28); color: #fff; border-right: 3px solid var(--blue); }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .filter-panel { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter-item input, .filter-item select { width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; }
+    .toolbar { padding: 6px 12px; background: var(--card); border-bottom: 1px solid var(--line); display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn { height: 28px; padding: 0 10px; border: 1px solid #d9d9d9; border-radius: 2px; background: #fff; cursor: pointer; font-size: 12px; }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { border-collapse: collapse; font-size: 12px; min-width: 3200px; }
+    th, td { border: 1px solid var(--line); padding: 6px 8px; white-space: nowrap; }
+    th { background: #fafafa; position: sticky; top: 0; z-index: 1; font-weight: 600; color: var(--sub); }
+    tr.row-loaded td { background: #f6ffed; }
+    tr.row-unload td { background: #fff7e6; }
+    .st-pc { display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; border: 1px solid; font-weight: 600; }
+    .st-pre { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .st-wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .st-final { color: #389e0d; background: #f6ffed; border-color: #95de64; }
+    .link { color: var(--blue); cursor: pointer; text-decoration: none; }
+    .link:hover { text-decoration: underline; }
+    .muted { color: var(--sub); font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="proto-banner">
+    <b>独立菜单 · 提单汇总</b> — 只读汇总视图，<b>列顺序与命名对齐线下装柜计划表</b>；明细操作在「提单管理」。不与提单创建/管理混页。
+    <a href="船务组-订舱仓位装柜-评审导航.html">评审导航</a>
+  </div>
+  <div class="app">
+    <header class="top-header"><span style="font-weight:600">ESS · 船务</span><span class="nav-tab">提单汇总</span></header>
+    <div class="body-wrap">
+      <nav class="sidebar" id="shipReviewSidebar"></nav>
+      <main class="main">
+        <div class="legend-bar">
+          <b>色标（与提单管理、仓库一致）</b>
+          <span class="legend-item"><span class="legend-swatch load-ok"></span>已装完</span>
+          <span class="legend-item"><span class="legend-swatch load-wait"></span>未装完</span>
+          <span class="legend-item"><span class="legend-swatch pc-pre"></span>预配</span>
+          <span class="legend-item"><span class="legend-swatch pc-wait"></span>待配</span>
+          <span class="legend-item"><span class="legend-swatch pc-final"></span>终配</span>
+        </div>
+        <div class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>装柜日</label><input type="date" value="2026-08-01" /></div>
+            <div class="filter-item"><label>资料员</label><select><option value="">全部</option><option>郝桂兰</option><option>贾纯生</option></select></div>
+            <div class="filter-item"><label>渠道</label><select><option value="">全部</option><option>T25</option><option>正班</option></select></div>
+            <div class="filter-item"><label>提单号</label><input placeholder="模糊" /></div>
+            <div class="filter-item"><label>最终配舱号</label><input placeholder="260801-…" /></div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button type="button" class="btn primary">查询</button>
+          <button type="button" class="btn">导出（对齐 xls）</button>
+          <span class="muted">本页无「创建/分配」按钮 — 请用左侧「提单创建」「提单管理」</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>配舱状态</th>
+                <th>资料员</th>
+                <th>发货人抬头</th>
+                <th>进口商抬头</th>
+                <th>清关行分配</th>
+                <th>顺序</th>
+                <th>渠道</th>
+                <th>货物地</th>
+                <th>需组合配舱号</th>
+                <th>最终配舱号</th>
+                <th>备注</th>
+                <th>装柜地址</th>
+                <th>要求到柜时间</th>
+                <th>代理+报关+拖车</th>
+                <th>提单号</th>
+                <th>柜号</th>
+                <th>铅封号</th>
+                <th>航名航次</th>
+                <th>始终港</th>
+                <th>预计开船</th>
+                <th>中文船名</th>
+                <th>箱型箱量</th>
+                <th>装柜时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="ship-review-nav.js"></script>
+  <script>
+    renderShipReviewNav("bl-summary");
+    var ROWS = [
+      { pc: "final", doc: "郝桂兰", shipper: "", imp: "ORRAZIA INC", customs: "", seq: 1, ch: "圣路易斯", cargo: "", combo: "OSFM-8-1", finalCabin: "260801-朱涛整柜", note: "LB清关", addr: "客户工厂", req: "", agent3: "中集订+客户自报+祥聚托", bl: "COSU6509053150", cntr: "CSLU1637043", seal: "A896213", voy: "CSCL SOUTH CHINA SEA 084E", port: "XG-LB-Saint Louis", etd: "2026-08-07", shipCn: "COSCO", box: "20GP-28CBM", loadT: "2026-08-06", loaded: false },
+      { pc: "final", doc: "郝桂兰", shipper: "", imp: "BARBIZON INC", customs: "", seq: 4, ch: "正班", cargo: "", combo: "总仓-正班快递预配-A3…", finalCabin: "260801-正班混装1", note: "", addr: "义乌", req: "十二点", agent3: "腾信订+欣扬报+良承拖", bl: "MATS3404017000", cntr: "MATU2571410", seal: "—", voy: "LURLINE 102E", port: "NB-LB", etd: "2026-08-03", shipCn: "CLX", box: "40HQ-68CBM", loadT: "2026-08-02 12:00", loaded: true }
+    ];
+    var PC = { pre: ["预配", "st-pre"], wait: ["待配", "st-wait"], final: ["终配", "st-final"] };
+    document.getElementById("tbody").innerHTML = ROWS.map(function (r) {
+      var pc = PC[r.pc];
+      var cls = r.loaded ? "row-loaded" : "row-unload";
+      return "<tr class=\"" + cls + "\"><td><span class=\"st-pc " + pc[1] + "\">" + pc[0] + "</span></td>" +
+        "<td>" + r.doc + "</td><td>" + (r.shipper || "—") + "</td><td>" + r.imp + "</td><td>" + (r.customs || "—") + "</td>" +
+        "<td>" + r.seq + "</td><td>" + r.ch + "</td><td>" + (r.cargo || "—") + "</td>" +
+        "<td>" + (r.combo || "—") + "</td><td>" + r.finalCabin + "</td><td>" + (r.note || "—") + "</td>" +
+        "<td>" + r.addr + "</td><td>" + (r.req || "—") + "</td><td>" + r.agent3 + "</td>" +
+        "<td><a class=\"link\" href=\"船务组-提单管理-按周分组与分配-MVP.html?bl=" + encodeURIComponent(r.bl) + "\">" + r.bl + "</a></td>" +
+        "<td>" + r.cntr + "</td><td>" + r.seal + "</td><td>" + r.voy + "</td><td>" + r.port + "</td><td>" + r.etd + "</td><td>" + r.shipCn + "</td><td>" + r.box + "</td><td>" + r.loadT + "</td>" +
+        "<td><a class=\"link\" href=\"船务组-提单管理-按周分组与分配-MVP.html?bl=" + encodeURIComponent(r.bl) + "\">管理</a></td></tr>";
+    }).join("");
+  </script>
+</body>
+</html>

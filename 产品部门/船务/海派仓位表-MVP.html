@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>海派仓位表 · MVP（评审原型）</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <link rel="stylesheet" href="ship-review-common.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --sidebar: #001529; --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45); --blue: #1890ff; --green: #52c41a;
+      --orange: #fa8c16; --red: #ff4d4f; --purple: #722ed1;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; font-size: 13px; color: var(--text); background: var(--bg); }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); }
+
+    .proto-banner {
+      background: #fff7e6; border-bottom: 1px solid #ffd591; padding: 8px 14px; font-size: 12px; line-height: 1.6; color: #614700;
+    }
+    .proto-banner b { color: #ad4e00; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header { background: var(--header); color: #fff; min-height: 48px; display: flex; align-items: center; padding: 0 14px; gap: 10px; }
+    .logo { font-weight: 600; font-size: 14px; }
+    .nav-tab { margin-left: 8px; padding: 0 12px; height: 48px; line-height: 48px; background: var(--bg); color: var(--text); font-weight: 600; }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar { width: 196px; background: var(--sidebar); color: rgba(255,255,255,.78); padding: 8px 0; flex-shrink: 0; }
+    .side-item { display: block; width: 100%; border: none; background: none; color: inherit; text-align: left; padding: 9px 16px; cursor: pointer; font-size: 13px; text-decoration: none; }
+    .side-item:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .side-item.active { background: rgba(24,144,255,.28); color: #fff; border-right: 3px solid var(--blue); }
+    .side-item .tag-new { font-size: 10px; color: #95de64; margin-left: 4px; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-bottom: 40px; }
+    .filter-panel { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)) auto; gap: 8px 10px; align-items: end; }
+    .filter-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; }
+    .filter-item.range { display: flex; flex-direction: column; }
+    .filter-item.range .range-row { display: flex; align-items: center; gap: 4px; }
+    .filter-item.range .range-row input { flex: 1; min-width: 0; }
+    .filter-item.range .range-row span { color: var(--sub); font-size: 12px; }
+    th.col-new { background: #fff7e6; color: #ad4e00; }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter-item input, .filter-item select { width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font-size: 12px; }
+    .filter-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip { padding: 2px 10px; border-radius: 12px; border: 1px solid var(--line); background: #fff; font-size: 12px; cursor: pointer; color: var(--sub); }
+    .chip.on { border-color: #91d5ff; background: #e6f7ff; color: #096dd9; font-weight: 600; }
+
+    .toolbar { padding: 6px 12px; background: var(--card); border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px; }
+    .btn { height: 28px; padding: 0 10px; border: 1px solid #d9d9d9; border-radius: 2px; background: #fff; cursor: pointer; font-size: 12px; }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { filter: brightness(1.05); color: #fff; }
+    .btn.danger { background: #fff; border-color: #ffa39e; color: #cf1322; }
+    .btn.danger:hover { border-color: #ff4d4f; color: #a8071a; background: #fff1f0; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .st-void { color: #8c8c8c; background: #f5f5f5; border-color: #d9d9d9; }
+    tr.row-void td { background: #fafafa !important; color: rgba(0,0,0,.45); text-decoration: line-through; }
+    tr.row-void td:first-child, tr.row-void td:nth-child(2) { text-decoration: none; }
+
+    .status-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); background: #fafafa; padding: 0 12px; }
+    .status-tab { border: none; background: none; padding: 8px 14px; cursor: pointer; font-size: 12px; color: var(--sub); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .status-tab.on { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .status-tab .cnt { font-size: 11px; color: var(--sub); margin-left: 4px; }
+
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { border-collapse: collapse; font-size: 12px; min-width: 2200px; }
+    th, td { border: 1px solid var(--line); padding: 6px 8px; white-space: nowrap; vertical-align: middle; }
+    th { background: #fafafa; position: sticky; top: 0; z-index: 2; font-weight: 600; color: var(--sub); }
+    tr:hover td { background: #f5f9ff; }
+    tr.selected td { background: #e6f7ff; }
+    tr.row-nobl td { background: #fffbe6; }
+    tr.row-nobl:hover td { background: #fff1b8; }
+    tr.row-cutoff td { box-shadow: inset 3px 0 0 var(--orange); }
+    tr.mark-red td { background: #fff1f0 !important; }
+    tr.mark-orange td { background: #fff7e6 !important; }
+    tr.mark-yellow td { background: #feffe6 !important; }
+    tr.mark-green td { background: #f6ffed !important; }
+    tr.mark-blue td { background: #e6f7ff !important; }
+    tr.mark-purple td { background: #f9f0ff !important; }
+    tr.selected.mark-red td,
+    tr.selected.mark-orange td,
+    tr.selected.mark-yellow td,
+    tr.selected.mark-green td,
+    tr.selected.mark-blue td,
+    tr.selected.mark-purple td { outline: 1px solid #91d5ff; outline-offset: -1px; }
+    .color-dot {
+      display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+      border: 1px solid #d9d9d9; vertical-align: middle;
+    }
+    .color-dot.none { background: #fff; }
+    .color-dot.red { background: #ff4d4f; border-color: #cf1322; }
+    .color-dot.orange { background: #fa8c16; border-color: #d46b08; }
+    .color-dot.yellow { background: #fadb14; border-color: #d4b106; }
+    .color-dot.green { background: #52c41a; border-color: #389e0d; }
+    .color-dot.blue { background: #1890ff; border-color: #096dd9; }
+    .color-dot.purple { background: #722ed1; border-color: #531dab; }
+    .color-palette { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .color-swatch {
+      width: 28px; height: 28px; border-radius: 4px; border: 2px solid transparent;
+      cursor: pointer; padding: 0;
+    }
+    .color-swatch.on { border-color: #262626; box-shadow: 0 0 0 1px #fff inset; }
+    .color-swatch[data-c=""] { background: #fff; border: 1px solid #d9d9d9; }
+    .color-swatch[data-c="red"] { background: #ff4d4f; }
+    .color-swatch[data-c="orange"] { background: #fa8c16; }
+    .color-swatch[data-c="yellow"] { background: #fadb14; }
+    .color-swatch[data-c="green"] { background: #52c41a; }
+    .color-swatch[data-c="blue"] { background: #1890ff; }
+    .color-swatch[data-c="purple"] { background: #722ed1; }
+    .toolbar .hint-inline { font-size: 11px; color: var(--sub); align-self: center; margin-left: 4px; }
+    .st { display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; border: 1px solid; font-weight: 600; }
+    .st-wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .st-ok { color: #389e0d; background: #f6ffed; border-color: #95de64; }
+    .st-blank { color: var(--sub); }
+    .link { color: var(--blue); cursor: pointer; }
+    .muted { color: var(--sub); }
+    .cut-warn { color: var(--orange); font-weight: 600; }
+
+    .week-bar {
+      position: fixed; left: 208px; right: 0; bottom: 0; z-index: 5;
+      background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -2px 8px rgba(0,0,0,.06);
+      display: flex; align-items: center; gap: 4px; padding: 6px 10px; overflow-x: auto;
+    }
+    .week-btn { flex: 0 0 auto; border: 1px solid var(--line); background: #fafafa; border-radius: 2px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    .week-btn.on { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; font-weight: 600; }
+    .week-btn em { font-style: normal; font-size: 11px; color: var(--sub); margin-left: 4px; }
+
+    .mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 20; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .mask.open { display: flex; }
+    .dlg { background: #fff; border-radius: 4px; width: min(520px, 100%); max-height: 90vh; overflow: auto; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+    .dlg-hd { padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .dlg-bd { padding: 14px 16px; }
+    .dlg-ft { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-grid label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .form-grid input, .form-grid select, .form-grid textarea { width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px; }
+    .toast { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.78); color: #fff; padding: 8px 14px; border-radius: 4px; font-size: 12px; z-index: 30; display: none; }
+    .toast.show { display: block; }
+
+    .sheet-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40;
+      display: none; align-items: stretch; justify-content: flex-end;
+    }
+    .sheet-mask.open { display: flex; }
+    .sheet {
+      width: min(720px, 100%); height: 100%; background: #fff;
+      display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.12);
+      animation: sheetIn .2s ease-out;
+    }
+    @keyframes sheetIn { from { transform: translateX(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+    .sheet-hd {
+      padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .sheet-bd { flex: 1; overflow: auto; padding: 14px 18px; }
+    .sheet-ft {
+      padding: 10px 18px; border-top: 1px solid var(--line);
+      display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
+    }
+    .sec-title { font-size: 13px; font-weight: 600; color: #003a8c; margin: 12px 0 8px; }
+    .sec-title:first-child { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <span class="logo">ESS · 船务</span>
+      <span class="nav-tab">海派仓位表</span>
+    </header>
+    <div class="body-wrap">
+      <nav class="sidebar" id="shipReviewSidebar"></nav>
+      <main class="main">
+        <div class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>航次/船名/提单号</label><input id="qKw" placeholder="模糊搜索" autocomplete="off" /></div>
+            <div class="filter-item"><label>订舱代理</label><select id="qAgent"><option value="">全部</option><option>宁波外运</option><option>上海外运</option><option>腾信订</option></select></div>
+            <div class="filter-item"><label>目的港向</label><select id="qLane"><option value="">全部</option><option>NB-LB</option><option>SH-LB</option><option>QD-LA</option></select></div>
+            <div class="filter-item"><label>预计开船</label><input id="qEtd" type="date" autocomplete="off" /></div>
+            <div class="filter-item range">
+              <label>预计装柜时间</label>
+              <div class="range-row">
+                <input id="qLoadFrom" type="date" title="起" autocomplete="off" />
+                <span>~</span>
+                <input id="qLoadTo" type="date" title="止" autocomplete="off" />
+              </div>
+            </div>
+            <div class="filter-actions" style="margin-top:0;align-self:end">
+              <button type="button" class="btn primary" id="btnSearch">查询</button>
+              <button type="button" class="btn" id="btnReset">重置</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-tabs" id="statusTabs">
+          <button type="button" class="status-tab on" data-st="all">全部<span class="cnt" id="cntAll">(4)</span></button>
+          <button type="button" class="status-tab" data-st="nobl">未放舱 / 无提单号<span class="cnt" id="cntNobl">(2)</span></button>
+          <button type="button" class="status-tab" data-st="released">已放舱<span class="cnt" id="cntRel">(2)</span></button>
+          <button type="button" class="status-tab" data-st="void">已退运<span class="cnt" id="cntVoid">(0)</span></button>
+        </div>
+
+        <div class="toolbar">
+          <button type="button" class="btn primary" id="btnBatchCreate" title="勾选仓位可带入船期/港口；未勾选则进空白批量创建">批量创建提单</button>
+          <button type="button" class="btn" id="btnEdit" disabled>编辑仓位</button>
+          <button type="button" class="btn primary" id="btnRelease" disabled>放舱出号</button>
+          <button type="button" class="btn primary" id="btnAssignLoad" disabled title="勾选后批量分配预计装柜时间">分配预计装柜时间</button>
+          <button type="button" class="btn" id="btnMarkColor" disabled title="勾选后手动标记行颜色">标记颜色</button>
+          <button type="button" class="btn" id="btnClearColor" disabled title="清除勾选行颜色">清除颜色</button>
+          <button type="button" class="btn danger" id="btnReturnShip" disabled title="按柜退运；未放舱或已放舱未装完；退运费选填">退运</button>
+          <button type="button" class="btn" id="btnOpenBl" disabled title="出号后已自动进提单，此处仅跳转查看">打开提单 · 待分配</button>
+          <button type="button" class="btn" id="btnExport">导出</button>
+          <button type="button" class="btn" id="btnBroadcast">舱位播报</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="chkAll" /></th>
+                <th class="col-new" style="width:44px" title="手动标记颜色">色标</th>
+                <th>放舱</th>
+                <th>提单号</th>
+                <th>代理</th>
+                <th>进口商抬头</th>
+                <th>航名航次</th>
+                <th>始终港口</th>
+                <th class="col-new">预计装柜时间</th>
+                <th>中文船名</th>
+                <th>柜型</th>
+                <th>配仓号</th>
+                <th>截单时间</th>
+                <th>截关时间</th>
+                <th>开船时间</th>
+                <th>海运费登记</th>
+                <th>免用箱情况</th>
+                <th>装柜状态</th>
+                <th>报关行代理</th>
+                <th>产品部特殊备注</th>
+                <th>提单</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="week-bar" id="weekBar"></div>
+
+  <div class="sheet-mask" id="regSheetMask" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-labelledby="regSheetTitle">
+      <div class="sheet-hd">
+        <span id="regSheetTitle">新增订舱登记</span>
+        <button type="button" class="btn" id="btnRegClose">关闭</button>
+      </div>
+      <div class="sheet-bd">
+        <p class="muted" style="margin:0 0 12px;font-size:12px;line-height:1.6;">无提单号阶段在本页登记；保存后为「未放舱」。确认放舱出号后系统自动生成提单（待分配）。</p>
+        <div class="sec-title">船期 / 港口</div>
+        <div class="form-grid">
+          <div><label>订舱代理 *</label><input id="regAgent" placeholder="如 宁波外运 / 腾信订" /></div>
+          <div><label>航名航次 *</label><input id="regVoyage" placeholder="LURLINE 104E" /></div>
+          <div><label>始终港口 *</label><input id="regPort" placeholder="NB-LB" /></div>
+          <div><label>中文船名</label><input id="regShipCn" placeholder="CLX / COSCO" /></div>
+          <div><label>柜型 *</label><select id="regBox"><option>40HQ</option><option>45HQ</option><option>20GP</option></select></div>
+          <div><label>配仓号</label><input id="regCabin" placeholder="预配-A7 / 260801-混装" /></div>
+          <div><label>截单时间</label><input id="regSi" type="datetime-local" /></div>
+          <div><label>截关时间</label><input id="regCy" type="datetime-local" /></div>
+          <div><label>预计开船 *</label><input id="regEtd" type="date" /></div>
+          <div><label>预计装柜时间</label><input id="regPlanLoad" type="date" /></div>
+          <div><label>报关行代理</label><input id="regBroker" placeholder="欣扬" /></div>
+        </div>
+        <div class="sec-title">备注</div>
+        <div class="form-grid">
+          <div class="full"><label>进口商抬头</label><input id="regImp" placeholder="可选" /></div>
+          <div class="full"><label>产品部特殊备注</label><textarea id="regNote" rows="2" placeholder="改盐田提…"></textarea></div>
+        </div>
+      </div>
+      <div class="sheet-ft">
+        <button type="button" class="btn" id="btnRegCancel">取消</button>
+        <button type="button" class="btn primary" id="btnRegSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="releaseMask" aria-hidden="true">
+    <div class="dlg" role="dialog">
+      <div class="dlg-hd">放舱出号<span class="link" data-close-rel>关闭</span></div>
+      <div class="dlg-bd">
+        <p class="muted" style="margin:0 0 10px;font-size:12px;">确认后：本行「已放舱」、写入正式提单号，并<strong>自动创建提单行（待分配）</strong>。提单号锁定不可在本页修改。</p>
+        <div class="form-grid">
+          <div><label>正式提单号 *</label><input id="relBl" placeholder="如 MATS9565074000" /></div>
+          <div><label>SO / 配仓号</label><input id="relSo" placeholder="可选" /></div>
+          <div><label>截单时间 *</label><input type="datetime-local" /></div>
+          <div><label>海运费 *</label><input placeholder="金额" /></div>
+          <div class="full"><label>免用箱情况登记</label><textarea rows="2" placeholder="国内/国外天数"></textarea></div>
+        </div>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn" data-close-rel>取消</button>
+        <button type="button" class="btn primary" id="btnReleaseOk">确认出号</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="assignLoadMask" aria-hidden="true">
+    <div class="dlg" role="dialog">
+      <div class="dlg-hd">分配预计装柜时间<span class="link" id="btnAssignLoadClose">关闭</span></div>
+      <div class="dlg-bd">
+        <p class="muted" style="margin:0 0 10px;font-size:12px;">将对已勾选的 <b id="assignLoadCnt">0</b> 条仓位统一写入预计装柜时间（可覆盖原值）。放舱前后均可分配。</p>
+        <div class="form-grid">
+          <div><label>预计装柜日期 *</label><input id="assignLoadDate" type="date" /></div>
+          <div><label>时间（可选）</label><input id="assignLoadTime" type="time" value="08:00" /></div>
+          <div class="full"><label>备注（可选，追加到产品部特殊备注）</label><input id="assignLoadNote" placeholder="如：义乌仓优先 / 工厂装柜" /></div>
+        </div>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn" id="btnAssignLoadCancel">取消</button>
+        <button type="button" class="btn primary" id="btnAssignLoadOk">确认分配</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="markColorMask" aria-hidden="true">
+    <div class="dlg" role="dialog" style="width:min(420px,100%)">
+      <div class="dlg-hd">手动标记颜色<span class="link" id="btnMarkColorClose">关闭</span></div>
+      <div class="dlg-bd">
+        <p class="muted" style="margin:0 0 12px;font-size:12px;">为已勾选的 <b id="markColorCnt">0</b> 条仓位标记颜色，便于排期识别（与系统预警色标独立）。</p>
+        <div class="color-palette" id="colorPalette">
+          <button type="button" class="color-swatch on" data-c="" title="无色"></button>
+          <button type="button" class="color-swatch" data-c="red" title="红"></button>
+          <button type="button" class="color-swatch" data-c="orange" title="橙"></button>
+          <button type="button" class="color-swatch" data-c="yellow" title="黄"></button>
+          <button type="button" class="color-swatch" data-c="green" title="绿"></button>
+          <button type="button" class="color-swatch" data-c="blue" title="蓝"></button>
+          <button type="button" class="color-swatch" data-c="purple" title="紫"></button>
+        </div>
+        <p class="muted" style="margin:12px 0 0;font-size:11px;">选「无色」= 清除颜色。也可在工具栏点「清除颜色」。</p>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn" id="btnMarkColorCancel">取消</button>
+        <button type="button" class="btn primary" id="btnMarkColorOk">应用</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="rsMask" aria-hidden="true">
+    <div class="dlg" role="dialog">
+      <div class="dlg-hd">退运<span class="link" id="rsClose">关闭</span></div>
+      <div class="dlg-bd">
+        <p class="muted" style="margin:0 0 10px;font-size:12px;line-height:1.65">
+          按<strong>仓位行（柜）</strong>退运。口径对齐提单管理：
+          <strong>未放舱</strong>可退；<strong>已放舱且未装完</strong>可退（等同「待分配」阶段）；
+          <strong>已装完不可退</strong>。确认后仓位标记<strong>已退运</strong>，已出号则同步提单作废口径；退运费/亏舱费选填，有则挂<strong>提单预估</strong>。
+        </p>
+        <div class="form-grid">
+          <div class="full"><label>适用仓位</label><input id="rsTargets" readonly /></div>
+          <div class="full"><label>退运原因</label><input id="rsReason" placeholder="选填，例：客户取消 / 船期变更" /></div>
+          <div><label>退运费 / 亏舱费金额（非必填）</label><input id="rsFeeAmt" type="number" min="0" step="0.01" placeholder="留空=不登记" /></div>
+          <div><label>币种</label>
+            <select id="rsFeeCcy"><option>USD</option><option>CNY</option></select>
+          </div>
+          <div class="full"><label>费用说明</label><input id="rsFeeNote" placeholder="选填" /></div>
+        </div>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn" id="rsCancel">取消</button>
+        <button type="button" class="btn danger" id="rsConfirm">确认退运</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var ROWS = [
+      { id: 1, week: 31, released: false, bl: "", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", cabin: "", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "", free: "", planLoad: "2026-08-08", loadSt: "未装", broker: "", note: "", cutoff: true, markColor: "orange" },
+      { id: 2, week: 31, released: false, bl: "", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", cabin: "预配-A7", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "", free: "7+10", planLoad: "2026-08-10", loadSt: "未装", broker: "欣扬", note: "改盐田提", cutoff: false, markColor: "" },
+      { id: 3, week: 32, released: true, bl: "MATS9565074000", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", cabin: "260801-混装", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "14594", free: "", planLoad: "2026-08-09", loadSt: "已装", broker: "", note: "", synced: true, cutoff: false, markColor: "green" },
+      { id: 4, week: 32, released: true, bl: "MATS6104484000", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", cabin: "260801-朱涛整柜", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "16513", free: "", planLoad: "2026-08-11", loadSt: "未装", broker: "", note: "改盐田提", synced: true, cutoff: false, markColor: "" }
+    ];
+
+    var state = { st: "all", week: "all", sel: new Set(), regMode: "add", regEditId: null, pickColor: "" };
+
+    function nextId() {
+      return ROWS.reduce(function (m, r) { return Math.max(m, r.id); }, 0) + 1;
+    }
+
+    function openRegSheet(mode) {
+      state.regMode = mode;
+      state.regEditId = null;
+      document.getElementById("regSheetTitle").textContent = mode === "edit" ? "编辑仓位" : "新增订舱登记";
+      var fields = ["regAgent", "regVoyage", "regPort", "regShipCn", "regCabin", "regImp", "regNote", "regBroker"];
+      fields.forEach(function (id) { document.getElementById(id).value = ""; });
+      document.getElementById("regBox").value = "40HQ";
+      document.getElementById("regSi").value = "";
+      document.getElementById("regCy").value = "";
+      document.getElementById("regEtd").value = "";
+      document.getElementById("regPlanLoad").value = "";
+
+      if (mode === "edit") {
+        var row = selectedRows()[0];
+        if (!row) { toast("请先勾选一条"); return; }
+        state.regEditId = row.id;
+        document.getElementById("regAgent").value = row.agent || "";
+        document.getElementById("regVoyage").value = row.voyage || "";
+        document.getElementById("regPort").value = row.port || "";
+        document.getElementById("regShipCn").value = row.shipCn || "";
+        document.getElementById("regBox").value = row.box || "40HQ";
+        document.getElementById("regCabin").value = row.cabin || "";
+        document.getElementById("regImp").value = row.imp || "";
+        document.getElementById("regNote").value = row.note || "";
+        document.getElementById("regBroker").value = row.broker || "";
+        document.getElementById("regEtd").value = row.etd || "";
+        document.getElementById("regPlanLoad").value = row.planLoad || "";
+        if (row.si && row.si.indexOf("-") === 4) {
+          document.getElementById("regSi").value = String(row.si).replace(" ", "T").slice(0, 16);
+        }
+        if (row.cy && row.cy.indexOf("-") === 4) {
+          document.getElementById("regCy").value = String(row.cy).replace(" ", "T").slice(0, 16);
+        }
+      }
+
+      document.getElementById("regSheetMask").classList.add("open");
+      document.getElementById("regSheetMask").setAttribute("aria-hidden", "false");
+    }
+
+    function closeRegSheet() {
+      document.getElementById("regSheetMask").classList.remove("open");
+      document.getElementById("regSheetMask").setAttribute("aria-hidden", "true");
+    }
+
+    function saveRegSheet() {
+      var agent = document.getElementById("regAgent").value.trim();
+      var voyage = document.getElementById("regVoyage").value.trim();
+      var port = document.getElementById("regPort").value.trim();
+      var etd = document.getElementById("regEtd").value;
+      if (!agent || !voyage || !port || !etd) {
+        toast("请填写代理、航名航次、始终港口、预计开船");
+        return;
+      }
+      var payload = {
+        agent: agent,
+        voyage: voyage,
+        port: port,
+        shipCn: document.getElementById("regShipCn").value.trim(),
+        box: document.getElementById("regBox").value,
+        cabin: document.getElementById("regCabin").value.trim(),
+        imp: document.getElementById("regImp").value.trim(),
+        note: document.getElementById("regNote").value.trim(),
+        broker: document.getElementById("regBroker").value.trim(),
+        etd: etd,
+        planLoad: document.getElementById("regPlanLoad").value || "",
+        si: document.getElementById("regSi").value ? document.getElementById("regSi").value.replace("T", " ") : "",
+        cy: document.getElementById("regCy").value ? document.getElementById("regCy").value.replace("T", " ") : ""
+      };
+
+      if (state.regMode === "edit" && state.regEditId) {
+        var row = ROWS.find(function (r) { return r.id === state.regEditId; });
+        if (row) Object.assign(row, payload);
+        toast("已保存编辑");
+      } else {
+        var id = nextId();
+        ROWS.push({
+          id: id, week: 31, released: false, bl: "", synced: false, cutoff: false, markColor: "",
+          fee: "", free: "", planLoad: payload.planLoad, loadSt: "未装",
+          agent: payload.agent, voyage: payload.voyage, port: payload.port, shipCn: payload.shipCn,
+          box: payload.box, cabin: payload.cabin, imp: payload.imp, note: payload.note, broker: payload.broker,
+          etd: payload.etd, si: payload.si || "—", cy: payload.cy || ""
+        });
+        state.sel.clear();
+        state.sel.add(id);
+        toast("已新增未放舱仓位");
+      }
+      closeRegSheet();
+      renderWeekBar();
+      renderTable();
+    }
+
+    function toast(msg) {
+      var el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(function () { el.classList.remove("show"); }, 2200);
+    }
+
+    function renderWeekBar() {
+      var bar = document.getElementById("weekBar");
+      var weeks = [{ k: "all", label: "全部周", n: ROWS.length }];
+      [31, 32].forEach(function (w) {
+        weeks.push({ k: String(w), label: "2026 第" + w + "周", n: ROWS.filter(function (r) { return r.week === w; }).length });
+      });
+      bar.innerHTML = weeks.map(function (w) {
+        return '<button type="button" class="week-btn' + (state.week === w.k ? " on" : "") + '" data-week="' + w.k + '">' + w.label + '<em>' + w.n + "</em></button>";
+      }).join("");
+      bar.querySelectorAll(".week-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          state.week = btn.getAttribute("data-week");
+          renderWeekBar();
+          renderTable();
+        });
+      });
+    }
+
+    function dayOf(str) {
+      if (!str) return "";
+      var m = String(str).match(/(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : "";
+    }
+
+    function isVoidCabin(r) {
+      return !!(r && (r.returned || r.voided));
+    }
+
+    /** 对齐提单管理：未装完可退（未放舱 / 已放舱待分配阶段）；已装完、已退运不可 */
+    function canReturnCabin(r) {
+      return r && !isVoidCabin(r) && r.loadSt !== "已装";
+    }
+
+    function refreshStatusCounts() {
+      var all = ROWS.length;
+      var voidN = ROWS.filter(isVoidCabin).length;
+      var nobl = ROWS.filter(function (r) { return !isVoidCabin(r) && !r.released; }).length;
+      var rel = ROWS.filter(function (r) { return !isVoidCabin(r) && r.released; }).length;
+      var elAll = document.getElementById("cntAll");
+      var elNobl = document.getElementById("cntNobl");
+      var elRel = document.getElementById("cntRel");
+      var elVoid = document.getElementById("cntVoid");
+      if (elAll) elAll.textContent = "(" + all + ")";
+      if (elNobl) elNobl.textContent = "(" + nobl + ")";
+      if (elRel) elRel.textContent = "(" + rel + ")";
+      if (elVoid) elVoid.textContent = "(" + voidN + ")";
+    }
+
+    function filteredRows() {
+      var kw = (document.getElementById("qKw").value || "").trim().toUpperCase();
+      var agent = document.getElementById("qAgent").value;
+      var lane = document.getElementById("qLane").value;
+      var etdQ = document.getElementById("qEtd").value;
+      var loadFrom = document.getElementById("qLoadFrom").value;
+      var loadTo = document.getElementById("qLoadTo").value;
+      return ROWS.filter(function (r) {
+        var voided = isVoidCabin(r);
+        if (state.st === "void" && !voided) return false;
+        if (state.st === "nobl" && (voided || r.released)) return false;
+        if (state.st === "released" && (voided || !r.released)) return false;
+        if (state.st === "all") { /* keep all */ }
+        if (state.week !== "all" && String(r.week) !== state.week) return false;
+        if (agent && r.agent !== agent) return false;
+        if (lane && r.port !== lane) return false;
+        if (etdQ && dayOf(r.etd) !== etdQ) return false;
+        if (kw) {
+          var hay = ((r.voyage || "") + " " + (r.shipCn || "") + " " + (r.bl || "") + " " + (r.cabin || "")).toUpperCase();
+          if (hay.indexOf(kw) < 0) return false;
+        }
+        var pl = dayOf(r.planLoad);
+        if (loadFrom && (!pl || pl < loadFrom)) return false;
+        if (loadTo && (!pl || pl > loadTo)) return false;
+        return true;
+      });
+    }
+
+    function renderTable() {
+      var tb = document.getElementById("tbody");
+      var rows = filteredRows();
+      if (!rows.length) {
+        tb.innerHTML = '<tr><td colspan="21" style="text-align:center;color:#8c8c8c;padding:28px">暂无匹配仓位，请点「重置」清空筛选后再查</td></tr>';
+        refreshStatusCounts();
+        updateToolbar();
+        return;
+      }
+      tb.innerHTML = rows.map(function (r) {
+        var voided = isVoidCabin(r);
+        var cls = [];
+        if (voided) cls.push("row-void");
+        else if (r.markColor) cls.push("mark-" + r.markColor);
+        else if (!r.released) cls.push("row-nobl");
+        if (r.cutoff && !voided) cls.push("row-cutoff");
+        if (state.sel.has(r.id)) cls.push("selected");
+        var bl = r.bl ? '<span class="link">' + r.bl + "</span>" : '<span class="muted">—</span>';
+        var rel = voided
+          ? '<span class="st st-void">已退运</span>'
+          : (r.released ? '<span class="st st-ok">已放舱</span>' : '<span class="st st-wait">未放舱</span>');
+        var sync = "—";
+        if (voided) {
+          sync = '<span class="muted">已作废</span>';
+        } else if (r.released && r.synced) {
+          sync = '<span class="link btn-open-bl" data-bl="' + r.bl + '">待分配</span>';
+        } else if (r.released && !r.synced) {
+          sync = '<span class="link btn-retry-sync" data-id="' + r.id + '" title="异常重试">同步失败·重推</span>';
+        }
+        var colorCls = r.markColor ? r.markColor : "none";
+        return "<tr class=\"" + cls.join(" ") + "\" data-id=\"" + r.id + "\">" +
+          '<td><input type="checkbox" class="row-chk" data-id="' + r.id + '"' + (state.sel.has(r.id) ? " checked" : "") + (voided ? " disabled" : "") + " /></td>" +
+          '<td title="手动色标"><span class="color-dot ' + colorCls + '"></span></td>' +
+          "<td>" + rel + "</td><td>" + bl + "</td><td>" + r.agent + "</td><td>" + (r.imp || "—") + "</td>" +
+          "<td>" + r.voyage + "</td><td>" + r.port + "</td><td>" + (r.planLoad || "—") + "</td><td>" + r.shipCn + "</td><td>" + r.box + "</td><td>" + (r.cabin || "—") + "</td>" +
+          '<td class="' + (r.cutoff ? "cut-warn" : "") + '">' + r.si + "</td><td>" + (r.cy || "—") + "</td><td>" + r.etd + "</td>" +
+          "<td>" + (r.fee || "—") + "</td><td>" + (r.free || "—") + "</td><td>" + r.loadSt + "</td>" +
+          "<td>" + (r.broker || "—") + "</td><td>" + (r.note || "—") + (r.returnReason ? (" · 退运:" + r.returnReason) : "") + "</td><td>" + sync + "</td></tr>";
+      }).join("");
+      refreshStatusCounts();
+
+      tb.querySelectorAll(".row-chk").forEach(function (chk) {
+        chk.addEventListener("change", function () {
+          var id = +chk.getAttribute("data-id");
+          if (chk.checked) state.sel.add(id); else state.sel.delete(id);
+          updateToolbar();
+          renderTable();
+        });
+      });
+      tb.querySelectorAll(".btn-open-bl").forEach(function (a) {
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          var bl = a.getAttribute("data-bl");
+          window.location.href = "船务组-提单管理-按周分组与分配-MVP.html?from=cabin&bl=" + encodeURIComponent(bl);
+        });
+      });
+      tb.querySelectorAll(".btn-retry-sync").forEach(function (a) {
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          var id = +a.getAttribute("data-id");
+          var row = ROWS.find(function (x) { return x.id === id; });
+          if (row) { row.synced = true; toast("已重推生成提单（待分配）"); renderTable(); }
+        });
+      });
+      updateToolbar();
+    }
+
+    function selectedRows() {
+      return ROWS.filter(function (r) { return state.sel.has(r.id); });
+    }
+
+    function updateToolbar() {
+      var sel = selectedRows().filter(function (r) { return !isVoidCabin(r); });
+      var one = sel.length === 1 ? sel[0] : null;
+      var has = sel.length > 0;
+      var canRs = sel.some(canReturnCabin);
+      document.getElementById("btnEdit").disabled = !(one && !isVoidCabin(one));
+      document.getElementById("btnRelease").disabled = !(one && !one.released && !isVoidCabin(one));
+      document.getElementById("btnOpenBl").disabled = !(one && one.released && one.synced && one.bl && !isVoidCabin(one));
+      document.getElementById("btnAssignLoad").disabled = !has;
+      document.getElementById("btnMarkColor").disabled = !has;
+      document.getElementById("btnClearColor").disabled = !has;
+      document.getElementById("btnReturnShip").disabled = !canRs;
+    }
+
+    function openReturnShip() {
+      var rows = selectedRows();
+      if (!rows.length) { toast("请先勾选要退运的仓位"); return; }
+      var ok = rows.filter(canReturnCabin);
+      var voided = rows.filter(isVoidCabin);
+      var loaded = rows.filter(function (r) { return !isVoidCabin(r) && r.loadSt === "已装"; });
+      if (!ok.length) {
+        toast(loaded.length ? "已装完不可退运" : "勾选仓位均已退运");
+        return;
+      }
+      if (voided.length) toast("已跳过已退运 ×" + voided.length);
+      if (loaded.length) toast("已跳过已装完 ×" + loaded.length);
+      document.getElementById("rsTargets").value = ok.map(function (r) {
+        return (r.bl || "无号") + " / " + (r.voyage || "—") + " / " + (r.cabin || r.box || "—");
+      }).join("；");
+      document.getElementById("rsReason").value = "";
+      document.getElementById("rsFeeAmt").value = "";
+      document.getElementById("rsFeeCcy").value = "USD";
+      document.getElementById("rsFeeNote").value = "";
+      document.getElementById("rsMask").classList.add("open");
+      document.getElementById("rsMask").setAttribute("aria-hidden", "false");
+    }
+
+    function closeReturnShip() {
+      document.getElementById("rsMask").classList.remove("open");
+      document.getElementById("rsMask").setAttribute("aria-hidden", "true");
+    }
+
+    function confirmReturnShip() {
+      var rows = selectedRows().filter(canReturnCabin);
+      if (!rows.length) { toast("无可退运仓位（已装完 / 已退运不可退）"); return; }
+      var reason = (document.getElementById("rsReason").value || "").trim();
+      var amtRaw = (document.getElementById("rsFeeAmt").value || "").trim();
+      var amt = amtRaw === "" ? null : parseFloat(amtRaw, 10);
+      var ccy = document.getElementById("rsFeeCcy").value || "USD";
+      var note = (document.getElementById("rsFeeNote").value || "").trim();
+      if (amtRaw !== "" && !(amt >= 0)) { toast("退运费金额须为有效数字，或不填"); return; }
+      var feeLogged = amt != null && amt > 0;
+      var now = "2026-08-06 23:55";
+      rows.forEach(function (r) {
+        r.returned = true;
+        r.voided = true;
+        r.returnAt = now;
+        r.returnReason = reason;
+        r.loadSt = "已退运";
+        if (feeLogged) {
+          if (!r.fees) r.fees = [];
+          r.fees.push({
+            type: "退运费", amount: amt, ccy: ccy, hang: "提单",
+            remark: note || reason, at: now, payable: "提单预估", fromReturn: true
+          });
+        }
+        state.sel.delete(r.id);
+      });
+      closeReturnShip();
+      renderWeekBar();
+      renderTable();
+      toast("已退运并作废 ×" + rows.length +
+        (feeLogged ? " · 退运费挂提单预估 ×" + rows.length : " · 未登记退运费"));
+    }
+
+    function openAssignLoad() {
+      var sel = selectedRows();
+      if (!sel.length) { toast("请先勾选仓位"); return; }
+      document.getElementById("assignLoadCnt").textContent = String(sel.length);
+      var first = sel[0].planLoad || "";
+      document.getElementById("assignLoadDate").value = dayOf(first) || "";
+      var tm = String(first).match(/(\d{2}):(\d{2})/);
+      document.getElementById("assignLoadTime").value = tm ? (tm[1] + ":" + tm[2]) : "08:00";
+      document.getElementById("assignLoadNote").value = "";
+      document.getElementById("assignLoadMask").classList.add("open");
+      document.getElementById("assignLoadMask").setAttribute("aria-hidden", "false");
+    }
+
+    function closeAssignLoad() {
+      document.getElementById("assignLoadMask").classList.remove("open");
+      document.getElementById("assignLoadMask").setAttribute("aria-hidden", "true");
+    }
+
+    function applyAssignLoad() {
+      var d = document.getElementById("assignLoadDate").value;
+      if (!d) { toast("请选择预计装柜日期"); return; }
+      var t = document.getElementById("assignLoadTime").value;
+      var val = t ? (d + " " + t) : d;
+      var note = document.getElementById("assignLoadNote").value.trim();
+      var sel = selectedRows();
+      sel.forEach(function (r) {
+        r.planLoad = val;
+        if (note) r.note = r.note ? (r.note + "；" + note) : note;
+      });
+      closeAssignLoad();
+      renderTable();
+      toast("已为 " + sel.length + " 条分配预计装柜时间 · " + val);
+    }
+
+    function openMarkColor() {
+      var sel = selectedRows();
+      if (!sel.length) { toast("请先勾选仓位"); return; }
+      document.getElementById("markColorCnt").textContent = String(sel.length);
+      state.pickColor = sel[0].markColor || "";
+      document.querySelectorAll("#colorPalette .color-swatch").forEach(function (b) {
+        b.classList.toggle("on", b.getAttribute("data-c") === state.pickColor);
+      });
+      document.getElementById("markColorMask").classList.add("open");
+      document.getElementById("markColorMask").setAttribute("aria-hidden", "false");
+    }
+
+    function closeMarkColor() {
+      document.getElementById("markColorMask").classList.remove("open");
+      document.getElementById("markColorMask").setAttribute("aria-hidden", "true");
+    }
+
+    function applyMarkColor() {
+      var sel = selectedRows();
+      var c = state.pickColor || "";
+      sel.forEach(function (r) { r.markColor = c; });
+      closeMarkColor();
+      renderTable();
+      toast(c ? ("已标记 " + sel.length + " 条 · " + c) : ("已清除 " + sel.length + " 条颜色"));
+    }
+
+    function openBlPage(bl) {
+      window.location.href = "船务组-提单管理-按周分组与分配-MVP.html?from=cabin&bl=" + encodeURIComponent(bl);
+    }
+
+    function autoSyncBl(row) {
+      if (!row || !row.bl) return false;
+      row.synced = true;
+      return true;
+    }
+
+    document.getElementById("statusTabs").addEventListener("click", function (e) {
+      var tab = e.target.closest(".status-tab");
+      if (!tab) return;
+      document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("on"); });
+      tab.classList.add("on");
+      state.st = tab.getAttribute("data-st");
+      renderTable();
+    });
+
+    document.getElementById("chkAll").addEventListener("change", function () {
+      var rows = filteredRows();
+      if (this.checked) rows.forEach(function (r) { state.sel.add(r.id); });
+      else rows.forEach(function (r) { state.sel.delete(r.id); });
+      renderTable();
+    });
+
+    document.getElementById("btnRelease").addEventListener("click", function () {
+      document.getElementById("releaseMask").classList.add("open");
+    });
+    document.querySelectorAll("[data-close-rel]").forEach(function (el) {
+      el.addEventListener("click", function () { document.getElementById("releaseMask").classList.remove("open"); });
+    });
+    document.getElementById("btnReleaseOk").addEventListener("click", function () {
+      var sel = selectedRows()[0];
+      var bl = document.getElementById("relBl").value.trim();
+      if (!bl) { toast("请填写正式提单号"); return; }
+      if (sel) {
+        sel.released = true;
+        sel.bl = bl;
+        autoSyncBl(sel);
+      }
+      document.getElementById("releaseMask").classList.remove("open");
+      document.getElementById("relBl").value = "";
+      toast("已放舱出号 · 已自动生成提单（待分配）");
+      renderTable();
+    });
+
+    document.getElementById("btnAssignLoad").addEventListener("click", openAssignLoad);
+    document.getElementById("btnAssignLoadClose").addEventListener("click", closeAssignLoad);
+    document.getElementById("btnAssignLoadCancel").addEventListener("click", closeAssignLoad);
+    document.getElementById("btnAssignLoadOk").addEventListener("click", applyAssignLoad);
+    document.getElementById("assignLoadMask").addEventListener("click", function (e) {
+      if (e.target === document.getElementById("assignLoadMask")) closeAssignLoad();
+    });
+
+    document.getElementById("btnMarkColor").addEventListener("click", openMarkColor);
+    document.getElementById("btnMarkColorClose").addEventListener("click", closeMarkColor);
+    document.getElementById("btnMarkColorCancel").addEventListener("click", closeMarkColor);
+    document.getElementById("btnMarkColorOk").addEventListener("click", applyMarkColor);
+    document.getElementById("markColorMask").addEventListener("click", function (e) {
+      if (e.target === document.getElementById("markColorMask")) closeMarkColor();
+    });
+    document.getElementById("colorPalette").addEventListener("click", function (e) {
+      var sw = e.target.closest(".color-swatch");
+      if (!sw) return;
+      state.pickColor = sw.getAttribute("data-c") || "";
+      document.querySelectorAll("#colorPalette .color-swatch").forEach(function (b) {
+        b.classList.toggle("on", b === sw);
+      });
+    });
+    document.getElementById("btnClearColor").addEventListener("click", function () {
+      var sel = selectedRows();
+      if (!sel.length) { toast("请先勾选仓位"); return; }
+      sel.forEach(function (r) { r.markColor = ""; });
+      renderTable();
+      toast("已清除 " + sel.length + " 条颜色标记");
+    });
+
+    document.getElementById("btnReturnShip").addEventListener("click", openReturnShip);
+    document.getElementById("rsClose").addEventListener("click", closeReturnShip);
+    document.getElementById("rsCancel").addEventListener("click", closeReturnShip);
+    document.getElementById("rsConfirm").addEventListener("click", confirmReturnShip);
+    document.getElementById("rsMask").addEventListener("click", function (e) {
+      if (e.target === document.getElementById("rsMask")) closeReturnShip();
+    });
+
+    document.getElementById("btnOpenBl").addEventListener("click", function () {
+      var sel = selectedRows()[0];
+      if (!sel || !sel.bl) return;
+      openBlPage(sel.bl);
+    });
+
+    document.getElementById("btnEdit").addEventListener("click", function () { openRegSheet("edit"); });
+    document.getElementById("btnRegClose").addEventListener("click", closeRegSheet);
+    document.getElementById("btnRegCancel").addEventListener("click", closeRegSheet);
+    document.getElementById("btnRegSave").addEventListener("click", saveRegSheet);
+    document.getElementById("regSheetMask").addEventListener("click", function (e) {
+      if (e.target === document.getElementById("regSheetMask")) closeRegSheet();
+    });
+
+    document.getElementById("btnBroadcast").addEventListener("click", function () {
+      window.open("船务组-提单管理-按周分组与分配-MVP.html#bcMask", "_blank");
+    });
+
+    document.getElementById("btnSearch").addEventListener("click", function () {
+      renderTable();
+      toast("已按条件筛选（含预计装柜时间）");
+    });
+    document.getElementById("btnReset").addEventListener("click", function () {
+      document.getElementById("qKw").value = "";
+      document.getElementById("qAgent").value = "";
+      document.getElementById("qLane").value = "";
+      document.getElementById("qEtd").value = "";
+      document.getElementById("qLoadFrom").value = "";
+      document.getElementById("qLoadTo").value = "";
+      state.week = "all";
+      state.st = "all";
+      document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.toggle("on", t.getAttribute("data-st") === "all"); });
+      renderWeekBar();
+      renderTable();
+      toast("已重置");
+    });
+
+    document.getElementById("btnBatchCreate").addEventListener("click", function () {
+      var sel = selectedRows();
+      var payload = {
+        from: "cabin",
+        at: Date.now(),
+        rows: sel.map(function (r) {
+          return {
+            cabinId: r.id,
+            bl: r.bl || "",
+            agent: r.agent || "",
+            voyage: r.voyage || "",
+            port: r.port || "",
+            shipCn: r.shipCn || "",
+            box: r.box || "",
+            cabin: r.cabin || "",
+            etd: r.etd || "",
+            planLoad: r.planLoad || "",
+            broker: r.broker || "",
+            imp: r.imp || "",
+            note: r.note || ""
+          };
+        })
+      };
+      try {
+        sessionStorage.setItem("cabinBatchCreate", JSON.stringify(payload));
+      } catch (e) {}
+      if (sel.length) {
+        toast("已带入 " + sel.length + " 条仓位 · 进入批量创建提单");
+      } else {
+        toast("进入批量创建提单（未勾选则空白录入）");
+      }
+      setTimeout(function () {
+        location.href = "船务组-提单创建批量-AI识别-MVP.html?from=cabin";
+      }, 280);
+    });
+
+    document.getElementById("btnExport").addEventListener("click", function () {
+      toast("导出含预计装柜时间列（演示）");
+    });
+
+    renderWeekBar();
+    renderTable();
+  </script>
+  <script src="ship-review-nav.js"></script>
+  <script>renderShipReviewNav("cabin");</script>
+</body>
+</html>

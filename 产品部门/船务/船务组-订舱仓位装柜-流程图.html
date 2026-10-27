@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>订舱 · 海派仓位 · 提单装柜 · 流程图</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <link rel="stylesheet" href="ship-review-common.css" />
+  <style>
+    :root { --bg: #f5f7fb; --card: #fff; --line: #e5e7eb; --text: #111827; --sub: #6b7280; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; font-size: 14px; }
+    a { color: #1a6bb5; }
+    .hub { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+    .hero {
+      background: linear-gradient(135deg, #0d4a80, #1890ff); color: #fff; border-radius: 12px;
+      padding: 16px 18px; margin-bottom: 14px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 20px; }
+    .hero p { margin: 0; font-size: 13px; line-height: 1.65; opacity: .95; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card h2 { margin: 0 0 10px; font-size: 15px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    .hint { margin: 0 0 10px; font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .mermaid-wrap {
+      overflow-x: auto; background: #fafafa; border: 1px solid var(--line);
+      border-radius: 8px; padding: 12px;
+    }
+    .legend-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 10px;
+      font-size: 12px; line-height: 1.55;
+    }
+    .legend-grid span { display: block; padding: 6px 8px; background: #f8fafc; border: 1px solid var(--line); border-radius: 6px; }
+    .footer { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <main class="hub">
+    <section class="hero">
+      <h1>订舱 · 仓位 · 提单 · 装柜 · 配仓 — 流程图</h1>
+      <p>评审口径：海派仓位无号 → 放舱出号<strong>自动</strong>进提单待分配；提单创建/汇总/管理<strong>分菜单</strong>；提单管理替代线下装柜计划表；组合/终配与待配仓、终配舱字段色标一致。关务资料出口不在本图。</p>
+      <p style="margin-top:8px"><a href="船务组-订舱仓位装柜-评审导航.html" style="color:#fff">← 评审导航</a></p>
+    </section>
+
+    <section class="card">
+      <h2>① 总览（海派主链 + 整柜并行）</h2>
+      <p class="hint">实线=主流程；虚线=独立菜单或只读查看；紫色=配仓模块回写。</p>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart TB
+  subgraph FCL["整柜 · 并行入口（本期不合并订舱中心）"]
+    direction TB
+    F1["舱位管理<br/>订舱登记 / 放舱"]
+    F1 --> F2["完善提单 → 待分配"]
+  end
+
+  subgraph SEA["海派 · 主链"]
+    direction TB
+    S0["海派仓位表<br/>可无提单号 · 订舱/截点/海运费"]
+    S1["放舱出号<br/>写入正式提单号"]
+    S2["系统自动创建提单<br/>状态：待分配"]
+    S3["装柜计划数据 · 提单管理（船务）<br/>+ 装柜计划仓库视图 · 同一套 xls 列"]
+    S4{"配舱状态"}
+    S5["分配 · 排车/装柜地址/时间"]
+    S6["待装柜"]
+    S7["仓库装柜完成回写<br/>行色：绿=已装完 / 橙=未装完"]
+    S8["待离港 → 已离港 / 轨迹"]
+
+    S0 --> S1 --> S2 --> S3 --> S4
+    S4 -->|"预配 / 待配"| S5
+    S4 -->|"终配"| S5
+    S5 --> S6 --> S7 --> S8
+  end
+
+  subgraph WH["仓库 · 与线下一样用装柜计划表"]
+    direction TB
+    W1["装柜计划视图 PC<br/>今日/本仓 · 顺序 · 地址"]
+    W2["PDA 装柜扫描<br/>终配舱号/托盘"]
+    W1 --> W2
+    W2 --> S7
+    W1 --> S7
+  end
+
+  S6 --> W1
+
+  subgraph STOW["配仓 · 与提单字段一致"]
+    direction LR
+    P1["待配仓 · 组合配仓<br/>↔ 需组合配舱号"]
+    P2["终配舱记录<br/>↔ 最终配舱号"]
+  end
+
+  subgraph BLMENU["提单 · 独立菜单（不与提单管理同页）"]
+    direction TB
+    B1["提单创建<br/>单票 / 批量 / AI"]
+    B2["提单汇总<br/>只读 · 导出对齐 xls"]
+  end
+
+  S3 <-->|"预配蓝 / 待配橙 / 终配绿"| P1
+  S3 <-->|"终配号回写"| P2
+  P1 --> P2
+
+  B1 -.->|"有号录入（非海派放舱路径）"| S2
+  B2 -.->|"查看汇总"| S3
+
+  style S0 fill:#e6f7ff,stroke:#096dd9
+  style S3 fill:#e6fffb,stroke:#08979c
+  style P1 fill:#f9f0ff,stroke:#531dab
+  style P2 fill:#f9f0ff,stroke:#531dab
+  style B1 fill:#fff7e6,stroke:#d46b08
+  style B2 fill:#fff7e6,stroke:#d46b08
+  style F1 fill:#f5f5f5,stroke:#8c8c8c
+        </pre>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>② 提单管理 · 装柜计划视角（状态与色）</h2>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+stateDiagram-v2
+  direction LR
+
+  [*] --> 待分配: 放舱自动建单 / 创建有号
+  待分配 --> 待装柜: 分配确定
+  待装柜 --> 待装柜: 装柜排程\n预配→待配→终配
+  待装柜 --> 待离港: 仓库装柜完成
+  待离港 --> 已离港: 开船/离港
+
+  note right of 待装柜
+    配舱状态色（全模块统一）
+    预配 = 蓝
+    待配 = 橙
+    终配 = 绿
+    行底：绿已装完 / 橙未装完
+  end note
+        </pre>
+      </div>
+      <div class="legend-bar" style="border-radius:8px;margin-top:10px">
+        <b>仓库可读</b>
+        <span class="legend-item"><span class="legend-swatch load-ok"></span>行底绿 · 已装完</span>
+        <span class="legend-item"><span class="legend-swatch load-wait"></span>行底橙 · 未装完</span>
+        <span class="legend-item"><span class="legend-swatch pc-pre"></span>预配</span>
+        <span class="legend-item"><span class="legend-swatch pc-wait"></span>待配</span>
+        <span class="legend-item"><span class="legend-swatch pc-final"></span>终配</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>③ 装柜计划表：船务 + 仓库（一表两用）</h2>
+      <p class="hint">线下 Excel 本就共维；线上<strong>一条柜行</strong>，两个入口，列名与 xls 一致；权限分「谁能改哪几列」。</p>
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart LR
+  DATA["装柜计划行<br/>（原华南/华东表一行）"]
+
+  subgraph SHIPV["船务视图 · 提单管理"]
+    A1["排顺序 / 配舱状态 / 分配"]
+    A2["代理+报关+拖车 / 清关行"]
+    A3["费用 / 进口商 / 导出"]
+  end
+
+  subgraph WHV["仓库视图 · 装柜计划"]
+    B1["看今日装柜 · 顺序 · 地址"]
+    B2["到柜/离场 · 贴单/监装/打单"]
+    B3["PDA 扫码 · 装柜完成"]
+  end
+
+  DATA --- SHIPV
+  DATA --- WHV
+  B3 -->|"回写装完 · 行色绿/橙"| DATA
+  B2 -->|"编辑现场列"| DATA
+  A1 -->|"编辑计划列"| DATA
+        </pre>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>④ 模块与原型入口</h2>
+      <div class="legend-grid">
+        <span><a href="海派仓位表-MVP.html">海派仓位表</a> — 无号阶段</span>
+        <span><a href="船务组-提单创建批量-AI识别-MVP.html">提单创建</a> — 独立菜单</span>
+        <span><a href="船务组-提单汇总-MVP.html">提单汇总</a> — 独立菜单</span>
+        <span><a href="船务组-提单管理-按周分组与分配-MVP.html">提单管理</a> — 原页 + 装柜计划字段</span>
+        <span><a href="装柜计划-仓库视图-MVP.html">装柜计划 · 仓库视图</a> — PC 共表</span>
+        <span><a href="../../APP/装柜扫描-件数核对-MVP.html">PDA 装柜扫描</a></span>
+        <span><a href="船务组-待配仓-MVP.html">待配仓</a> — 需组合配舱号</span>
+        <span><a href="船务组-终配舱-MVP.html">终配舱记录</a> — 最终配舱号</span>
+        <span><a href="../../整柜下单/仓位管理-订舱完善提单-整合-MVP.html">整柜舱位管理</a></span>
+        <span><a href="船务组-提单管理-按周分组与分配-MVP.html">提单管理</a> — 分配 / 费用 / AMS / 装柜计划字段</span>
+      </div>
+    </section>
+
+    <p class="footer">船务组 · 评审流程图 · 与 PRD 分册同步前以本页为准</p>
+  </main>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose", flowchart: { curve: "basis" } });
+  </script>
+</body>
+</html>

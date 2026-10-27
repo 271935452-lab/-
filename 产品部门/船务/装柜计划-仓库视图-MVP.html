@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>装柜计划 · 仓库视图（MVP）</title>
+  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
+  <link rel="stylesheet" href="ship-review-common.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --sidebar: #001529; --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45); --blue: #1890ff; --wh: #d48806;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; font-size: 13px; color: var(--text); background: var(--bg); }
+    a { color: var(--blue); }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top-header { background: var(--header); color: #fff; min-height: 48px; display: flex; align-items: center; padding: 0 14px; gap: 10px; }
+    .logo { font-weight: 600; }
+    .nav-tab { margin-left: 8px; padding: 0 12px; height: 48px; line-height: 48px; background: #fff7e6; color: #ad4e00; font-weight: 600; }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar { width: 208px; background: var(--sidebar); flex-shrink: 0; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-bottom: 12px; }
+    .filter-panel { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .filter-item input, .filter-item select { width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; }
+    .filter-item.range .range-row { display: flex; align-items: center; gap: 4px; }
+    .filter-item.range .range-row input { flex: 1; min-width: 0; }
+    .filter-item.range .range-row span { color: var(--sub); font-size: 12px; }
+    .link-combo { color: var(--blue); cursor: pointer; text-decoration: none; }
+    .link-combo:hover { text-decoration: underline; }
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40; display: none;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    .mask.open { display: flex; }
+    .dlg {
+      width: min(720px, 100%); max-height: 80vh; background: #fff; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18); display: flex; flex-direction: column;
+    }
+    .dlg-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dlg-bd { padding: 12px 16px; overflow: auto; flex: 1; }
+    .dlg-ft { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+    .dlg table { min-width: 0; width: 100%; }
+    .dlg th { position: static; }
+    .toolbar { padding: 6px 12px; background: var(--card); border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .btn { height: 28px; padding: 0 10px; border: 1px solid #d9d9d9; border-radius: 2px; background: #fff; cursor: pointer; font-size: 12px; text-decoration: none; color: var(--text); display: inline-flex; align-items: center; }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.wh { background: #fff7e6; border-color: #ffd591; color: #ad4e00; font-weight: 600; }
+    .hint { font-size: 11px; color: var(--sub); margin-left: auto; }
+    .table-wrap { flex: 1; overflow: auto; background: var(--card); }
+    table { border-collapse: collapse; font-size: 12px; min-width: 3400px; }
+    th, td { border: 1px solid var(--line); padding: 5px 8px; white-space: nowrap; vertical-align: middle; }
+    th { background: #fafafa; position: sticky; top: 0; z-index: 2; font-weight: 600; color: var(--sub); }
+    th.wh-col { background: #fff7e6; color: #ad4e00; }
+    th.ro-col { background: #f5f5f5; color: #8c8c8c; }
+    td.cell-ro { background: #fafafa; color: rgba(0,0,0,.65); }
+    td.cell-wh { background: #fffbe6; }
+    td.cell-wh input, td.cell-wh select {
+      width: 100%; min-width: 72px; height: 26px; border: 1px solid #ffd591; border-radius: 2px; padding: 0 6px; font-size: 12px;
+    }
+    tr.selected td { background: #e6f7ff; }
+    tr.row-loaded td { background: #f6ffed; }
+    tr.row-loaded.selected td { background: #d9f7be; }
+    tr.row-loaded td.cell-ro { background: #eefae6; }
+    tr.row-loaded td.cell-wh { background: #eefae6; }
+    tr.row-loaded.selected td.cell-ro,
+    tr.row-loaded.selected td.cell-wh { background: #d9f7be; }
+    tr.row-unload td { background: #fff7e6; }
+    tr.row-unload td.cell-ro { background: #fff7e6; }
+    .st-pc { display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; border: 1px solid; font-weight: 600; }
+    .st-pre { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    .st-wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+    .st-final { color: #389e0d; background: #f6ffed; border-color: #95de64; }
+    .st-load { font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 2px; }
+    .st-load.ok { background: #b7eb8f; color: #135200; }
+    .st-load.no { background: #ffd591; color: #ad4e00; }
+    .toast { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.78); color: #fff; padding: 8px 14px; border-radius: 4px; font-size: 12px; z-index: 30; display: none; }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-header">
+      <span class="logo">ESS · 仓库</span>
+      <span class="nav-tab">装柜计划 · 仓库视图</span>
+    </header>
+    <div class="body-wrap">
+      <nav class="sidebar" id="shipReviewSidebar"></nav>
+      <main class="main">
+        <div class="filter-panel">
+          <div class="filter-grid">
+            <div class="filter-item"><label>装柜日 *</label><input type="date" id="loadDay" value="2026-08-01" /></div>
+            <div class="filter-item"><label>本仓</label>
+              <select id="whSite">
+                <option selected>义乌仓</option><option>青岛仓</option><option>宁波仓</option><option>深圳仓</option><option>全部</option>
+              </select>
+            </div>
+            <div class="filter-item"><label>装柜地址</label><input id="qAddr" placeholder="义乌 / 客户工厂…" /></div>
+            <div class="filter-item"><label>最终配舱号</label><input id="qFinal" placeholder="扫码或输入" /></div>
+            <div class="filter-item"><label>提单号</label><input id="qBl" placeholder="可选" /></div>
+            <div class="filter-item range">
+              <label>到柜时间</label>
+              <div class="range-row">
+                <input id="qArrFrom" type="date" title="起" />
+                <span>~</span>
+                <input id="qArrTo" type="date" title="止" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button type="button" class="btn primary" id="btnSearch">查询</button>
+          <button type="button" class="btn wh" id="btnSave">保存现场字段</button>
+          <span class="hint" id="selHint">已勾选 0 行</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="ro-col" style="width:36px"><input type="checkbox" id="chkAll" title="全选" /></th>
+                <th class="ro-col">顺序</th>
+                <th class="ro-col">装柜状态</th>
+                <th class="ro-col">资料员</th>
+                <th class="ro-col">进口商抬头</th>
+                <th class="ro-col">渠道</th>
+                <th class="ro-col">组合配舱</th>
+                <th class="ro-col">最终配舱号</th>
+                <th class="ro-col">装柜地址</th>
+                <th class="ro-col">要求到柜时间</th>
+                <th class="ro-col">代理+报关+拖车</th>
+                <th class="ro-col">提单号</th>
+                <th class="ro-col">柜号</th>
+                <th class="ro-col">航名航次</th>
+                <th class="ro-col">箱型箱量</th>
+                <th class="ro-col">车牌号</th>
+                <th class="wh-col">装柜团队</th>
+                <th class="wh-col">卸柜团队</th>
+                <th class="wh-col">贴单核对人员</th>
+                <th class="wh-col">监装人员</th>
+                <th class="wh-col">打单人员</th>
+                <th class="wh-col">装柜费</th>
+                <th class="wh-col">卸柜费</th>
+                <th class="wh-col">具体到柜时间</th>
+                <th class="wh-col">实际离场时间</th>
+                <th class="wh-col">卸货备注</th>
+                <th class="ro-col">配舱状态</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="mask" id="comboMask" aria-hidden="true">
+    <div class="dlg" role="dialog" aria-labelledby="comboTitle">
+      <div class="dlg-hd">
+        <span id="comboTitle">组合配舱明细</span>
+        <button type="button" class="btn" id="btnComboClose">关闭</button>
+      </div>
+      <div class="dlg-bd">
+        <p style="margin:0 0 10px;font-size:12px;color:var(--sub);line-height:1.55">
+          组合配舱号：<b id="comboNo">—</b>
+          <a href="船务组-待配仓-MVP.html" id="comboGoWait" style="margin-left:8px">打开待配仓</a>
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>运单号</th>
+              <th>客户单号</th>
+              <th>件数</th>
+              <th>方数</th>
+              <th>仓库</th>
+              <th>备注</th>
+            </tr>
+          </thead>
+          <tbody id="comboTbody"></tbody>
+        </table>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn primary" id="btnComboOk">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="ship-review-nav.js"></script>
+  <script>
+    renderShipReviewNav("wh-plan");
+
+    var TEAMS = ["", "老刘", "老王班", "义乌一组", "青岛二组", "宁波夜班"];
+    var UNLOAD_TEAMS = ["", "卸柜一组", "卸柜二组", "外协卸柜", "老刘"];
+    var STAFF = ["", "李庆广", "张明", "王芳", "赵强", "陈磊", "周敏"];
+
+    var COMBO_LIST = {
+      "OSFM-8-1": [
+        { wb: "TX260801001", cust: "C-ORR-01", pcs: 120, cbm: "12.4", wh: "义乌仓", note: "反倾销" },
+        { wb: "TX260801002", cust: "C-ORR-02", pcs: 86, cbm: "9.1", wh: "义乌仓", note: "" }
+      ],
+      "总仓-正班快递预配-A3": [
+        { wb: "TX260802011", cust: "FBA19A", pcs: 40, cbm: "8.2", wh: "义乌仓", note: "正班混装" },
+        { wb: "TX260802012", cust: "FBA19B", pcs: 55, cbm: "11.0", wh: "义乌仓", note: "" },
+        { wb: "TX260802013", cust: "FBA19C", pcs: 32, cbm: "6.5", wh: "义乌仓", note: "" }
+      ],
+      "NTCD2607-02": [
+        { wb: "TX260731088", cust: "LAX-01", pcs: 200, cbm: "28.0", wh: "义乌仓", note: "待组合确认" }
+      ]
+    };
+
+    var ROWS = [
+      { id: 1, seq: 1, loaded: false, doc: "郝桂兰", imp: "ORRAZIA INC", ch: "圣路易斯", combo: "OSFM-8-1", finalCabin: "260801-朱涛整柜", addr: "客户工厂", req: "—", agent3: "中集订+客户自报+祥聚托", bl: "COSU6509053150", cntr: "CSLU1637043", voy: "CSCL SOUTH CHINA SEA 084E", box: "20GP-28CBM", plate: "津CN8019", pc: "final", team: "", unloadTeam: "", label: "", watch: "", print: "", loadFee: "", unloadFee: "", arr: "", leave: "", unload: "" },
+      { id: 2, seq: 4, loaded: true, doc: "郝桂兰", imp: "BARBIZON INC", ch: "正班", combo: "总仓-正班快递预配-A3", finalCabin: "260801-正班混装1", addr: "义乌", req: "十二点", agent3: "腾信订+欣扬报+良承拖", bl: "MATS3404017000", cntr: "MATU2571410", voy: "LURLINE 102E", box: "40HQ-68CBM", plate: "浙B7K700", pc: "final", team: "老刘", unloadTeam: "卸柜一组", label: "李庆广", watch: "张明", print: "王芳", loadFee: "450", unloadFee: "200", arr: "2026-08-02 11:40", leave: "2026-08-02 16:20", unload: "" },
+      { id: 3, seq: 2, loaded: false, doc: "毛潇楠", imp: "LAXIS INC", ch: "克利夫兰", combo: "NTCD2607-02", finalCabin: "260801-文志方整柜", addr: "义乌", req: "—", agent3: "聚航订+欣杨报+良承托", bl: "OOLU2172541410", cntr: "SEKU4564450", voy: "SHANGHAI 121E", box: "40HQ-68CBM", plate: "浙B3U852", pc: "wait", team: "", unloadTeam: "", label: "", watch: "", print: "", loadFee: "", unloadFee: "", arr: "", leave: "", unload: "" }
+    ];
+
+    var PC = { pre: ["预配", "st-pre"], wait: ["待配", "st-wait"], final: ["终配", "st-final"] };
+    var selected = { 2: true };
+
+    function toast(msg) {
+      var el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(function () { el.classList.remove("show"); }, 2200);
+    }
+
+    function selectedIds() {
+      return Object.keys(selected).filter(function (k) { return selected[k]; }).map(Number);
+    }
+
+    function updateSelHint() {
+      var n = selectedIds().length;
+      var el = document.getElementById("selHint");
+      if (el) el.textContent = "已勾选 " + n + " 行";
+      var all = document.getElementById("chkAll");
+      if (all) {
+        var list = filteredRows();
+        var checked = list.filter(function (r) { return selected[r.id]; }).length;
+        all.checked = list.length > 0 && checked === list.length;
+        all.indeterminate = checked > 0 && checked < list.length;
+      }
+    }
+
+    function dayOf(str) {
+      if (!str) return "";
+      var m = String(str).match(/(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : "";
+    }
+
+    function filteredRows() {
+      var addr = (document.getElementById("qAddr").value || "").trim();
+      var fin = (document.getElementById("qFinal").value || "").trim().toUpperCase();
+      var bl = (document.getElementById("qBl").value || "").trim().toUpperCase();
+      var arrFrom = document.getElementById("qArrFrom").value;
+      var arrTo = document.getElementById("qArrTo").value;
+      return ROWS.filter(function (r) {
+        if (addr && (r.addr || "").indexOf(addr) < 0) return false;
+        if (fin && (r.finalCabin || "").toUpperCase().indexOf(fin) < 0) return false;
+        if (bl && (r.bl || "").toUpperCase().indexOf(bl) < 0) return false;
+        var ad = dayOf(r.arr);
+        if (arrFrom && (!ad || ad < arrFrom)) return false;
+        if (arrTo && (!ad || ad > arrTo)) return false;
+        return true;
+      }).slice().sort(function (a, b) { return a.seq - b.seq; });
+    }
+
+    function optHtml(list, cur) {
+      return list.map(function (v) {
+        var lab = v || "请选择";
+        return '<option value="' + v + '"' + (v === (cur || "") ? " selected" : "") + ">" + lab + "</option>";
+      }).join("");
+    }
+
+    function openCombo(comboNo) {
+      var list = COMBO_LIST[comboNo] || [];
+      document.getElementById("comboNo").textContent = comboNo || "—";
+      document.getElementById("comboTitle").textContent = "组合配舱明细 · " + (comboNo || "—");
+      document.getElementById("comboGoWait").href = "船务组-待配仓-MVP.html?combo=" + encodeURIComponent(comboNo || "");
+      var tb = document.getElementById("comboTbody");
+      if (!list.length) {
+        tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#8c8c8c;padding:20px">暂无明细（可到待配仓查看）</td></tr>';
+      } else {
+        tb.innerHTML = list.map(function (x) {
+          return "<tr><td>" + x.wb + "</td><td>" + x.cust + "</td><td>" + x.pcs + "</td><td>" + x.cbm + "</td><td>" + x.wh + "</td><td>" + (x.note || "—") + "</td></tr>";
+        }).join("");
+      }
+      document.getElementById("comboMask").classList.add("open");
+      document.getElementById("comboMask").setAttribute("aria-hidden", "false");
+    }
+
+    function closeCombo() {
+      document.getElementById("comboMask").classList.remove("open");
+      document.getElementById("comboMask").setAttribute("aria-hidden", "true");
+    }
+
+    function bindRowEditors(tr, r) {
+      tr.querySelectorAll("[data-f]").forEach(function (el) {
+        el.addEventListener("click", function (e) { e.stopPropagation(); });
+        el.addEventListener("change", function () {
+          r[el.getAttribute("data-f")] = el.value;
+        });
+      });
+    }
+
+    function render() {
+      var tb = document.getElementById("tbody");
+      var rows = filteredRows();
+      tb.innerHTML = rows.map(function (r) {
+        var on = !!selected[r.id];
+        var cls = (r.loaded ? "row-loaded" : "row-unload") + (on ? " selected" : "");
+        var pc = PC[r.pc];
+        var loadSt = r.loaded
+          ? '<span class="st-load ok">已装完</span>'
+          : '<span class="st-load no">未装完</span>';
+        var comboCell = r.combo
+          ? '<a class="link-combo" href="javascript:;" data-combo="' + r.combo.replace(/"/g, "&quot;") + '" title="查看组合配舱明细">' + r.combo + "</a>"
+          : "—";
+        return "<tr class=\"" + cls + "\" data-id=\"" + r.id + "\">" +
+          "<td class=\"cell-ro\"><input type=\"checkbox\" class=\"row-ck\"" + (on ? " checked" : "") + " /></td>" +
+          "<td class=\"cell-ro\">" + r.seq + "</td><td class=\"cell-ro\">" + loadSt + "</td><td class=\"cell-ro\">" + r.doc + "</td><td class=\"cell-ro\">" + r.imp + "</td><td class=\"cell-ro\">" + r.ch + "</td>" +
+          "<td class=\"cell-ro\">" + comboCell + "</td>" +
+          "<td class=\"cell-ro\"><a href=\"../../APP/装柜扫描-件数核对-MVP.html\">" + r.finalCabin + "</a></td><td class=\"cell-ro\">" + r.addr + "</td><td class=\"cell-ro\">" + r.req + "</td><td class=\"cell-ro\">" + r.agent3 + "</td>" +
+          "<td class=\"cell-ro\">" + r.bl + "</td><td class=\"cell-ro\">" + r.cntr + "</td><td class=\"cell-ro\">" + r.voy + "</td><td class=\"cell-ro\">" + r.box + "</td><td class=\"cell-ro\">" + r.plate + "</td>" +
+          "<td class=\"cell-wh\"><select data-f=\"team\">" + optHtml(TEAMS, r.team) + "</select></td>" +
+          "<td class=\"cell-wh\"><select data-f=\"unloadTeam\">" + optHtml(UNLOAD_TEAMS, r.unloadTeam) + "</select></td>" +
+          "<td class=\"cell-wh\"><select data-f=\"label\">" + optHtml(STAFF, r.label) + "</select></td>" +
+          "<td class=\"cell-wh\"><select data-f=\"watch\">" + optHtml(STAFF, r.watch) + "</select></td>" +
+          "<td class=\"cell-wh\"><select data-f=\"print\">" + optHtml(STAFF, r.print) + "</select></td>" +
+          "<td class=\"cell-wh\"><input type=\"number\" min=\"0\" step=\"0.01\" value=\"" + (r.loadFee || "") + "\" placeholder=\"金额\" data-f=\"loadFee\" /></td>" +
+          "<td class=\"cell-wh\"><input type=\"number\" min=\"0\" step=\"0.01\" value=\"" + (r.unloadFee || "") + "\" placeholder=\"金额\" data-f=\"unloadFee\" /></td>" +
+          "<td class=\"cell-wh\"><input value=\"" + (r.arr || "") + "\" placeholder=\"2026-08-02 11:40\" data-f=\"arr\" /></td>" +
+          "<td class=\"cell-wh\"><input value=\"" + (r.leave || "") + "\" placeholder=\"2026-08-02 16:20\" data-f=\"leave\" /></td>" +
+          "<td class=\"cell-wh\"><input value=\"" + (r.unload || "") + "\" data-f=\"unload\" /></td>" +
+          "<td class=\"cell-ro\"><span class=\"st-pc " + pc[1] + "\">" + pc[0] + "</span></td></tr>";
+      }).join("") || '<tr><td colspan="27" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+
+      tb.querySelectorAll("tr[data-id]").forEach(function (tr) {
+        var id = +tr.getAttribute("data-id");
+        var r = ROWS.find(function (x) { return x.id === id; });
+        if (r) bindRowEditors(tr, r);
+        var ck = tr.querySelector(".row-ck");
+        if (ck) {
+          ck.addEventListener("click", function (e) { e.stopPropagation(); });
+          ck.addEventListener("change", function () {
+            if (ck.checked) selected[id] = true;
+            else delete selected[id];
+            tr.classList.toggle("selected", ck.checked);
+            updateSelHint();
+          });
+        }
+        var comboLink = tr.querySelector(".link-combo");
+        if (comboLink) {
+          comboLink.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openCombo(comboLink.getAttribute("data-combo"));
+          });
+        }
+        tr.addEventListener("click", function (e) {
+          if (e.target.closest("input, select, a, button")) return;
+          if (selected[id]) delete selected[id];
+          else selected[id] = true;
+          render();
+        });
+      });
+      updateSelHint();
+    }
+
+    document.getElementById("chkAll").addEventListener("change", function () {
+      var on = document.getElementById("chkAll").checked;
+      filteredRows().forEach(function (r) {
+        if (on) selected[r.id] = true;
+        else delete selected[r.id];
+      });
+      render();
+    });
+
+    document.getElementById("btnSave").addEventListener("click", function () {
+      var n = selectedIds().length;
+      if (!n) { toast("请先勾选要保存的行"); return; }
+      toast("已保存 " + n + " 行现场字段（含装柜费/卸柜费/团队人员）");
+    });
+
+    document.getElementById("btnSearch").addEventListener("click", function () {
+      render();
+      toast("已按装柜日 / 本仓 / 到柜时间等条件筛选");
+    });
+
+    document.getElementById("btnComboClose").addEventListener("click", closeCombo);
+    document.getElementById("btnComboOk").addEventListener("click", closeCombo);
+    document.getElementById("comboMask").addEventListener("click", function (e) {
+      if (e.target === document.getElementById("comboMask")) closeCombo();
+    });
+
+    render();
+  </script>
+</body>
+</html>
