@@ -36,12 +36,18 @@
       "#qkDocClose{flex-shrink:0;padding:7px 12px;margin:0;border:1px solid #2a6bbd;border-radius:4px;" +
       "background:#fff;color:#2a6bbd;font:inherit;font-size:14px;cursor:pointer;}" +
       "#qkDocClose:hover{background:#eff6ff;}" +
-      ".qk-doc-bd{padding:12px 18px 18px;overflow:auto;max-height:calc(85vh - 72px);" +
+      ".qk-doc-bd{padding:12px 18px 28px;overflow:auto;max-height:calc(85vh - 72px);" +
       "font-size:13px;line-height:1.65;}" +
       ".qk-doc-feat{margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid #f0f0f0;}" +
       ".qk-doc-feat h3{margin:0 0 6px;font-size:14px;}" +
       ".qk-doc-feat ul{margin:8px 0 0;padding-left:1.25em;}" +
-      ".qk-doc-point{border:1px solid #e8e8e8;border-radius:4px;padding:10px 12px;margin:0 0 8px;}" +
+      ".qk-doc-toc{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px dashed #e2e8f0;}" +
+      ".qk-doc-toc a{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;" +
+      "padding:0 6px;border-radius:50%;background:#ff8a00;color:#fff;font-size:11px;font-weight:700;" +
+      "text-decoration:none;}" +
+      ".qk-doc-toc a:hover{filter:brightness(1.08);}" +
+      ".qk-doc-meta{margin:0 0 10px;font-size:12px;color:#8c8c8c;}" +
+      ".qk-doc-point{border:1px solid #e8e8e8;border-radius:4px;padding:10px 12px;margin:0 0 8px;scroll-margin-top:8px;}" +
       ".qk-doc-point h4{margin:0 0 6px;font-size:13px;display:flex;align-items:center;gap:8px;}" +
       ".qk-doc-pin{display:inline-flex;align-items:center;justify-content:center;" +
       "min-width:20px;height:20px;border-radius:50%;background:#ff8a00;color:#fff;" +
@@ -50,7 +56,8 @@
       ".qk-doc-sum{margin:0 0 8px;color:#64748b;font-size:12px;}" +
       ".qk-doc-detail{display:grid;grid-template-columns:52px 1fr;gap:4px 8px;margin:4px 0;font-size:12px;}" +
       ".qk-doc-detail b{color:#8c8c8c;font-weight:600;}" +
-      ".qk-doc-detail p{margin:0;}";
+      ".qk-doc-detail p{margin:0;}" +
+      ".qk-doc-end{margin:12px 0 0;padding-top:10px;border-top:1px dashed #e2e8f0;font-size:12px;color:#8c8c8c;text-align:center;}";
     document.head.appendChild(st);
   }
 
@@ -108,10 +115,17 @@
     var ordered = pinIds.map(function (id) { return byId[id]; }).filter(Boolean);
     if (!ordered.length) ordered = points;
     var dlg = ensureDialog();
-    document.getElementById("qkDocTitle").textContent = "逐点开发说明";
-    var html = "<p style=\"margin:0 0 10px;font-size:12px;color:#8c8c8c\">编号与页面上橙色圆圈一致。</p>" +
+    var n = ordered.length;
+    document.getElementById("qkDocTitle").textContent = "逐点开发说明（共 " + n + " 点）";
+    var toc = "<div class=\"qk-doc-toc\" aria-label=\"编号目录\">" +
       ordered.map(function (p) {
-        return "<div class=\"qk-doc-point\">" +
+        return "<a href=\"#qk-doc-p-" + p.pin + "\" title=\"" + (p.title || "") + "\">" + p.pin + "</a>";
+      }).join("") +
+      "</div>";
+    var html = "<p class=\"qk-doc-meta\">编号与页面橙色圆圈一致；共 <b>" + n + "</b> 点，点上方圆圈可跳转（含 13 回写 C01、14 确认导出）。</p>" +
+      toc +
+      ordered.map(function (p) {
+        return "<div class=\"qk-doc-point\" id=\"qk-doc-p-" + p.pin + "\">" +
           "<h4><span class=\"qk-doc-pin\">" + p.pin + "</span>" + (p.title || "") + "</h4>" +
           "<div class=\"qk-doc-kind\">" + (p.kind || "") + "</div>" +
           "<p class=\"qk-doc-sum\">" + (p.summary || "") + "</p>" +
@@ -119,8 +133,18 @@
             return "<div class=\"qk-doc-detail\"><b>" + k + "</b><p>" + ((p.body && p.body[i]) || "—") + "</p></div>";
           }).join("") +
           "</div>";
-      }).join("");
-    document.getElementById("qkDocBody").innerHTML = html;
+      }).join("") +
+      "<p class=\"qk-doc-end\">— 以上共 " + n + " 点，已到末尾 —</p>";
+    var body = document.getElementById("qkDocBody");
+    body.innerHTML = html;
+    body.querySelectorAll(".qk-doc-toc a").forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        var id = (a.getAttribute("href") || "").replace(/^#/, "");
+        var t = document.getElementById(id);
+        if (t) t.scrollIntoView({ block: "start", behavior: "smooth" });
+      });
+    });
     if (typeof dlg.showModal === "function") dlg.showModal();
     else dlg.setAttribute("open", "open");
   }
