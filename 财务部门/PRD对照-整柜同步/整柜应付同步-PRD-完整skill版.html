@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BDS-1022 整柜苏青 · 应付同步与账期锁客户 · PRD 完整 skill 版</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root { --line:#e5e7eb; --sub:#6b7280; --blue:#2563eb; --warn:#c2410c; --ok:#389e0d; }
+    body { margin:0; font-family:"Microsoft YaHei",sans-serif; font-size:14px; background:#f5f7fb; color:#111827; }
+    a { color:var(--blue); }
+    .page { max-width:1080px; margin:0 auto; padding:20px 16px 48px; }
+    .hero { background:linear-gradient(135deg,#0f766e,#2563eb); color:#fff; border-radius:12px; padding:16px 18px; margin-bottom:12px; }
+    .hero h1 { margin:0 0 6px; font-size:20px; }
+    .hero p { margin:0; font-size:13px; opacity:.95; line-height:1.65; }
+    .hero a { color:#ccfbf1; }
+    .tag { font-size:11px; padding:0 6px; border-radius:4px; border:1px solid; margin-right:4px; font-weight:700; }
+    .tag.new { background:#fff1f0; color:#cf1322; border-color:#ffa39e; }
+    .tag.ok { background:#f6ffed; color:var(--ok); border-color:#b7eb8f; }
+    .tag.warn { background:#fff7e6; color:#d46b08; border-color:#ffd591; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:12px; }
+    .card h2 { margin:0 0 10px; font-size:16px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+    .card h3 { margin:14px 0 8px; font-size:14px; color:#0f766e; }
+    table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+    th,td { border:1px solid var(--line); padding:7px 8px; vertical-align:top; }
+    th { background:#f8fafc; white-space:nowrap; }
+    td ol.steps { margin:2px 0 0; padding-left:1.35em; }
+    td ol.steps li { margin:0 0 5px; line-height:1.6; }
+    .note { font-size:12px; color:#1d39c4; background:#f0f5ff; border:1px solid #adc6ff; padding:8px 10px; border-radius:6px; margin-top:8px; line-height:1.65; }
+    .policy { font-size:12px; color:#614700; background:#fffbe6; border:1px solid #ffe58f; padding:8px 10px; border-radius:6px; margin-top:8px; line-height:1.65; }
+    .foot { text-align:center; font-size:12px; color:var(--sub); margin-top:12px; }
+    code { font-size:12px; background:#f1f5f9; padding:1px 4px; border-radius:3px; }
+    .mermaid-wrap {
+      overflow-x:auto; background:#fafafa; border:1px solid var(--line);
+      border-radius:8px; padding:6px 4px; margin-top:10px;
+      display:flex; justify-content:center;
+    }
+    .mermaid-wrap .mermaid { width:100%; max-width:560px; margin:0 auto; }
+    .mermaid-wrap svg { max-width:100% !important; height:auto !important; display:block; }
+    .btn-demo {
+      display:inline-block; margin:6px 10px 6px 0; padding:5px 14px; font-size:13px;
+      color:#fff; background:#2563eb; border:none; border-radius:6px; cursor:pointer; font-family:inherit;
+    }
+    .inquiry-toast-stack {
+      position:fixed; right:20px; bottom:20px; z-index:1000;
+      display:flex; flex-direction:column-reverse; gap:10px;
+      pointer-events:none; max-width:min(420px, calc(100vw - 40px));
+    }
+    .inquiry-toast {
+      pointer-events:auto; background:#fff; border-radius:4px;
+      box-shadow:0 6px 24px rgba(0,0,0,.15), 0 0 0 1px rgba(0,0,0,.04);
+      padding:14px 16px 12px 44px; position:relative;
+      transform:translateX(calc(100% + 40px)); opacity:0;
+      transition:transform .35s cubic-bezier(.22,1,.36,1), opacity .3s;
+    }
+    .inquiry-toast.show { transform:translateX(0); opacity:1; }
+    .inquiry-toast.hide { transform:translateX(calc(100% + 40px)); opacity:0; }
+    .inquiry-toast .toast-ico {
+      position:absolute; left:14px; top:14px; width:22px; height:22px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;
+      background:#f6ffed; color:#52c41a;
+    }
+    .inquiry-toast .toast-title { font-size:14px; font-weight:600; margin:0 0 6px; line-height:1.45; color:rgba(0,0,0,.85); }
+    .inquiry-toast .toast-title em { font-style:normal; color:#389e0d; }
+    .inquiry-toast .toast-meta { font-size:12px; color:rgba(0,0,0,.45); margin:0 0 10px; line-height:1.5; }
+    .inquiry-toast .toast-actions { display:flex; gap:8px; justify-content:flex-end; }
+    .inquiry-toast .toast-btn {
+      height:26px; padding:0 12px; border-radius:2px; border:1px solid #d9d9d9;
+      background:#fff; cursor:pointer; font-size:12px; font-family:inherit;
+    }
+    .inquiry-toast .toast-btn.primary { background:#1890ff; border-color:#1890ff; color:#fff; }
+    .inquiry-toast .toast-close {
+      position:absolute; top:8px; right:8px; width:22px; height:22px;
+      border:none; background:none; color:rgba(0,0,0,.45); cursor:pointer; font-size:16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>整柜苏青 · 应付同步业务员成本 + 到账期锁客户 · BDS-1022</h1>
+      <p>
+        对照入口：<a href="对照说明.html">PRD 入口</a> ·
+        交互稿 <a href="整柜应付同步-PRD-交互稿.html">一屏可读</a> ·
+        <a href="整柜苏青-费用类型配置与账期锁客户-签字清单.html">签字清单</a> ·
+        版式对齐 <a href="../../产品部门/报价组/PRD对照-扣件放行/扣件放行-价格重算-KJ-PRD-完整skill版.html">扣件放行完整 skill 版</a> ·
+        现网：外部成本管理 · 业务数据统计 · 账期锁账
+      </p>
+    </section>
+
+    <section class="card" id="cover">
+      <h2>封面</h2>
+      <table>
+        <tbody>
+          <tr><th>文档</th><td>【财务 · 成本 / 收款】整柜应付导入同步业务员成本 + 费用类型账期锁客户</td></tr>
+          <tr><th>版本</th><td>v0.5.4-skill-full</td></tr>
+          <tr><th>状态</th><td>评审中 · 待业务签字</td></tr>
+          <tr><th>需求编号</th><td>BDS-1022-001 · P0（苏青整柜 · 版本 1.2）</td></tr>
+          <tr><th>产品 / 业务</th><td>财务成本 / 收款账期 · 苏青业务、财务导入岗</td></tr>
+          <tr><th>关联 PRD</th><td>
+            <a href="../分析/账期锁账时间规则-PRD.html">账期锁账时间规则</a> ·
+            <a href="../分析/整柜应收成本变动明细-MVP.html">整柜变动明细 BDS-1023</a> ·
+            <a href="../../产品部门/报价组/PRD对照-扣件放行/对照说明.html">扣件放行（通知交互参照）</a>
+          </td></tr>
+          <tr><th>一句话</th><td>
+            苏青整柜：导入应付双入口默认同步业务员成本（读费用类型「是否同步业务员成本」）；网点启用另表；失败不回滚可重跑；写入成功通知业务员（toast≈3s）。
+            费用类型另加「到账期是否锁客户」：<strong>是</strong>则账期内未结算参与锁客户，<strong>否</strong>则不参与；锁账时刻仍读账期锁账 PRD。
+          </td></tr>
+        </tbody>
+      </table>
+      <h3 style="margin:14px 0 6px;font-size:14px;">修订记录</h3>
+      <table>
+        <thead><tr><th>版本</th><th>日期</th><th>变更</th><th>评审结论</th></tr></thead>
+        <tbody>
+          <tr><td>v0.5.2</td><td>2026-10-23</td><td>方案确认稿：双入口、失败不回滚、业务员 toast 对齐扣件放行</td><td>部分确认</td></tr>
+          <tr><td>v0.5.3</td><td>2026-10-29</td><td>费用过滤改费用类型「是否同步业务员成本」；网点启用分表；P0 不做策略页</td><td>待确认</td></tr>
+          <tr><td>v0.5.4</td><td>2026-10-29</td><td>费用类型加「到账期是否锁客户」；出签字清单</td><td>待签字</td></tr>
+          <tr><td>v0.5.4-skill-full</td><td>2026-10-29</td><td>按扣件放行模版拆：入口 / 交互稿 / 完整 skill / 签字清单</td><td>待评审</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>本期做啥 / 本期不做啥</h2>
+      <table>
+        <thead><tr><th>本期要做</th><th>本期不做</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>
+              <ol class="steps">
+                <li>BDS-1022-A：苏青整柜导入应付 → 按费用类型标记同步业务员成本 + 网点启用 + 失败可重跑 + 业务员通知</li>
+                <li>BDS-1022-B：费用类型「到账期是否锁客户」；账期到点按标记判定是否锁客户</li>
+                <li>业务签字清单（可发群）</li>
+              </ol>
+            </td>
+            <td>
+              <ol class="steps">
+                <li>独立策略配置前台页</li>
+                <li>散货自动同步</li>
+                <li>企微 / 钉钉推送</li>
+                <li>改账期截止日 D / 锁账时刻 L 换算公式</li>
+              </ol>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="flow">
+      <h2>流程图 · 总览</h2>
+      <p class="note">与 <a href="整柜应付同步-PRD-交互稿.html#flow">交互稿流程图</a> 一致。上：同步成本；下：锁客户。</p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TB
+  A[导入应付] --> B{同步业务员成本?}
+  B -->|否| Z([只记应付])
+  B -->|是| C{网点启用?}
+  C -->|否| Z2([不同步])
+  C -->|是| D[费用类型是否同步=是 → 等额进成本]
+  D --> E[通知业务员]
+  D --> F[失败：应付保留可重跑]
+
+  L[账期到点 L] --> Q[账期内未结算]
+  Q --> H{到账期是否锁客户?}
+  H -->|是| S[计入应锁]
+  H -->|否| X[不计入]
+  S --> T{集合非空?}
+  T -->|是| LOCK[锁客户]
+  T -->|否| SKIP[不因费用锁]
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="bg0">
+      <h2>〇、背景与边界</h2>
+      <table>
+        <thead><tr><th>项</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>业务痛点</td><td>整柜应付导入后业务员成本重复录入；账期锁客户无法按费用类型开关。</td></tr>
+          <tr><td>为啥两个字段</td><td>同步成本管「写不写成本」；锁客户管「到账期算不算进锁」——场景不同，禁止绑死同一开关。</td></tr>
+          <tr><td>与账期 PRD</td><td>D / L 换算、改账期回刷等仍以《账期锁账时间规则》为准；本需求只加费用类型过滤条件。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>谁干什么</h2>
+      <table>
+        <thead><tr><th>角色</th><th>能看啥</th><th>能干啥</th></tr></thead>
+        <tbody>
+          <tr><td>财务导入岗</td><td>外部成本管理、业务数据统计</td><td>导入应付；勾选同步；看结果/失败清单；重跑同步</td></tr>
+          <tr><td>费用类型维护</td><td>费用类型主数据</td><td>维护「是否同步业务员成本」「到账期是否锁客户」</td></tr>
+          <tr><td>业务员</td><td>我的通知、运单</td><td>接收同步成功知悉通知</td></tr>
+          <tr><td>收款 / 锁账任务</td><td>客户锁账状态</td><td>按 L 执行锁客户（读锁客户标记）</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>名词</h2>
+      <table>
+        <thead><tr><th>词</th><th>意思</th></tr></thead>
+        <tbody>
+          <tr><td>是否同步业务员成本</td><td>费用类型布尔字段；导入同步时过滤</td></tr>
+          <tr><td>到账期是否锁客户</td><td>费用类型布尔字段；账期锁账任务过滤</td></tr>
+          <tr><td>网点启用表</td><td>哪些网点开启「应付→成本同步」；主数据 ID</td></tr>
+          <tr><td>未结算</td><td>含未核销与部分核销（已定）</td></tr>
+          <tr><td>费用侧</td><td>仅应收（已定）</td></tr>
+          <tr><td>L / D</td><td>锁账时刻 / 应结截止日，见账期锁账 PRD</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="s1">
+      <h2>一、BDS-1022-A · 应付同步业务员成本</h2>
+
+      <h3>1.1 触发与命中</h3>
+      <table>
+        <thead><tr><th>项</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr><td>入口①</td><td>财务 → 成本管理 → 外部成本管理(实际) → 导入对账单</td></tr>
+          <tr><td>入口②</td><td>财务 → 业务数据统计相关导入（与应付落账同源批次）</td></tr>
+          <tr><td>入口③</td><td>主单实际费用 → <strong>按主单添加</strong></td></tr>
+          <tr><td>写入时机</td><td>应付<strong>导入确认后再写</strong>；写前<strong>弹窗提示财务</strong>（确认写入 / 取消）</td></tr>
+          <tr><td>命中</td><td>运单类型=整柜 且 网点 ∈ 网点启用表（种子：苏州、青岛）</td></tr>
+          <tr><td>界面</td><td>财务确认弹窗展示预计同步/跳过条数；结果页：成功 / 跳过 / 失败条数</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.2 过滤与写入</h3>
+      <table>
+        <thead><tr><th>步骤</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr><td>① 读标记</td><td>应付行费用类型「是否同步业务员成本」</td></tr>
+          <tr><td>② 否</td><td>跳过该行，不写成本、不计入通知触发行</td></tr>
+          <tr><td>③ 是</td><td>等额写入业务员成本；币别/汇率跟应付行</td></tr>
+          <tr><td>④ 种子</td><td>默认是；<code>D01</code> 海运费、<code>Q01</code> 关税 = 否</td></tr>
+          <tr><td>⑤ 冲突</td><td>同运单同费用类型已有业务员成本 → 财务弹窗以<strong>列表</strong>展示运单号/费用类型/金额/汇率，必选<strong>追加</strong>或<strong>覆盖</strong>后再写入</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.3 失败与重跑</h3>
+      <table>
+        <thead><tr><th>情况</th><th>处理</th></tr></thead>
+        <tbody>
+          <tr><td>成本同步失败</td><td><strong>不回滚</strong>已成功应付；记失败清单</td></tr>
+          <tr><td>重跑</td><td>按批次重跑同步；成功行补通知</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.4 业务员通知（对齐扣件放行）</h3>
+      <table>
+        <thead><tr><th>类型</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr><td>触发·同步</td><td>导入/按主单添加：应付同步至少 1 行业务员成本写入成功</td></tr>
+          <tr><td>触发·客服直录</td><td>业务客服在业务数据统计<strong>直接添加业务员成本</strong>（不是应付，不走同步写成本）保存成功</td></tr>
+          <tr><td>接收人</td><td>运单业务员；同批次同人合并一条</td></tr>
+          <tr><td>通道</td><td>我的通知 + 右下角 toast≈3s；不以弹窗为唯一入口</td></tr>
+          <tr><td>正文·导入同步</td><td><code>运单{运单号}因整柜应付导入同步，已将费用写入业务员成本（费用类型未勾选同步的已跳过），请知悉。</code></td></tr>
+          <tr><td>正文·客服直录</td><td><code>运单{运单号}因业务客服在业务数据统计添加了业务员成本，请知悉。</code></td></tr>
+          <tr><td>不通知</td><td>同步未写入；客服直录未保存成功</td></tr>
+        </tbody>
+      </table>
+      <button type="button" class="btn-demo" id="btnPreviewSalesToast">点击预览 · 业务员右下角弹窗</button>
+      <p class="note">企微/钉钉本期不做 → R-5。多票运单号拼接 → R-6。同步时机已定：导入确认后再写 + 财务确认弹窗（见交互稿）。</p>
+    </section>
+
+    <section class="card" id="s2">
+      <h2>二、BDS-1022-B · 到账期是否锁客户</h2>
+      <p class="policy"><strong>核心：</strong>标记<strong>是</strong> → 账期内未结算参与锁；标记<strong>否</strong> → 不因该费锁客户。</p>
+
+      <h3>2.1 配置</h3>
+      <table>
+        <thead><tr><th>项</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr><td>位置</td><td>费用类型表字段「到账期是否锁客户」（是/否）</td></tr>
+          <tr><td>维护</td><td>与费用类型同权；改动写操作日志</td></tr>
+          <tr><td>与同步字段</td><td>独立；可「同步=是、锁=否」或相反</td></tr>
+          <tr><td>种子</td><td>各类型默认值由财务签字（R-10 / 签字清单 A）</td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.2 判定</h3>
+      <table>
+        <thead><tr><th>步骤</th><th>规则</th></tr></thead>
+        <tbody>
+          <tr><td>① 时机</td><td>账期锁账任务到达 L（= D 日 0 点）</td></tr>
+          <tr><td>② 计入</td><td>标记=是 且 落在当前账期 且 未结算（含未核销/部分核销）且仅应收</td></tr>
+          <tr><td>③ 锁</td><td>计入集合非空 → 锁客户</td></tr>
+          <tr><td>④ 不锁</td><td>集合为空 → 不因费用账期锁客户</td></tr>
+          <tr><td>⑤ 标记=否</td><td>该类型永不进集合</td></tr>
+        </tbody>
+      </table>
+      <p class="note">未结算=含未核销与部分核销；费用侧=仅应收（签字清单 C-04 / C-05 已定）。</p>
+    </section>
+
+    <section class="card" id="review-confirm">
+      <h2>评审确认项 <span class="tag warn">待拍板</span></h2>
+      <table>
+        <thead><tr><th>#</th><th>确认问题</th><th>可选</th><th>决策人</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>R-7</td>
+            <td>同步时机</td>
+            <td><strong>已定</strong>：应付导入确认后再写 + 财务确认弹窗</td>
+            <td>已确认</td>
+          </tr>
+          <tr>
+            <td>R-8</td>
+            <td>财务提示方式</td>
+            <td><strong>已定</strong>：确认写入前弹窗提示财务（非另推待办）</td>
+            <td>已确认</td>
+          </tr>
+          <tr>
+            <td>R-9</td>
+            <td>扩网点 / 散货</td>
+            <td>P0 仅苏青整柜；P1 加网点；散货单独立项</td>
+            <td>业务 + 财务</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="pool">
+      <h2>调研池（未定不得开发冲突分支）</h2>
+      <table>
+        <thead><tr><th>#</th><th>问题</th><th>影响</th><th>决策人</th></tr></thead>
+        <tbody>
+          <tr><td>R-1</td><td>已有相同费用</td><td><strong>已定</strong>：弹窗提示财务，选追加或覆盖</td><td>已确认</td></tr>
+          <tr><td>R-2</td><td>费用过滤：是否同步业务员成本；D01/Q01=否</td><td>费用过滤</td><td><span class="tag ok">已确认</span></td></tr>
+          <tr><td>R-3</td><td>失败不回滚应付；可重跑</td><td>事务</td><td><span class="tag ok">已确认</span></td></tr>
+          <tr><td>R-4</td><td>入口②具体按钮</td><td>挂钩点</td><td>产品对稿</td></tr>
+          <tr><td>R-5</td><td>是否推企微/钉钉</td><td>触达</td><td>业务</td></tr>
+          <tr><td>R-6</td><td>多票通知运单号拼接</td><td>文案</td><td>产品</td></tr>
+          <tr><td>R-7</td><td>同步时机 A/B/C</td><td>交互</td><td>见上</td></tr>
+          <tr><td>R-8</td><td>财务待办</td><td>待办</td><td>见上</td></tr>
+          <tr><td>R-9</td><td>扩网点 / 散货</td><td>范围</td><td>见上</td></tr>
+          <tr><td>R-10</td><td>锁客户字段各类型种子默认</td><td>主数据</td><td>财务签字</td></tr>
+          <tr><td>R-11</td><td>未结算口径；费用侧</td><td><strong>已定</strong>：含未核销+部分核销；仅应收</td><td>已确认</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>现网锚点</h2>
+      <table>
+        <tbody>
+          <tr><td>整柜运单</td><td>运单 &gt; 传统运单管理 <code>#/TraditionalOrderManager</code></td></tr>
+          <tr><td>业务数据统计</td><td>财务 &gt; 业务数据统计 <code>#/BusineSalesman</code></td></tr>
+          <tr><td>应付导入</td><td>财务 &gt; 外部成本管理(实际) <code>#/ExternalCosts</code></td></tr>
+          <tr><td>账期锁账</td><td>见账期锁账时间规则 PRD</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="foot">BDS-1022-001 · v0.5.4-skill-full · 对齐扣件放行完整 skill 模版 · <a href="对照说明.html">入口</a></p>
+  </div>
+
+  <div class="inquiry-toast-stack" id="toastStack" aria-live="polite"></div>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "neutral",
+      themeVariables: { fontSize: "11px", fontFamily: "Microsoft YaHei, sans-serif" },
+      flowchart: { curve: "basis", padding: 4, nodeSpacing: 22, rankSpacing: 26, diagramPadding: 6 }
+    });
+    (function () {
+      var stack = document.getElementById("toastStack");
+      var btn = document.getElementById("btnPreviewSalesToast");
+      if (!btn || !stack) return;
+      function dismiss(node) {
+        node.classList.remove("show");
+        node.classList.add("hide");
+        setTimeout(function () { node.remove(); }, 350);
+      }
+      btn.addEventListener("click", function () {
+        stack.querySelectorAll(".inquiry-toast").forEach(dismiss);
+        var toast = document.createElement("div");
+        toast.className = "inquiry-toast show";
+        toast.innerHTML =
+          '<button type="button" class="toast-close" aria-label="关闭">×</button>' +
+          '<div class="toast-ico">i</div>' +
+          '<p class="toast-title">周航，您收到一条<em>整柜应付费用同步</em>消息</p>' +
+          '<p class="toast-meta">运单 TXF2609220881、TXF2609220912 · 因整柜应付导入同步，已将费用写入业务员成本（费用类型未勾选同步的已跳过），请知悉。 · 批次 AP20261022018</p>' +
+          '<div class="toast-actions"><button type="button" class="toast-btn">稍后</button><button type="button" class="toast-btn primary">知道了</button></div>';
+        stack.appendChild(toast);
+        toast.querySelector(".toast-close").onclick = function () { dismiss(toast); };
+        toast.querySelectorAll(".toast-btn").forEach(function (b) { b.onclick = function () { dismiss(toast); }; });
+        setTimeout(function () { if (toast.parentNode) dismiss(toast); }, 3000);
+      });
+    })();
+  </script>
+</body>
+</html>

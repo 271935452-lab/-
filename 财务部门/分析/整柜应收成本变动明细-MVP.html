@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>整柜 · 应收/成本变动明细 · MVP</title>
+  <style>
+    :root {
+      --nav: #1677ff; --primary: #1677ff;
+      --bg: #f0f2f5; --line: #e8e8e8; --text: #262626; --muted: #8c8c8c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .topbar {
+      height: 40px; background: var(--nav); color: #fff;
+      display: flex; align-items: center; padding: 0 12px; gap: 2px; flex-shrink: 0;
+    }
+    .topbar .logo { font-weight: 700; margin-right: 10px; }
+    .topbar .tab { padding: 6px 10px; color: rgba(255,255,255,.8); font-size: 12px; }
+    .topbar .tab.on { background: #fff; color: var(--primary); font-weight: 700; border-radius: 4px 4px 0 0; }
+    .topbar .right { margin-left: auto; font-size: 12px; display: flex; gap: 12px; align-items: center; }
+    .topbar .right a { color: #fff; text-decoration: none; }
+    .main { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .crumb {
+      height: 34px; background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 16px; gap: 8px; color: var(--muted); font-size: 12px; flex-shrink: 0;
+    }
+    .crumb b { color: var(--text); }
+    .filter {
+      margin: 8px 16px 0; background: #fff; border: 1px solid var(--line); border-radius: 4px;
+      padding: 12px 14px 10px; flex-shrink: 0;
+    }
+    .fg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 14px; align-items: end; }
+    .fi { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .fi label { font-size: 12px; color: #595959; }
+    .fi input, .fi select { width: 100%; height: 32px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 0 8px; background: #fff; }
+    .range { display: flex; align-items: center; gap: 6px; }
+    .range input { flex: 1; min-width: 0; }
+    .range span { color: var(--muted); flex-shrink: 0; }
+    .more { display: none; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 14px; align-items: end; }
+    .more.show { display: grid; }
+    .filter-actions { display: flex; gap: 8px; align-items: end; justify-content: flex-end; }
+    .btn {
+      height: 32px; padding: 0 14px; border: 1px solid #d9d9d9; border-radius: 4px;
+      background: #fff; color: var(--text); white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { color: #fff; filter: brightness(1.05); }
+    .toolbar { margin: 8px 16px 0; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    tfoot td {
+      position: sticky; bottom: 0; z-index: 2; background: #fffbe6; border-top: 1px solid #ffe58f;
+      padding: 8px 10px; font-weight: 700; white-space: nowrap; color: #262626;
+    }
+    tfoot .lab { display: block; font-size: 11px; font-weight: 600; color: #8c8c8c; margin-bottom: 2px; }
+    tfoot .val { font-variant-numeric: tabular-nums; }
+    .table-wrap {
+      margin: 8px 16px 12px; flex: 1; min-height: 0; background: #fff;
+      border: 1px solid var(--line); border-radius: 4px; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .table-scroll { flex: 1; overflow: auto; }
+    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+    thead th {
+      position: sticky; top: 0; z-index: 2; background: #fafafa; border-bottom: 1px solid var(--line);
+      padding: 8px 10px; text-align: left; font-weight: 600; white-space: nowrap; color: #595959;
+    }
+    tbody td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    tbody tr:hover td { background: #f5f9ff; }
+    .mono { font-family: Consolas, "SF Mono", monospace; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+    .neg { color: #cf1322; }
+    .pos { color: #389e0d; }
+    .pill {
+      display: inline-block; padding: 0 6px; height: 20px; line-height: 18px;
+      border-radius: 2px; border: 1px solid #d9d9d9; font-size: 11px;
+    }
+    .pill.ar { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .pill.cost { background: #fff7e6; border-color: #ffd591; color: #d46b08; }
+    .pager {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); flex-shrink: 0;
+    }
+    .toast {
+      position: fixed; top: 56px; left: 50%; transform: translateX(-50%) translateY(-8px);
+      background: rgba(0,0,0,.78); color: #fff; padding: 8px 16px; border-radius: 4px;
+      opacity: 0; pointer-events: none; transition: .2s; z-index: 20;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .pin {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #ea580c; color: #fff; font-size: 11px; font-weight: 800;
+      vertical-align: middle; margin-right: 4px; flex-shrink: 0;
+      border: none; padding: 0; cursor: pointer; font-family: inherit; line-height: 1;
+      box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    }
+    .pin:hover { filter: brightness(1.08); }
+    #fclPointDialog {
+      border: 0; border-radius: 10px; padding: 0; width: min(520px, 92vw);
+      max-height: min(80vh, 640px); box-shadow: 0 16px 60px #0003; margin: auto;
+    }
+    #fclPointDialog::backdrop { background: rgba(15,23,42,.35); }
+    .fcl-point-hd {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 16px 18px 12px; border-bottom: 1px solid #e2e8f0;
+    }
+    .fcl-point-hd h2 { margin: 0; font-size: 16px; line-height: 1.4; flex: 1; display: flex; align-items: center; gap: 8px; }
+    .fcl-point-hd .pin { width: 22px; height: 22px; font-size: 12px; margin: 0; }
+    #fclPointClose {
+      flex-shrink: 0; padding: 6px 12px; border: 1px solid #2a6bbd; border-radius: 4px;
+      background: #fff; color: #2a6bbd; font: inherit; font-size: 13px; cursor: pointer;
+    }
+    .fcl-point-bd { padding: 12px 18px 18px; overflow: auto; max-height: calc(80vh - 72px); font-size: 13px; line-height: 1.65; color: #334155; }
+    .fcl-point-bd table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .fcl-point-bd th, .fcl-point-bd td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; vertical-align: top; white-space: normal; }
+    .fcl-point-bd th { background: #f8fafc; }
+    .fcl-point-bd .more-link { display: inline-block; margin-top: 10px; color: #c2410c; font-weight: 700; }
+    .btn-doc {
+      height: 28px; padding: 0 12px; border: 1px solid #1890ff; background: #fff; color: #1890ff;
+      border-radius: 2px; font: 12px "Microsoft YaHei", sans-serif; cursor: pointer; margin-left: 6px;
+    }
+    .btn-doc:hover { background: #e6f7ff; }
+    #fclDocDialog {
+      border: 0; border-radius: 4px; padding: 0; width: min(640px, 94vw);
+      max-height: min(85vh, 720px); box-shadow: 0 8px 32px rgba(0,0,0,.18); margin: auto;
+    }
+    #fclDocDialog::backdrop { background: rgba(0,0,0,.35); }
+    .fcl-doc-hd {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 16px; border-bottom: 1px solid #e8e8e8; background: #fafafa;
+    }
+    .fcl-doc-hd h2 { margin: 0; font-size: 15px; font-weight: 700; }
+    .fcl-doc-bd { padding: 12px 16px 16px; overflow: auto; max-height: calc(85vh - 52px); font-size: 13px; line-height: 1.65; }
+    .fcl-doc-feat { margin: 0 0 4px; }
+    .fcl-doc-feat h3 { margin: 0 0 6px; font-size: 14px; }
+    .fcl-doc-feat ul { margin: 8px 0 0; padding-left: 1.25em; }
+    .fcl-doc-point { border: 1px solid #e8e8e8; border-radius: 4px; padding: 10px 12px; margin: 0 0 8px; }
+    .fcl-doc-point h4 { margin: 0 0 6px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .fcl-doc-sum { margin: 0 0 8px; color: #64748b; font-size: 12px; }
+    .fcl-doc-point table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .fcl-doc-point th, .fcl-doc-point td { border: 1px solid #e8e8e8; padding: 6px 8px; text-align: left; vertical-align: top; white-space: normal; }
+    .fcl-doc-point th { background: #fafafa; }
+    @media (max-width: 1100px) {
+      .fg, .more { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+<div data-fin-hub style="position:sticky;top:0;z-index:9999;background:#163b63;color:#fff;padding:7px 14px;font:12px/1.4 'Microsoft YaHei',sans-serif">
+  <a href="../财务部门-模块导航.html" style="color:#fff;font-weight:700;text-decoration:none">← 财务部门导航</a>
+  <span style="opacity:.7;margin-left:8px">分析 · 整柜变动明细</span>
+  <a href="../PRD对照-整柜同步/整柜变动明细-PRD-交互稿.html" style="color:#ffd591;margin-left:10px">PRD 交互稿（橙圈）</a>
+</div>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">头程系统</div>
+    <div class="tab">控制台</div>
+    <div class="tab on">整柜变动明细</div>
+    <div class="right">
+      <a href="分析-模块导航.html">← 分析导航</a>
+      <a href="../PRD对照-整柜同步/整柜变动明细-PRD-交互稿.html">PRD 交互稿</a>
+      <a href="../PRD对照-整柜同步/整柜苏青-费用类型配置与账期锁客户-签字清单.html">签字清单</a>
+      <span>版本 1.2 · 整柜</span>
+    </div>
+  </div>
+  <div class="main">
+    <div class="crumb">
+      <span>财务</span><span>/</span><span>分析</span><span>/</span><b>整柜 · 应收/成本变动明细</b>
+      <button type="button" class="pin" data-pin="1" title="数据来源 · 点开说明" style="margin-left:8px">1</button>
+      <span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px">
+        <button type="button" class="btn-doc" id="btnFeatDoc">功能说明</button>
+        <button type="button" class="btn-doc" id="btnPointsDoc">逐点清单</button>
+      </span>
+    </div>
+
+    <div class="filter">
+      <div class="fg">
+        <div class="fi">
+          <label>到货时间</label>
+          <div class="range">
+            <input type="date" id="fArriveFrom" value="2026-10-01" />
+            <span>至</span>
+            <input type="date" id="fArriveTo" value="2026-10-23" />
+          </div>
+        </div>
+        <div class="fi">
+          <label>客户简称</label>
+          <input id="fCust" placeholder="支持模糊" />
+        </div>
+        <div class="fi">
+          <label>运单号</label>
+          <input id="fWb" placeholder="支持模糊" />
+        </div>
+        <div class="fi">
+          <label>所属公司</label>
+          <select id="fCompany"><option value="">全部</option></select>
+        </div>
+        <div class="fi">
+          <label>业务员</label>
+          <select id="fSales"><option value="">全部</option></select>
+        </div>
+        <div class="fi">
+          <label>费用项</label>
+          <select id="fFee"><option value="">全部</option></select>
+        </div>
+        <div class="filter-actions">
+          <button type="button" class="pin" data-pin="3" title="筛选 · 点开说明">3</button>
+          <button type="button" class="btn" id="btnMore">更多</button>
+          <button type="button" class="btn primary" id="btnQuery">查询</button>
+          <button type="button" class="btn" id="btnReset">重置</button>
+        </div>
+        <div class="more" id="moreBox">
+          <div class="fi">
+            <label>加收时间</label>
+            <div class="range">
+              <input type="date" id="fChargeFrom" />
+              <span>至</span>
+              <input type="date" id="fChargeTo" />
+            </div>
+          </div>
+          <div class="fi">
+            <label>加收人</label>
+            <select id="fCharger"><option value="">全部</option></select>
+          </div>
+          <div class="fi">
+            <label>费用侧</label>
+            <select id="fSide">
+              <option value="">全部</option>
+              <option value="应收">应收</option>
+              <option value="成本">成本</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button type="button" class="pin" data-pin="6" title="导出 · 点开说明">6</button>
+      <button type="button" class="btn primary" id="btnExport">导出</button>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><button type="button" class="pin" data-pin="4" title="明细列 · 点开说明">4</button>序号</th>
+              <th>费用侧</th>
+              <th>销售产品</th>
+              <th>所属公司</th>
+              <th>装柜时间</th>
+              <th>到货时间</th>
+              <th>加收时间</th>
+              <th>客户简称</th>
+              <th>客户代码</th>
+              <th>业务员</th>
+              <th>运单号</th>
+              <th>客户单号</th>
+              <th>头程主单</th>
+              <th>费用类型</th>
+              <th>费用编号</th>
+              <th>原币</th>
+              <th class="num">原币金额</th>
+              <th class="num">汇率</th>
+              <th class="num">结算金额</th>
+              <th>加收人</th>
+              <th class="num"><button type="button" class="pin" data-pin="2" title="解锁次数 · 点开说明">2</button>解锁次数</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+          <tfoot id="tfoot"></tfoot>
+        </table>
+      </div>
+      <div class="pager">
+        <span id="pagerText">共 0 条</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/** 演示：①仅整柜运单；②解锁次数=业务数据统计财务解锁次数 */
+var ROWS = [
+  { side: "应收", company: "苏州头程", product: "美东整柜海派", loadAt: "2026-10-05 14:00:00", arrive: "2026-10-08 09:20:00", arriveDay: "2026-10-08", cust: "苏州汇海", custCode: "SZ-0881", sales: "周航", wb: "TXSZ26010081", custNo: "ICBU-SZ-10081", bl: "COSU6688001", feeType: "运费", feeNo: "A01", ccy: "CNY", amt: 1280, rate: 1, settle: 1280, chargeAt: "2026-10-09 14:22:11", chargeDay: "2026-10-09", charger: "陈敏", unlockCnt: 2 },
+  { side: "应收", company: "苏州头程", product: "美东整柜海派", loadAt: "2026-10-05 14:00:00", arrive: "2026-10-08 09:20:00", arriveDay: "2026-10-08", cust: "苏州汇海", custCode: "SZ-0881", sales: "周航", wb: "TXSZ26010081", custNo: "ICBU-SZ-10081", bl: "COSU6688001", feeType: "查验加费", feeNo: "A45", ccy: "CNY", amt: 350, rate: 1, settle: 350, chargeAt: "2026-10-12 10:05:33", chargeDay: "2026-10-12", charger: "陈敏", unlockCnt: 2 },
+  { side: "成本", company: "苏州头程", product: "美东整柜海派", loadAt: "2026-10-05 14:00:00", arrive: "2026-10-08 09:20:00", arriveDay: "2026-10-08", cust: "苏州汇海", custCode: "SZ-0881", sales: "周航", wb: "TXSZ26010081", custNo: "ICBU-SZ-10081", bl: "COSU6688001", feeType: "拖车费", feeNo: "C12", ccy: "CNY", amt: 480, rate: 1, settle: 480, chargeAt: "2026-10-10 16:40:00", chargeDay: "2026-10-10", charger: "系统同步", unlockCnt: 2 },
+  { side: "应收", company: "青岛头程", product: "美西整柜卡派", loadAt: "2026-10-08 10:30:00", arrive: "2026-10-11 11:02:18", arriveDay: "2026-10-11", cust: "太仓捷运", custCode: "SZ-0912", sales: "王莉", wb: "TXSZ26010112", custNo: "ICBU-SZ-10112", bl: "MATS9565074", feeType: "运费", feeNo: "A01", ccy: "USD", amt: 220, rate: 7.12, settle: 1566.4, chargeAt: "2026-10-11 18:20:44", chargeDay: "2026-10-11", charger: "周倩", unlockCnt: 1 },
+  { side: "应收", company: "青岛头程", product: "美西整柜卡派", loadAt: "2026-10-08 10:30:00", arrive: "2026-10-11 11:02:18", arriveDay: "2026-10-11", cust: "太仓捷运", custCode: "SZ-0912", sales: "王莉", wb: "TXSZ26010112", custNo: "ICBU-SZ-10112", bl: "MATS9565074", feeType: "运费", feeNo: "A01", ccy: "USD", amt: -40, rate: 7.12, settle: -284.8, chargeAt: "2026-10-15 09:11:02", chargeDay: "2026-10-15", charger: "周倩", unlockCnt: 1 },
+  { side: "成本", company: "青岛头程", product: "美西整柜卡派", loadAt: "2026-10-08 10:30:00", arrive: "2026-10-11 11:02:18", arriveDay: "2026-10-11", cust: "太仓捷运", custCode: "SZ-0912", sales: "王莉", wb: "TXSZ26010112", custNo: "ICBU-SZ-10112", bl: "MATS9565074", feeType: "报关费", feeNo: "C08", ccy: "CNY", amt: 260, rate: 1, settle: 260, chargeAt: "2026-10-12 11:30:00", chargeDay: "2026-10-12", charger: "系统同步", unlockCnt: 1 },
+  { side: "应收", company: "苏州头程", product: "欧线整柜", loadAt: "2026-10-15 16:20:00", arrive: "2026-10-18 08:12:00", arriveDay: "2026-10-18", cust: "常熟远航", custCode: "SZ-1102", sales: "周航", wb: "TXSZ26010202", custNo: "ICBU-SZ-10202", bl: "HLCUTS12700", feeType: "改港费", feeNo: "A33", ccy: "USD", amt: 150, rate: 7.15, settle: 1072.5, chargeAt: "2026-10-20 17:22:55", chargeDay: "2026-10-20", charger: "周倩", unlockCnt: 3 },
+  { side: "成本", company: "苏州头程", product: "欧线整柜", loadAt: "2026-10-15 16:20:00", arrive: "2026-10-18 08:12:00", arriveDay: "2026-10-18", cust: "常熟远航", custCode: "SZ-1102", sales: "周航", wb: "TXSZ26010202", custNo: "ICBU-SZ-10202", bl: "HLCUTS12700", feeType: "改港费", feeNo: "C33", ccy: "USD", amt: 120, rate: 7.15, settle: 858, chargeAt: "2026-10-21 10:00:12", chargeDay: "2026-10-21", charger: "系统同步", unlockCnt: 3 }
+];
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>]/g, function (c) {
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c];
+  });
+}
+function money(n) {
+  var t = Math.abs(n).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (n < 0 ? "-" : "") + t;
+}
+function dayOf(str) {
+  if (!str) return "";
+  var m = String(str).match(/(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : "";
+}
+function inRange(day, a, b) {
+  if (!day) return !(a || b);
+  if (a && day < a) return false;
+  if (b && day > b) return false;
+  return true;
+}
+function fillSelect(id, key) {
+  var set = {};
+  ROWS.forEach(function (r) { set[r[key]] = 1; });
+  var html = '<option value="">全部</option>';
+  Object.keys(set).sort().forEach(function (k) {
+    html += "<option>" + esc(k) + "</option>";
+  });
+  document.getElementById(id).innerHTML = html;
+}
+function toast(msg) {
+  var el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(function () { el.classList.remove("show"); }, 1800);
+}
+function filtered() {
+  var a1 = document.getElementById("fArriveFrom").value;
+  var a2 = document.getElementById("fArriveTo").value;
+  var c1 = document.getElementById("fChargeFrom").value;
+  var c2 = document.getElementById("fChargeTo").value;
+  var cust = (document.getElementById("fCust").value || "").trim();
+  var company = document.getElementById("fCompany").value;
+  var sales = document.getElementById("fSales").value;
+  var wb = (document.getElementById("fWb").value || "").trim().toUpperCase();
+  var fee = document.getElementById("fFee").value;
+  var charger = document.getElementById("fCharger").value;
+  var side = document.getElementById("fSide").value;
+  return ROWS.filter(function (r) {
+    if (!inRange(r.arriveDay, a1, a2)) return false;
+    if (!inRange(r.chargeDay, c1, c2)) return false;
+    if (cust && r.cust.indexOf(cust) < 0) return false;
+    if (company && r.company !== company) return false;
+    if (sales && r.sales !== sales) return false;
+    if (wb && r.wb.toUpperCase().indexOf(wb) < 0) return false;
+    if (fee && r.feeType !== fee) return false;
+    if (charger && r.charger !== charger) return false;
+    if (side && r.side !== side) return false;
+    return true;
+  });
+}
+function calcSum(list) {
+  var ar = 0, cost = 0, up = 0, down = 0;
+  var unlockByWb = {};
+  list.forEach(function (r) {
+    if (r.side === "应收") ar += r.settle;
+    else cost += r.settle;
+    if (r.settle >= 0) up += 1; else down += 1;
+    unlockByWb[r.wb] = r.unlockCnt || 0;
+  });
+  var unlockWb = 0, unlockSum = 0;
+  Object.keys(unlockByWb).forEach(function (wb) {
+    var n = unlockByWb[wb] || 0;
+    if (n > 0) unlockWb += 1;
+    unlockSum += n;
+  });
+  return { ar: ar, cost: cost, up: up, down: down, unlockWb: unlockWb, unlockSum: unlockSum };
+}
+function renderFoot(list) {
+  var s = calcSum(list);
+  var arCls = s.ar < 0 ? "neg" : "pos";
+  var costCls = s.cost < 0 ? "neg" : "pos";
+  document.getElementById("tfoot").innerHTML =
+    "<tr>" +
+    '<td><button type="button" class="pin" data-pin="5" title="列下合计">5</button><span class="lab">匹配行数</span><span class="val">' + list.length + "</span></td>" +
+    "<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>" +
+    '<td class="num"><span class="lab">加收行 / 冲减行</span><span class="val">' + s.up + " / " + s.down + "</span></td>" +
+    "<td></td>" +
+    '<td class="num"><span class="lab">应收合计</span><span class="val ' + arCls + '">' + money(s.ar) + '</span><span class="lab" style="margin-top:6px">成本合计</span><span class="val ' + costCls + '">' + money(s.cost) + "</span></td>" +
+    "<td></td>" +
+    '<td class="num"><span class="lab">有解锁运单 / 解锁合计</span><span class="val">' + s.unlockWb + " / " + s.unlockSum + "</span></td>" +
+    "</tr>";
+}
+function render() {
+  var list = filtered();
+  var html = "";
+  list.forEach(function (r, i) {
+    var amtCls = r.amt < 0 ? "neg" : "pos";
+    var sideCls = r.side === "应收" ? "ar" : "cost";
+    html += "<tr>" +
+      "<td>" + (i + 1) + "</td>" +
+      '<td><span class="pill ' + sideCls + '">' + esc(r.side) + "</span></td>" +
+      "<td>" + esc(r.product) + "</td>" +
+      "<td>" + esc(r.company) + "</td>" +
+      "<td>" + esc(r.loadAt) + "</td>" +
+      "<td>" + esc(r.arrive) + "</td>" +
+      "<td>" + esc(r.chargeAt) + "</td>" +
+      "<td>" + esc(r.cust) + "</td>" +
+      '<td class="mono">' + esc(r.custCode) + "</td>" +
+      "<td>" + esc(r.sales) + "</td>" +
+      '<td class="mono">' + esc(r.wb) + "</td>" +
+      '<td class="mono">' + esc(r.custNo) + "</td>" +
+      '<td class="mono">' + esc(r.bl) + "</td>" +
+      "<td>" + esc(r.feeType) + "</td>" +
+      '<td class="mono">' + esc(r.feeNo) + "</td>" +
+      "<td>" + esc(r.ccy) + "</td>" +
+      '<td class="num ' + amtCls + '">' + money(r.amt) + "</td>" +
+      '<td class="num">' + r.rate + "</td>" +
+      '<td class="num ' + amtCls + '">' + money(r.settle) + "</td>" +
+      "<td>" + esc(r.charger) + "</td>" +
+      '<td class="num">' + (r.unlockCnt || 0) + "</td>" +
+      "</tr>";
+  });
+  document.getElementById("tbody").innerHTML = html ||
+    '<tr><td colspan="21" style="text-align:center;color:#8c8c8c;padding:28px">无匹配变动记录</td></tr>';
+  renderFoot(list);
+  document.getElementById("pagerText").textContent = "共 " + list.length + " 条 · 仅整柜运单";
+}
+fillSelect("fCompany", "company");
+fillSelect("fSales", "sales");
+fillSelect("fFee", "feeType");
+fillSelect("fCharger", "charger");
+document.getElementById("btnMore").onclick = function () {
+  var box = document.getElementById("moreBox");
+  box.classList.toggle("show");
+  document.getElementById("btnMore").textContent = box.classList.contains("show") ? "收起" : "更多";
+};
+document.getElementById("btnQuery").onclick = function () { render(); toast("已按条件筛选"); };
+document.getElementById("btnReset").onclick = function () {
+  document.getElementById("fArriveFrom").value = "2026-10-01";
+  document.getElementById("fArriveTo").value = "2026-10-23";
+  document.getElementById("fChargeFrom").value = "";
+  document.getElementById("fChargeTo").value = "";
+  document.getElementById("fCust").value = "";
+  document.getElementById("fCompany").value = "";
+  document.getElementById("fSales").value = "";
+  document.getElementById("fWb").value = "";
+  document.getElementById("fFee").value = "";
+  document.getElementById("fCharger").value = "";
+  document.getElementById("fSide").value = "";
+  render();
+  toast("已重置");
+};
+document.getElementById("btnExport").onclick = function () {
+  toast("导出当前 " + filtered().length + " 行（演示）");
+};
+
+var PRD_URL = "../PRD对照-整柜同步/整柜变动明细-PRD-交互稿.html";
+var FEATURE_DOC = {
+  title: "整柜 · 应收/成本变动明细",
+  summary: "看整柜相关费用变动，并带出运单在业务数据统计财务侧的解锁次数。",
+  bullets: [
+    "进表：仅整柜运单",
+    "解锁次数：业务数据统计 · 财务（锁账/解锁）的解锁次数，按运单累计",
+    "筛选默认含所属公司、业务员、费用项；列含装柜时间；不做运单类型列",
+    "合计在表底对应列下：结算金额 / 解锁次数等；支持导出"
+  ]
+};
+var PIN_NOTES = {
+  1: {
+    title: "数据来源 / 进表范围",
+    summary: "仅整柜运单进入；散货运单一律不进。",
+    html:
+      "<table><thead><tr><th>项</th><th>口径</th></tr></thead><tbody>" +
+      "<tr><td>进表</td><td>运单类型=整柜 → 费用变动全部进入</td></tr>" +
+      "<tr><td>排除</td><td>散货运单（含产品名含「整柜」的散货）→ 不进本页</td></tr>" +
+      "</tbody></table>"
+  },
+  2: {
+    title: "解锁次数",
+    summary: "业务数据统计 · 财务（锁账/解锁）的解锁次数，按运单累计。",
+    html:
+      "<table><thead><tr><th>项</th><th>口径</th></tr></thead><tbody>" +
+      "<tr><td>计数</td><td>仅计解锁成功（不含锁账）</td></tr>" +
+      "<tr><td>列表</td><td>同运单多费用行显示同一解锁次数</td></tr>" +
+      "<tr><td>汇总</td><td>有解锁运单数 / 解锁次数合计按运单去重累计</td></tr>" +
+      "</tbody></table>"
+  },
+  3: {
+    title: "筛选",
+    summary: "默认含所属公司、业务员、费用项；更多展开其余条件。",
+    html: "<p>默认：到货时间、客户简称、运单号、<strong>所属公司</strong>、业务员、费用项。<br/>更多：加收时间、加收人、费用侧。</p>"
+  },
+  4: {
+    title: "明细列",
+    summary: "对齐《费用变动表》+ 销售产品、所属公司、装柜时间、解锁次数等。",
+    html: "<p>一条费用变动一行；正数=加收、负数=冲减。补充列：费用侧、销售产品、<strong>所属公司</strong>、<strong>装柜时间</strong>、解锁次数。不做运单类型列。</p>"
+  },
+  5: {
+    title: "列下合计",
+    summary: "不做顶部汇总卡片；合计落在表底对应列下。",
+    html: "<p>序号列：匹配行数。<br/>原币金额列：加收行 / 冲减行。<br/>结算金额列：应收合计、成本合计。<br/>解锁次数列：有解锁运单数 / 解锁次数合计（按运单去重）。</p>"
+  },
+  6: {
+    title: "导出",
+    summary: "导出当前筛选结果。",
+    html: "<p>列与列表一致，含解锁次数、销售产品。</p>"
+  }
+};
+
+function ensurePinDialog() {
+  var dlg = document.getElementById("fclPointDialog");
+  if (dlg) return dlg;
+  dlg = document.createElement("dialog");
+  dlg.id = "fclPointDialog";
+  dlg.innerHTML =
+    '<div class="fcl-point-hd"><h2 id="fclPointTitle"></h2>' +
+    '<button type="button" id="fclPointClose">关闭</button></div>' +
+    '<div class="fcl-point-bd" id="fclPointBody"></div>';
+  document.body.appendChild(dlg);
+  document.getElementById("fclPointClose").onclick = function () { dlg.close(); };
+  dlg.addEventListener("click", function (e) {
+    if (e.target === dlg) dlg.close();
+  });
+  return dlg;
+}
+
+function ensureDocDialog() {
+  var dlg = document.getElementById("fclDocDialog");
+  if (dlg) return dlg;
+  dlg = document.createElement("dialog");
+  dlg.id = "fclDocDialog";
+  dlg.innerHTML =
+    '<div class="fcl-doc-hd"><h2 id="fclDocTitle"></h2>' +
+    '<button type="button" class="btn-doc" id="fclDocClose">关闭</button></div>' +
+    '<div class="fcl-doc-bd" id="fclDocBody"></div>';
+  document.body.appendChild(dlg);
+  document.getElementById("fclDocClose").onclick = function () { dlg.close(); };
+  dlg.addEventListener("click", function (e) {
+    if (e.target === dlg) dlg.close();
+  });
+  return dlg;
+}
+
+function openPin(n) {
+  var note = PIN_NOTES[n];
+  if (!note) return;
+  var dlg = ensurePinDialog();
+  document.getElementById("fclPointTitle").innerHTML =
+    '<span class="pin">' + n + "</span>" + note.title;
+  document.getElementById("fclPointBody").innerHTML =
+    (note.summary ? "<p>" + note.summary + "</p>" : "") +
+    note.html +
+    '<a class="more-link" href="' + PRD_URL + "#p" + n + '" target="_blank">打开 PRD 逐点清单 →</a>';
+  if (typeof dlg.showModal === "function") dlg.showModal();
+  else dlg.setAttribute("open", "open");
+}
+
+function openFeatureDoc() {
+  var dlg = ensureDocDialog();
+  document.getElementById("fclDocTitle").textContent = "功能说明";
+  document.getElementById("fclDocBody").innerHTML =
+    '<div class="fcl-doc-feat"><h3>' + FEATURE_DOC.title + "</h3>" +
+    '<p style="margin:0 0 8px;color:#595959">' + FEATURE_DOC.summary + "</p>" +
+    "<ul>" + FEATURE_DOC.bullets.map(function (b) { return "<li>" + b + "</li>"; }).join("") + "</ul>" +
+    '<p style="margin:12px 0 0"><a href="' + PRD_URL + '#feature" target="_blank">打开 PRD 功能说明 →</a></p></div>';
+  if (typeof dlg.showModal === "function") dlg.showModal();
+  else dlg.setAttribute("open", "open");
+}
+
+function openPointsDoc() {
+  var dlg = ensureDocDialog();
+  document.getElementById("fclDocTitle").textContent = "逐点清单";
+  var html = '<p style="margin:0 0 10px;font-size:12px;color:#8c8c8c">编号与页面橙色序号一致。</p>';
+  [1, 2, 3, 4, 5, 6].forEach(function (n) {
+    var p = PIN_NOTES[n];
+    html += '<div class="fcl-doc-point"><h4><span class="pin">' + n + "</span>" + p.title + "</h4>" +
+      '<p class="fcl-doc-sum">' + (p.summary || "") + "</p>" + p.html + "</div>";
+  });
+  html += '<p style="margin:8px 0 0"><a href="' + PRD_URL + '#detail" target="_blank">打开 PRD 逐点清单 →</a></p>';
+  document.getElementById("fclDocBody").innerHTML = html;
+  if (typeof dlg.showModal === "function") dlg.showModal();
+  else dlg.setAttribute("open", "open");
+}
+
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest("[data-pin]");
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openPin(btn.getAttribute("data-pin"));
+});
+document.getElementById("btnFeatDoc").onclick = openFeatureDoc;
+document.getElementById("btnPointsDoc").onclick = openPointsDoc;
+
+render();
+</script>
+</body>
+</html>
