@@ -75,7 +75,7 @@
     }
     .filter-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
       gap: 6px 10px; align-items: end;
     }
     .filter-grid.more {
@@ -255,7 +255,7 @@
       text-align: left; white-space: nowrap;
     }
     table.data th.col-plan {
-      background: #fff7e6; color: #ad4e00;
+      background: #fff7e6; color: #ad4e00; overflow: visible;
     }
     .st-pc {
       display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px;
@@ -264,6 +264,27 @@
     .st-pre { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
     .st-wait { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
     .st-final { color: #389e0d; background: #f6ffed; border-color: #95de64; }
+    td.cell-combo {
+      white-space: normal; vertical-align: top; min-width: 220px; max-width: 320px;
+    }
+    .combo-multi {
+      white-space: pre-line; line-height: 1.45; font-size: 12px; color: var(--text);
+    }
+    th.th-seq-sort {
+      cursor: pointer; user-select: none;
+    }
+    th.th-seq-sort:hover { background: #ffe7ba !important; }
+    th.th-seq-sort .sort-mark {
+      display: inline-block; margin-left: 4px; font-size: 11px; color: #d46b08; font-weight: 700;
+      min-width: 1.2em; text-align: center;
+    }
+    th.th-seq-sort.is-sorted .sort-mark { color: #ad4e00; }
+    td.cell-seq { vertical-align: middle; }
+    .seq-inp {
+      width: 56px; height: 26px; border: 1px solid #ffd591; border-radius: 2px;
+      padding: 0 6px; font-size: 12px; background: #fffbe6; color: #ad4e00; font-weight: 600;
+    }
+    .seq-inp:focus { outline: none; border-color: #fa8c16; }
     table.data th {
       background: #fafafa; color: var(--sub); font-weight: 600; position: sticky; top: 0; z-index: 2;
     }
@@ -933,6 +954,8 @@
     <b>提单管理</b> — 在<strong>本页原列表</strong>增加装柜计划字段（橙底表头），不另开第二页。
     仓库共用同一数据 → <a href="装柜计划-仓库视图-MVP.html">装柜计划 · 仓库视图</a> /
     <a href="../../APP/装柜扫描-件数核对-MVP.html">PDA</a>。
+    说明：<a href="义乌智能仓-方案/仓位拆分-提单管理-PRD-交互稿.html">本页 PRD</a>（橙圈）·
+    装柜/卸柜费在仓库录入并同步提单预估（追加/覆盖）。
     <a href="船务组-订舱仓位装柜-评审导航.html">评审导航</a>
   </div>
   <div class="app">
@@ -951,6 +974,12 @@
             <div class="filter-item"><label>运单号</label><input id="qWb" placeholder="支持模糊" /></div>
             <div class="filter-item"><label>柜号</label><input id="qCntr" /></div>
             <div class="filter-item"><label>船名航次</label><input id="qVoy" placeholder="例 YM MOVEMENT" /></div>
+            <div class="filter-actions">
+              <button type="button" class="tool-btn outline" id="btnMoreFilter">更多筛选 ▾</button>
+              <button type="button" class="tool-btn outline" id="btnReset">数据重置</button>
+            </div>
+          </div>
+          <div class="filter-grid more hidden" id="moreFilters" style="margin-top:8px">
             <div class="filter-item">
               <label>预计装柜时间</label>
               <div class="filter-dates">
@@ -959,12 +988,6 @@
                 <input type="date" id="qLoadTo" title="止" />
               </div>
             </div>
-            <div class="filter-actions">
-              <button type="button" class="tool-btn outline" id="btnMoreFilter">更多筛选</button>
-              <button type="button" class="tool-btn outline" id="btnReset">数据重置</button>
-            </div>
-          </div>
-          <div class="filter-grid more hidden" id="moreFilters" style="margin-top:8px">
             <div class="filter-item"><label>进口商</label><input id="qImp" placeholder="名称或编码" /></div>
             <div class="filter-item">
               <label>运输方式</label>
@@ -1090,12 +1113,11 @@
           <span class="tb-split" aria-hidden="true"></span>
           <button type="button" class="tool-btn" id="btnBroadcast">舱位播报</button>
           <button type="button" class="tool-btn" id="btnCancelIt">取消IT标记</button>
-          <a class="tool-btn" href="海派仓位表-MVP.html" title="退运已挪至海派仓位表">退运（仓位表）</a>
           <button type="button" class="tool-btn" id="btnAms" title="装柜前由船务发送 AMS">发 AMS</button>
         </div>
         <div class="status-tabs">
           <button type="button" class="status-tab active" data-st="">全部 <b id="cntAll">(18)</b></button>
-          <button type="button" class="status-tab" data-st="待分配">待分配 <b id="cntWait">(5)</b></button>
+          <button type="button" class="status-tab" data-st="待分配" id="tabWaitAssign" title="待分配且无提单号不进列表">待分配 <b id="cntWait">(5)</b></button>
           <button type="button" class="status-tab" data-st="待装柜">待装柜 <b id="cntStow">(4)</b></button>
           <button type="button" class="status-tab" data-st="待离港">待离港 <b id="cntDep">(2)</b></button>
           <button type="button" class="status-tab" data-st="已离港">已离港 <b id="cntGone">(1)</b></button>
@@ -1116,13 +1138,14 @@
               <tr>
                 <th style="width:36px"><input type="checkbox" id="chkAll" /></th>
                 <th>序号</th>
-                <th class="col-plan">预计装柜时间</th>
+                <th class="col-plan" id="thPlanLoadAt">预计装柜时间</th>
                 <th>提单号</th>
                 <th>柜号 / 铅封号</th>
                 <th>船名航次</th>
                 <th>提单状态</th>
-                <th class="col-plan">组合配舱</th>
-                <th class="col-plan">终配舱号</th>
+                <th class="col-plan" id="thPlanCombo">组合配舱</th>
+                <th class="col-plan" id="thPlanFinal">终配舱号</th>
+
                 <th style="min-width:260px">业务标记</th>
                 <th>截单时间</th>
                 <th>装柜时间</th>
@@ -1163,16 +1186,17 @@
                 <th>创建时间</th>
                 <th>创建人</th>
                 <th>预计到达时间</th>
-                <th class="col-plan">配舱状态</th>
-                <th class="col-plan">资料员</th>
-                <th class="col-plan">顺序</th>
-                <th class="col-plan">渠道</th>
-                <th class="col-plan">清关行分配</th>
-                <th class="col-plan">要求到柜时间</th>
-                <th class="col-plan">装柜团队</th>
-                <th class="col-plan">贴单核对</th>
-                <th class="col-plan">监装</th>
-                <th class="col-plan">打单</th>
+                <th class="col-plan" id="thPlanPc">配舱状态</th>
+                <th class="col-plan" id="thPlanDocPre">预录资料员</th>
+                <th class="col-plan" id="thPlanDocCut">截单资料员</th>
+                <th class="col-plan th-seq-sort" id="thPlanSeq" title="顺序标记：改数字后点表头，按当前列表升降序">顺序 <span class="sort-mark" id="seqSortMark" aria-hidden="true">↕</span></th>
+                <th class="col-plan" id="thPlanCh">渠道</th>
+                <th class="col-plan" id="thPlanCustoms">清关行</th>
+                <th class="col-plan" id="thPlanReq">要求到柜时间</th>
+                <th class="col-plan" id="thPlanTeam">装柜团队</th>
+                <th class="col-plan" id="thPlanLabel">贴单核对</th>
+                <th class="col-plan" id="thPlanWatch">监装</th>
+                <th class="col-plan" id="thPlanPrint">打单</th>
               </tr>
             </thead>
             <tbody id="tbody"></tbody>
@@ -2496,8 +2520,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-提单管理-按周分组与分配-MVP-PRD.html">
-    <span class="ess-prd-chip">PRD · 提单管理</span>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="义乌智能仓-方案/仓位拆分-提单管理-PRD-交互稿.html">
+    <span class="ess-prd-chip">PRD · 提单管理 · 仓位拆分</span>
   </div>
   <script src="../../二期/ess-prototype-prd.js?v=aidock1"></script>
   <script>
@@ -2615,10 +2639,7 @@
             imp: "STAR IMPORTER LLC", impCode: "IMP-US-2024-STAR", broker: "精准", cargo: "散货", fees: []
           });
         });
-        /* 未放舱无号：仅部分待分配示意空号；其余待分配保留号，便于测分配 */
-        ROWS.forEach(function (r) {
-          if (r.st === "待分配" && (r.id === 1 || r.id === 19 || r.id === 22)) r.bl = "";
-        });
+        /* 待分配无提单号不进列表：演示数据均保留正式提单号 */
       })();
 
       (function seedStaff() {
@@ -2710,22 +2731,41 @@
             else if (r.st === "待装柜") r.pc = i % 2 ? "wait" : "final";
             else r.pc = "final";
           }
-          if (r.docOfficer == null) r.docOfficer = docs[i % docs.length];
-          if (r.loadSeq == null) r.loadSeq = (i % 8) + 1;
+          /* 预录资料员←预录工作台；截单资料员←报关管理 */
+          if (r.docPre == null) r.docPre = r.docOfficer || docs[i % docs.length];
+          if (r.docCut == null) r.docCut = i % 3 === 0 ? "关务-" + docs[(i + 1) % docs.length] : (docs[(i + 2) % docs.length] || "");
+          if (r.loadSeq == null) r.loadSeq = (i % 8) + 1; /* 顺序标记：列表排序字段，可改 */
           if (r.channel == null) r.channel = channels[i % channels.length];
-          if (r.comboCabin == null) {
-            r.comboCabin = (r.pc === "pre" || r.pc === "wait")
-              ? (r.pc === "wait" ? "NTCD2607-" + ("0" + r.id).slice(-2) : "")
-              : (i % 3 === 0 ? "总仓-正班预配-A" + r.id : "");
+          /* 组合配舱：列表内多行「预配/组合号 + 方数」，对齐线下「需组合配舱号」 */
+          if (r.comboLines == null) {
+            if (r.pc === "wait") {
+              r.comboLines = ["NTCD2607-" + ("0" + r.id).slice(-2) + " " + (8 + (r.id % 7) + 0.12 * (r.id % 5)).toFixed(6)];
+            } else if (r.pc === "final" && i % 3 === 0) {
+              r.comboLines = ["总仓-正班预配-A" + r.id + " " + (10 + (r.id % 9) + 0.33).toFixed(6)];
+            } else {
+              r.comboLines = [];
+            }
           }
+          if (r.comboCabin == null) r.comboCabin = (r.comboLines && r.comboLines[0]) ? String(r.comboLines[0]).split(/\s+/)[0] : "";
+          /* 配中也可有终配舱号（有则显）；终配必有 */
           if (r.finalCabin == null) {
-            r.finalCabin = r.pc === "final"
-              ? ("260801-" + (r.channel || "混装") + r.id)
-              : "";
+            if (r.pc === "final") r.finalCabin = "260801-" + (r.channel || "混装") + r.id;
+            else if (r.pc === "wait" && i % 2 === 0) r.finalCabin = "260801-预终-" + r.id;
+            else r.finalCabin = "";
           }
-          if (r.customsAssign == null) r.customsAssign = r.customs || (i % 2 ? "欣扬" : "鸿程捷运");
-          if (r.reqArrive == null) r.reqArrive = r.loadAt ? "十二点" : (i % 2 ? "早上7点" : "");
-          if (r.loadTeam == null) r.loadTeam = r.color === "装完" ? "老刘" : "";
+          /* 清关行←进口商分配 */
+          if (r.customsAssign == null) r.customsAssign = r.broker || r.customs || "";
+          if (r.reqArrive == null) {
+            if (r.loadAt) {
+              r.reqArrive = String(r.loadAt).slice(0, 10) + " 12:00";
+            } else if (i % 2) {
+              var cutDay = (r.cutOff || "").slice(0, 10) || "2026-08-02";
+              r.reqArrive = cutDay + " 07:00";
+            } else {
+              r.reqArrive = "";
+            }
+          }
+          if (r.loadTeam == null) r.loadTeam = r.color === "装完" ? "良承拖" : "";
           if (r.labelStaff == null) r.labelStaff = r.color === "装完" ? "李庆广" : "";
           if (r.watchStaff == null) r.watchStaff = "";
           if (r.printStaff == null) r.printStaff = "";
@@ -2735,19 +2775,39 @@
         var byId = {};
         ROWS.forEach(function (r) { byId[r.id] = r; });
         if (byId[3]) {
-          byId[3].pc = "final"; byId[3].docOfficer = "郝桂兰"; byId[3].loadSeq = 4;
-          byId[3].channel = "正班"; byId[3].comboCabin = "总仓-正班快递预配-A3";
-          byId[3].finalCabin = "260801-正班混装1"; byId[3].reqArrive = "十二点";
-          byId[3].loadTeam = "老刘"; byId[3].labelStaff = "李庆广";
+          byId[3].pc = "final"; byId[3].docPre = "郝桂兰"; byId[3].docCut = "关务-郝桂兰"; byId[3].loadSeq = 2;
+          byId[3].channel = "正班";
+          /* 线下样例：一格内多行需组合配舱号 + 方数 */
+          byId[3].comboLines = [
+            "260802厦门-美森正班特价-发总仓 12.465038",
+            "260802-泉州-美森正班特价-发总仓 4.465924",
+            "总仓-美森正班私卡预配-A7-2 26.994436",
+            "总仓-正班卡派预配-A7 5.998584",
+            "260802-广州-美森正班私卡-发总仓 20.509949",
+            "20260731青岛-美森正班特价-发总仓 3.887279"
+          ];
+          byId[3].comboCabin = "总仓-正班卡派预配-A7";
+          byId[3].finalCabin = "260803-正班卡派2"; byId[3].reqArrive = "2026-08-05 12:00";
+          byId[3].loadTeam = "良承拖"; byId[3].labelStaff = "李庆广";
+          byId[3].customsAssign = byId[3].broker || "精准";
+          byId[3].imp = "BARBIZON INC";
+          byId[3].ticketCnt = 10;
         }
         if (byId[10]) {
-          byId[10].pc = "wait"; byId[10].docOfficer = "毛潇楠"; byId[10].loadSeq = 2;
-          byId[10].channel = "克利夫兰"; byId[10].comboCabin = "NTCD2607-02";
-          byId[10].finalCabin = "260801-文志方整柜"; byId[10].customsAssign = "欣扬";
+          byId[10].pc = "wait"; byId[10].docPre = "毛潇楠"; byId[10].docCut = "关务-毛潇楠"; byId[10].loadSeq = 2;
+          byId[10].channel = "克利夫兰";
+          byId[10].comboLines = [
+            "NTCD2607-02 28.120000",
+            "NTCD2607-02B 14.550000",
+            "总仓-克利夫兰预配-B1 15.330000"
+          ];
+          byId[10].comboCabin = "NTCD2607-02";
+          byId[10].finalCabin = "260801-文志方整柜"; byId[10].customsAssign = byId[10].broker || "欣扬";
         }
         if (byId[1]) {
-          byId[1].pc = "pre"; byId[1].docOfficer = "贾纯生"; byId[1].loadSeq = 3;
-          byId[1].channel = "T25"; byId[1].finalCabin = "260801-青岛T25"; byId[1].reqArrive = "早上7点";
+          byId[1].pc = "pre"; byId[1].docPre = "贾纯生"; byId[1].docCut = ""; byId[1].loadSeq = 3;
+          byId[1].channel = "T25"; byId[1].finalCabin = ""; byId[1].reqArrive = "2026-08-02 07:00";
+          byId[1].customsAssign = byId[1].broker || "";
         }
       })();
 
@@ -3158,6 +3218,8 @@
       var pageSize = 10;
       var selected = {};
       var itSingleId = null;
+      /* 顺序标记：0=默认周/船名序；1=按 loadSeq 升序；-1=降序（当前筛选结果） */
+      var seqSortDir = 0;
 
       function parseDay(str) {
         if (!str) return null;
@@ -3666,6 +3728,39 @@
         });
       }
 
+      function seqVal(r) {
+        if (r.loadSeq == null || r.loadSeq === "") return null;
+        var n = Number(r.loadSeq);
+        return isFinite(n) ? n : null;
+      }
+
+      /** 当前筛选结果排序：启用顺序标记时按 loadSeq；否则默认周/船名 */
+      function sortedList() {
+        var list = filtered();
+        if (!seqSortDir) return sortByWeekVessel(list);
+        var dir = seqSortDir;
+        return list.slice().sort(function (a, b) {
+          var sa = seqVal(a);
+          var sb = seqVal(b);
+          if (sa == null && sb == null) return (a.bl || "").localeCompare(b.bl || "");
+          if (sa == null) return 1;
+          if (sb == null) return -1;
+          if (sa !== sb) return (sa - sb) * dir;
+          return (a.bl || "").localeCompare(b.bl || "");
+        });
+      }
+
+      function updateSeqSortMark() {
+        var th = document.getElementById("thPlanSeq");
+        var mark = document.getElementById("seqSortMark");
+        if (!th || !mark) return;
+        th.classList.toggle("is-sorted", !!seqSortDir);
+        mark.textContent = seqSortDir === 1 ? "↑" : (seqSortDir === -1 ? "↓" : "↕");
+        th.title = seqSortDir
+          ? ("已按顺序" + (seqSortDir === 1 ? "升序" : "降序") + " · 再点切换 / 三次回默认")
+          : "顺序标记：改数字后点表头，按当前列表升降序";
+      }
+
       function browseMode() {
         if ((document.getElementById("qWarn").value || "").trim()) return "warn";
         if ((document.getElementById("qColor").value || "").trim()) return "load";
@@ -3694,11 +3789,16 @@
         document.getElementById("qColor").value = "";
       }
 
+      function hasListableBl(r) {
+        /* 待分配且无正式提单号 → 不进列表 */
+        if (r.st === "待分配" && !String(r.bl || "").trim()) return false;
+        return true;
+      }
       function filtered() {
         var warn = document.getElementById("qWarn").value;
-        if (warn) return ROWS.filter(function (r) { return hasWarn(r, warn); });
+        if (warn) return ROWS.filter(function (r) { return hasListableBl(r) && hasWarn(r, warn); });
         var colorQ = document.getElementById("qColor").value;
-        if (colorQ) return ROWS.filter(function (r) { return matchColorFilter(r, colorQ); });
+        if (colorQ) return ROWS.filter(function (r) { return hasListableBl(r) && matchColorFilter(r, colorQ); });
         var bl = (document.getElementById("qBl").value || "").trim().toUpperCase();
         var wb = (document.getElementById("qWb").value || "").trim().toUpperCase();
         var cntr = (document.getElementById("qCntr").value || "").trim().toUpperCase();
@@ -3721,6 +3821,7 @@
         var loadFrom = document.getElementById("qLoadFrom").value;
         var loadTo = document.getElementById("qLoadTo").value;
         return ROWS.filter(function (r) {
+          if (!hasListableBl(r)) return false;
           if (stFilter && r.st !== stFilter) return false;
           if (itFilter && r.it !== itFilter) return false;
           if (amdFilter && (r.amd || "无") !== amdFilter) return false;
@@ -3836,11 +3937,14 @@
 
       function render() {
         renderWeekTabs();
-        var list = sortByWeekVessel(filtered());
+        updateSeqSortMark();
+        var list = sortedList();
         var pg = pageSlice(list);
         renderPager(pg);
         document.getElementById("cntAll").textContent = "(" + ROWS.length + ")";
-        document.getElementById("cntWait").textContent = "(" + ROWS.filter(function (r) { return r.st === "待分配"; }).length + ")";
+        document.getElementById("cntWait").textContent = "(" + ROWS.filter(function (r) {
+          return r.st === "待分配" && !!String(r.bl || "").trim();
+        }).length + ")";
         document.getElementById("cntStow").textContent = "(" + ROWS.filter(function (r) { return r.st === "待装柜"; }).length + ")";
         document.getElementById("cntDep").textContent = "(" + ROWS.filter(function (r) { return r.st === "待离港"; }).length + ")";
         document.getElementById("cntGone").textContent = "(" + ROWS.filter(function (r) { return r.st === "已离港"; }).length + ")";
@@ -3932,11 +4036,16 @@
           if (f.nearSail) warnBorder = " warn-sail-row";
           else if (f.nearCut) warnBorder = " warn-cut-row";
           if (f.missCntrSeal) warnBorder += " warn-seal-row";
-          var PC_LABEL = { pre: "预配", wait: "待配", final: "终配" };
+          var PC_LABEL = { pre: "待配", wait: "配中", final: "终配" };
           var PC_CLASS = { pre: "st-pre", wait: "st-wait", final: "st-final" };
           var pc = r.pc || "pre";
-          /* 配舱模块完成后回写本列，只展示不在此页跳转配舱 */
-          var comboHtml = r.comboCabin ? dash(r.comboCabin) : "—";
+          /* 列表内多行呈现需组合配舱号+方数（对齐线下 Excel，不弹明细） */
+          var lines = Array.isArray(r.comboLines) ? r.comboLines : (r.comboCabin ? [r.comboCabin] : []);
+          var comboHtml = lines.length
+            ? ('<div class="combo-multi">' + lines.map(function (s) {
+                return String(s).replace(/</g, "&lt;");
+              }).join("\n") + "</div>")
+            : "—";
           var finalHtml = r.finalCabin ? dash(r.finalCabin) : "—";
           return '<tr class="data-row' + sel + itCls + rsCls + amdCls + loadCls + warnBorder + '" data-id="' + r.id + '">' +
             '<td><input type="checkbox" class="row-ck"' + ck + ' /></td>' +
@@ -3946,7 +4055,7 @@
             "<td>" + cntrSealCell(r) + "</td>" +
             "<td>" + voyCell(r) + "</td>" +
             "<td>" + stTag(r.st) + "</td>" +
-            "<td>" + comboHtml + "</td>" +
+            '<td class="cell-combo">' + comboHtml + "</td>" +
             "<td>" + finalHtml + "</td>" +
             "<td>" + marksCell(r) + "</td>" +
             "<td>" + cutOffCell(r) + "</td>" +
@@ -3989,10 +4098,12 @@
             "<td>" + dash(r.createdBy) + "</td>" +
             "<td>" + dash(r.eta) + "</td>" +
             '<td><span class="st-pc ' + (PC_CLASS[pc] || "st-pre") + '">' + (PC_LABEL[pc] || pc) + "</span></td>" +
-            "<td>" + dash(r.docOfficer) + "</td>" +
-            "<td>" + (r.loadSeq != null ? r.loadSeq : "") + "</td>" +
+            "<td>" + dash(r.docPre || r.docOfficer) + "</td>" +
+            "<td>" + dash(r.docCut) + "</td>" +
+            '<td class="cell-seq"><input class="seq-inp" type="number" min="1" step="1" data-seq="' + r.id +
+              '" value="' + (r.loadSeq != null ? r.loadSeq : "") + '" title="顺序标记" /></td>' +
             "<td>" + dash(r.channel) + "</td>" +
-            "<td>" + dash(r.customsAssign) + "</td>" +
+            "<td>" + dash(r.customsAssign || r.broker) + "</td>" +
             "<td>" + dash(r.reqArrive) + "</td>" +
             "<td>" + dash(r.loadTeam) + "</td>" +
             "<td>" + dash(r.labelStaff) + "</td>" +
@@ -4008,6 +4119,17 @@
       }
 
       document.getElementById("tbody").addEventListener("change", function (e) {
+        var seqInp = e.target.closest(".seq-inp");
+        if (seqInp) {
+          var sid = Number(seqInp.getAttribute("data-seq"));
+          var row = ROWS.find(function (x) { return x.id === sid; });
+          if (row) {
+            var v = String(seqInp.value || "").trim();
+            row.loadSeq = v === "" ? "" : (Number(v) || v);
+            if (seqSortDir) render();
+          }
+          return;
+        }
         var ck = e.target.closest(".row-ck");
         if (!ck) return;
         var tr = ck.closest("tr");
@@ -4016,9 +4138,22 @@
         tr.classList.toggle("selected", ck.checked);
       });
 
+      document.getElementById("tbody").addEventListener("click", function (e) {
+        if (e.target.closest(".seq-inp")) e.stopPropagation();
+      });
+
+      document.getElementById("thPlanSeq").addEventListener("click", function () {
+        /* 点击循环：默认 → 升序 → 降序 → 默认 */
+        if (seqSortDir === 0) seqSortDir = 1;
+        else if (seqSortDir === 1) seqSortDir = -1;
+        else seqSortDir = 0;
+        pageNo = 1;
+        render();
+      });
+
       document.getElementById("chkAll").addEventListener("change", function () {
         var on = this.checked;
-        var pg = pageSlice(sortByWeekVessel(filtered()));
+        var pg = pageSlice(sortedList());
         pg.rows.forEach(function (r) {
           if (on) selected[r.id] = true; else delete selected[r.id];
         });
@@ -4088,7 +4223,9 @@
       document.getElementById("btnMoreFilter").onclick = function () {
         var el = document.getElementById("moreFilters");
         el.classList.toggle("hidden");
-        this.textContent = el.classList.contains("hidden") ? "更多筛选" : "收起筛选";
+        var open = !el.classList.contains("hidden");
+        this.classList.toggle("is-open", open);
+        this.textContent = open ? "收起筛选 ▴" : "更多筛选 ▾";
       };
       document.getElementById("btnReset").onclick = function () {
         ["qBl", "qWb", "qCntr", "qImp", "qVoy", "qLoadFrom", "qLoadTo"].forEach(function (id) { document.getElementById(id).value = ""; });
@@ -5653,6 +5790,7 @@
           r.imp = imp;
           r.impCode = (rec && rec.code) || "";
           r.broker = broker;
+          r.customsAssign = broker || "";
           addLog(r, "绑定进口商",
             "绑定进口商: [进口商: " + oldImp + "→" + imp +
             ", 清关行: " + oldBroker + "→" + (broker || "空") +
@@ -6800,5 +6938,7 @@
   </script>
   <script src="ship-review-nav.js"></script>
   <script>renderShipReviewNav("bl-mgmt");</script>
+  <script src="ship-stow-prd-doc-bar.js" data-page="5"></script>
+  <script src="ship-stow-review-bridge.js" data-page="5"></script>
 </body>
 </html>

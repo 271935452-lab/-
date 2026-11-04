@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>义乌智能仓 · 自动配舱场景</title>
+  <link rel="stylesheet" href="../ship-review-common.css" />
+  <style>
+    :root {
+      --bg: #f0f2f5; --card: #fff; --line: #e8e8e8;
+      --header: #0b1f3a; --sidebar: #001529;
+      --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45);
+      --blue: #1890ff; --ok: #389e0d; --warn: #d46b08; --gap: #cf1322;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .page { max-width: 1200px; margin: 0 auto; padding: 14px 16px 56px; }
+    .act-auto { color: #389e0d; font-weight: 600; }
+    .act-mark { color: #d46b08; font-weight: 600; }
+    .act-human { color: #096dd9; font-weight: 600; }
+    .act-block { color: #cf1322; font-weight: 600; }
+    .sc-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 12px; }
+    @media (max-width: 800px) { .sc-sum { grid-template-columns: 1fr 1fr; } }
+    .sc-sum .sc {
+      border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; background: #fafafa; font-size: 12px;
+    }
+    .sc-sum .n { font-size: 18px; font-weight: 700; color: #003a8c; }
+    table.sc-table td:nth-child(1) { white-space: nowrap; font-weight: 600; color: #003a8c; }
+    .hero {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 6px; padding: 14px 16px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+    .hero p { margin: 0; font-size: 12px; color: var(--sub); line-height: 1.65; }
+    .meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      display: inline-block; padding: 2px 10px; border-radius: 12px;
+      background: #e6f7ff; color: #096dd9; font-size: 11px; font-weight: 600;
+    }
+    .pill.warn { background: #fff7e6; color: #d46b08; }
+    .pill.ok { background: #f6ffed; color: #389e0d; }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .toc a {
+      padding: 6px 12px; background: #fff; border: 1px solid var(--line);
+      border-radius: 2px; font-size: 12px; color: var(--text);
+    }
+    .toc a:hover { border-color: var(--blue); color: var(--blue); text-decoration: none; }
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 6px; padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+    .card h3 { margin: 16px 0 8px; font-size: 13px; color: #003a8c; }
+    .desc { margin: 0 0 12px; font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .okbox, .warnbox, .gapbox {
+      padding: 10px 12px; border-radius: 4px; font-size: 12px; line-height: 1.65; margin: 10px 0;
+    }
+    .okbox { background: #f6ffed; border: 1px solid #b7eb8f; color: #135200; }
+    .warnbox { background: #fffbe6; border: 1px solid #ffe58f; color: #614700; }
+    .gapbox { background: #fff1f0; border: 1px solid #ffa39e; color: #a8071a; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; line-height: 1.55; }
+    th { background: #fafafa; font-weight: 600; white-space: nowrap; }
+    .tag {
+      display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 11px; font-weight: 600;
+      border: 1px solid; line-height: 18px; white-space: nowrap;
+    }
+    .tag.ok { color: var(--ok); background: #f6ffed; border-color: #95de64; }
+    .tag.warn { color: var(--warn); background: #fff7e6; border-color: #ffd591; }
+    .tag.gap { color: var(--gap); background: #fff1f0; border-color: #ffa39e; }
+    .tag.chg { color: #096dd9; background: #e6f7ff; border-color: #91d5ff; }
+    ol.steps { margin: 0; padding-left: 18px; }
+    ol.steps li { margin: 2px 0; }
+    .prio {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 4px;
+      font-size: 13px; font-weight: 600;
+    }
+    .prio span {
+      background: #e6f7ff; border: 1px solid #91d5ff; color: #003a8c;
+      padding: 4px 10px; border-radius: 4px;
+    }
+    .prio .arrow { background: transparent; border: 0; color: var(--sub); padding: 0; }
+    .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+
+    html, body { height: 100%; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .top-header {
+      background: var(--header); color: #fff; display: flex; align-items: center;
+      min-height: 48px; padding: 0 14px; gap: 10px; flex-shrink: 0;
+    }
+    .logo { font-weight: 600; }
+    .nav-tab {
+      margin-left: 8px; padding: 0 12px; height: 48px; line-height: 48px;
+      background: var(--bg); color: var(--text); font-weight: 600;
+    }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 208px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.78);
+      padding: 8px 0; overflow: auto;
+    }
+    .side-item { display: block; padding: 9px 16px; color: inherit; text-decoration: none; }
+    .side-item:hover { background: rgba(255,255,255,.08); color: #fff; text-decoration: none; }
+    .side-item.active { background: rgba(24,144,255,.28); color: #fff; }
+    .main { flex: 1; min-width: 0; overflow: auto; }
+    .page { max-width: none !important; margin: 0 !important; padding: 12px 14px 40px !important; }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <div class="logo">船务</div>
+    <div class="nav-tab">自动配舱场景</div>
+  </header>
+  <div class="body-wrap">
+    <nav class="sidebar" id="shipReviewSidebar"></nav>
+    <main class="main">
+  <div class="page">
+    <header class="hero">
+      <h1>义乌智能仓 · 自动配舱场景</h1>
+      <p>配法对照。规则见 <a href="义乌智能仓-自动配舱-方案确认.html">自动配舱方案</a>。导航见 <a href="../船务组-订舱仓位装柜-评审导航.html#stowFlow">仓位拆分 · 智能配舱</a>。</p>
+    </header>
+    <nav class="toc">
+      <a href="#sc-A">A 入池</a>
+      <a href="#sc-B">B 渠道柜型</a>
+      <a href="#sc-C">C 地址 SKU</a>
+      <a href="#sc-D">D 优先级</a>
+      <a href="#sc-E">E 重量</a>
+      <a href="#sc-F">F 截单</a>
+      <a href="#sc-G">G 现场</a>
+      <a href="#sc-H">H 组合</a>
+      <a href="#sc-I">I 补充</a>
+    </nav>
+    <section class="card" id="s-scene">
+      <h2>场景 · 可能情况与实际配舱动作</h2>
+      <p class="desc">
+        图例：
+        <span class="act-auto">自动落成</span>＝硬条件满足，无需确认；
+        <span class="act-mark">出方案+打标</span>＝仍生成，页面提示人工选用；
+        <span class="act-human">人工</span>＝手配 / 审核 / 补货 / 对舱位；
+        <span class="act-block">不配 / 硬拦</span>＝不进自动方案或禁止落成。
+        默认柜型按 <strong>40HQ · 70 方 · ≤1100 箱 · 重量分档</strong>。
+      </p>
+      <div class="sc-sum">
+        <div class="sc"><div class="n">A</div>入池与排除 · 5</div>
+        <div class="sc"><div class="n">B</div>渠道 / 柜型 / 容量 · 10</div>
+        <div class="sc"><div class="n">C</div>地址 SKU · 6</div>
+        <div class="sc"><div class="n">D</div>优先级与标记货 · 12</div>
+        <div class="sc"><div class="n">E</div>重量审核 · 4</div>
+        <div class="sc"><div class="n">F</div>截单与舱位 · 9</div>
+        <div class="sc"><div class="n">G</div>落成后现场 · 7</div>
+        <div class="sc"><div class="n">H</div>组合冲突示例 · 5</div>
+        <div class="sc"><div class="n">I</div>补充组合 · 18</div>
+      </div>
+
+      <h3 id="sc-A">A. 入池与排除</h3>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>场景</th><th>实际配舱情况</th><th>谁动手</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>A1</td>
+            <td>货在<strong>义乌智能仓</strong>、非扣件、有渠道</td>
+            <td>进入自动配舱候选池，按渠道切开后跑规则</td>
+            <td><span class="act-auto">自动</span></td>
+          </tr>
+          <tr>
+            <td>A2</td>
+            <td>货在<strong>分公司 / 非智能仓</strong></td>
+            <td><strong>不走</strong>本套自动逻辑；仍手配或现网终配规则</td>
+            <td><span class="act-block">不进本方案</span> → <span class="act-human">手配</span></td>
+          </tr>
+          <tr>
+            <td>A3</td>
+            <td>运单为<strong>扣件</strong>状态</td>
+            <td>不能配舱，剔出候选池</td>
+            <td><span class="act-block">不配</span></td>
+          </tr>
+          <tr>
+            <td>A4</td>
+            <td>尾端「一件代发」</td>
+            <td>自动配舱按<strong>海外仓自提</strong>计地址 SKU / 归类；洛杉矶柜常态进美库；海外仓后续一件代发人工衔接</td>
+            <td><span class="act-auto">归类自动</span> + <span class="act-human">海外仓衔接</span></td>
+          </tr>
+          <tr>
+            <td>A5</td>
+            <td>全部硬条件 + 软优先级均正常满足</td>
+            <td>直接落自动配舱方案，打自动配舱标，<strong>无需人工确认</strong></td>
+            <td><span class="act-auto">自动落成</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="sc-B">B. 渠道 / 柜型 / 容量</h3>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>场景</th><th>实际配舱情况</th><th>谁动手</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>B1</td>
+            <td>同渠道货源充足，方数/箱数/重量均在第一轮上限内</td>
+            <td>默认按 40HQ、70 方打一舱（或开多舱），自动落成</td>
+            <td><span class="act-auto">自动落成</span></td>
+          </tr>
+          <tr>
+            <td>B2</td>
+            <td>美森 CLX 与 T16（或中美）货都在池里</td>
+            <td>自动<strong>绝不混柜</strong>；各开各的舱</td>
+            <td><span class="act-auto">分渠道配</span></td>
+          </tr>
+          <tr>
+            <td>B3</td>
+            <td>某渠道缺货，想跨渠道<strong>升舱补货</strong></td>
+            <td>自动不做；必须人工确认后手配/改舱</td>
+            <td><span class="act-human">人工确认</span></td>
+          </tr>
+          <tr>
+            <td>B4</td>
+            <td>终配时仍不知真实柜型</td>
+            <td>第一轮一律按 <strong>40HQ · 70 方</strong>生成</td>
+            <td><span class="act-auto">按默认柜型</span></td>
+          </tr>
+          <tr>
+            <td>B5</td>
+            <td>实际用到 <strong>40GP</strong></td>
+            <td>人工改按 60 方上限调方案 / 踢货或减载</td>
+            <td><span class="act-human">人工调柜型</span></td>
+          </tr>
+          <tr>
+            <td>B6</td>
+            <td>实际用到 <strong>45HQ</strong></td>
+            <td>人工可按 80 方放宽或补货</td>
+            <td><span class="act-human">人工调柜型</span></td>
+          </tr>
+          <tr>
+            <td>B7</td>
+            <td>同渠道货量 &gt; 一柜上限（方 / 箱 / 重任一顶满）</td>
+            <td>当前舱打住，<strong>开下一舱</strong>继续装同渠道剩余货</td>
+            <td><span class="act-auto">多舱</span></td>
+          </tr>
+          <tr>
+            <td>B8</td>
+            <td>箱数将超过 1100</td>
+            <td>不再往本舱塞；超额票进下一舱或不进本方案</td>
+            <td><span class="act-auto">开新舱 / 跳过</span></td>
+          </tr>
+          <tr>
+            <td>B9</td>
+            <td>第一轮配到接近上限但柜未满（如 65/70 方）</td>
+            <td>自动先落方案；剩余空位<strong>不自动硬塞</strong>（不封门），留给现场用<strong>封门货</strong>队列补</td>
+            <td><span class="act-auto">留余量</span> → <span class="act-human">人工封门</span></td>
+          </tr>
+          <tr>
+            <td>B10</td>
+            <td>同渠道内同时有 FBA 卡派、快递、自提、私卡</td>
+            <td><strong>允许同柜</strong>（非强制分柜）；仅作很弱排序参考，以地址 SKU 为主</td>
+            <td><span class="act-auto">可同柜</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="sc-C">C. 地址 SKU</h3>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>场景</th><th>实际配舱情况</th><th>谁动手</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>C1</td>
+            <td>舱内地址 SKU ≤ 15（默认阈值）</td>
+            <td>不打超限标；满足其他硬条件则自动落成</td>
+            <td><span class="act-auto">自动落成</span></td>
+          </tr>
+          <tr>
+            <td>C2</td>
+            <td>舱内地址 SKU &gt; 15</td>
+            <td><strong>仍生成方案</strong>，页面<strong>打标提示</strong>配舱同事；用不用人工决定（不禁配、不强制审批流）</td>
+            <td><span class="act-mark">出方案+打标</span> → <span class="act-human">选用</span></td>
+          </tr>
+          <tr>
+            <td>C3</td>
+            <td>运营把阈值改成例如 12 或 18</td>
+            <td>按新阈值判断是否打标；逻辑同 C1/C2</td>
+            <td><span class="act-human">改配置</span> + 系统按新阈值</td>
+          </tr>
+          <tr>
+            <td>C4</td>
+            <td>舱内仅快递派 + 海外仓自提（无 FBA/私卡散地址）</td>
+            <td>地址 SKU = 2。配舱时快递派整类算 1，不按 FedEx、UPS 拆开</td>
+            <td><span class="act-auto">易落成</span></td>
+          </tr>
+          <tr>
+            <td>C5</td>
+            <td>FBA 卡派含 16 个不同亚马逊仓代码</td>
+            <td>SKU=16 → 超默认 15 → C2 打标；系统仍可出方案</td>
+            <td><span class="act-mark">打标</span></td>
+          </tr>
+          <tr>
+            <td>C6</td>
+            <td>FBA 按仓代码货量排序后，「少 SKU 装满」与「单仓能整柜」冲突</td>
+            <td>按优先级：少 SKU 装满（③）优先于单仓整柜（⑤）</td>
+            <td><span class="act-auto">按优先级</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="sc-D">D. 优先级与标记货（合并报关 / 反倾销 / 限时达 / 服装）</h3>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>场景</th><th>实际配舱情况</th><th>谁动手</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>D1</td>
+            <td>同渠道有合并报关组 + 其他散货</td>
+            <td>合并报关<strong>优先同柜</strong>（优先级①）；同柜后该舱地址 SKU 往往偏多（预期行为）</td>
+            <td><span class="act-auto">合并优先同柜</span></td>
+          </tr>
+          <tr>
+            <td>D2</td>
+            <td>同渠道两组合并报关合计超过一柜上限</td>
+            <td><strong>自动拆开</strong>配到不同舱，业务标记打「合并单多舱」</td>
+            <td><span class="act-auto">自动拆</span> + <span class="act-mark">合并单多舱</span></td>
+          </tr>
+          <tr>
+            <td>D3</td>
+            <td>查货备注或额外服务 / 附加服务命中<strong>反倾销</strong>多票</td>
+            <td>任一命中即认。同渠道<strong>集中同柜</strong>（优先级②）</td>
+            <td><span class="act-auto">反倾销集中</span></td>
+          </tr>
+          <tr>
+            <td>D4</td>
+            <td>合并报关 vs 反倾销不能两全（容量不够）</td>
+            <td>先保合并报关同柜（① &gt; ②）；反倾销剩余票开专舱或进下一舱</td>
+            <td><span class="act-auto">按优先级</span></td>
+          </tr>
+          <tr>
+            <td>D5</td>
+            <td>销售产品名含「限时达」的 FBA + 快递派</td>
+            <td>优先同柜（④）；且<strong>允许</strong>快递限时达与 FBA 限时达同柜</td>
+            <td><span class="act-auto">限时达同柜</span></td>
+          </tr>
+          <tr>
+            <td>D6</td>
+            <td>限时达货与「少 SKU 装满」冲突</td>
+            <td>少 SKU（③）优先于限时达（④）</td>
+            <td><span class="act-auto">按优先级</span></td>
+          </tr>
+          <tr>
+            <td>D7</td>
+            <td>单个 FBA 仓代码货量本身可装整柜</td>
+            <td>在更高优先级都满足后，优先做<strong>单仓整柜</strong>（⑤，最弱）</td>
+            <td><span class="act-auto">单仓整柜</span></td>
+          </tr>
+          <tr>
+            <td>D8</td>
+            <td>品名命中服装，舱内服装合计 ≤ 40 方</td>
+            <td>可进自动方案</td>
+            <td><span class="act-auto">可配</span></td>
+          </tr>
+          <tr>
+            <td>D9</td>
+            <td>服装合计将 &gt; 40 方</td>
+            <td><strong>转人工判断</strong>（不自动硬踢末票）；方案不自动落成该组合</td>
+            <td><span class="act-human">转人工</span></td>
+          </tr>
+          <tr>
+            <td>D10</td>
+            <td>风控在备注打了服装 / 反倾销，与品名不一致</td>
+            <td>反倾销：查货备注或额外服务/附加服务任一命中即认；服装以品名或风控备注为准</td>
+            <td><span class="act-auto">按标记命中</span></td>
+          </tr>
+          <tr>
+            <td>D11</td>
+            <td>美西一件代发 + 普通海外仓自提同渠道</td>
+            <td>一件代发按海外仓自提归类，可与自提同「地址 SKU=1」口径；进美库后续人工衔接</td>
+            <td><span class="act-auto">归类</span> + <span class="act-human">海外仓</span></td>
+          </tr>
+          <tr>
+            <td>D12</td>
+            <td>新增销售产品未单独通知规则</td>
+            <td>按现有渠道↔尾端映射<strong>默认一致</strong>参与自动配舱</td>
+            <td><span class="act-auto">默认规则</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="sc-E">E. 重量审核</h3>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>场景</th><th>实际配舱情况</th><th>谁动手</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>E1</td>
+            <td>舱内实重合计 ≤ 19.5 吨</td>
+            <td>重量关自动通过；再叠其他条件决定是否落成</td>
+            <td><span class="act-auto">重量通过</span></td>
+          </tr>
+          <tr>
+            <td>E2</td>
+            <td>整柜实重在 19.5～25.9 吨</td>
+            <td>先出方案，推黄少飞看整柜。不看单票重，也不因没有大单票退回重配</td>
+            <td><span class="act-human">黄少飞确认</span></td>
+          </tr>
+          <tr>
+            <td>E3</td>
+            <td>整柜实重 &gt; 25.9 吨</td>
+            <td>不落成。方案留下，转配舱同事拆舱或踢票</td>
+            <td><span class="act-block">禁落成</span> → <span class="act-human">人工</span></td>
+          </tr>
+          <tr>
+            <td>E4</td>
+            <td>单票十几吨，整柜仍在某一档</td>
+            <td>单票不单独确认。整柜 ≤19.5 走 E1；19.5～25.9 走 E2；大于 25.9 走 E3</td>
+            <td><span class="act-auto">只看整柜</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="sc-F">F. 截单与舱位</h3>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>场景</th><th>实际配舱情况</th><th>谁动手</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>F1</td>
+            <td>仓位已录入，且未过「最迟配舱终止时间」</td>
+            <td>自动配舱可针对该渠道/仓位窗口出方案；对舱位由人工完成</td>
+            <td><span class="act-auto">出方案</span> + <span class="act-human">对舱位</span></td>
+          </tr>
+          <tr>
+            <td>F2</td>
+            <td>已过该仓位最迟配舱终止时间</td>
+            <td>该仓位不再作为自动配舱匹配窗口（避免截单后才配完）</td>
+            <td><span class="act-block">跳过该仓位窗口</span></td>
+          </tr>
+          <tr>
+            <td>F3</td>
+            <td>仓位与渠道尚未人工绑定</td>
+            <td>系统不强行精算唯一舱位；配舱方案可先出，对舱位等人绑好再做</td>
+            <td><span class="act-human">先绑仓位↔渠道</span></td>
+          </tr>
+          <tr>
+            <td>F4</td>
+            <td>配舱完成但订舱舱位不足 / 加班船装不下</td>
+            <td>配舱与订舱平行；舱位不够由人工改配、拆舱或换船（一期不自动补哪票）</td>
+            <td><span class="act-human">人工调</span></td>
+          </tr>
+          <tr>
+            <td>F5</td>
+            <td>同渠道、同柜型；两柜都已到现场；都未开装；B 货急、A 柜先到</td>
+            <td>仓库视图勾选两条做<strong>换柜对调</strong>（终配舱不做）。配舱号里的货不动，只对调柜/提单绑定。之后用到场的 A 柜装 B 配舱号的货</td>
+            <td><span class="act-human">换柜</span></td>
+          </tr>
+          <tr>
+            <td>F6</td>
+            <td>不同渠道的两条要换柜</td>
+            <td>不允许。同渠道才会换</td>
+            <td><span class="act-block">硬拦</span></td>
+          </tr>
+          <tr>
+            <td>F7</td>
+            <td>柜型不同（如 40HQ ↔ 45HQ）要换柜</td>
+            <td>不允许。只换同柜型</td>
+            <td><span class="act-block">硬拦</span></td>
+          </tr>
+          <tr>
+            <td>F8</td>
+            <td>柜未到现场，或任一柜已开始装柜</td>
+            <td>不允许换。必须两柜都到现场，且装柜开始之前</td>
+            <td><span class="act-block">硬拦</span></td>
+          </tr>
+          <tr>
+            <td>F9</td>
+            <td>立库已按配舱号下发，但还没开始往物理柜里装</td>
+            <td>仍允许换柜。换的是配舱号↔柜绑定，跟货在立库或已下发到哪无关</td>
+            <td><span class="act-human">可换</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="sc-G">G. 落成后 · 现场与推送</h3>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>场景</th><th>实际配舱情况</th><th>谁动手</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>G1</td>
+            <td>自动方案已落成，柜未满（封门货）</td>
+            <td>终配舱「人工补货」从本渠道<strong>封门货留货队列</strong>取普货补满；自动不消费该队列。兼降查验掏柜风险</td>
+            <td><span class="act-human">人工封门</span></td>
+          </tr>
+          <tr>
+            <td>G1a</td>
+            <td>剩余约 2～3 方要封门</td>
+            <td>优先取队列里 <strong>2.5～3.5 方一票</strong>封住（单号越少越好）；不够再搭 1～2 件「单票单件」。同渠道；可同渠道升级，默认不告知客户</td>
+            <td><span class="act-human">人工封门</span></td>
+          </tr>
+          <tr>
+            <td>G1b</td>
+            <td>本渠道封门货不够，想跨渠道封门</td>
+            <td><strong>不自动</strong>跨渠道；须人工确认后再补。渠道硬隔离高于封门便利</td>
+            <td><span class="act-human">人工确认</span></td>
+          </tr>
+          <tr>
+            <td>G2</td>
+            <td>纯立库出货，方案方数 ≤ 第一轮上限</td>
+            <td>按配舱号推送；主线不因「差一点满」暂停；因上限留了余量，一般装得下</td>
+            <td><span class="act-auto">推送</span></td>
+          </tr>
+          <tr>
+            <td>G3</td>
+            <td>立库 + 地堆混合装同一配舱号</td>
+            <td>一期<strong>不标地堆/立库、不拆两套方数</strong>。仍按柜型上限（如 40HQ=70）留余量</td>
+            <td><span class="act-auto">统一上限</span></td>
+          </tr>
+          <tr>
+            <td>G4</td>
+            <td>人工改完方案保存 / 补货保存</td>
+            <td>再按规则校验；不在规则内打业务标记，最终由人确认。<strong>原有业务标记不取消</strong></td>
+            <td><span class="act-human">校验+打标</span></td>
+          </tr>
+          <tr>
+            <td>G5</td>
+            <td>美森加班等舱位方数不够吃下已配方案</td>
+            <td>不自动决定「哪种货补上/卸哪票」；人工改方案（调研池相关）</td>
+            <td><span class="act-human">人工改配</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="sc-H">H. 组合冲突示例（一眼看懂怎么配）</h3>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>同时出现</th><th>实际怎么配</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>H1</td>
+            <td>同渠道 · 合并报关 + 反倾销 + 限时达，容量只够一舱的 2/3</td>
+            <td>先装合并报关同柜 → 再塞能进的反倾销 → 限时达能进则进；剩票开下一舱。地址 SKU 若超 15 → 打标仍出方案。</td>
+          </tr>
+          <tr>
+            <td>H2</td>
+            <td>跨渠道货 + 本渠道货都急着截单</td>
+            <td>绝不自动混柜；各渠道各自出舱；对到各自未过期的仓位窗口。</td>
+          </tr>
+          <tr>
+            <td>H3</td>
+            <td>地址 SKU=18 + 实重 18 吨 + 服装 30 方</td>
+            <td>重量过、服装过；SKU 超限 → <strong>出方案+打标</strong>，配舱同事决定用不用。</td>
+          </tr>
+          <tr>
+            <td>H4</td>
+            <td>地址 SKU=10 + 整柜实重 22 吨，无论有没有一票 12 吨</td>
+            <td>进重量审核，黄少飞只看整柜。不看单票重，不退回重配。</td>
+          </tr>
+          <tr>
+            <td>H5</td>
+            <td>服装已 38 方，再进 5 方服装会超 40</td>
+            <td>该 5 方不自动塞进本舱；整组若只能这样装 → <strong>转人工</strong>判断是否超 40 或拆舱。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="sc-I">I. 补充组合（规则叠在一起时）</h3>
+      <p class="desc">
+        H 只覆盖了「优先级打架」和几组典型叠标。下面是同一票货 / 同一舱同时踩中两条以上规则时，按已确认口径推出的配法。
+        标 <span class="tag warn">推论</span> 的是规则能推出来、但群里没单独点名的；标 <span class="tag gap">待确认</span> 的进调研池前先按此草案给业务看。
+      </p>
+      <table class="sc-table">
+        <thead><tr><th>编号</th><th>组合</th><th>实际配舱情况</th><th>依据</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>I1</td>
+            <td>合并报关组里<strong>有一票扣件</strong></td>
+            <td>该组先不配。等扣件放行后，再<strong>整组自动配</strong>。</td>
+            <td><span class="tag ok">已确认</span> 等放行再配</td>
+          </tr>
+          <tr>
+            <td>I2</td>
+            <td>同一合并报关组<strong>跨了两个渠道</strong>（数据异常）</td>
+            <td>渠道硬隔离高于合并优先级：<strong>不能</strong>为了合并报关自动混渠道。整组转人工。</td>
+            <td><span class="tag warn">推论</span> 跨渠道绝对不混柜</td>
+          </tr>
+          <tr>
+            <td>I3</td>
+            <td>反倾销货分布在两个渠道</td>
+            <td>各渠道内分别集中；<strong>不</strong>跨渠道并成一柜。</td>
+            <td><span class="tag warn">推论</span></td>
+          </tr>
+          <tr>
+            <td>I4</td>
+            <td>同渠道<strong>两组</strong>合并报关，A=50方、B=30方（合计&gt;70）</td>
+            <td>两组各自完整进不同舱（自动拆开），打「合并单多舱」。不能为了装满把某一组拆散。</td>
+            <td><span class="tag ok">已确认</span> 自动拆 + 打标</td>
+          </tr>
+          <tr>
+            <td>I5</td>
+            <td>同渠道两组合并报关，各 20 方，都能整组装进 70 方</td>
+            <td>允许<strong>两组都完整地</strong>进同一舱，再用散货补到上限内。</td>
+            <td><span class="tag warn">推论</span></td>
+          </tr>
+          <tr>
+            <td>I6</td>
+            <td>反倾销合计 90 方 &gt; 70（合并报关说「不会超一柜」，反倾销没这么说）</td>
+            <td>尽量集中：第一舱装满反倾销，剩余反倾销再开一舱，<strong>不把剩余反倾销拆进已装好的普通柜</strong>。</td>
+            <td><span class="tag warn">推论</span> 集中 + 方数上限</td>
+          </tr>
+          <tr>
+            <td>I7</td>
+            <td>单个 FBA 仓能「整柜」，但这一个仓就有 75 方</td>
+            <td>一舱最多 70。超出的尾数进下一舱（下一舱因此 +1 个地址 SKU）。单仓整柜让位给方数上限。</td>
+            <td><span class="tag warn">推论</span> ⑤最弱</td>
+          </tr>
+          <tr>
+            <td>I8</td>
+            <td>合并报关同柜后地址 SKU=18，同时实重 18 吨、服装 30 方</td>
+            <td>重量、服装都过；只因 SKU 超阈值 → <strong>出方案 + 打标</strong>，不拦。这是「合并报关自然变成 SKU 多的柜」的正常结果。</td>
+            <td><span class="tag ok">已确认方向</span></td>
+          </tr>
+          <tr>
+            <td>I9</td>
+            <td>SKU≤15，但实重 22 吨且服装将超过 40 方</td>
+            <td>两条都要人工：先按服装转人工判断；若人确认可超 40，再看是否进重量审核。不自动落成。</td>
+            <td><span class="tag warn">推论</span></td>
+          </tr>
+          <tr>
+            <td>I10</td>
+            <td>边界：SKU=15 / 服装=40 方 / 实重=19.5 吨 / 实重=25.9 吨</td>
+            <td>15 个不打标；服装 ≤40 可自动；≤19.5 自动过；≤25.9 仍在审核档（含 25.9），<strong>大于</strong> 25.9 才禁。</td>
+            <td><span class="tag ok">按原文 ≤</span></td>
+          </tr>
+          <tr>
+            <td>I11</td>
+            <td>整柜刚好 19.5 吨，里面有一票 18 吨</td>
+            <td>整柜未进审核档 → <strong>重量关通过</strong>。单票再重也不另审。</td>
+            <td><span class="tag ok">已确认</span> 只看整柜</td>
+          </tr>
+          <tr>
+            <td>I12</td>
+            <td>整柜落在 19.5～25.9，人改方案后拆开了合并报关，或地址 SKU 更高</td>
+            <td>重量待审只看整柜，不因单票退回重配。人改过的方案以人工结果为准。</td>
+            <td><span class="tag ok">已确认</span> 不自动重配</td>
+          </tr>
+          <tr>
+            <td>I13</td>
+            <td>方案已落成，现场补的「普货」会让重量进审核档 / 箱数&gt;1100 / 服装&gt;40 / SKU 从 15 变成 16</td>
+            <td>补货前先算一遍。会踩新红线的票不建议补；补了则该舱改为手配（取消自动标），整柜进 19.5～25.9 的再走 E2。</td>
+            <td><span class="tag warn">推论</span></td>
+          </tr>
+          <tr>
+            <td>I14</td>
+            <td>截单前该渠道货只有 40 方（装不满 70）</td>
+            <td>仍要在最迟配舱终止时间前出方案（未满舱），打未满提示更好；剩下空位现场补普货。不能为了等满柜错过截单。</td>
+            <td><span class="tag warn">推论</span> 截单前必须配完</td>
+          </tr>
+          <tr>
+            <td>I15</td>
+            <td>同一渠道两个仓位都没过截止时间</td>
+            <td>自动配舱按渠道出方案；<strong>对到哪一个仓位由人工选</strong>。系统不自动绑死唯一舱位。</td>
+            <td><span class="tag ok">已确认</span> 对舱位人工</td>
+          </tr>
+          <tr>
+            <td>I16</td>
+            <td>立库已按配舱号开始下货，此时才发现装不下或想抽货改配</td>
+            <td>主线不停、该配舱号会出完。抽货/改配要在<strong>下发立库之前</strong>做完；下发后只允许现场在余量内补普货，不回滚。</td>
+            <td><span class="tag warn">推论</span> 张富强：暂停会卡主线</td>
+          </tr>
+          <tr>
+            <td>I17</td>
+            <td>尾端不是快递派、海外仓自提、FBA 卡派、私人卡派</td>
+            <td><strong>目前不存在</strong>。配舱按销售产品上的派送方式名称选。</td>
+            <td><span class="tag ok">已确认</span> 不存在</td>
+          </tr>
+          <tr>
+            <td>I18</td>
+            <td>整柜直送产品</td>
+            <td><strong>不在本自动配舱规则内</strong>，不与散货走这套拼柜逻辑。</td>
+            <td><span class="tag ok">已确认</span> 整柜另册</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="okbox">
+        统计：硬条件都满足且未超标未超重 → <strong>自动落成</strong>；
+        仅超地址 SKU → <strong>出方案+打标</strong>；
+        重量中档 / 服装超 40 / 未满封门货 / 跨渠道补货 / 改柜型 / 补货踩线 / 对舱位 / 装前换柜 → <strong>人工</strong>；
+        扣件、非智能仓、&gt;25.9 吨、过期仓位窗口、尾端无法归类、跨渠道或不同柜型换柜、未到场或已开装换柜 → <strong>不配或硬拦</strong>。
+        渠道硬隔离始终高于合并报关 / 反倾销 / 限时达。<strong>封门货不进自动</strong>：同渠道留货队列、优先少单号。
+      </div>
+    </section>
+    <p class="foot"><a href="义乌智能仓-自动配舱-方案确认.html">返回方案</a></p>
+  </div>
+    </main>
+  </div>
+  <script src="../ship-review-nav.js"></script>
+  <script>renderShipReviewNav("stow-scene");</script>
+</body>
+</html>

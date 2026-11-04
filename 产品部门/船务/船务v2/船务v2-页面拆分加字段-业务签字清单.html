@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>船务 v2 · 页面拆分加字段 · 业务签字清单</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --card: #fff; --line: #e5e7eb; --text: #111827; --sub: #6b7280;
+      --primary: #1a6bb5; --accent: #ad4e00;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px;
+    }
+    a { color: var(--primary); }
+    .hub-bar {
+      position: sticky; top: 0; z-index: 50; background: #ad4e00; color: #fff;
+      padding: 7px 14px; font-size: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    }
+    .hub-bar a { color: #fff; text-decoration: none; }
+    .hub-bar .btn {
+      height: 26px; padding: 0 10px; border: 1px solid rgba(255,255,255,.5);
+      background: transparent; color: #fff; border-radius: 4px; cursor: pointer; font: inherit;
+    }
+    .hub-bar .btn.primary { background: #fff; color: #ad4e00; font-weight: 700; border-color: #fff; }
+    .hub-bar .btn:disabled { opacity: .55; cursor: wait; }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+      background: #ad4e00; color: #fff; padding: 10px 16px; border-radius: 6px;
+      font-size: 13px; font-weight: 600; z-index: 10050; opacity: 0;
+      pointer-events: none; transition: opacity .2s ease; max-width: 92vw; text-align: center;
+    }
+    .toast.show { opacity: 1; }
+    .page { max-width: 980px; margin: 0 auto; padding: 16px 14px 56px; }
+    .hero {
+      background: linear-gradient(135deg, #ad4e00, #1a6bb5); color: #fff;
+      border-radius: 8px; padding: 16px 18px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 20px; }
+    .hero p { margin: 0; font-size: 12px; line-height: 1.7; opacity: .95; }
+    .meta {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .meta .box {
+      background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+    }
+    .meta .k { font-size: 11px; color: var(--sub); }
+    .meta .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .ref { font-size: 11px; color: var(--sub); margin-bottom: 12px; line-height: 1.6; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 8px; font-size: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    }
+    .rule {
+      margin: 0 0 10px; padding: 8px 10px; background: #fff7e6; border: 1px solid #ffd591;
+      border-radius: 6px; font-size: 12px; color: #ad4e00; line-height: 1.65;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      border: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top;
+    }
+    th { background: #f8fafc; font-weight: 700; color: #475569; }
+    .chk { width: 44px; text-align: center; }
+    .chk input { width: 16px; height: 16px; }
+    .id { font-family: Consolas, monospace; font-size: 11px; white-space: nowrap; }
+    tr.out td { background: #f8fafc; color: #64748b; }
+    .sign-note { margin: 8px 0 0; font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; }
+      .page { max-width: none; padding: 0; }
+    }
+    @media (max-width: 720px) { .meta { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body data-file="船务v2-页面拆分加字段-业务签字清单-V1.0.png">
+  <div class="no-print hub-bar">
+    <a href="船务v2-导航.html"><strong>← 船务 v2 导航</strong></a>
+    · <a href="../义乌智能仓-方案/船务组-仓位拆分智能配舱-MVP-PRD-交互稿.html">PRD 分册总览</a>
+    · <a href="船务v2-自动配舱-业务签字清单.html">另一份 · 自动配舱</a>
+    <button type="button" class="btn primary" id="btnCopyImg">复制图片发群</button>
+    <button type="button" class="btn" id="btnDownloadImg">下载 PNG</button>
+    <button type="button" class="btn" onclick="window.print()">打印 / 另存 PDF</button>
+  </div>
+  <div class="toast no-print" id="toast" role="status"></div>
+
+  <div class="page" id="shot">
+    <section class="hero">
+      <h1>船务 v2 · 页面拆分加字段 · 业务签字清单</h1>
+      <p>海派仓位拆分、提单管理橙列、仓库视图现场字段与取值池、跨页只读回写。勾选确认后开发按此做；未勾不得开发。</p>
+    </section>
+
+    <div class="meta">
+      <div class="box"><div class="k">编号</div><div class="v">SHIP-V2-PAGE-SIGN-20261104</div></div>
+      <div class="box"><div class="k">版本</div><div class="v">V1.0</div></div>
+      <div class="box"><div class="k">条数</div><div class="v">A–E 共 26 条 + OUT</div></div>
+      <div class="box"><div class="k">日期</div><div class="v">2026-11-04</div></div>
+    </div>
+
+    <p class="ref">
+      配套：<a href="../海派仓位表-MVP.html">海派仓位表</a> ·
+      <a href="../船务组-提单管理-按周分组与分配-MVP.html">提单管理</a> ·
+      <a href="../装柜计划-仓库视图-MVP.html">仓库视图</a> ·
+      <a href="../义乌智能仓-方案/仓位拆分-海派仓位表-PRD-交互稿.html">PRD·海派</a> /
+      <a href="../义乌智能仓-方案/仓位拆分-提单管理-PRD-交互稿.html">提单</a> /
+      <a href="../义乌智能仓-方案/仓位拆分-仓库视图-PRD-交互稿.html">仓库</a>
+    </p>
+
+    <section class="card">
+      <h2>A. 页面拆分 · 总体</h2>
+      <p class="rule">不新开作业页骨架：沿用海派仓位 / 提单管理 / 待配仓 / 终配舱 / 仓库视图 / 配舱规则配置；本期加字段与入口。</p>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-01</td>
+            <td><strong>无号仓位</strong>只在海派仓位表维护；放舱出号后进提单管理。不在提单管理维护无号仓位。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-02</td>
+            <td>装柜计划：船务在<strong>提单管理</strong>橙底跟看；仓库在<strong>装柜计划·仓库视图</strong>维护现场字段（同一套计划数据）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-03</td>
+            <td>PDA 装柜扫描回写同一计划行；配舱规则独立配置页，不嵌作业页。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>B. 海派仓位表</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-04</td>
+            <td>创建仓位：<strong>渠道</strong>与<strong>销售产品</strong>同源必填（销售产品主数据）；截单时间必填。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-05</td>
+            <td>批量创建提单：跳转提单创建页；不在本页内嵌创建表单。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-06</td>
+            <td>放舱出号：补录提单号 → 进提单「待分配」；<strong>不自动跳转</strong>提单管理。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-07</td>
+            <td>已出正式提单号后，仓位侧关键字段<strong>编辑锁定</strong>（与现网一致）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-08</td>
+            <td>分配预计装柜时间 + <strong>要求到柜时间</strong>（日期时间）写入仓位，供提单/仓库跟看。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-09</td>
+            <td>退运：仅待分配可退；作废提单；退运费/亏舱费有则写入<strong>提单预估</strong>（对齐现网）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-10</td>
+            <td>导出按当前筛选条件导出（非仅勾选行，除非另有勾选导出入口）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>C. 提单管理 · 列表规则与橙列</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-11</td>
+            <td>状态=待分配且<strong>无正式提单号</strong> → 不进列表、不计入待分配数量。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-12</td>
+            <td><strong>预计装柜时间</strong>← 海派仓位表；本页橙底只读；周页签按此切换。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-13</td>
+            <td><strong>组合配舱</strong>：列表单元格内多行展示「号 + 方数」（对齐线下需组合配舱号）；不弹明细窗。配中可与终配舱号同屏。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-14</td>
+            <td><strong>终配舱号</strong>：配中有则显；终配后必有。与组合配舱并列，不互斥隐藏。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-15</td>
+            <td><strong>配舱状态</strong>：待配 / 配中 / 终配（不用「已分配」）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-16</td>
+            <td><strong>预录资料员</strong>← 预录工作台；<strong>截单资料员</strong>← 报关管理；两列分列，本页只读。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-17</td>
+            <td><strong>顺序</strong>：列表顺序标记字段；单元格可改数字；点表头对当前筛选结果升序→降序→回默认周/船名序。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-18</td>
+            <td><strong>渠道</strong>展示；<strong>清关行</strong>← 进口商绑定分配；<strong>要求到柜时间</strong>← 仓位表只读。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-19</td>
+            <td><strong>装柜团队 / 贴单核对 / 监装 / 打单</strong>← 仓库视图维护结果只读展示；有则显、无则空；本页不代填。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>D. 仓库视图 · 现场字段取值（已确认）</h2>
+      <p class="rule">橙列仓库可改；保存回写计划主数据。装柜费/卸柜费有改须选「追加」或「覆盖」同步提单预估。</p>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-20</td>
+            <td><strong>装柜团队</strong>：服务商列表，类型∈卸车服务商、装卸服务商、装柜服务商、拖车服务商；仅<strong>启用</strong>；落库服务商ID，展示名称；回写提单「装柜团队」。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-21</td>
+            <td><strong>卸柜团队</strong>：与装柜团队<strong>同池同过滤</strong>；仅本页维护，提单管理无此列；可与装柜团队选同一服务商。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-22</td>
+            <td><strong>贴单核对 / 监装 / 打单</strong>：三列同池。人事<strong>在职</strong>同事，部门名称<strong>精确匹配</strong>：台州仓、北苑仓、宁波仓、义乌操作中心、潍坊仓、中山仓、厦门仓、坂田仓、泉州仓、广州仓、福永仓、操作部。不按当前本仓过滤；落库员工ID，展示姓名；回写提单对应橙列。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-23</td>
+            <td>上述字段<strong>空值允许</strong>；同池允许同选（装柜=卸柜同一服务商、贴单=监装同一人均可）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-24</td>
+            <td><strong>两柜对调</strong>入口仅本页（义乌仓）；同渠道同柜型、到场未开装；终配舱不做。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>E. 跨页一致性</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-25</td>
+            <td>渠道 / 销售产品与自动配舱硬隔离字段同一主数据；仓位必填后下游列表跟看。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">PAGE-26</td>
+            <td>各页 PRD 交互稿与原型橙圈同源 <code>ship-stow-review-points.js</code>；开发以签字清单 + 交互稿为准。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>明确不做（OUT）</h2>
+      <table>
+        <thead><tr><th class="chk">知悉</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-01</td>
+            <td>提单管理代填装柜团队/贴单/监装/打单；提单管理维护无号仓位。</td>
+          </tr>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-02</td>
+            <td>组合配舱点开运单明细弹窗（改为列表多行直接展示）。</td>
+          </tr>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-03</td>
+            <td>放舱出号后自动跳转提单管理；海派「提单」列「待分配」入口跳转。</td>
+          </tr>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-04</td>
+            <td>仓库视图人员下拉按「当前本仓」过滤（取 12 部门全量在职）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>签字栏</h2>
+      <p class="sign-note">勾选即确认可开发。有异议在说明旁手写，改完升版再签。</p>
+      <table>
+        <thead><tr><th>角色</th><th>签字 / 日期</th></tr></thead>
+        <tbody>
+          <tr><td>产品</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>船务</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>仓库</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>关务 / 预录</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>研发负责人</td><td>签字 _________________ 日期 ______</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="foot">SHIP-V2-PAGE-SIGN-20261104 · V1.0 · 页面拆分加字段 · A–E 26 条 + OUT 4 条</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+  (function () {
+    var shot = document.getElementById("shot");
+    var btnCopy = document.getElementById("btnCopyImg");
+    var btnDl = document.getElementById("btnDownloadImg");
+    var toast = document.getElementById("toast");
+    var FILE = document.body.getAttribute("data-file") || "船务v2-页面拆分加字段-签字清单.png";
+    var toastTimer = null;
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2800);
+    }
+    function capture() {
+      if (typeof html2canvas !== "function") return Promise.reject(new Error("截图库未加载，请检查网络后刷新"));
+      return html2canvas(shot, {
+        backgroundColor: "#f5f7fb", scale: 2, useCORS: true, logging: false,
+        scrollX: 0, scrollY: -window.scrollY
+      }).then(function (canvas) {
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob); else reject(new Error("生成图片失败"));
+          }, "image/png");
+        });
+      });
+    }
+    function download(blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = FILE;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+    function setBusy(busy) {
+      btnCopy.disabled = busy; btnDl.disabled = busy;
+      btnCopy.textContent = busy ? "生成中…" : "复制图片发群";
+    }
+    btnCopy.addEventListener("click", function () {
+      setBusy(true);
+      capture().then(function (blob) {
+        if (navigator.clipboard && window.ClipboardItem) {
+          return navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
+            .then(function () { showToast("已复制图片，可直接粘贴到微信/飞书群"); })
+            .catch(function () { download(blob); showToast("无法写入剪贴板，已改为下载 PNG"); });
+        }
+        download(blob); showToast("浏览器不支持复制图片，已下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "复制失败");
+      }).finally(function () { setBusy(false); });
+    });
+    btnDl.addEventListener("click", function () {
+      setBusy(true);
+      capture().then(function (blob) {
+        download(blob); showToast("已开始下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "下载失败");
+      }).finally(function () { setBusy(false); });
+    });
+  })();
+  </script>
+</body>
+</html>

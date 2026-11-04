@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>配舱规则配置 · MVP</title>
+  <link rel="stylesheet" href="ship-review-common.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --sidebar: #001529; --bg: #f0f2f5; --card: #fff;
+      --line: #e8e8e8; --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45); --blue: #1890ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .top-header {
+      background: var(--header); color: #fff; display: flex; align-items: center;
+      min-height: 48px; padding: 0 14px; gap: 10px; flex-shrink: 0;
+    }
+    .logo { font-weight: 600; }
+    .nav-tab {
+      margin-left: 8px; padding: 0 12px; height: 48px; line-height: 48px;
+      background: var(--bg); color: var(--text); font-weight: 600;
+    }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar {
+      width: 208px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.78);
+      padding: 8px 0; overflow: auto;
+    }
+    .side-item { display: block; padding: 9px 16px; color: inherit; text-decoration: none; }
+    .side-item:hover { background: rgba(255,255,255,.08); color: #fff; text-decoration: none; }
+    .side-item.active { background: rgba(24,144,255,.28); color: #fff; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+    .toolbar {
+      background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex-shrink: 0;
+    }
+    .btn {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer; font-size: 12px;
+    }
+    .btn.sm { height: 24px; padding: 0 8px; }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { color: #fff; }
+    .hint { margin-left: auto; font-size: 12px; color: var(--sub); line-height: 1.4; max-width: 42%; text-align: right; }
+    .wh-bar {
+      background: #fff; border-bottom: 1px solid var(--line); padding: 8px 12px;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex-shrink: 0;
+    }
+    .wh-bar .lab { font-size: 12px; color: var(--sub); margin-right: 4px; }
+    .wh-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .wh-tab {
+      height: 28px; padding: 0 12px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer; font-size: 12px; color: var(--text);
+    }
+    .wh-tab:hover { border-color: var(--blue); color: var(--blue); }
+    .wh-tab.on { background: #e6f7ff; border-color: #91d5ff; color: #0958d9; font-weight: 600; }
+    .wh-tab .dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: #d9d9d9; margin-left: 6px; vertical-align: middle;
+    }
+    .wh-tab.has .dot { background: #1890ff; }
+    .wh-tab.on .dot { background: #52c41a; }
+    .rule-board {
+      flex: 1; min-height: 0; display: flex; background: var(--card);
+    }
+    .rule-nav {
+      width: 200px; flex-shrink: 0; border-right: 1px solid var(--line);
+      background: #fafafa; overflow: auto; padding: 8px 0;
+    }
+    .rule-nav .nav-group {
+      padding: 8px 14px 4px; font-size: 11px; color: var(--sub); letter-spacing: .02em;
+    }
+    .rule-nav button {
+      display: block; width: 100%; border: 0; background: transparent; text-align: left;
+      padding: 9px 14px; font-size: 13px; color: var(--text); cursor: pointer;
+      border-left: 3px solid transparent;
+    }
+    .rule-nav button:hover { background: #f0f5ff; color: var(--blue); }
+    .rule-nav button.on {
+      background: #e6f7ff; color: #0958d9; font-weight: 600; border-left-color: var(--blue);
+    }
+    .rule-pane {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .rule-pane-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+      display: flex; align-items: baseline; gap: 10px;
+    }
+    .rule-pane-hd h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    .rule-pane-hd span { font-size: 12px; color: var(--sub); }
+    .rule-pane-bd { flex: 1; overflow: auto; padding: 14px 16px 24px; }
+    .rule-sec { display: none; }
+    .rule-sec.on { display: block; }
+    .panel {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px; margin-bottom: 12px;
+    }
+    .panel h3 {
+      margin: 0; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    }
+    .panel h3 span { font-weight: 400; font-size: 12px; color: var(--sub); }
+    .panel .bd { padding: 12px; }
+    .aside-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 900px) { .aside-stack { grid-template-columns: 1fr; } }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-grid label, .fi label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .form-grid input, .form-grid select, .form-grid textarea,
+    .fi input, .fi select {
+      width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; height: 30px;
+    }
+    .form-grid textarea { padding: 6px 8px; min-height: 72px; resize: vertical; line-height: 1.45; height: auto; }
+    .note, .sub { margin: 0; font-size: 12px; color: var(--sub); line-height: 1.55; }
+    .wh-list, .check-row { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+    .wh-list label, .check-row label {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); cursor: pointer;
+    }
+    .wh-list input, .check-row input { width: 14px; height: 14px; margin: 0; }
+    table.cfg { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.cfg th, table.cfg td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: middle; }
+    table.cfg th { background: #fafafa; color: var(--sub); font-weight: 600; }
+    table.cfg input[type=number], table.cfg select { width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; }
+    table.cfg input[type=checkbox] { width: 14px; height: 14px; }
+    .prio-hard {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 10px;
+      background: #fff7e6; border: 1px solid #ffd591; border-radius: 2px; font-size: 12px;
+    }
+    .prio-hard .tag {
+      flex: none; padding: 1px 6px; border-radius: 2px; background: #fa8c16; color: #fff; font-size: 11px; font-weight: 600;
+    }
+    .prio-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .prio-row {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      background: #fafafa; border: 1px solid var(--line); border-radius: 2px; font-size: 12px;
+    }
+    .prio-row .ord { flex: none; width: 22px; color: var(--sub); font-weight: 600; }
+    .prio-row .name { flex: 1; min-width: 0; font-weight: 600; }
+    .prio-row .force {
+      flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--text); cursor: pointer; user-select: none;
+    }
+    .prio-row .force input { width: 14px; height: 14px; margin: 0; }
+    .prio-row .force.on { color: #d46b08; font-weight: 600; }
+    .prio-row .ops { flex: none; display: flex; gap: 4px; }
+    .prio-row .ops button {
+      height: 26px; min-width: 28px; padding: 0 6px; border: 1px solid #d9d9d9; border-radius: 2px;
+      background: #fff; cursor: pointer; font-size: 12px; color: var(--text);
+    }
+    .prio-row .ops button:disabled { opacity: .35; cursor: not-allowed; }
+    .prio-row .ops button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+    table.cfg input[type=color] { width: 36px; height: 28px; padding: 0 2px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; vertical-align: middle; }
+    .prov-cell { min-width: 220px; }
+    .prov-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; min-height: 0; }
+    .prov-tag {
+      display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 6px 0 8px;
+      background: #f5f5f5; border: 1px solid #d9d9d9; border-radius: 2px; font-size: 12px; color: var(--text);
+    }
+    .prov-tag button {
+      border: 0; background: transparent; color: #8c8c8c; cursor: pointer; padding: 0; line-height: 1; font-size: 14px;
+    }
+    .prov-tag button:hover { color: #cf1322; }
+    .prov-add { width: 100%; max-width: 200px; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 6px; font-size: 12px; }
+    .ver { font-size: 12px; padding: 8px 0; border-bottom: 1px dashed #f0f0f0; line-height: 1.5; }
+    .ver:last-child { border-bottom: 0; }
+    .ver.on { background: #f6ffed; margin: 0 -8px; padding: 8px; border-radius: 2px; }
+    .snap-pre {
+      background: #fafafa; border: 1px solid var(--line); border-radius: 4px;
+      padding: 10px 12px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; margin-top: 8px;
+    }
+    .mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .mask.open { display: flex; }
+    .dlg {
+      width: min(640px, 100%); max-height: 90vh; background: #fff; border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18); display: flex; flex-direction: column;
+    }
+    .dlg-hd {
+      padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dlg-bd { padding: 14px 16px; overflow: auto; flex: 1; }
+    .dlg-ft { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+    .toast {
+      position: fixed; right: 16px; bottom: 24px; background: #135200; color: #fff;
+      padding: 10px 14px; border-radius: 4px; display: none; z-index: 50; font-size: 12px;
+    }
+    .toast.on { display: block; }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <div class="logo">ESS · 船务</div>
+    <div class="nav-tab">配舱规则配置</div>
+  </header>
+  <div class="body-wrap">
+    <nav class="sidebar" id="shipReviewSidebar"></nav>
+    <main class="main">
+      <div class="toolbar">
+        <button type="button" class="btn" id="btnSave">保存草稿</button>
+        <button type="button" class="btn primary" id="btnPublish">发布新版本</button>
+        <button type="button" class="btn" id="btnSnap">版本快照</button>
+        <button type="button" class="btn" id="btnReset">恢复确认稿</button>
+        <a class="btn" href="义乌智能仓-方案/义乌智能仓-自动配舱-方案确认.html">方案口径</a>
+        <a class="btn" href="义乌智能仓-方案/义乌智能仓配舱规则.xlsx">规则表 xlsx</a>
+        <span class="hint">顶部选仓库；每个仓独立一套规则。左侧选配置项，右侧编辑。</span>
+      </div>
+
+      <div class="wh-bar">
+        <span class="lab">当前仓库</span>
+        <div class="wh-tabs" id="whTabs"></div>
+        <button type="button" class="btn sm" id="btnCopyWh" title="把某一个仓的规则复制到当前仓">复制某仓规则</button>
+      </div>
+
+      <div class="rule-board">
+        <nav class="rule-nav" id="ruleNav" aria-label="配置项">
+          <div class="nav-group">基础</div>
+          <button type="button" class="on" data-sec="scope">本仓启用</button>
+          <button type="button" data-sec="cap">柜型方数 / 重量</button>
+          <button type="button" data-sec="sku">地址 SKU · 尾端</button>
+          <div class="nav-group">规则</div>
+          <button type="button" data-sec="cloth">服装</button>
+          <button type="button" data-sec="prio">优先级 / 限时达</button>
+          <button type="button" data-sec="handle">超限怎么处理</button>
+          <button type="button" data-sec="keep">封门货 / 补货留货</button>
+          <div class="nav-group">发布</div>
+          <button type="button" data-sec="effect">生效时间</button>
+          <button type="button" data-sec="vers">版本与摘要</button>
+        </nav>
+
+        <div class="rule-pane">
+          <div class="rule-pane-hd">
+            <h2 id="paneTitle">本仓启用</h2>
+            <span id="paneDesc">当前仓是否启用自动配舱；规则按仓独立</span>
+          </div>
+          <div class="rule-pane-bd">
+            <section class="rule-sec on" id="sec-scope" data-title="本仓启用" data-desc="当前仓是否启用自动配舱；规则按仓独立">
+              <div class="form-grid">
+                <div class="full">
+                  <label class="check-row" style="gap:8px">
+                    <input type="checkbox" id="whEnabled" checked />
+                    <span><b id="whEnabledLabel">义乌智能仓</b> 启用自动配舱</span>
+                  </label>
+                  <p class="sub" style="margin-top:8px">关闭后本仓不跑自动配舱，草稿与已发版本仍保留。各仓规则互不影响。</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="rule-sec" id="sec-cap" data-title="柜型方数 / 重量" data-desc="启用 = 硬性勾选；未启用柜型不参与自动配舱">
+              <table class="cfg">
+                <thead><tr><th>柜型</th><th style="width:72px">启用</th><th>方数上限</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td>40HQ</td>
+                    <td><input type="checkbox" class="type-on" data-type="40HQ" checked /></td>
+                    <td><input data-cube="40HQ" type="number" value="70" /></td>
+                  </tr>
+                  <tr>
+                    <td>40GP</td>
+                    <td><input type="checkbox" class="type-on" data-type="40GP" checked /></td>
+                    <td><input data-cube="40GP" type="number" value="60" /></td>
+                  </tr>
+                  <tr>
+                    <td>45HQ</td>
+                    <td><input type="checkbox" class="type-on" data-type="45HQ" checked /></td>
+                    <td><input data-cube="45HQ" type="number" value="80" /></td>
+                  </tr>
+                  <tr>
+                    <td>20GP</td>
+                    <td><input type="checkbox" class="type-on" data-type="20GP" /></td>
+                    <td><input data-cube="20GP" type="number" placeholder="未定" /></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="form-grid" style="margin-top:12px">
+                <div><label>箱数上限</label><input id="boxLimit" type="number" value="1100" /></div>
+                <div></div>
+                <div><label>重量自动通过（吨）≤</label><input id="wPass" type="number" step="0.1" value="19.5" /></div>
+                <div><label>重量禁止超过（吨）</label><input id="wBan" type="number" step="0.1" value="25.9" /></div>
+                <div class="full"><p class="note">只看整柜合计，不看单票重。19.5～25.9 吨出方案并推待办；大于禁止吨不落成。</p></div>
+              </div>
+            </section>
+
+            <section class="rule-sec" id="sec-sku" data-title="地址 SKU · 尾端" data-desc="中间列下拉选服务商简称；不选=一级，选了=1+2 算整类">
+              <div class="form-grid" style="margin-bottom:10px">
+                <div><label>超过多少个仍出方案</label><input id="skuLimit" type="number" min="1" value="15" /></div>
+              </div>
+              <table class="cfg">
+                <thead><tr><th style="width:150px">尾端</th><th>服务商简称</th><th style="width:160px">怎么数</th><th style="width:72px"></th></tr></thead>
+                <tbody id="skuBody"></tbody>
+              </table>
+              <p class="note" style="margin-top:8px">下拉取<strong>服务商列表简称</strong>；不选 → 按<strong>一级</strong>计。选了 → <strong>1+2 算整类</strong>。</p>
+              <button type="button" class="btn sm" id="btnAddSku" style="margin-top:8px">加一条尾端</button>
+            </section>
+
+            <section class="rule-sec" id="sec-cloth" data-title="服装" data-desc="品名命中词表即算；一柜合计超上限转人工">
+              <div class="form-grid">
+                <div><label>服装方数上限</label><input id="clothCap" type="number" value="40" /></div>
+                <div class="full">
+                  <label>服装品名词表（逗号 / 换行分隔）</label>
+                  <textarea id="clothWords">服装,衣服,成衣,服饰,衣物,男装,女装,童装,校服,制服,工作服,运动服,针织服装,梭织服装,休闲服装,上衣,裤子,裙子,连衣裙,衬衫,T恤,卫衣,外套,夹克,大衣,羽绒服,棉服,内衣,内裤,文胸,袜子,泳装,泳衣,睡衣,家居服,clothing,clothes,garment,garments,apparel,sportswear,knitwear</textarea>
+                </div>
+                <div class="full">
+                  <label>排除词（同时出现则不算服装）</label>
+                  <textarea id="clothExclude" style="min-height:48px">衣架,人台,展示架,模具,缝纫机</textarea>
+                </div>
+              </div>
+            </section>
+
+            <section class="rule-sec" id="sec-prio" data-title="优先级 / 限时达" data-desc="可调序；每条可开「强制」；渠道硬隔离不可关">
+              <div class="prio-hard">
+                <span class="tag">强制 · 不可关</span>
+                <span><strong>渠道硬隔离</strong>：不同渠道不混一柜（始终最高，不参与下面排序）</span>
+              </div>
+              <p class="note" style="margin:0 0 8px">下列目标可上移/下移调整执行顺序。勾选「强制」后：不满足则按「超限怎么处理」拦/转人工；未勾选仅为软排序目标。</p>
+              <div class="prio-list" id="prioList" aria-label="可调优先级"></div>
+              <div class="form-grid">
+                <div class="full"><label>限时达识别词（销售产品名称包含即命中）</label><input id="rushWords" value="限时达" /></div>
+              </div>
+            </section>
+
+            <section class="rule-sec" id="sec-handle" data-title="超限怎么处理" data-desc="业务标记颜色 · 待办处理 · 只打标 / 转人工（含分柜/调拨）">
+              <p class="note" style="margin-bottom:8px">同一行配齐：条件 → 处理 → 待办处理人 → 业务标记颜色。转人工才进待办。含<strong>合并报关分柜</strong>（同组跨多舱）、<strong>反倾销分柜</strong>、<strong>调拨柜</strong>。</p>
+              <table class="cfg" id="handleTable">
+                <thead>
+                  <tr>
+                    <th>条件</th>
+                    <th style="width:120px">处理</th>
+                    <th style="width:140px">待办处理人</th>
+                    <th style="width:120px">业务标记颜色</th>
+                  </tr>
+                </thead>
+                <tbody id="handleBody"></tbody>
+              </table>
+              <div class="form-grid" style="margin-top:12px">
+                <div><label>任务日志默认执行人</label><select id="auditor"></select></div>
+                <div class="full"><p class="note">终配舱不做截单提醒标记；截单预警仍只在提单管理。</p></div>
+              </div>
+            </section>
+
+            <section class="rule-sec" id="sec-keep" data-title="封门货 / 补货留货" data-desc="预留封门货队列；自动不封门，未满舱人工同渠道补">
+              <div class="panel" style="margin-bottom:12px">
+                <h3>封门货怎么配 <span>会上口径 · 不进自动配舱</span></h3>
+                <div class="bd">
+                  <ul class="note" style="margin:0;padding-left:18px;line-height:1.7">
+                    <li><strong>自动不封门</strong>：自动配舱不消费本队列；接近上限可留余量，方案先落成。</li>
+                    <li><strong>谁封</strong>：未满舱在终配舱「人工补货」里封门；入口文案即「未满的舱从这里封门」。</li>
+                    <li><strong>用什么</strong>：每渠道预留「单票方数档」+「单票单件档」作封门货来源。</li>
+                    <li><strong>怎么选</strong>：同渠道；<strong>封门单号越少越好</strong>（优先一票封住，再搭 1～2 件单件）。跨渠道须人工确认。</li>
+                    <li><strong>升舱</strong>：同渠道升级补封门可做，默认不告知客户。</li>
+                    <li><strong>保存后</strong>：按实际重算方数/箱数/重量/服装等并打标；踩线按「超限怎么处理」走。</li>
+                    <li><strong>关务</strong>：制单 / 核准 / 舱单以含封门后的终配合计为准；对接说明见 <a href="义乌智能仓-方案/义乌智能仓-封门留货-关务对接确认.html">关务对接确认</a>。</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="form-grid">
+                <div><label>封门货 · 单票方数下限</label><input id="cubeKeepMin" type="number" step="0.1" value="2.5" /></div>
+                <div><label>封门货 · 单票方数上限</label><input id="cubeKeepMax" type="number" step="0.1" value="3.5" /></div>
+                <div><label>单票方数档 · 每渠道留票数</label><input id="cubeKeepN" type="number" value="10" /></div>
+                <div><label>单票单件档 · 每渠道留票数</label><input id="pieceKeepN" type="number" value="10" /></div>
+                <div class="full"><p class="note">两档均为<strong>封门货队列</strong>：用完后系统按规则自动往队列里补票；现场从终配舱按渠道取用。</p></div>
+              </div>
+            </section>
+
+            <section class="rule-sec" id="sec-effect" data-title="生效时间" data-desc="发布后自该时刻起用；已终配柜子不重算">
+              <div class="form-grid">
+                <div class="full"><label>生效时间</label><input id="effectiveFrom" type="datetime-local" /></div>
+              </div>
+            </section>
+
+            <section class="rule-sec" id="sec-vers" data-title="版本与摘要" data-desc="已发布版本只读；摘要随草稿变化">
+              <div class="aside-stack">
+                <div class="panel">
+                  <h3>已发布版本</h3>
+                  <div class="bd" id="verList"></div>
+                </div>
+                <div class="panel">
+                  <h3>当前摘要</h3>
+                  <div class="bd"><div class="snap-pre" id="summaryBox">—</div></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="mask" id="snapMask" aria-hidden="true">
+    <div class="dlg" role="dialog">
+      <div class="dlg-hd">
+        <span>规则版本快照</span>
+        <button type="button" class="btn" id="snapCloseX">×</button>
+      </div>
+      <div class="dlg-bd">
+        <p class="note" style="margin-bottom:10px">已发布版本只读。终配落成时柜子绑定当时版本，不随新发布重算。</p>
+        <div id="snapList"></div>
+        <div id="snapDetail" class="snap-pre" style="display:none"></div>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn" id="snapClose">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="copyWhMask" aria-hidden="true">
+    <div class="dlg" role="dialog" style="width:min(420px,100%)">
+      <div class="dlg-hd">
+        <span>复制某仓规则</span>
+        <button type="button" class="btn" id="copyWhCloseX">×</button>
+      </div>
+      <div class="dlg-bd">
+        <p class="note" style="margin-bottom:12px">将选中仓库的规则<strong>覆盖</strong>到当前仓「<b id="copyWhTarget">—</b>」。只改本页表单，不会自动保存草稿或发布。</p>
+        <div class="fi">
+          <label>从哪个仓复制</label>
+          <select id="copyWhSrc"></select>
+        </div>
+        <p class="note" id="copyWhHint" style="margin-top:10px">—</p>
+      </div>
+      <div class="dlg-ft">
+        <button type="button" class="btn" id="copyWhClose">取消</button>
+        <button type="button" class="btn primary" id="copyWhOk">复制到当前仓</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="ship-review-nav.js"></script>
+  <script>
+    renderShipReviewNav("stow-rule");
+
+    (function bindRuleNav() {
+      var nav = document.getElementById("ruleNav");
+      var title = document.getElementById("paneTitle");
+      var desc = document.getElementById("paneDesc");
+      if (!nav) return;
+      nav.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-sec]");
+        if (!btn) return;
+        var id = btn.getAttribute("data-sec");
+        nav.querySelectorAll("button[data-sec]").forEach(function (b) {
+          b.classList.toggle("on", b === btn);
+        });
+        document.querySelectorAll(".rule-sec").forEach(function (sec) {
+          var on = sec.id === "sec-" + id;
+          sec.classList.toggle("on", on);
+          if (on) {
+            title.textContent = sec.getAttribute("data-title") || "";
+            desc.textContent = sec.getAttribute("data-desc") || "";
+          }
+        });
+      });
+    })();
+
+    var KEY = "yiwu-stow-rule-by-wh-v1";
+    var VER_KEY = "yiwu-stow-rule-ver-by-wh-v1";
+    var OLD_KEY = "yiwu-stow-rule-v1";
+    var OLD_VER_KEY = "yiwu-stow-rule-ver-v1";
+    var PEOPLE = ["黄少飞", "配舱同事"];
+    var WAREHOUSES = ["义乌智能仓", "青岛仓", "宁波仓", "深圳仓"];
+    var currentWh = "义乌智能仓";
+    var TYPES = ["40HQ", "40GP", "45HQ", "20GP"];
+    var DEFAULT_SKU = [
+      { name: "快递派", how: "class", providers: ["FedEx", "UPS"] },
+      { name: "海外仓自提", how: "class", providers: [] },
+      { name: "FBA 卡派", how: "wh", providers: [] },
+      { name: "私人卡派", how: "addr", providers: [] }
+    ];
+    var HOW_LABEL = { class: "整类算 1", wh: "每个仓库代码算 1", addr: "每个收货地址算 1" };
+    // 演示：对接 ESS 服务商主数据时，取启用服务商的「简称」
+    var PROVIDER_OPTS = ["FedEx", "UPS", "DHL", "USPS", "Amazon", "OnTrac", "LaserShip", "Spee-Dee"];
+    var MARK_DEFS = [
+      { k: "sku", name: "地址 SKU 超阈值", color: "#531dab", owner: "配舱同事" },
+      { k: "short", name: "未满", color: "#d46b08", owner: "配舱同事" },
+      { k: "cap", name: "方数或箱数超限", color: "#cf1322", owner: "配舱同事" },
+      { k: "wReview", name: "重量在自动通过和禁止之间", color: "#ad6800", owner: "黄少飞" },
+      { k: "wBan", name: "重量超过禁止重量", color: "#a8071a", owner: "配舱同事" },
+      { k: "cloth", name: "服装超方", color: "#f5222d", owner: "配舱同事" },
+      { k: "merge", name: "合并报关整组未齐", color: "#0958d9", owner: "配舱同事" },
+      { k: "mergeSplit", name: "合并报关分柜", color: "#1d39c4", owner: "配舱同事" },
+      { k: "antiSplit", name: "反倾销分柜", color: "#c41d7f", owner: "配舱同事" },
+      { k: "transfer", name: "调拨柜", color: "#08979c", owner: "配舱同事" }
+    ];
+    var DEFAULT_HANDLE = {
+      sku: "mark", short: "mark", cap: "mark", wReview: "human", wBan: "human", cloth: "human",
+      merge: "human", mergeSplit: "mark", antiSplit: "mark", transfer: "mark"
+    };
+    var DEFAULT_OWNERS = {
+      sku: "配舱同事", short: "配舱同事", cap: "配舱同事", wReview: "黄少飞", wBan: "配舱同事", cloth: "配舱同事",
+      merge: "配舱同事", mergeSplit: "配舱同事", antiSplit: "配舱同事", transfer: "配舱同事"
+    };
+    /** 可调优先级（不含渠道硬隔离）；force=强制开关 */
+    var DEFAULT_PRIO = [
+      { id: "mergeSame", name: "合并报关同柜", force: true },
+      { id: "antiDump", name: "反倾销集中", force: false },
+      { id: "lessSku", name: "少地址 SKU 装满", force: false },
+      { id: "rush", name: "限时达集中", force: false },
+      { id: "singleWh", name: "单仓整柜", force: false }
+    ];
+    var prioRules = DEFAULT_PRIO.map(function (p) { return { id: p.id, name: p.name, force: !!p.force }; });
+
+    var skuRules = DEFAULT_SKU.map(function (r) {
+      return { name: r.name, how: r.how, providers: (r.providers || []).slice() };
+    });
+
+    function $(id) { return document.getElementById(id); }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function toast(msg) {
+      var el = $("toast");
+      el.textContent = msg;
+      el.className = "toast on";
+      setTimeout(function () { el.className = "toast"; }, 2000);
+    }
+    function howOf(name) {
+      var hit = DEFAULT_SKU.filter(function (r) { return r.name === name; })[0];
+      return hit ? hit.how : "class";
+    }
+    function howLabel(name) { return HOW_LABEL[howOf(name)] || "整类算 1"; }
+    function countModeLabel(r) {
+      var pros = (r.providers || []).filter(Boolean);
+      if (pros.length) return "1+2 算整类";
+      return "一级 · " + howLabel(r.name);
+    }
+    function ownerOptions(sel) {
+      return PEOPLE.map(function (p) {
+        return "<option" + (p === sel ? " selected" : "") + ">" + p + "</option>";
+      }).join("");
+    }
+    function fillAuditor(val) {
+      $("auditor").innerHTML = PEOPLE.map(function (p) { return "<option>" + p + "</option>"; }).join("");
+      $("auditor").value = val || "黄少飞";
+    }
+    function normalizePrio(list) {
+      var byId = {};
+      DEFAULT_PRIO.forEach(function (d) { byId[d.id] = d; });
+      var out = [];
+      var seen = {};
+      (list || []).forEach(function (p) {
+        if (!p || !p.id || !byId[p.id] || seen[p.id]) return;
+        seen[p.id] = 1;
+        out.push({ id: p.id, name: byId[p.id].name, force: !!p.force });
+      });
+      DEFAULT_PRIO.forEach(function (d) {
+        if (!seen[d.id]) out.push({ id: d.id, name: d.name, force: !!d.force });
+      });
+      return out;
+    }
+    function renderPrioList() {
+      var box = $("prioList");
+      if (!box) return;
+      prioRules = normalizePrio(prioRules);
+      box.innerHTML = prioRules.map(function (p, i) {
+        return '<div class="prio-row" data-id="' + esc(p.id) + '">' +
+          '<span class="ord">' + (i + 1) + "</span>" +
+          '<span class="name">' + esc(p.name) + "</span>" +
+          '<label class="force' + (p.force ? " on" : "") + '"><input type="checkbox" data-force="' + esc(p.id) + '"' +
+          (p.force ? " checked" : "") + " />强制</label>" +
+          '<span class="ops">' +
+          '<button type="button" data-prio-up="' + i + '" title="上移"' + (i === 0 ? " disabled" : "") + ">↑</button>" +
+          '<button type="button" data-prio-down="' + i + '" title="下移"' + (i === prioRules.length - 1 ? " disabled" : "") + ">↓</button>" +
+          "</span></div>";
+      }).join("");
+      box.querySelectorAll("[data-force]").forEach(function (el) {
+        el.addEventListener("change", function () {
+          var id = el.getAttribute("data-force");
+          prioRules.forEach(function (p) {
+            if (p.id === id) p.force = !!el.checked;
+          });
+          renderPrioList();
+          refreshSummary();
+        });
+      });
+      box.querySelectorAll("[data-prio-up]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var i = +btn.getAttribute("data-prio-up");
+          if (i <= 0) return;
+          var t = prioRules[i - 1];
+          prioRules[i - 1] = prioRules[i];
+          prioRules[i] = t;
+          renderPrioList();
+          refreshSummary();
+        });
+      });
+      box.querySelectorAll("[data-prio-down]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var i = +btn.getAttribute("data-prio-down");
+          if (i >= prioRules.length - 1) return;
+          var t = prioRules[i + 1];
+          prioRules[i + 1] = prioRules[i];
+          prioRules[i] = t;
+          renderPrioList();
+          refreshSummary();
+        });
+      });
+    }
+    function renderHandleTable(handle, owners, colors) {
+      handle = handle || DEFAULT_HANDLE;
+      owners = owners || DEFAULT_OWNERS;
+      colors = colors || {};
+      $("handleBody").innerHTML = MARK_DEFS.map(function (d) {
+        var h = handle[d.k] || DEFAULT_HANDLE[d.k] || "mark";
+        var o = owners[d.k] || d.owner || "配舱同事";
+        var c = colors[d.k] || d.color;
+        return "<tr>" +
+          "<td>" + d.name + "</td>" +
+          "<td><select data-handle=\"" + d.k + "\">" +
+            "<option value=\"mark\"" + (h === "mark" ? " selected" : "") + ">只打标</option>" +
+            "<option value=\"human\"" + (h === "human" ? " selected" : "") + ">转人工</option>" +
+          "</select></td>" +
+          "<td><select data-owner=\"" + d.k + "\">" + ownerOptions(o) + "</select></td>" +
+          "<td><input type=\"color\" data-mk=\"" + d.k + "\" value=\"" + c + "\" title=\"业务标记颜色\" /></td>" +
+          "</tr>";
+      }).join("");
+    }
+    function loadStore() {
+      try {
+        var raw = JSON.parse(localStorage.getItem(KEY) || "null");
+        if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+          if (raw.typesOn || raw.skuRules) {
+            // accidental single rule shape
+            var one = {};
+            one["义乌智能仓"] = raw;
+            return one;
+          }
+          return raw;
+        }
+      } catch (e) {}
+      // migrate old single-rule draft into 义乌智能仓
+      try {
+        var old = JSON.parse(localStorage.getItem(OLD_KEY) || "null");
+        if (old) {
+          var mig = {};
+          mig["义乌智能仓"] = old;
+          localStorage.setItem(KEY, JSON.stringify(mig));
+          return mig;
+        }
+      } catch (e2) {}
+      return {};
+    }
+    function saveStore(map) {
+      localStorage.setItem(KEY, JSON.stringify(map || {}));
+    }
+    function loadVerStore() {
+      try {
+        var raw = JSON.parse(localStorage.getItem(VER_KEY) || "null");
+        if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw;
+      } catch (e) {}
+      try {
+        var old = JSON.parse(localStorage.getItem(OLD_VER_KEY) || "null");
+        if (old && Array.isArray(old)) {
+          var mig = {};
+          mig["义乌智能仓"] = old;
+          localStorage.setItem(VER_KEY, JSON.stringify(mig));
+          return mig;
+        }
+      } catch (e2) {}
+      return {};
+    }
+    function saveVerStore(map) {
+      localStorage.setItem(VER_KEY, JSON.stringify(map || {}));
+    }
+    function renderWhTabs() {
+      var store = loadStore();
+      $("whTabs").innerHTML = WAREHOUSES.map(function (w) {
+        var has = !!store[w];
+        var cls = "wh-tab" + (w === currentWh ? " on" : "") + (has ? " has" : "");
+        return '<button type="button" class="' + cls + '" data-wh="' + esc(w) + '">' + esc(w) + '<span class="dot" title="' + (has ? "已有草稿/配置" : "尚未配置") + '"></span></button>';
+      }).join("");
+      $("whEnabledLabel").textContent = currentWh;
+    }
+    function softCollect() {
+      syncSku();
+      return {
+        warehouse: currentWh,
+        enabled: !!($("whEnabled") && $("whEnabled").checked),
+        typesOn: readTypesOn(),
+        cubes: readCubes(),
+        boxLimit: +$("boxLimit").value || 1100,
+        wPass: +$("wPass").value || 19.5,
+        wBan: +$("wBan").value || 25.9,
+        skuLimit: +$("skuLimit").value || 15,
+        skuRules: skuRules.map(function (r) {
+          var pros = (r.providers || []).filter(Boolean);
+          return {
+            name: r.name,
+            how: howOf(r.name),
+            providers: pros,
+            countMode: pros.length ? "class12" : "level1"
+          };
+        }),
+        clothCap: +$("clothCap").value || 40,
+        clothWords: $("clothWords").value.trim(),
+        clothExclude: $("clothExclude").value.trim(),
+        rushWords: $("rushWords").value.trim() || "限时达",
+        prioRules: normalizePrio(prioRules).map(function (p) {
+          return { id: p.id, name: p.name, force: !!p.force };
+        }),
+        handle: readHandle(),
+        owners: readOwners(),
+        cubeKeepMin: +$("cubeKeepMin").value || 2.5,
+        cubeKeepMax: +$("cubeKeepMax").value || 3.5,
+        cubeKeepN: +$("cubeKeepN").value || 10,
+        pieceKeepN: +$("pieceKeepN").value || 10,
+        markColor: readMarkColors(),
+        ownerReview: (readOwners().wReview) || "黄少飞",
+        ownerBan: (readOwners().wBan) || "配舱同事",
+        auditor: $("auditor").value,
+        effectiveFrom: $("effectiveFrom").value || ""
+      };
+    }
+    function switchWh(next) {
+      if (!next || next === currentWh) return;
+      var map = loadStore();
+      map[currentWh] = softCollect();
+      saveStore(map);
+      currentWh = next;
+      renderWhTabs();
+      if (map[currentWh]) apply(map[currentWh]);
+      else apply(defaults());
+      refreshSummary();
+      toast("已切换到「" + currentWh + "」");
+    }
+    function readMarkColors() {
+      var out = {};
+      document.querySelectorAll("#handleBody input[data-mk]").forEach(function (el) {
+        out[el.getAttribute("data-mk")] = el.value;
+      });
+      return out;
+    }
+    function readHandle() {
+      var handle = {};
+      document.querySelectorAll("#handleBody [data-handle]").forEach(function (el) {
+        handle[el.getAttribute("data-handle")] = el.value;
+      });
+      return handle;
+    }
+    function readOwners() {
+      var owners = {};
+      document.querySelectorAll("#handleBody [data-owner]").forEach(function (el) {
+        owners[el.getAttribute("data-owner")] = el.value;
+      });
+      return owners;
+    }
+    function nameSelect(name, i) {
+      var used = {};
+      skuRules.forEach(function (r, j) { if (j !== i && r.name) used[r.name] = 1; });
+      return DEFAULT_SKU.map(function (r) {
+        var dis = used[r.name] && r.name !== name ? " disabled" : "";
+        return '<option value="' + esc(r.name) + '"' + (r.name === name ? " selected" : "") + dis + ">" + esc(r.name) + "</option>";
+      }).join("");
+    }
+    function syncSku() {
+      skuRules = skuRules.map(function (r, i) {
+        var sel = document.querySelector('#skuBody select[data-skuname="' + i + '"]');
+        var name = sel ? sel.value : r.name;
+        var pros = [];
+        document.querySelectorAll('#skuBody .prov-tag[data-prow="' + i + '"]').forEach(function (el) {
+          var v = el.getAttribute("data-prov");
+          if (v) pros.push(v);
+        });
+        var seen = {};
+        var ordered = [];
+        PROVIDER_OPTS.forEach(function (p) {
+          if (pros.indexOf(p) >= 0 && !seen[p]) { seen[p] = 1; ordered.push(p); }
+        });
+        pros.forEach(function (p) {
+          if (!seen[p]) { seen[p] = 1; ordered.push(p); }
+        });
+        return { name: name, how: howOf(name), providers: ordered };
+      });
+    }
+    function renderSku() {
+      $("skuBody").innerHTML = skuRules.map(function (r, i) {
+        var selected = (r.providers || []).filter(Boolean);
+        var tags = selected.map(function (p) {
+          return '<span class="prov-tag" data-prow="' + i + '" data-prov="' + esc(p) + '">' + esc(p) +
+            '<button type="button" data-provdel="' + i + '" data-provname="' + esc(p) + '" title="移除">×</button></span>';
+        }).join("");
+        var remain = PROVIDER_OPTS.filter(function (p) { return selected.indexOf(p) < 0; });
+        var opts = '<option value="">选择服务商简称</option>' + remain.map(function (p) {
+          return '<option value="' + esc(p) + '">' + esc(p) + "</option>";
+        }).join("");
+        if (!remain.length) {
+          opts = '<option value="">已选完可选简称</option>';
+        }
+        var prov = '<div class="prov-cell">' +
+          (tags ? '<div class="prov-tags">' + tags + "</div>" : "") +
+          '<select class="prov-add" data-provadd="' + i + '"' + (remain.length ? "" : " disabled") + ">" + opts + "</select>" +
+          "</div>";
+        return "<tr><td><select data-skuname=\"" + i + "\">" + nameSelect(r.name, i) + "</select></td>" +
+          "<td>" + prov + "</td>" +
+          "<td>" + esc(countModeLabel(r)) + "</td>" +
+          "<td><button type=\"button\" class=\"btn sm\" data-skudel=\"" + i + "\">删除</button></td></tr>";
+      }).join("") || '<tr><td colspan="4" style="color:#bfbfbf">暂无尾端，请加一条</td></tr>';
+    }
+    function cubeOf(type) {
+      var el = document.querySelector('[data-cube="' + type + '"]');
+      if (!el || el.value === "") return null;
+      return Number(el.value);
+    }
+    function typeOn(type) {
+      var el = document.querySelector('.type-on[data-type="' + type + '"]');
+      return !!(el && el.checked);
+    }
+    function readTypesOn() {
+      var out = {};
+      TYPES.forEach(function (t) { out[t] = typeOn(t); });
+      return out;
+    }
+    function readCubes() {
+      var out = {};
+      TYPES.forEach(function (t) { out[t] = cubeOf(t); });
+      return out;
+    }
+    function applyTypes(typesOn, cubes) {
+      typesOn = typesOn || {};
+      cubes = cubes || {};
+      TYPES.forEach(function (t) {
+        var ck = document.querySelector('.type-on[data-type="' + t + '"]');
+        var inp = document.querySelector('[data-cube="' + t + '"]');
+        if (ck) ck.checked = typesOn[t] != null ? !!typesOn[t] : (t !== "20GP");
+        if (inp && cubes[t] != null && cubes[t] !== "") inp.value = cubes[t];
+      });
+    }
+    function loadVersions() {
+      var map = loadVerStore();
+      var list = map[currentWh];
+      return list && list.length ? list : null;
+    }
+    function saveVersions(list) {
+      var map = loadVerStore();
+      map[currentWh] = list || [];
+      saveVerStore(map);
+    }
+    function defaultVersions() {
+      if (currentWh === "义乌智能仓") {
+        return [
+          { no: "v2", effectiveText: "2026-10-20 00:00", summary: "40HQ 70 方 · SKU 15 · 重量 19.5/25.9 · 服装 40" },
+          { no: "v1", effectiveText: "2026-09-01 00:00", summary: "40HQ 68 方 · SKU 15 · 重量 19.5/25.9 · 服装 40" }
+        ];
+      }
+      return [];
+    }
+    function versions() {
+      var list = loadVersions();
+      if (!list || !list.length) {
+        list = defaultVersions();
+        if (list.length) saveVersions(list);
+      }
+      return list;
+    }
+    function summaryText() {
+      var on = TYPES.filter(typeOn).join("/");
+      var tails = skuRules.map(function (r) {
+        var n = (r.providers || []).filter(Boolean).length;
+        return r.name + (n ? "(1+2)" : "(一级)");
+      }).filter(Boolean).join("、");
+      var en = $("whEnabled") && $("whEnabled").checked ? "启用" : "未启用";
+      var prioTxt = normalizePrio(prioRules).map(function (p, i) {
+        return (i + 1) + "." + p.name + (p.force ? "(强制)" : "");
+      }).join("→");
+      return currentWh + "（" + en + "） · 柜型 " + (on || "无") +
+        " · SKU>" + $("skuLimit").value +
+        " · 尾端 " + (tails || "—") +
+        " · 重量 " + $("wPass").value + "/" + $("wBan").value +
+        " · 服装 " + $("clothCap").value +
+        " · 优先级 " + (prioTxt || "—");
+    }
+    function refreshSummary() {
+      $("summaryBox").textContent = summaryText();
+      var list = versions();
+      if (!list.length) {
+        $("verList").innerHTML = '<div class="ver" style="color:#bfbfbf">本仓暂无已发布版本</div>';
+        return;
+      }
+      $("verList").innerHTML = list.map(function (v, i) {
+        return '<div class="ver' + (i === 0 ? " on" : "") + '"><b>' + v.no + "</b> · 自 " + v.effectiveText + " 截单起用<br>" + v.summary + "</div>";
+      }).join("");
+    }
+    function collect() {
+      syncSku();
+      if (!(Number($("skuLimit").value) >= 1)) return { error: "地址 SKU 超过个数至少为 1" };
+      if (!skuRules.length) return { error: "地址 SKU 至少留一条尾端" };
+      var onTypes = TYPES.filter(typeOn);
+      if (!onTypes.length) return { error: "至少启用一个柜型" };
+      return {
+        warehouse: currentWh,
+        enabled: !!($("whEnabled") && $("whEnabled").checked),
+        typesOn: readTypesOn(),
+        cubes: readCubes(),
+        boxLimit: +$("boxLimit").value || 1100,
+        wPass: +$("wPass").value || 19.5,
+        wBan: +$("wBan").value || 25.9,
+        skuLimit: +$("skuLimit").value || 15,
+        skuRules: skuRules.map(function (r) {
+          var pros = (r.providers || []).filter(Boolean);
+          return {
+            name: r.name,
+            how: howOf(r.name),
+            providers: pros,
+            countMode: pros.length ? "class12" : "level1"
+          };
+        }),
+        clothCap: +$("clothCap").value || 40,
+        clothWords: $("clothWords").value.trim(),
+        clothExclude: $("clothExclude").value.trim(),
+        rushWords: $("rushWords").value.trim() || "限时达",
+        prioRules: normalizePrio(prioRules).map(function (p) {
+          return { id: p.id, name: p.name, force: !!p.force };
+        }),
+        handle: readHandle(),
+        owners: readOwners(),
+        cubeKeepMin: +$("cubeKeepMin").value || 2.5,
+        cubeKeepMax: +$("cubeKeepMax").value || 3.5,
+        cubeKeepN: +$("cubeKeepN").value || 10,
+        pieceKeepN: +$("pieceKeepN").value || 10,
+        markColor: readMarkColors(),
+        ownerReview: (readOwners().wReview) || "黄少飞",
+        ownerBan: (readOwners().wBan) || "配舱同事",
+        auditor: $("auditor").value,
+        effectiveFrom: $("effectiveFrom").value || ""
+      };
+    }
+    function ownersFromLegacy(r) {
+      var o = Object.assign({}, DEFAULT_OWNERS, r.owners || {});
+      if (r.ownerReview) o.wReview = r.ownerReview;
+      if (r.ownerBan) {
+        o.wBan = r.ownerBan;
+        o.cloth = r.ownerBan;
+        o.merge = r.ownerBan;
+        o.mergeSplit = o.mergeSplit || r.ownerBan;
+        o.antiSplit = o.antiSplit || r.ownerBan;
+        o.transfer = o.transfer || r.ownerBan;
+        o.cap = o.cap || r.ownerBan;
+        o.sku = o.sku || r.ownerBan;
+        o.short = o.short || r.ownerBan;
+      }
+      return o;
+    }
+    function apply(r) {
+      if (!r) return;
+      if ($("whEnabled")) {
+        $("whEnabled").checked = r.enabled != null ? !!r.enabled : true;
+      }
+      if ($("whEnabledLabel")) $("whEnabledLabel").textContent = currentWh;
+      applyTypes(r.typesOn, r.cubes || { "40HQ": r.cap40hq, "40GP": r.cap40gp, "45HQ": r.cap45hq });
+      if (r.boxLimit != null) $("boxLimit").value = r.boxLimit;
+      else if (r.capBox != null) $("boxLimit").value = r.capBox;
+      if (r.wPass != null) $("wPass").value = r.wPass;
+      if (r.wBan != null) $("wBan").value = r.wBan;
+      if (r.skuLimit != null) $("skuLimit").value = r.skuLimit;
+      if (r.skuRules && r.skuRules.length) {
+        skuRules = r.skuRules.map(function (x) {
+          var pros = (x.providers || []).slice();
+          if (!pros.length && x.name === "快递派" && r.expressProviders && r.expressProviders.length) {
+            pros = r.expressProviders.slice();
+          }
+          return { name: x.name, how: howOf(x.name), providers: pros };
+        });
+      }
+      if (r.clothCap != null) $("clothCap").value = r.clothCap;
+      if (r.clothWords) $("clothWords").value = r.clothWords;
+      if (r.clothExclude) $("clothExclude").value = r.clothExclude;
+      if (r.rushWords) $("rushWords").value = r.rushWords;
+      prioRules = normalizePrio(r.prioRules);
+      renderPrioList();
+      if (r.cubeKeepMin != null) $("cubeKeepMin").value = r.cubeKeepMin;
+      if (r.cubeKeepMax != null) $("cubeKeepMax").value = r.cubeKeepMax;
+      if (r.cubeKeepN != null) $("cubeKeepN").value = r.cubeKeepN;
+      if (r.pieceKeepN != null) $("pieceKeepN").value = r.pieceKeepN;
+      fillAuditor(r.auditor);
+      if (r.effectiveFrom) $("effectiveFrom").value = r.effectiveFrom;
+      else if ($("effectiveFrom")) $("effectiveFrom").value = "";
+      renderHandleTable(r.handle || DEFAULT_HANDLE, ownersFromLegacy(r), r.markColor);
+      renderSku();
+    }
+    function defaults() {
+      return {
+        warehouse: currentWh,
+        enabled: true,
+        typesOn: { "40HQ": true, "40GP": true, "45HQ": true, "20GP": false },
+        cubes: { "40HQ": 70, "40GP": 60, "45HQ": 80, "20GP": null },
+        boxLimit: 1100, wPass: 19.5, wBan: 25.9, skuLimit: 15,
+        skuRules: DEFAULT_SKU.map(function (r) {
+          return { name: r.name, how: r.how, providers: (r.providers || []).slice(), countMode: (r.providers || []).length ? "class12" : "level1" };
+        }),
+        clothCap: 40,
+        handle: DEFAULT_HANDLE,
+        owners: Object.assign({}, DEFAULT_OWNERS),
+        prioRules: DEFAULT_PRIO.map(function (p) { return { id: p.id, name: p.name, force: !!p.force }; }),
+        cubeKeepMin: 2.5, cubeKeepMax: 3.5, cubeKeepN: 10, pieceKeepN: 10,
+        rushWords: "限时达",
+        auditor: "黄少飞"
+      };
+    }
+    function load() {
+      fillAuditor("黄少飞");
+      prioRules = DEFAULT_PRIO.map(function (p) { return { id: p.id, name: p.name, force: !!p.force }; });
+      renderPrioList();
+      renderHandleTable(DEFAULT_HANDLE, DEFAULT_OWNERS, null);
+      renderSku();
+      var store = loadStore();
+      if (WAREHOUSES.indexOf(currentWh) < 0) currentWh = WAREHOUSES[0];
+      renderWhTabs();
+      if (store[currentWh]) apply(store[currentWh]);
+      else apply(defaults());
+      refreshSummary();
+    }
+
+    $("skuBody").addEventListener("change", function (e) {
+      var t = e.target;
+      var addIdx = t.getAttribute("data-provadd");
+      if (addIdx != null) {
+        syncSku();
+        var ai = +addIdx;
+        var val = t.value;
+        if (val && skuRules[ai]) {
+          var list = (skuRules[ai].providers || []).slice();
+          if (list.indexOf(val) < 0) list.push(val);
+          skuRules[ai].providers = list;
+        }
+        renderSku();
+        refreshSummary();
+        return;
+      }
+      if (t.getAttribute("data-skuname") != null) {
+        syncSku();
+        renderSku();
+        refreshSummary();
+      }
+    });
+    $("skuBody").addEventListener("click", function (e) {
+      var delSku = e.target.closest("[data-skudel]");
+      if (delSku) {
+        syncSku();
+        skuRules.splice(+delSku.getAttribute("data-skudel"), 1);
+        renderSku();
+        refreshSummary();
+        return;
+      }
+      var delProv = e.target.closest("[data-provdel]");
+      if (delProv) {
+        syncSku();
+        var ri = +delProv.getAttribute("data-provdel");
+        var name = delProv.getAttribute("data-provname");
+        if (skuRules[ri]) {
+          skuRules[ri].providers = (skuRules[ri].providers || []).filter(function (p) { return p !== name; });
+        }
+        renderSku();
+        refreshSummary();
+      }
+    });
+    $("btnAddSku").onclick = function () {
+      syncSku();
+      var next = DEFAULT_SKU.filter(function (d) {
+        return !skuRules.some(function (r) { return r.name === d.name; });
+      })[0];
+      if (!next) { toast("尾端都已加上"); return; }
+      skuRules.push({ name: next.name, how: next.how, providers: (next.providers || []).slice() });
+      renderSku();
+      refreshSummary();
+    };
+    $("btnSave").onclick = function () {
+      var rule = collect();
+      if (rule.error) { toast(rule.error); return; }
+      var map = loadStore();
+      map[currentWh] = rule;
+      saveStore(map);
+      renderWhTabs();
+      refreshSummary();
+      toast("「" + currentWh + "」草稿已保存（本机）");
+    };
+    $("btnPublish").onclick = function () {
+      if (!$("effectiveFrom").value) { toast("先填生效时间"); return; }
+      var rule = collect();
+      if (rule.error) { toast(rule.error); return; }
+      var map = loadStore();
+      map[currentWh] = rule;
+      saveStore(map);
+      var list = versions().slice();
+      var no = "v" + (list.length + 1);
+      var eff = $("effectiveFrom").value.replace("T", " ");
+      list.unshift({ no: no, effectiveText: eff, summary: summaryText(), rule: rule });
+      saveVersions(list);
+      renderWhTabs();
+      refreshSummary();
+      toast("「" + currentWh + "」已发布 " + no + " · 自 " + eff + " 截单起用");
+    };
+    $("btnReset").onclick = function () {
+      apply(defaults());
+      refreshSummary();
+      toast("已恢复「" + currentWh + "」确认稿默认值（未自动保存）");
+    };
+    $("whTabs").addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-wh]");
+      if (!btn) return;
+      switchWh(btn.getAttribute("data-wh"));
+    });
+    function closeCopyWh() { $("copyWhMask").classList.remove("open"); }
+    function refreshCopyWhHint() {
+      var pick = $("copyWhSrc").value;
+      var store = loadStore();
+      var hint = $("copyWhHint");
+      if (!pick) {
+        hint.textContent = "请选择源仓库。";
+        $("copyWhOk").disabled = true;
+        return;
+      }
+      if (!store[pick]) {
+        hint.textContent = "「" + pick + "」还没有草稿/配置，无法复制。";
+        $("copyWhOk").disabled = true;
+        return;
+      }
+      var en = store[pick].enabled === false ? "未启用自动配舱" : "已启用自动配舱";
+      hint.textContent = "将覆盖当前仓表单；源仓状态：" + en + "。复制后可再改，点「保存草稿」才落库。";
+      $("copyWhOk").disabled = false;
+    }
+    function openCopyWh() {
+      var others = WAREHOUSES.filter(function (w) { return w !== currentWh; });
+      var store = loadStore();
+      $("copyWhTarget").textContent = currentWh;
+      var preferred = others.filter(function (w) { return !!store[w]; })[0] || others[0] || "";
+      $("copyWhSrc").innerHTML = others.map(function (w) {
+        var mark = store[w] ? "" : "（空）";
+        return '<option value="' + esc(w) + '"' + (w === preferred ? " selected" : "") + ">" + esc(w) + mark + "</option>";
+      }).join("");
+      refreshCopyWhHint();
+      $("copyWhMask").classList.add("open");
+    }
+    $("btnCopyWh").onclick = openCopyWh;
+    $("copyWhClose").onclick = closeCopyWh;
+    $("copyWhCloseX").onclick = closeCopyWh;
+    $("copyWhSrc").onchange = refreshCopyWhHint;
+    $("copyWhOk").onclick = function () {
+      var pick = $("copyWhSrc").value;
+      var store = loadStore();
+      if (!pick || WAREHOUSES.indexOf(pick) < 0) { toast("请选择源仓库"); return; }
+      if (pick === currentWh) { toast("不能复制到自己"); return; }
+      if (!store[pick]) { toast("「" + pick + "」还没有草稿/配置"); return; }
+      var copied = JSON.parse(JSON.stringify(store[pick]));
+      copied.warehouse = currentWh;
+      apply(copied);
+      refreshSummary();
+      closeCopyWh();
+      toast("已从「" + pick + "」复制到「" + currentWh + "」（未自动保存）");
+    };
+    function openSnap() {
+      var list = versions();
+      var hd = document.querySelector("#snapMask .dlg-hd span");
+      if (hd) hd.textContent = "规则版本快照 · " + currentWh;
+      if (!list.length) {
+        $("snapList").innerHTML = '<div class="ver" style="color:#bfbfbf">本仓暂无已发布版本</div>';
+      } else {
+        $("snapList").innerHTML = list.map(function (v) {
+          return '<div class="ver"><a href="#" class="snap-link" data-ver="' + v.no + '">' + v.no + "</a> · 自 " + v.effectiveText + " 截单起用<br>" + v.summary + "</div>";
+        }).join("");
+      }
+      $("snapDetail").style.display = "none";
+      $("snapMask").classList.add("open");
+    }
+    function closeSnap() { $("snapMask").classList.remove("open"); }
+    $("btnSnap").onclick = openSnap;
+    $("snapClose").onclick = closeSnap;
+    $("snapCloseX").onclick = closeSnap;
+    $("snapList").addEventListener("click", function (e) {
+      var a = e.target.closest(".snap-link");
+      if (!a) return;
+      e.preventDefault();
+      var v = versions().find(function (x) { return x.no === a.getAttribute("data-ver"); });
+      if (!v) return;
+      $("snapDetail").style.display = "block";
+      $("snapDetail").textContent = "版本：" + v.no + "\n起用截单：" + v.effectiveText + "\n" + v.summary +
+        (v.rule ? "\n\n" + JSON.stringify(v.rule, null, 2) : "");
+    });
+    var board = document.querySelector(".rule-board");
+    if (board) {
+      board.addEventListener("change", refreshSummary);
+      board.addEventListener("input", refreshSummary);
+    }
+
+    load();
+  </script>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="义乌智能仓-方案/仓位拆分-配舱规则配置-PRD-交互稿.html">
+    <span class="ess-prd-chip">PRD · 规则配置 · 仓位拆分</span>
+  </div>
+  <script src="ship-stow-prd-doc-bar.js" data-page="4"></script>
+  <script src="ship-stow-review-bridge.js" data-page="4"></script>
+</body>
+</html>

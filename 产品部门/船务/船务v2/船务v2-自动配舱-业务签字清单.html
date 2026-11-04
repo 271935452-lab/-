@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>船务 v2 · 自动配舱 · 业务签字清单</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --card: #fff; --line: #e5e7eb; --text: #111827; --sub: #6b7280;
+      --primary: #1a6bb5; --accent: #c2410c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px;
+    }
+    a { color: var(--primary); }
+    .hub-bar {
+      position: sticky; top: 0; z-index: 50; background: #0d4a80; color: #fff;
+      padding: 7px 14px; font-size: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    }
+    .hub-bar a { color: #fff; text-decoration: none; }
+    .hub-bar .btn {
+      height: 26px; padding: 0 10px; border: 1px solid rgba(255,255,255,.5);
+      background: transparent; color: #fff; border-radius: 4px; cursor: pointer; font: inherit;
+    }
+    .hub-bar .btn.primary { background: #fff; color: #0d4a80; font-weight: 700; border-color: #fff; }
+    .hub-bar .btn:disabled { opacity: .55; cursor: wait; }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+      background: #0d4a80; color: #fff; padding: 10px 16px; border-radius: 6px;
+      font-size: 13px; font-weight: 600; z-index: 10050; opacity: 0;
+      pointer-events: none; transition: opacity .2s ease; max-width: 92vw; text-align: center;
+    }
+    .toast.show { opacity: 1; }
+    .page { max-width: 980px; margin: 0 auto; padding: 16px 14px 56px; }
+    .hero {
+      background: linear-gradient(135deg, #0d4a80, #1890ff); color: #fff;
+      border-radius: 8px; padding: 16px 18px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 20px; }
+    .hero p { margin: 0; font-size: 12px; line-height: 1.7; opacity: .95; }
+    .meta {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .meta .box {
+      background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+    }
+    .meta .k { font-size: 11px; color: var(--sub); }
+    .meta .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .ref { font-size: 11px; color: var(--sub); margin-bottom: 12px; line-height: 1.6; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 8px; font-size: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    }
+    .rule {
+      margin: 0 0 10px; padding: 8px 10px; background: #e6f4ff; border: 1px solid #91caff;
+      border-radius: 6px; font-size: 12px; color: #0958d9; line-height: 1.65;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      border: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top;
+    }
+    th { background: #f8fafc; font-weight: 700; color: #475569; }
+    .chk { width: 44px; text-align: center; }
+    .chk input { width: 16px; height: 16px; }
+    .id { font-family: Consolas, monospace; font-size: 11px; white-space: nowrap; }
+    tr.sec td {
+      background: #e6f4ff; font-weight: 700; color: #0d4a80; font-size: 12px;
+    }
+    tr.out td { background: #f8fafc; color: #64748b; }
+    .sign-note { margin: 8px 0 0; font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; }
+      .page { max-width: none; padding: 0; }
+    }
+    @media (max-width: 720px) { .meta { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body data-file="船务v2-自动配舱-业务签字清单-V1.0.png">
+  <div class="no-print hub-bar">
+    <a href="船务v2-导航.html"><strong>← 船务 v2 导航</strong></a>
+    · <a href="../义乌智能仓-方案/船务组-仓位拆分智能配舱-MVP-PRD.html">总 PRD</a>
+    · <a href="../义乌智能仓-方案/义乌智能仓-自动配舱-方案确认.html">方案确认</a>
+    · <a href="船务v2-页面拆分加字段-业务签字清单.html">另一份 · 页面拆分加字段</a>
+    <button type="button" class="btn primary" id="btnCopyImg">复制图片发群</button>
+    <button type="button" class="btn" id="btnDownloadImg">下载 PNG</button>
+    <button type="button" class="btn" onclick="window.print()">打印 / 另存 PDF</button>
+  </div>
+  <div class="toast no-print" id="toast" role="status"></div>
+
+  <div class="page" id="shot">
+    <section class="hero">
+      <h1>船务 v2 · 自动配舱 · 业务签字清单</h1>
+      <p>义乌智能仓自动配舱：执行入口、硬约束、优先级、合并报关、封门补货、规则发布、换柜。勾选确认后开发按此做；未勾不得开发。</p>
+    </section>
+
+    <div class="meta">
+      <div class="box"><div class="k">编号</div><div class="v">SHIP-V2-STOW-SIGN-20261104</div></div>
+      <div class="box"><div class="k">版本</div><div class="v">V1.0</div></div>
+      <div class="box"><div class="k">条数</div><div class="v">A–F 共 28 条 + OUT</div></div>
+      <div class="box"><div class="k">日期</div><div class="v">2026-11-04</div></div>
+    </div>
+
+    <p class="ref">
+      配套：<a href="../船务组-待配仓-MVP.html">待配仓</a> ·
+      <a href="../船务组-终配舱-MVP.html">终配舱</a> ·
+      <a href="../义乌智能仓-配舱规则配置-MVP.html">规则配置</a> ·
+      <a href="../装柜计划-仓库视图-MVP.html">仓库视图（换柜）</a> ·
+      <a href="../义乌智能仓-方案/义乌智能仓-自动配舱-方案确认.html">方案确认</a>
+    </p>
+
+    <section class="card">
+      <h2>A. 范围与入口</h2>
+      <p class="rule">本期自动配舱<strong>仅义乌智能仓</strong>；不按签入自动跑；一次点执行出一套方案。</p>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-01</td>
+            <td>仅<strong>义乌智能仓</strong>做自动配舱；分公司仓本期不做。按仓隔离规则，不串仓。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-02</td>
+            <td>人选已放舱、柜型已定、<strong>未装柜</strong>的柜子执行；非扣件；按销售产品<strong>渠道切开</strong>，跨渠道不能同柜。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-03</td>
+            <td>执行入口在<strong>待配仓</strong>工具栏「自动配舱」；本页不设「配舱规则说明」入口，改规则进侧栏「配舱规则配置」。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-04</td>
+            <td>执行后写<strong>任务日志</strong>（侧栏「自动配舱日志」）；规则快照看已发布版本。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>B. 执行条件 · 渠道与柜型数量</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-05</td>
+            <td>弹窗：渠道<strong>可多选</strong>；各柜型<strong>填数量</strong>（&gt;0 才参与，如 40HQ×2）；不必再勾选单柜。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-06</td>
+            <td>按柜型数量<strong>截取</strong>匹配的已放舱未装柜柜子；库存不足则按可匹配柜执行，并提示计划/实际柜数。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-07</td>
+            <td>未选渠道或柜型数量全为 0 → <strong>不可执行</strong>；预览只读。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>C. 硬约束 · 优先级 · 地址 SKU</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-08</td>
+            <td>柜型上限读已发布规则（默认示意：40HQ 70 方 / 40GP 60 / 45HQ 80；箱数 ≤1100）。数值以规则配置为准。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-09</td>
+            <td>重量只看整柜：≤19.5 通过；19.5～25.9 出方案+待办黄少飞；&gt;25.9 不落成。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-10</td>
+            <td><strong>渠道硬隔离</strong>最高且不可关。其下五条可调序+强制开关：合并报关同柜、反倾销集中、少地址 SKU 装满、限时达集中、单仓整柜。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-11</td>
+            <td>强制开启：不满足走「超限怎么处理」；未开强制仅为软排序。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-12</td>
+            <td>地址 SKU：快递派/海外仓自提默认一级计 1，选服务商简称则 1+2；FBA 按仓代码、私卡按地址。默认超 15 仍出方案，打「地址SKU超限」停待配。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>D. 合并报关 · 标记 · 待办 · 状态</h2>
+      <p class="rule">合并报关是<strong>同组优先同柜</strong>，不是整渠道所有合并件塞进一柜。</p>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-13</td>
+            <td>同一<strong>合并报关组</strong>优先进同一柜；组内有扣件 → 等放行后再整组配。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-14</td>
+            <td>同渠道多组：能整组装进一柜可同柜；两组合计超一柜 → <strong>整组拆开</strong>到不同舱，打「合并单多舱」；不能为装满拆散某一组。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-15</td>
+            <td>合并报关组<strong>跨渠道</strong> → 不出方案，待办配舱同事（渠道隔离高于合并）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-16</td>
+            <td>自动硬约束通过进入<strong>配中</strong> → 打「自动配舱」标 + 运输状态改为<strong>已分配</strong>；手配或自动后手改再终配 → 不打标。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-17</td>
+            <td>配舱状态：<strong>待配 / 配中 / 终配</strong>（不用「已分配」；已分配仅运输状态）。运输页签：全部 / 待出仓 / 已分配 / 可出仓 / 已出仓。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-18</td>
+            <td>业务标记可打：地址SKU超限、未满、配舱超限、重量待审、合并单多舱、合并报关分柜、反倾销分柜、调拨柜、多家报关行等。<strong>不打</strong>临近截单 / 截单已过。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-19</td>
+            <td>SKU超限/未满/方数箱数超限：打标停待配，可不推待办。待办在待配推一次，改配中关掉；同舱同原因不重复。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-20</td>
+            <td>硬条件与优先级都满足可直接终配；仍允许人工改，保存再按规则校验。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>E. 封门货 · 人工补货 · 两柜对调</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-21</td>
+            <td>每渠道约 10 票 2.5～3.5 方 + 10 票单票单件（可配置）。<strong>自动不封门</strong>；留货不进自动配舱。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-22</td>
+            <td>未满由终配「人工补货」同渠道从队列补：弹窗<strong>勾选运单</strong> →「补进勾选舱」→ 进舱页确认保存；优先少运单号。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-23</td>
+            <td>两柜对调：同渠道同柜型；两柜到现场且未开装；对调配舱号↔柜/提单，货不动。<strong>仅仓库视图</strong>；终配舱不做。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>F. 规则配置 · 发布</h2>
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-24</td>
+            <td>规则按仓独立：选仓、本仓启用、草稿/版本按仓；可复制某仓规则到当前仓（覆盖表单，需再保存/发布）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-25</td>
+            <td>配置含：柜型方数/重量、地址SKU·尾端服务商、服装词表、优先级（调序+强制）、限时达词、超限处理（含合并报关分柜/反倾销分柜/调拨柜）、封门留货、生效时间。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-26</td>
+            <td>填生效时间后发版；已终配柜子绑当时版本，不随新发布重算。保存草稿不触发自动配舱读新规则。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-27</td>
+            <td>终配保存 / 人工补货保存时按已发布规则再校验；不在规则内打业务标记，人工介入后原标记不取消。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">STOW-28</td>
+            <td>海外接柜预判：装完/离港前由终配标记映射重货/多SKU/超限/合并多舱；只展示不拦流程（见主单跟进）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>明确不做（OUT）</h2>
+      <table>
+        <thead><tr><th class="chk">知悉</th><th>编号</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-01</td>
+            <td>分公司仓自动配舱；按签入全自动跑配舱；整柜直送自动配。</td>
+          </tr>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-02</td>
+            <td>终配舱「两柜对调」入口（对调仅仓库视图）。</td>
+          </tr>
+          <tr class="out">
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">OUT-03</td>
+            <td>终配舱业务标记打临近截单 / 截单已过（截单预警只在提单管理）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>签字栏</h2>
+      <p class="sign-note">勾选即确认可开发。有异议在说明旁手写，改完升版再签。</p>
+      <table>
+        <thead><tr><th>角色</th><th>签字 / 日期</th></tr></thead>
+        <tbody>
+          <tr><td>产品</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>船务 / 配舱</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>仓库（义乌）</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>关务 / 资料</td><td>签字 _________________ 日期 ______</td></tr>
+          <tr><td>研发负责人</td><td>签字 _________________ 日期 ______</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="foot">SHIP-V2-STOW-SIGN-20261104 · V1.0 · 自动配舱 · A–F 28 条 + OUT 3 条</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+  (function () {
+    var shot = document.getElementById("shot");
+    var btnCopy = document.getElementById("btnCopyImg");
+    var btnDl = document.getElementById("btnDownloadImg");
+    var toast = document.getElementById("toast");
+    var FILE = document.body.getAttribute("data-file") || "船务v2-自动配舱-签字清单.png";
+    var toastTimer = null;
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2800);
+    }
+    function capture() {
+      if (typeof html2canvas !== "function") return Promise.reject(new Error("截图库未加载，请检查网络后刷新"));
+      return html2canvas(shot, {
+        backgroundColor: "#f5f7fb", scale: 2, useCORS: true, logging: false,
+        scrollX: 0, scrollY: -window.scrollY
+      }).then(function (canvas) {
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob); else reject(new Error("生成图片失败"));
+          }, "image/png");
+        });
+      });
+    }
+    function download(blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = FILE;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+    function setBusy(busy) {
+      btnCopy.disabled = busy; btnDl.disabled = busy;
+      btnCopy.textContent = busy ? "生成中…" : "复制图片发群";
+    }
+    btnCopy.addEventListener("click", function () {
+      setBusy(true);
+      capture().then(function (blob) {
+        if (navigator.clipboard && window.ClipboardItem) {
+          return navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
+            .then(function () { showToast("已复制图片，可直接粘贴到微信/飞书群"); })
+            .catch(function () { download(blob); showToast("无法写入剪贴板，已改为下载 PNG"); });
+        }
+        download(blob); showToast("浏览器不支持复制图片，已下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "复制失败");
+      }).finally(function () { setBusy(false); });
+    });
+    btnDl.addEventListener("click", function () {
+      setBusy(true);
+      capture().then(function (blob) {
+        download(blob); showToast("已开始下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "下载失败");
+      }).finally(function () { setBusy(false); });
+    });
+  })();
+  </script>
+</body>
+</html>

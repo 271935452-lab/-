@@ -67,7 +67,7 @@
     .filter-hd { font-weight: 600; margin: 0 0 8px; font-size: 13px; }
     .filter-grid {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
       gap: 6px 10px; align-items: end;
     }
     .fi label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 2px; }
@@ -78,7 +78,7 @@
     .fi.range { display: flex; gap: 4px; align-items: center; }
     .fi.range input { flex: 1; min-width: 0; }
     .filter-actions { display: flex; gap: 8px; align-items: end; justify-content: flex-end; }
-    .more-row { display: none; margin-top: 8px; }
+    .more-row { display: none; margin-top: 8px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .more-row.show { display: grid; }
 
     .tip-bar {
@@ -98,6 +98,8 @@
     }
     .tool-btn.outline { background: #fff; color: var(--blue); border-color: #91d5ff; }
     .tool-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .toolbar a.tool-btn { text-decoration: none; color: #fff; }
+    .toolbar a.tool-btn.outline { color: var(--blue); }
     .sel-n {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 2px 8px 2px 10px; border: 1px solid #ffa39e; border-radius: 2px;
@@ -219,6 +221,31 @@
       display: none; z-index: 40;
     }
     .toast.show { display: block; }
+    .modal.auto { width: min(1080px, 96vw); }
+    .auto-tip { margin: 0 0 10px; font-size: 12px; color: #595959; line-height: 1.55; }
+    .auto-filters { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+    .auto-pick { border: 1px solid #f0f0f0; border-radius: 4px; padding: 10px 12px; background: #fafafa; }
+    .auto-pick .pick-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12px; color: #262626; font-weight: 600; }
+    .auto-pick .pick-hd .muted { font-weight: 400; color: #8c8c8c; }
+    .auto-pick .pick-hd button { height: 24px; padding: 0 8px; border: 1px solid #d9d9d9; background: #fff; border-radius: 2px; font-size: 12px; cursor: pointer; }
+    .auto-checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .auto-checks label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: #595959; cursor: pointer; white-space: nowrap; }
+    .auto-checks input { width: 14px; height: 14px; margin: 0; }
+    .auto-type-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .auto-type-tbl th, .auto-type-tbl td { border-bottom: 1px solid #f0f0f0; padding: 6px 4px; text-align: left; }
+    .auto-type-tbl th { color: #8c8c8c; font-weight: 600; }
+    .auto-type-tbl .type-name { color: #262626; font-weight: 600; min-width: 72px; }
+    .auto-type-tbl .type-qty {
+      width: 72px; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px;
+      padding: 0 8px; font-size: 12px;
+    }
+    .auto-type-tbl .type-qty:focus { outline: none; border-color: #1677ff; }
+    .auto-type-tbl .type-hint { color: #8c8c8c; font-size: 11px; }
+    .auto-preview-hd { margin: 0 0 6px; font-size: 12px; color: #8c8c8c; }
+    .auto-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .auto-table th, .auto-table td { border: 1px solid #f0f0f0; padding: 6px 8px; text-align: left; white-space: nowrap; }
+    .auto-table th { background: #fafafa; }
+    .auto-table tr.off td { color: #bfbfbf; }
   </style>
 </head>
 <body>
@@ -238,7 +265,7 @@
       <main class="main">
         <section class="filter-panel">
           <div class="filter-hd">基本信息</div>
-          <div class="filter-grid">
+          <div class="filter-grid" id="mainFilters">
             <div class="fi"><label>仓库归属</label>
               <select id="fWhOwn"><option value="">全部</option><option>泉州分公司</option><option>厦门分公司</option><option>青岛分公司</option></select>
             </div>
@@ -246,6 +273,13 @@
             <div class="fi"><label>运单号</label><input id="fWaybill" placeholder="运单号 / 客户单号" /></div>
             <div class="fi"><label>预配舱单号</label><input id="fPreNo" /></div>
             <div class="fi"><label>提单号</label><input id="fBl" /></div>
+            <div class="filter-actions">
+              <button type="button" class="tool-btn outline" id="btnMore">更多筛选 ▾</button>
+              <button type="button" class="tool-btn" id="btnMultiQ">查询</button>
+              <button type="button" class="tool-btn outline" id="btnReset">重置</button>
+            </div>
+          </div>
+          <div class="filter-grid more-row" id="moreFilters">
             <div class="fi"><label>销售产品</label><input id="fProduct" /></div>
             <div class="fi"><label>报关编号</label><input id="fDeclNo" placeholder="关务回写作业号" /></div>
             <div class="fi"><label>运单报关编号</label><input id="fDeclare" placeholder="运单默认编号（不改）" /></div>
@@ -262,27 +296,19 @@
             <div class="fi"><label>创建时间</label>
               <div class="fi range"><input id="fCrtFrom" type="date" /><span>~</span><input id="fCrtTo" type="date" /></div>
             </div>
-            <div class="filter-actions" style="grid-column: span 1;">
-              <button type="button" class="tool-btn" id="btnMultiQ">多选数据查询</button>
-            </div>
-          </div>
-          <div class="filter-grid more-row" id="moreFilters">
             <div class="fi"><label>终配舱单号</label><input id="fFinalNo" /></div>
             <div class="fi"><label>产品组</label><input id="fProdGroup" /></div>
-          </div>
-          <div class="filter-actions" style="margin-top:8px">
-            <button type="button" class="tool-btn outline" id="btnMore">更多筛选</button>
-            <button type="button" class="tool-btn outline" id="btnReset">数据重置</button>
           </div>
         </section>
 
         <p class="tip-bar">输入行数后点「勾选」。Shift+点击可连选运单行。</p>
 
         <div class="toolbar">
+          <button type="button" class="tool-btn" id="btnAutoStow">自动配舱</button>
+          <a class="tool-btn outline" href="义乌智能仓-自动配舱-任务日志-MVP.html">任务日志</a>
           <button type="button" class="tool-btn" id="btnQuery">查询数据</button>
           <button type="button" class="tool-btn" id="btnExpand">全部展开</button>
           <button type="button" class="tool-btn" id="btnCollapse">全部关闭</button>
-          <button type="button" class="tool-btn outline" id="btnStowRule">终配舱规则说明</button>
           <button type="button" class="tool-btn" id="btnBatchPre">批量修改预配舱单号</button>
           <button type="button" class="tool-btn" id="btnScan">扫描信息</button>
           <button type="button" class="tool-btn" id="btnPrint">打印箱信息</button>
@@ -315,55 +341,6 @@
           </div>
         </div>
       </main>
-    </div>
-  </div>
-
-  <div class="mask" id="ruleMask">
-    <div class="modal wide" role="dialog" aria-labelledby="ruleModalTitle">
-      <div class="modal-hd" id="ruleModalTitle">终配舱 · 规则说明</div>
-      <div class="modal-bd">
-        <div class="rule-box">终配保存时系统自动跑规则，<strong>不用配配置页</strong>。推荐画面二期再做，本期先把装柜顺序、校验和出号跑通。</div>
-
-        <div class="rule-sec">
-          <h3>系统执行步骤</h3>
-          <ol>
-            <li>待配运单<strong>按渠道分开</strong>，不同渠道不进同一柜</li>
-            <li>每票定档位：合并报关 → 服装 → 托盘 → 报关件 → 买单（多标签取最高档）</li>
-            <li>服装看品名包不包含词表，不用人勾</li>
-            <li>同渠道按上面顺序往柜里装；一柜<strong>方数 &lt; 68、重量 &lt; 20 吨</strong>，顶到上限开新柜；<strong>买单只补空位</strong></li>
-            <li>反倾销同渠道必须同柜，装不下再开反倾销专柜</li>
-            <li>保存前检查混渠道、超方/超重、拆反倾销、拆合并报关、买单抢位</li>
-            <li>通过则终配落成，自动生成舱号如 <code>260820-青岛T25-1</code>，写回列表</li>
-            <li>落成后按船司×港口规则生成分单号（舱单用）；再调整则整组重算</li>
-            <li>这一步是系统按规则装的，终配舱页打「自动配舱」标；手改过装柜结果再终配则不打</li>
-          </ol>
-        </div>
-
-        <div class="rule-box warn">
-          <strong>配仓上限</strong>：一柜方数合计 <strong>&lt; 68</strong>、重量合计 <strong>&lt; 20 吨</strong>（&lt; 20000 kg）。再装一票会达到或超过任一条 → 不进本柜、开新柜。保存时 ≥68 方或 ≥20 吨硬拦。
-        </div>
-
-        <div class="rule-sec">
-          <h3>会拦住的情况</h3>
-          <ul>
-            <li>不同渠道混一柜 → 不让保存</li>
-            <li>一柜方数 ≥68 或重量 ≥20 吨 → 不让保存</li>
-            <li>销售产品空或一柜混多个 → 不出号</li>
-            <li>反倾销被乱拆 → 强提示，确认后可保存</li>
-            <li>合并报关被拆到不同预配舱 → 配仓时强提醒（谁报 + 分柜风险由我司承担），确认后才改号</li>
-          </ul>
-        </div>
-
-        <div class="rule-links">
-          <a href="船务组-终配舱-MVP-PRD.html#m-stow" target="_blank" rel="noopener">PRD · 自动配舱（终配舱记录）</a>
-          <a href="船务组-终配舱-MVP.html">终配舱记录</a>
-          <a href="船务组-需求PRD-产品部全文-20260826.html#final-m-stow" target="_blank" rel="noopener">总 PRD 4.7</a>
-        </div>
-      </div>
-      <div class="modal-ft">
-        <button type="button" class="tool-btn outline" id="ruleClose">关闭</button>
-        <button type="button" class="tool-btn" id="ruleOpenPrd">查看 PRD</button>
-      </div>
     </div>
   </div>
 
@@ -403,8 +380,44 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="船务组-待配仓-MVP-PRD.html" data-prd-anchor="s-logic">
-    <span class="ess-prd-chip">PRD · 待配仓</span>
+
+  <div class="mask" id="autoMask">
+    <div class="modal wide auto" role="dialog" aria-labelledby="autoTitle">
+      <div class="modal-hd" id="autoTitle">自动配舱 · 选渠道与柜型数量</div>
+      <div class="modal-bd">
+        <p class="auto-tip" id="autoTip">选渠道（可多选），并为各柜型填写数量（&gt;0 才参与）。系统按数量对匹配的已放舱、未装柜柜子出方案；人工补货在终配舱，不进这次。不必再勾选单柜。</p>
+        <div class="auto-filters" id="autoFilters">
+          <div class="auto-pick">
+            <div class="pick-hd">渠道 <span class="muted">可多选</span>
+              <span>
+                <button type="button" id="autoChAll">全选</button>
+                <button type="button" id="autoChNone">清空</button>
+              </span>
+            </div>
+            <div class="auto-checks" id="autoChChecks"></div>
+          </div>
+          <div class="auto-pick">
+            <div class="pick-hd">柜型数量 <span class="muted">填数量，0=不配</span>
+              <span>
+                <button type="button" id="autoTypeAll">各填 1</button>
+                <button type="button" id="autoTypeNone">清零</button>
+              </span>
+            </div>
+            <div id="autoTypeChecks"></div>
+          </div>
+        </div>
+        <p class="auto-preview-hd" id="autoPreviewHd">匹配柜子预览</p>
+        <div id="autoBody"></div>
+      </div>
+      <div class="modal-ft">
+        <span id="autoCount" style="margin-right:auto;font-size:12px;color:#595959"></span>
+        <button type="button" class="tool-btn outline" id="autoCancel">取消</button>
+        <button type="button" class="tool-btn" id="autoRun" disabled>执行自动配舱</button>
+      </div>
+    </div>
+  </div>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="义乌智能仓-方案/仓位拆分-待配仓-PRD-交互稿.html">
+    <span class="ess-prd-chip">PRD · 待配仓 · 仓位拆分</span>
   </div>
   <script src="../../二期/ess-prototype-prd.js?v=aidock1"></script>
   <script>
@@ -515,7 +528,7 @@
           id: "r" + sn, sn: sn, waybill: waybill,
           pcs: pcs, allocPcs: pcs, unAct: (chg * 0.92).toFixed(3), unCbm: (chg / 280).toFixed(3),
           shipAct: (chg * 0.9).toFixed(3), shipDim: (chg * 1.05).toFixed(1), shipCbm: (chg / 250).toFixed(3),
-          stowSt: "未配舱", wbSt: "已签入",
+          stowSt: "待配", wbSt: "已签入",
           wbDecl: wbDecl, declNo: wbDecl, customsMark: "报关", holdSt: "",
           density: density, arrNode: "泉州分公司", arrAt: "2026-08-22 16:17:30",
           outChg: chg, chg: chg, pcsTxt: pcs + "件",
@@ -544,13 +557,20 @@
         g4.rows.forEach(function (r, i) {
           r.product = "青岛T25";
           if (i === 0 || i === 1) {
-            r.stowSt = "已终配";
+            r.stowSt = "终配";
             r.finalNo = "260820-青岛T25-1";
             r.autoStow = true;
           } else if (i === 2) {
-            r.stowSt = "已终配";
+            r.stowSt = "终配";
             r.finalNo = "260820-青岛T25-2";
             r.autoStow = true;
+          } else if (i === 3) {
+            /* 自动配舱进配中：配舱状态=配中；运输/运单侧可为已分配 */
+            r.stowSt = "配中";
+            r.finalNo = "260820-青岛T25-3";
+            r.preNo = "260820-青岛T25-3";
+            r.autoStow = true;
+            r.wbSt = "已分配";
           }
         });
       })();
@@ -847,7 +867,10 @@
       };
       document.getElementById("btnQuery").onclick = function () { render(); toast("已按条件查询"); };
       document.getElementById("btnMore").onclick = function () {
-        document.getElementById("moreFilters").classList.toggle("show");
+        var el = document.getElementById("moreFilters");
+        var open = el.classList.toggle("show");
+        this.classList.toggle("is-open", open);
+        this.textContent = open ? "收起筛选 ▴" : "更多筛选 ▾";
       };
       document.getElementById("btnReset").onclick = function () {
         document.querySelectorAll(".filter-panel input, .filter-panel select").forEach(function (el) {
@@ -859,7 +882,7 @@
         render();
         toast("已重置");
       };
-      document.getElementById("btnMultiQ").onclick = function () { toast("已按多选条件查询"); };
+      document.getElementById("btnMultiQ").onclick = function () { render(); toast("已按条件查询"); };
       document.getElementById("btnScan").onclick = function () { toast("扫描信息"); };
       document.getElementById("btnPrint").onclick = function () { toast("打印箱信息"); };
       document.getElementById("btnBox").onclick = function () { toast("归箱信息"); };
@@ -870,24 +893,6 @@
       };
       document.getElementById("btnClose").onclick = function () {
         location.href = "船务组-导航.html";
-      };
-
-      var ruleMask = document.getElementById("ruleMask");
-      document.getElementById("btnStowRule").onclick = function () {
-        ruleMask.classList.add("show");
-      };
-      document.getElementById("ruleClose").onclick = function () {
-        ruleMask.classList.remove("show");
-      };
-      ruleMask.addEventListener("click", function (e) {
-        if (e.target === ruleMask) ruleMask.classList.remove("show");
-      });
-      document.getElementById("ruleOpenPrd").onclick = function () {
-        ruleMask.classList.remove("show");
-        var prdBtn = document.getElementById("essPrdToggle");
-        var frame = document.querySelector(".ess-prd-frame");
-        if (frame) frame.src = "船务组-终配舱-MVP-PRD.html#m-stow";
-        if (prdBtn && !document.body.classList.contains("ess-prd-open")) prdBtn.click();
       };
 
       document.getElementById("btnBatchPre").onclick = function () {
@@ -1002,6 +1007,226 @@
     })();
   </script>
   <script src="ship-review-nav.js"></script>
+  <script>
+    (function () {
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.className = "toast show";
+        setTimeout(function () { el.className = "toast"; }, 1800);
+      }
+
+      var slots = [
+        { id: "s1", bl: "COSU260831001", ch: "美森正班", type: "40HQ", cap: 70, si: "2026-11-02 18:00", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s2", bl: "COSU260831002", ch: "美森正班", type: "40HQ", cap: 70, si: "2026-11-02 18:00", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s3", bl: "MAEU260901016", ch: "T16", type: "40GP", cap: 60, si: "2026-11-03 12:00", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s4", bl: "OOLU260901020", ch: "T20", type: "45HQ", cap: 80, si: "2026-11-04 16:00", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s5", bl: "EGLV260902088", ch: "中美", type: "40HQ", cap: 70, si: "2026-11-05 18:00", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s6", bl: "COSU260828009", ch: "美森正班", type: "40HQ", cap: 70, si: "2026-10-30 18:00", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s7", bl: "COSU260903001", ch: "美森加班", type: "40HQ", cap: 70, si: "", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s8", bl: "", ch: "美森加班", type: "40GP", cap: 60, si: "2026-11-06 18:00", released: false, loadSt: "未装", state: "未放舱" },
+        { id: "s9", bl: "MATS9565074000", ch: "中美", type: "40HQ", cap: 70, si: "2026-11-01 12:00", released: true, loadSt: "已装", state: "已装柜" }
+      ];
+      var planOf = {
+        s1: { cbm: "66.4", box: 980, ton: "18.2", result: "待配 · 未满" },
+        s2: { cbm: "70.0", box: 1040, ton: "19.1", result: "终配" },
+        s3: { cbm: "58.2", box: 860, ton: "16.4", result: "待配 · 未满" },
+        s4: { cbm: "74.6", box: 990, ton: "21.4", result: "待配 · 重量待审" },
+        s5: { cbm: "69.2", box: 1088, ton: "18.6", result: "待配 · 地址SKU超限" }
+      };
+      function listed(s) { return s.released && s.loadSt !== "已装"; }
+      function slotOn(s) { return listed(s) && s.state !== "已生成方案"; }
+      function uniq(arr) {
+        var out = [];
+        arr.forEach(function (v) { if (v && out.indexOf(v) < 0) out.push(v); });
+        return out;
+      }
+      function checkedValues(rootId) {
+        var vals = [];
+        document.querySelectorAll("#" + rootId + " input[type=checkbox]:checked").forEach(function (el) {
+          vals.push(el.value);
+        });
+        return vals;
+      }
+      function setAllChecks(rootId, on) {
+        document.querySelectorAll("#" + rootId + " input[type=checkbox]").forEach(function (el) {
+          el.checked = !!on;
+        });
+      }
+      function fillChecks(rootId, values) {
+        var el = document.getElementById(rootId);
+        el.innerHTML = values.map(function (v) {
+          return '<label><input type="checkbox" value="' + v + '" />' + v + "</label>";
+        }).join("") || '<span style="font-size:12px;color:#bfbfbf">暂无可选项</span>';
+      }
+      /** 柜型数量：[{ type, qty }]，qty>0 才参与 */
+      function typeQtyList() {
+        var out = [];
+        document.querySelectorAll("#autoTypeChecks .type-qty").forEach(function (inp) {
+          var q = parseInt(inp.value, 10);
+          if (!isFinite(q) || q < 0) q = 0;
+          if (q > 0) out.push({ type: inp.getAttribute("data-type"), qty: q });
+        });
+        return out;
+      }
+      function typeQtyLabel(list) {
+        return (list || typeQtyList()).map(function (x) { return x.type + "×" + x.qty; }).join("、");
+      }
+      function fillTypeQty(values) {
+        var el = document.getElementById("autoTypeChecks");
+        if (!values.length) {
+          el.innerHTML = '<span style="font-size:12px;color:#bfbfbf">暂无可选柜型</span>';
+          return;
+        }
+        var html = '<table class="auto-type-tbl"><thead><tr><th>柜型</th><th>数量</th><th></th></tr></thead><tbody>';
+        values.forEach(function (v) {
+          var avail = slots.filter(function (s) { return listed(s) && s.type === v; }).length;
+          html += '<tr><td class="type-name">' + v + '</td><td>' +
+            '<input class="type-qty" type="number" min="0" step="1" value="0" data-type="' + v + '" />' +
+            '</td><td class="type-hint">可匹配约 ' + avail + ' 柜（填 0 不配）</td></tr>';
+        });
+        el.innerHTML = html + "</tbody></table>";
+      }
+      function setAllTypeQty(n) {
+        document.querySelectorAll("#autoTypeChecks .type-qty").forEach(function (inp) {
+          inp.value = String(n);
+        });
+      }
+      /** 按柜型数量截取匹配柜子（同柜型取截单更近的优先） */
+      function filtered() {
+        var chs = checkedValues("autoChChecks");
+        var tq = typeQtyList();
+        if (!chs.length || !tq.length) return [];
+        var out = [];
+        tq.forEach(function (item) {
+          var pool = slots.filter(function (s) {
+            if (!listed(s)) return false;
+            if (chs.indexOf(s.ch) < 0) return false;
+            if (s.type !== item.type) return false;
+            return true;
+          }).slice().sort(function (a, b) {
+            var sa = a.si || "9999";
+            var sb = b.si || "9999";
+            return sa < sb ? -1 : (sa > sb ? 1 : 0);
+          });
+          out = out.concat(pool.slice(0, item.qty));
+        });
+        return out;
+      }
+      function runnableSlots() {
+        return filtered().filter(slotOn);
+      }
+      function syncAutoCount() {
+        var chs = checkedValues("autoChChecks");
+        var tq = typeQtyList();
+        var want = tq.reduce(function (n, x) { return n + x.qty; }, 0);
+        var all = filtered();
+        var run = runnableSlots();
+        var tip = "";
+        if (!chs.length || !tq.length) tip = "请至少选 1 个渠道，并为柜型填写数量（>0）";
+        else if (!run.length) tip = "已选 " + chs.length + " 渠道 · " + typeQtyLabel(tq) + "（计划 " + want + " 柜）· 可执行 0 条";
+        else tip = "已选 " + chs.length + " 渠道 · " + typeQtyLabel(tq) + " · 将执行 " + run.length + " / " + want + " 柜" +
+          (all.length > run.length ? "（另有 " + (all.length - run.length) + " 条不可执行）" : "") +
+          (run.length < want ? "（库存不足，按可匹配柜执行）" : "");
+        document.getElementById("autoCount").textContent = tip;
+        document.getElementById("autoRun").disabled = !run.length;
+      }
+      function renderSlots() {
+        var chs = checkedValues("autoChChecks");
+        var tq = typeQtyList();
+        var rows = filtered();
+        var hd = document.getElementById("autoPreviewHd");
+        if (!chs.length || !tq.length) {
+          hd.textContent = "匹配柜子预览（先选渠道并填写柜型数量）";
+          document.getElementById("autoBody").innerHTML = '<p style="margin:0;font-size:12px;color:#bfbfbf">未选条件时不列出柜子</p>';
+          syncAutoCount();
+          return;
+        }
+        hd.textContent = "匹配柜子预览 · " + rows.length + " 条（按柜型数量截取，只读）";
+        var html = '<table class="auto-table"><thead><tr><th>提单号</th><th>渠道</th><th>柜型</th><th>方数上限</th><th>截单时间</th><th>状态</th></tr></thead><tbody>';
+        if (!rows.length) html += '<tr><td colspan="6">没有符合渠道×柜型数量的已放舱未装柜柜子</td></tr>';
+        rows.forEach(function (s) {
+          var off = !slotOn(s);
+          html += '<tr class="' + (off ? "off" : "") + '"><td>' + (s.bl || "—") + "</td><td>" + s.ch + "</td><td>" + s.type + "</td><td>" + s.cap + "</td><td>" + (s.si || "未填") + "</td><td>" + s.state + "</td></tr>";
+        });
+        document.getElementById("autoBody").innerHTML = html + "</tbody></table>";
+        syncAutoCount();
+      }
+      function openAuto() {
+        document.getElementById("autoRun").style.display = "";
+        document.getElementById("autoCancel").textContent = "取消";
+        document.getElementById("autoFilters").style.display = "";
+        document.getElementById("autoPreviewHd").style.display = "";
+        document.getElementById("autoTip").textContent = "选渠道（可多选），并为各柜型填写数量（>0 才参与）。系统按数量对匹配的已放舱、未装柜柜子出方案；人工补货在终配舱，不进这次。不必再勾选单柜。";
+        var pool = slots.filter(listed);
+        fillChecks("autoChChecks", uniq(pool.map(function (s) { return s.ch; })));
+        fillTypeQty(uniq(pool.map(function (s) { return s.type; })));
+        document.getElementById("autoMask").className = "mask show";
+        renderSlots();
+      }
+      function closeAuto() { document.getElementById("autoMask").className = "mask"; }
+      document.getElementById("btnAutoStow").onclick = openAuto;
+      document.getElementById("autoCancel").onclick = closeAuto;
+      document.getElementById("autoFilters").addEventListener("change", renderSlots);
+      document.getElementById("autoFilters").addEventListener("input", function (e) {
+        if (e.target && e.target.classList.contains("type-qty")) renderSlots();
+      });
+      document.getElementById("autoChAll").onclick = function () { setAllChecks("autoChChecks", true); renderSlots(); };
+      document.getElementById("autoChNone").onclick = function () { setAllChecks("autoChChecks", false); renderSlots(); };
+      document.getElementById("autoTypeAll").onclick = function () { setAllTypeQty(1); renderSlots(); };
+      document.getElementById("autoTypeNone").onclick = function () { setAllTypeQty(0); renderSlots(); };
+      document.getElementById("autoRun").onclick = function () {
+        var rows = runnableSlots();
+        if (!rows.length) { toast("先选渠道并填写柜型数量"); return; }
+        var chs = checkedValues("autoChChecks");
+        var tq = typeQtyList();
+        appendTaskLog(rows, tq);
+        document.getElementById("autoFilters").style.display = "none";
+        document.getElementById("autoPreviewHd").style.display = "none";
+        document.getElementById("autoTip").innerHTML = "已按渠道「" + chs.join("、") + "」× 柜型数量「" + typeQtyLabel(tq) + "」对 " + rows.length + " 条执行。方案按渠道切开，终配舱的人工补货队列未动。 <a href=\"义乌智能仓-自动配舱-任务日志-MVP.html\">查看任务日志</a>";
+        var html = '<table class="auto-table"><thead><tr><th>提单号</th><th>渠道</th><th>柜型</th><th>方数</th><th>箱数</th><th>重量(吨)</th><th>结果</th></tr></thead><tbody>';
+        rows.forEach(function (s) {
+          var p = planOf[s.id] || { cbm: "—", box: "—", ton: "—", result: "待配" };
+          s.state = "已生成方案";
+          html += "<tr><td>" + (s.bl || "—") + "</td><td>" + s.ch + "</td><td>" + s.type + "</td><td>" + p.cbm + "</td><td>" + p.box + "</td><td>" + p.ton + "</td><td>" + p.result + "</td></tr>";
+        });
+        document.getElementById("autoBody").innerHTML = html + "</tbody></table>";
+        document.getElementById("autoRun").style.display = "none";
+        document.getElementById("autoCount").textContent = "";
+        document.getElementById("autoCancel").textContent = "关闭";
+        toast("已生成 " + rows.length + " 条配舱方案");
+      };
+      function taskWho() {
+        try {
+          var rule = JSON.parse(localStorage.getItem("yiwu-stow-rule-v1") || "null") || {};
+          if (rule.auditor) return rule.auditor;
+        } catch (e) {}
+        return "黄少飞";
+      }
+      function taskNow() {
+        var d = new Date();
+        function p(n) { return n < 10 ? "0" + n : "" + n; }
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+      }
+      function appendTaskLog(rows, tq) {
+        var logs = [];
+        try { logs = JSON.parse(localStorage.getItem("yiwu-stow-task-log-v1") || "[]") || []; } catch (e) {}
+        logs.unshift({
+          id: "T" + Date.now(),
+          at: taskNow(),
+          who: taskWho(),
+          typeQty: typeQtyLabel(tq || []),
+          lines: rows.map(function (s) {
+            var p = planOf[s.id] || { cbm: "—", box: "—", ton: "—", result: "待配" };
+            return { bl: s.bl || "—", ch: s.ch, type: s.type, cbm: p.cbm, box: p.box, ton: p.ton, result: p.result };
+          })
+        });
+        localStorage.setItem("yiwu-stow-task-log-v1", JSON.stringify(logs.slice(0, 50)));
+      }
+    })();
+  </script>
   <script>renderShipReviewNav("pre-stow");</script>
+  <script src="ship-stow-prd-doc-bar.js" data-page="2"></script>
+  <script src="ship-stow-review-bridge.js" data-page="2"></script>
 </body>
 </html>

@@ -34,7 +34,9 @@
 
     .main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-bottom: 40px; }
     .filter-panel { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 12px; }
-    .filter-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)) auto; gap: 8px 10px; align-items: end; }
+    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)) auto; gap: 8px 10px; align-items: end; }
+    .filter-grid.more-row { display: none; margin-top: 8px; grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .filter-grid.more-row.show { display: grid; }
     .filter-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; }
     .filter-item.range { display: flex; flex-direction: column; }
     .filter-item.range .range-row { display: flex; align-items: center; gap: 4px; }
@@ -59,6 +61,14 @@
     .st-void { color: #8c8c8c; background: #f5f5f5; border-color: #d9d9d9; }
     tr.row-void td { background: #fafafa !important; color: rgba(0,0,0,.45); text-decoration: line-through; }
     tr.row-void td:first-child, tr.row-void td:nth-child(2) { text-decoration: none; }
+    td.note-edit { min-width: 180px; white-space: normal; padding: 4px 6px; }
+    td.note-edit textarea {
+      width: 100%; min-width: 160px; min-height: 44px; resize: vertical;
+      border: 1px solid #d9d9d9; border-radius: 2px; padding: 4px 6px;
+      font: inherit; line-height: 1.4; background: #fff;
+    }
+    td.note-edit textarea:focus { border-color: var(--blue); outline: none; }
+    td.note-edit textarea:disabled { background: #f5f5f5; color: rgba(0,0,0,.45); }
 
     .status-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); background: #fafafa; padding: 0 12px; }
     .status-tab { border: none; background: none; padding: 8px 14px; cursor: pointer; font-size: 12px; color: var(--sub); border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -137,6 +147,8 @@
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
     .form-grid .full { grid-column: 1 / -1; }
     .form-grid label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+    .form-grid label .req,
+    label .req { color: #ff4d4f; font-style: normal; font-weight: 600; margin-left: 2px; }
     .form-grid input, .form-grid select, .form-grid textarea { width: 100%; border: 1px solid #d9d9d9; border-radius: 2px; padding: 6px 8px; }
     .toast { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.78); color: #fff; padding: 8px 14px; border-radius: 4px; font-size: 12px; z-index: 30; display: none; }
     .toast.show { display: block; }
@@ -175,11 +187,18 @@
       <nav class="sidebar" id="shipReviewSidebar"></nav>
       <main class="main">
         <div class="filter-panel">
-          <div class="filter-grid">
+          <div class="filter-grid" id="mainFilters">
             <div class="filter-item"><label>航次/船名/提单号</label><input id="qKw" placeholder="模糊搜索" autocomplete="off" /></div>
             <div class="filter-item"><label>订舱代理</label><select id="qAgent"><option value="">全部</option><option>宁波外运</option><option>上海外运</option><option>腾信订</option></select></div>
             <div class="filter-item"><label>目的港向</label><select id="qLane"><option value="">全部</option><option>NB-LB</option><option>SH-LB</option><option>QD-LA</option></select></div>
             <div class="filter-item"><label>预计开船</label><input id="qEtd" type="date" autocomplete="off" /></div>
+            <div class="filter-actions" style="margin-top:0;align-self:end">
+              <button type="button" class="btn" id="btnMore">更多筛选 ▾</button>
+              <button type="button" class="btn primary" id="btnSearch">查询</button>
+              <button type="button" class="btn" id="btnReset">重置</button>
+            </div>
+          </div>
+          <div class="filter-grid more-row" id="moreFilters">
             <div class="filter-item range">
               <label>预计装柜时间</label>
               <div class="range-row">
@@ -187,10 +206,6 @@
                 <span>~</span>
                 <input id="qLoadTo" type="date" title="止" autocomplete="off" />
               </div>
-            </div>
-            <div class="filter-actions" style="margin-top:0;align-self:end">
-              <button type="button" class="btn primary" id="btnSearch">查询</button>
-              <button type="button" class="btn" id="btnReset">重置</button>
             </div>
           </div>
         </div>
@@ -203,6 +218,7 @@
         </div>
 
         <div class="toolbar">
+          <button type="button" class="btn primary" id="btnNewCabin">新增仓位</button>
           <button type="button" class="btn primary" id="btnBatchCreate" title="勾选仓位可带入船期/港口；未勾选则进空白批量创建">批量创建提单</button>
           <button type="button" class="btn" id="btnEdit" disabled>编辑仓位</button>
           <button type="button" class="btn primary" id="btnRelease" disabled>放舱出号</button>
@@ -210,9 +226,7 @@
           <button type="button" class="btn" id="btnMarkColor" disabled title="勾选后手动标记行颜色">标记颜色</button>
           <button type="button" class="btn" id="btnClearColor" disabled title="清除勾选行颜色">清除颜色</button>
           <button type="button" class="btn danger" id="btnReturnShip" disabled title="按柜退运；未放舱或已放舱未装完；退运费选填">退运</button>
-          <button type="button" class="btn" id="btnOpenBl" disabled title="出号后已自动进提单，此处仅跳转查看">打开提单 · 待分配</button>
           <button type="button" class="btn" id="btnExport">导出</button>
-          <button type="button" class="btn" id="btnBroadcast">舱位播报</button>
         </div>
 
         <div class="table-wrap">
@@ -228,18 +242,20 @@
                 <th>航名航次</th>
                 <th>始终港口</th>
                 <th class="col-new">预计装柜时间</th>
+                <th class="col-new">要求到柜时间</th>
                 <th>中文船名</th>
                 <th>柜型</th>
+                <th class="col-new" id="thChannel">渠道</th>
+                <th class="col-new" id="thSalesProd">销售产品</th>
                 <th>配仓号</th>
-                <th>截单时间</th>
+                <th id="thSi">截单时间</th>
                 <th>截关时间</th>
                 <th>开船时间</th>
                 <th>海运费登记</th>
                 <th>免用箱情况</th>
                 <th>装柜状态</th>
                 <th>报关行代理</th>
-                <th>产品部特殊备注</th>
-                <th>提单</th>
+                <th>产品部特殊备注<span class="muted" style="font-weight:400"> · 可编辑</span></th>
               </tr>
             </thead>
             <tbody id="tbody"></tbody>
@@ -258,19 +274,44 @@
         <button type="button" class="btn" id="btnRegClose">关闭</button>
       </div>
       <div class="sheet-bd">
-        <p class="muted" style="margin:0 0 12px;font-size:12px;line-height:1.6;">无提单号阶段在本页登记；保存后为「未放舱」。确认放舱出号后系统自动生成提单（待分配）。</p>
+        <p class="muted" style="margin:0 0 12px;font-size:12px;line-height:1.6;">无提单号阶段在本页登记；<strong>渠道、销售产品</strong>均取销售产品主数据同源字典且必填。保存后为「未放舱」。放舱出号补录提单号后生成「待分配」提单（本页不跳转）。已生成提单后不可再编辑仓位。</p>
         <div class="sec-title">船期 / 港口</div>
         <div class="form-grid">
-          <div><label>订舱代理 *</label><input id="regAgent" placeholder="如 宁波外运 / 腾信订" /></div>
-          <div><label>航名航次 *</label><input id="regVoyage" placeholder="LURLINE 104E" /></div>
-          <div><label>始终港口 *</label><input id="regPort" placeholder="NB-LB" /></div>
+          <div><label>订舱代理<span class="req">*</span></label><input id="regAgent" placeholder="如 宁波外运 / 腾信订" /></div>
+          <div><label>航名航次<span class="req">*</span></label><input id="regVoyage" placeholder="LURLINE 104E" /></div>
+          <div><label>始终港口<span class="req">*</span></label><input id="regPort" placeholder="NB-LB" /></div>
           <div><label>中文船名</label><input id="regShipCn" placeholder="CLX / COSCO" /></div>
-          <div><label>柜型 *</label><select id="regBox"><option>40HQ</option><option>45HQ</option><option>20GP</option></select></div>
+          <div><label>柜型<span class="req">*</span></label><select id="regBox"><option>40HQ</option><option>45HQ</option><option>20GP</option></select></div>
+          <div><label>渠道<span class="req">*</span><span class="muted" style="font-weight:400"> · 销售产品主数据</span></label>
+            <select id="regChannel" title="与销售产品同源 · 创建仓位/创建提单必填">
+              <option value="">请选择渠道</option>
+              <option>美森正班</option>
+              <option>美森加班</option>
+              <option>EXX</option>
+              <option>T16</option>
+              <option>T20</option>
+              <option>中美</option>
+              <option>T25</option>
+            </select>
+          </div>
+          <div><label>销售产品<span class="req">*</span><span class="muted" style="font-weight:400"> · 同源必填</span></label>
+            <select id="regSalesProd" title="与渠道同源（销售产品主数据）· 创建仓位/创建提单必填">
+              <option value="">请选择销售产品</option>
+              <option>美森正班</option>
+              <option>美森加班</option>
+              <option>EXX</option>
+              <option>T16</option>
+              <option>T20</option>
+              <option>中美</option>
+              <option>青岛T25</option>
+            </select>
+          </div>
           <div><label>配仓号</label><input id="regCabin" placeholder="预配-A7 / 260801-混装" /></div>
-          <div><label>截单时间</label><input id="regSi" type="datetime-local" /></div>
+          <div><label>截单时间<span class="req">*</span></label><input id="regSi" type="datetime-local" required /></div>
           <div><label>截关时间</label><input id="regCy" type="datetime-local" /></div>
-          <div><label>预计开船 *</label><input id="regEtd" type="date" /></div>
+          <div><label>预计开船<span class="req">*</span></label><input id="regEtd" type="date" /></div>
           <div><label>预计装柜时间</label><input id="regPlanLoad" type="date" /></div>
+          <div><label>要求到柜时间</label><input id="regReqArrive" type="datetime-local" title="日期 + 时间（非必填）" /></div>
           <div><label>报关行代理</label><input id="regBroker" placeholder="欣扬" /></div>
         </div>
         <div class="sec-title">备注</div>
@@ -290,12 +331,12 @@
     <div class="dlg" role="dialog">
       <div class="dlg-hd">放舱出号<span class="link" data-close-rel>关闭</span></div>
       <div class="dlg-bd">
-        <p class="muted" style="margin:0 0 10px;font-size:12px;">确认后：本行「已放舱」、写入正式提单号，并<strong>自动创建提单行（待分配）</strong>。提单号锁定不可在本页修改。</p>
+        <p class="muted" style="margin:0 0 10px;font-size:12px;">确认后：本行「已放舱」、写入正式提单号，并<strong>自动创建提单行（待分配）</strong>。本页不跳转；请到提单管理「待分配」页签查看。提单号锁定，本页不可再编辑仓位。</p>
         <div class="form-grid">
-          <div><label>正式提单号 *</label><input id="relBl" placeholder="如 MATS9565074000" /></div>
+          <div><label>正式提单号<span class="req">*</span></label><input id="relBl" placeholder="如 MATS9565074000" /></div>
           <div><label>SO / 配仓号</label><input id="relSo" placeholder="可选" /></div>
-          <div><label>截单时间 *</label><input type="datetime-local" /></div>
-          <div><label>海运费 *</label><input placeholder="金额" /></div>
+          <div><label>截单时间<span class="req">*</span></label><input type="datetime-local" /></div>
+          <div><label>海运费<span class="req">*</span></label><input placeholder="金额" /></div>
           <div class="full"><label>免用箱情况登记</label><textarea rows="2" placeholder="国内/国外天数"></textarea></div>
         </div>
       </div>
@@ -310,10 +351,11 @@
     <div class="dlg" role="dialog">
       <div class="dlg-hd">分配预计装柜时间<span class="link" id="btnAssignLoadClose">关闭</span></div>
       <div class="dlg-bd">
-        <p class="muted" style="margin:0 0 10px;font-size:12px;">将对已勾选的 <b id="assignLoadCnt">0</b> 条仓位统一写入预计装柜时间（可覆盖原值）。放舱前后均可分配。</p>
+        <p class="muted" style="margin:0 0 10px;font-size:12px;">将对已勾选的 <b id="assignLoadCnt">0</b> 条仓位统一写入预计装柜时间（可覆盖原值）。要求到柜时间选填，有填才覆盖。放舱前后均可分配。</p>
         <div class="form-grid">
-          <div><label>预计装柜日期 *</label><input id="assignLoadDate" type="date" /></div>
+          <div><label>预计装柜日期<span class="req">*</span></label><input id="assignLoadDate" type="date" /></div>
           <div><label>时间（可选）</label><input id="assignLoadTime" type="time" value="08:00" /></div>
+          <div class="full"><label>要求到柜时间（非必填）</label><input id="assignReqArrive" type="datetime-local" title="日期 + 时间；空则不改原值" /></div>
           <div class="full"><label>备注（可选，追加到产品部特殊备注）</label><input id="assignLoadNote" placeholder="如：义乌仓优先 / 工厂装柜" /></div>
         </div>
       </div>
@@ -377,16 +419,23 @@
 
   <script>
     var ROWS = [
-      { id: 1, week: 31, released: false, bl: "", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", cabin: "", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "", free: "", planLoad: "2026-08-08", loadSt: "未装", broker: "", note: "", cutoff: true, markColor: "orange" },
-      { id: 2, week: 31, released: false, bl: "", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", cabin: "预配-A7", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "", free: "7+10", planLoad: "2026-08-10", loadSt: "未装", broker: "欣扬", note: "改盐田提", cutoff: false, markColor: "" },
-      { id: 3, week: 32, released: true, bl: "MATS9565074000", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", cabin: "260801-混装", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "14594", free: "", planLoad: "2026-08-09", loadSt: "已装", broker: "", note: "", synced: true, cutoff: false, markColor: "green" },
-      { id: 4, week: 32, released: true, bl: "MATS6104484000", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", cabin: "260801-朱涛整柜", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "16513", free: "", planLoad: "2026-08-11", loadSt: "未装", broker: "", note: "改盐田提", synced: true, cutoff: false, markColor: "" }
+      { id: 1, week: 31, released: false, bl: "", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", channel: "美森正班", salesProd: "美森正班", cabin: "", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "", free: "", planLoad: "2026-08-08", reqArrive: "2026-08-08 07:00", loadSt: "未装", broker: "", note: "", cutoff: true, markColor: "orange" },
+      { id: 2, week: 31, released: false, bl: "", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", channel: "T16", salesProd: "T16", cabin: "预配-A7", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "", free: "7+10", planLoad: "2026-08-10", reqArrive: "", loadSt: "未装", broker: "欣扬", note: "改盐田提", cutoff: false, markColor: "" },
+      { id: 3, week: 32, released: true, bl: "MATS9565074000", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", channel: "中美", salesProd: "中美", cabin: "260801-混装", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "14594", free: "", planLoad: "2026-08-09", reqArrive: "2026-08-09 12:00", loadSt: "已装", broker: "", note: "", synced: true, cutoff: false, markColor: "green" },
+      { id: 4, week: 32, released: true, bl: "MATS6104484000", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", channel: "T20", salesProd: "T20", cabin: "260801-朱涛整柜", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "16513", free: "", planLoad: "2026-08-11", reqArrive: "", loadSt: "未装", broker: "", note: "改盐田提", synced: true, cutoff: false, markColor: "" }
     ];
 
     var state = { st: "all", week: "all", sel: new Set(), regMode: "add", regEditId: null, pickColor: "" };
 
     function nextId() {
       return ROWS.reduce(function (m, r) { return Math.max(m, r.id); }, 0) + 1;
+    }
+    function escHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
     function openRegSheet(mode) {
@@ -396,10 +445,13 @@
       var fields = ["regAgent", "regVoyage", "regPort", "regShipCn", "regCabin", "regImp", "regNote", "regBroker"];
       fields.forEach(function (id) { document.getElementById(id).value = ""; });
       document.getElementById("regBox").value = "40HQ";
+      document.getElementById("regChannel").value = "";
+      document.getElementById("regSalesProd").value = "";
       document.getElementById("regSi").value = "";
       document.getElementById("regCy").value = "";
       document.getElementById("regEtd").value = "";
       document.getElementById("regPlanLoad").value = "";
+      document.getElementById("regReqArrive").value = "";
 
       if (mode === "edit") {
         var row = selectedRows()[0];
@@ -410,12 +462,19 @@
         document.getElementById("regPort").value = row.port || "";
         document.getElementById("regShipCn").value = row.shipCn || "";
         document.getElementById("regBox").value = row.box || "40HQ";
+        document.getElementById("regChannel").value = row.channel || "";
+        document.getElementById("regSalesProd").value = row.salesProd || "";
         document.getElementById("regCabin").value = row.cabin || "";
         document.getElementById("regImp").value = row.imp || "";
         document.getElementById("regNote").value = row.note || "";
         document.getElementById("regBroker").value = row.broker || "";
         document.getElementById("regEtd").value = row.etd || "";
         document.getElementById("regPlanLoad").value = row.planLoad || "";
+        if (row.reqArrive && String(row.reqArrive).indexOf("-") === 4) {
+          document.getElementById("regReqArrive").value = String(row.reqArrive).replace(" ", "T").slice(0, 16);
+        } else {
+          document.getElementById("regReqArrive").value = "";
+        }
         if (row.si && row.si.indexOf("-") === 4) {
           document.getElementById("regSi").value = String(row.si).replace(" ", "T").slice(0, 16);
         }
@@ -438,8 +497,11 @@
       var voyage = document.getElementById("regVoyage").value.trim();
       var port = document.getElementById("regPort").value.trim();
       var etd = document.getElementById("regEtd").value;
-      if (!agent || !voyage || !port || !etd) {
-        toast("请填写代理、航名航次、始终港口、预计开船");
+      var channel = document.getElementById("regChannel").value;
+      var salesProd = document.getElementById("regSalesProd").value;
+      var si = document.getElementById("regSi").value;
+      if (!agent || !voyage || !port || !etd || !channel || !salesProd || !si) {
+        toast("请填写代理、航名航次、始终港口、预计开船、渠道、销售产品、截单时间");
         return;
       }
       var payload = {
@@ -448,29 +510,43 @@
         port: port,
         shipCn: document.getElementById("regShipCn").value.trim(),
         box: document.getElementById("regBox").value,
+        channel: channel,
+        salesProd: salesProd,
         cabin: document.getElementById("regCabin").value.trim(),
         imp: document.getElementById("regImp").value.trim(),
         note: document.getElementById("regNote").value.trim(),
         broker: document.getElementById("regBroker").value.trim(),
         etd: etd,
         planLoad: document.getElementById("regPlanLoad").value || "",
-        si: document.getElementById("regSi").value ? document.getElementById("regSi").value.replace("T", " ") : "",
+        reqArrive: document.getElementById("regReqArrive").value
+          ? document.getElementById("regReqArrive").value.replace("T", " ")
+          : "",
+        si: si.replace("T", " "),
         cy: document.getElementById("regCy").value ? document.getElementById("regCy").value.replace("T", " ") : ""
       };
 
       if (state.regMode === "edit" && state.regEditId) {
         var row = ROWS.find(function (r) { return r.id === state.regEditId; });
-        if (row) Object.assign(row, payload);
+        if (row) {
+          if (hasGeneratedBl(row)) {
+            toast("已生成提单，请在提单管理页面编辑");
+            return;
+          }
+          Object.assign(row, payload);
+          syncRowWeek(row);
+        }
         toast("已保存编辑");
       } else {
         var id = nextId();
-        ROWS.push({
-          id: id, week: 31, released: false, bl: "", synced: false, cutoff: false, markColor: "",
-          fee: "", free: "", planLoad: payload.planLoad, loadSt: "未装",
+        var neu = {
+          id: id, week: "", weekKey: "", released: false, bl: "", synced: false, cutoff: false, markColor: "",
+          fee: "", free: "", planLoad: payload.planLoad, reqArrive: payload.reqArrive, loadSt: "未装",
           agent: payload.agent, voyage: payload.voyage, port: payload.port, shipCn: payload.shipCn,
-          box: payload.box, cabin: payload.cabin, imp: payload.imp, note: payload.note, broker: payload.broker,
+          box: payload.box, channel: payload.channel, salesProd: payload.salesProd, cabin: payload.cabin, imp: payload.imp, note: payload.note, broker: payload.broker,
           etd: payload.etd, si: payload.si || "—", cy: payload.cy || ""
-        });
+        };
+        syncRowWeek(neu);
+        ROWS.push(neu);
         state.sel.clear();
         state.sel.add(id);
         toast("已新增未放舱仓位");
@@ -487,12 +563,53 @@
       setTimeout(function () { el.classList.remove("show"); }, 2200);
     }
 
+    function dayOf(str) {
+      if (!str) return "";
+      var m = String(str).match(/(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : "";
+    }
+
+    /** 预计装柜日期 → ISO 周年份+周号；无日期则无周归属（仅「全部周」可见） */
+    function weekKeyOf(planLoad) {
+      var d = dayOf(planLoad);
+      if (!d) return "";
+      var parts = d.split("-");
+      var dt = new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2]));
+      if (isNaN(dt.getTime())) return "";
+      var dayNum = dt.getUTCDay() || 7;
+      dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+      var year = dt.getUTCFullYear();
+      var yearStart = new Date(Date.UTC(year, 0, 1));
+      var weekNo = Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+      return year + "-W" + (weekNo < 10 ? "0" : "") + weekNo;
+    }
+
+    function weekLabel(key) {
+      var m = String(key).match(/^(\d{4})-W0*(\d+)$/);
+      if (!m) return key;
+      return m[1] + " 第" + m[2] + "周";
+    }
+
+    function syncRowWeek(r) {
+      r.weekKey = weekKeyOf(r.planLoad);
+      var m = String(r.weekKey || "").match(/W0*(\d+)$/);
+      r.week = m ? +m[1] : "";
+    }
+
     function renderWeekBar() {
+      ROWS.forEach(syncRowWeek);
       var bar = document.getElementById("weekBar");
-      var weeks = [{ k: "all", label: "全部周", n: ROWS.length }];
-      [31, 32].forEach(function (w) {
-        weeks.push({ k: String(w), label: "2026 第" + w + "周", n: ROWS.filter(function (r) { return r.week === w; }).length });
+      var map = {};
+      ROWS.forEach(function (r) {
+        if (!r.weekKey) return;
+        map[r.weekKey] = (map[r.weekKey] || 0) + 1;
       });
+      var keys = Object.keys(map).sort();
+      var weeks = [{ k: "all", label: "全部周", n: ROWS.length }];
+      keys.forEach(function (k) {
+        weeks.push({ k: k, label: weekLabel(k), n: map[k] });
+      });
+      if (state.week !== "all" && keys.indexOf(state.week) < 0) state.week = "all";
       bar.innerHTML = weeks.map(function (w) {
         return '<button type="button" class="week-btn' + (state.week === w.k ? " on" : "") + '" data-week="' + w.k + '">' + w.label + '<em>' + w.n + "</em></button>";
       }).join("");
@@ -505,14 +622,13 @@
       });
     }
 
-    function dayOf(str) {
-      if (!str) return "";
-      var m = String(str).match(/(\d{4}-\d{2}-\d{2})/);
-      return m ? m[1] : "";
-    }
-
     function isVoidCabin(r) {
       return !!(r && (r.returned || r.voided));
+    }
+
+    /** 已生成正式提单：不可再编辑仓位 */
+    function hasGeneratedBl(r) {
+      return !!(r && (r.released || (r.bl && String(r.bl).trim())));
     }
 
     /** 对齐提单管理：未装完可退（未放舱 / 已放舱待分配阶段）；已装完、已退运不可 */
@@ -548,7 +664,10 @@
         if (state.st === "nobl" && (voided || r.released)) return false;
         if (state.st === "released" && (voided || !r.released)) return false;
         if (state.st === "all") { /* keep all */ }
-        if (state.week !== "all" && String(r.week) !== state.week) return false;
+        if (state.week !== "all") {
+          var wk = weekKeyOf(r.planLoad);
+          if (!wk || wk !== state.week) return false;
+        }
         if (agent && r.agent !== agent) return false;
         if (lane && r.port !== lane) return false;
         if (etdQ && dayOf(r.etd) !== etdQ) return false;
@@ -567,7 +686,7 @@
       var tb = document.getElementById("tbody");
       var rows = filteredRows();
       if (!rows.length) {
-        tb.innerHTML = '<tr><td colspan="21" style="text-align:center;color:#8c8c8c;padding:28px">暂无匹配仓位，请点「重置」清空筛选后再查</td></tr>';
+        tb.innerHTML = '<tr><td colspan="22" style="text-align:center;color:#8c8c8c;padding:28px">暂无匹配仓位，请点「重置」清空筛选后再查</td></tr>';
         refreshStatusCounts();
         updateToolbar();
         return;
@@ -584,47 +703,40 @@
         var rel = voided
           ? '<span class="st st-void">已退运</span>'
           : (r.released ? '<span class="st st-ok">已放舱</span>' : '<span class="st st-wait">未放舱</span>');
-        var sync = "—";
-        if (voided) {
-          sync = '<span class="muted">已作废</span>';
-        } else if (r.released && r.synced) {
-          sync = '<span class="link btn-open-bl" data-bl="' + r.bl + '">待分配</span>';
-        } else if (r.released && !r.synced) {
-          sync = '<span class="link btn-retry-sync" data-id="' + r.id + '" title="异常重试">同步失败·重推</span>';
-        }
         var colorCls = r.markColor ? r.markColor : "none";
         return "<tr class=\"" + cls.join(" ") + "\" data-id=\"" + r.id + "\">" +
           '<td><input type="checkbox" class="row-chk" data-id="' + r.id + '"' + (state.sel.has(r.id) ? " checked" : "") + (voided ? " disabled" : "") + " /></td>" +
           '<td title="手动色标"><span class="color-dot ' + colorCls + '"></span></td>' +
           "<td>" + rel + "</td><td>" + bl + "</td><td>" + r.agent + "</td><td>" + (r.imp || "—") + "</td>" +
-          "<td>" + r.voyage + "</td><td>" + r.port + "</td><td>" + (r.planLoad || "—") + "</td><td>" + r.shipCn + "</td><td>" + r.box + "</td><td>" + (r.cabin || "—") + "</td>" +
+          "<td>" + r.voyage + "</td><td>" + r.port + "</td><td>" + (r.planLoad || "—") + "</td><td>" + (r.reqArrive || "—") + "</td><td>" + r.shipCn + "</td><td>" + r.box + "</td><td>" + (r.channel || "—") + "</td><td>" + (r.salesProd || "—") + "</td><td>" + (r.cabin || "—") + "</td>" +
           '<td class="' + (r.cutoff ? "cut-warn" : "") + '">' + r.si + "</td><td>" + (r.cy || "—") + "</td><td>" + r.etd + "</td>" +
           "<td>" + (r.fee || "—") + "</td><td>" + (r.free || "—") + "</td><td>" + r.loadSt + "</td>" +
-          "<td>" + (r.broker || "—") + "</td><td>" + (r.note || "—") + (r.returnReason ? (" · 退运:" + r.returnReason) : "") + "</td><td>" + sync + "</td></tr>";
+          "<td>" + (r.broker || "—") + "</td>" +
+          '<td class="note-edit"><textarea class="note-input" data-id="' + r.id + '" rows="2" placeholder="填写备注…"' +
+          (voided ? " disabled" : "") + ">" + escHtml(r.note || "") + "</textarea>" +
+          (r.returnReason ? '<div class="muted" style="margin-top:4px">退运:' + escHtml(r.returnReason) + "</div>" : "") +
+          "</td></tr>";
       }).join("");
       refreshStatusCounts();
 
+      tb.querySelectorAll(".note-input").forEach(function (el) {
+        el.addEventListener("click", function (e) { e.stopPropagation(); });
+        el.addEventListener("blur", function () {
+          var id = +el.getAttribute("data-id");
+          var row = ROWS.find(function (x) { return x.id === id; });
+          if (!row || isVoidCabin(row)) return;
+          var next = el.value.trim();
+          if ((row.note || "") === next) return;
+          row.note = next;
+          toast(next ? "备注已保存" : "备注已清空");
+        });
+      });
       tb.querySelectorAll(".row-chk").forEach(function (chk) {
         chk.addEventListener("change", function () {
           var id = +chk.getAttribute("data-id");
           if (chk.checked) state.sel.add(id); else state.sel.delete(id);
           updateToolbar();
           renderTable();
-        });
-      });
-      tb.querySelectorAll(".btn-open-bl").forEach(function (a) {
-        a.addEventListener("click", function (e) {
-          e.preventDefault();
-          var bl = a.getAttribute("data-bl");
-          window.location.href = "船务组-提单管理-按周分组与分配-MVP.html?from=cabin&bl=" + encodeURIComponent(bl);
-        });
-      });
-      tb.querySelectorAll(".btn-retry-sync").forEach(function (a) {
-        a.addEventListener("click", function (e) {
-          e.preventDefault();
-          var id = +a.getAttribute("data-id");
-          var row = ROWS.find(function (x) { return x.id === id; });
-          if (row) { row.synced = true; toast("已重推生成提单（待分配）"); renderTable(); }
         });
       });
       updateToolbar();
@@ -639,9 +751,9 @@
       var one = sel.length === 1 ? sel[0] : null;
       var has = sel.length > 0;
       var canRs = sel.some(canReturnCabin);
-      document.getElementById("btnEdit").disabled = !(one && !isVoidCabin(one));
-      document.getElementById("btnRelease").disabled = !(one && !one.released && !isVoidCabin(one));
-      document.getElementById("btnOpenBl").disabled = !(one && one.released && one.synced && one.bl && !isVoidCabin(one));
+      document.getElementById("btnEdit").disabled = !(one && !isVoidCabin(one) && !hasGeneratedBl(one));
+      document.getElementById("btnRelease").disabled = !(one && !one.released && !isVoidCabin(one) &&
+        !!(one.channel && String(one.channel).trim()) && !!(one.salesProd && String(one.salesProd).trim()));
       document.getElementById("btnAssignLoad").disabled = !has;
       document.getElementById("btnMarkColor").disabled = !has;
       document.getElementById("btnClearColor").disabled = !has;
@@ -717,6 +829,9 @@
       document.getElementById("assignLoadDate").value = dayOf(first) || "";
       var tm = String(first).match(/(\d{2}):(\d{2})/);
       document.getElementById("assignLoadTime").value = tm ? (tm[1] + ":" + tm[2]) : "08:00";
+      var req0 = sel[0].reqArrive || "";
+      document.getElementById("assignReqArrive").value =
+        req0 && String(req0).indexOf("-") === 4 ? String(req0).replace(" ", "T").slice(0, 16) : "";
       document.getElementById("assignLoadNote").value = "";
       document.getElementById("assignLoadMask").classList.add("open");
       document.getElementById("assignLoadMask").setAttribute("aria-hidden", "false");
@@ -732,15 +847,24 @@
       if (!d) { toast("请选择预计装柜日期"); return; }
       var t = document.getElementById("assignLoadTime").value;
       var val = t ? (d + " " + t) : d;
+      var reqArriveRaw = document.getElementById("assignReqArrive").value;
+      var reqArrive = reqArriveRaw ? reqArriveRaw.replace("T", " ") : "";
       var note = document.getElementById("assignLoadNote").value.trim();
       var sel = selectedRows();
       sel.forEach(function (r) {
         r.planLoad = val;
+        syncRowWeek(r);
+        if (reqArrive) r.reqArrive = reqArrive;
         if (note) r.note = r.note ? (r.note + "；" + note) : note;
       });
       closeAssignLoad();
+      var wk = weekKeyOf(val);
+      if (wk) state.week = wk;
+      renderWeekBar();
       renderTable();
-      toast("已为 " + sel.length + " 条分配预计装柜时间 · " + val);
+      toast("已为 " + sel.length + " 条分配预计装柜时间 · " + val +
+        (wk ? " · 落入" + weekLabel(wk) : "") +
+        (reqArrive ? " · 要求到柜 " + reqArrive : ""));
     }
 
     function openMarkColor() {
@@ -767,10 +891,6 @@
       closeMarkColor();
       renderTable();
       toast(c ? ("已标记 " + sel.length + " 条 · " + c) : ("已清除 " + sel.length + " 条颜色"));
-    }
-
-    function openBlPage(bl) {
-      window.location.href = "船务组-提单管理-按周分组与分配-MVP.html?from=cabin&bl=" + encodeURIComponent(bl);
     }
 
     function autoSyncBl(row) {
@@ -804,16 +924,20 @@
     document.getElementById("btnReleaseOk").addEventListener("click", function () {
       var sel = selectedRows()[0];
       var bl = document.getElementById("relBl").value.trim();
-      if (!bl) { toast("请填写正式提单号"); return; }
-      if (sel) {
-        sel.released = true;
-        sel.bl = bl;
-        autoSyncBl(sel);
+      if (!sel) { toast("请先勾选一条未放舱仓位"); return; }
+      if (!sel.channel || !sel.salesProd) {
+        toast("渠道、销售产品均必填，请先维护后再出号");
+        return;
       }
+      if (!bl) { toast("请填写正式提单号"); return; }
+      sel.released = true;
+      sel.bl = bl;
+      autoSyncBl(sel);
       document.getElementById("releaseMask").classList.remove("open");
       document.getElementById("relBl").value = "";
-      toast("已放舱出号 · 已自动生成提单（待分配）");
+      toast("已放舱出号 · 提单已进「待分配」（本页不跳转）");
       renderTable();
+      updateToolbar();
     });
 
     document.getElementById("btnAssignLoad").addEventListener("click", openAssignLoad);
@@ -855,13 +979,16 @@
       if (e.target === document.getElementById("rsMask")) closeReturnShip();
     });
 
-    document.getElementById("btnOpenBl").addEventListener("click", function () {
-      var sel = selectedRows()[0];
-      if (!sel || !sel.bl) return;
-      openBlPage(sel.bl);
+    document.getElementById("btnNewCabin").addEventListener("click", function () { openRegSheet("add"); });
+    document.getElementById("btnEdit").addEventListener("click", function () {
+      var one = selectedRows()[0];
+      if (!one || isVoidCabin(one)) { toast("请勾选一条未作废仓位"); return; }
+      if (hasGeneratedBl(one)) {
+        toast("已生成提单，请在提单管理页面编辑");
+        return;
+      }
+      openRegSheet("edit");
     });
-
-    document.getElementById("btnEdit").addEventListener("click", function () { openRegSheet("edit"); });
     document.getElementById("btnRegClose").addEventListener("click", closeRegSheet);
     document.getElementById("btnRegCancel").addEventListener("click", closeRegSheet);
     document.getElementById("btnRegSave").addEventListener("click", saveRegSheet);
@@ -869,10 +996,12 @@
       if (e.target === document.getElementById("regSheetMask")) closeRegSheet();
     });
 
-    document.getElementById("btnBroadcast").addEventListener("click", function () {
-      window.open("船务组-提单管理-按周分组与分配-MVP.html#bcMask", "_blank");
+    document.getElementById("btnMore").addEventListener("click", function () {
+      var el = document.getElementById("moreFilters");
+      var open = el.classList.toggle("show");
+      this.classList.toggle("is-open", open);
+      this.textContent = open ? "收起筛选 ▴" : "更多筛选 ▾";
     });
-
     document.getElementById("btnSearch").addEventListener("click", function () {
       renderTable();
       toast("已按条件筛选（含预计装柜时间）");
@@ -906,9 +1035,12 @@
             port: r.port || "",
             shipCn: r.shipCn || "",
             box: r.box || "",
+            channel: r.channel || "",
+            salesProd: r.salesProd || "",
             cabin: r.cabin || "",
             etd: r.etd || "",
             planLoad: r.planLoad || "",
+            reqArrive: r.reqArrive || "",
             broker: r.broker || "",
             imp: r.imp || "",
             note: r.note || ""
@@ -929,7 +1061,9 @@
     });
 
     document.getElementById("btnExport").addEventListener("click", function () {
-      toast("导出含预计装柜时间列（演示）");
+      var rows = filteredRows();
+      if (!rows.length) { toast("当前筛选无数据，无法导出"); return; }
+      toast("按当前筛选导出 " + rows.length + " 条（含渠道/预计装柜/要求到柜等）");
     });
 
     renderWeekBar();
@@ -937,5 +1071,10 @@
   </script>
   <script src="ship-review-nav.js"></script>
   <script>renderShipReviewNav("cabin");</script>
+  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="义乌智能仓-方案/仓位拆分-海派仓位表-PRD-交互稿.html">
+    <span class="ess-prd-chip">PRD · 海派仓位 · 仓位拆分</span>
+  </div>
+  <script src="ship-stow-prd-doc-bar.js" data-page="0"></script>
+  <script src="ship-stow-review-bridge.js" data-page="0"></script>
 </body>
 </html>

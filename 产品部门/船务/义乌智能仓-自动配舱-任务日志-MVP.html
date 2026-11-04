@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>义乌智能仓 · 自动配舱日志</title>
+  <link rel="stylesheet" href="ship-review-common.css" />
+  <style>
+    :root {
+      --header: #0b1f3a; --sidebar: #001529; --bg: #f0f2f5; --card: #fff;
+      --line: #e8e8e8; --text: rgba(0,0,0,.85); --sub: rgba(0,0,0,.45); --blue: #1890ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Microsoft YaHei","PingFang SC","Segoe UI",Arial,sans-serif;
+      font-size: 13px; color: var(--text); background: var(--bg);
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    button, input, select { font: inherit; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .top-header {
+      background: var(--header); color: #fff; display: flex; align-items: center;
+      min-height: 48px; padding: 0 14px; gap: 10px; flex-shrink: 0;
+    }
+    .logo { font-weight: 600; }
+    .nav-tab { margin-left: 8px; padding: 0 12px; height: 48px; line-height: 48px; background: var(--bg); color: var(--text); font-weight: 600; }
+    .body-wrap { flex: 1; display: flex; min-height: 0; }
+    .sidebar { width: 208px; flex-shrink: 0; background: var(--sidebar); color: rgba(255,255,255,.78); padding: 8px 0; overflow: auto; }
+    .side-item { display: block; padding: 9px 16px; color: inherit; text-decoration: none; }
+    .side-item:hover { background: rgba(255,255,255,.08); color: #fff; text-decoration: none; }
+    .side-item.active { background: rgba(24,144,255,.28); color: #fff; }
+    .main { flex: 1; min-width: 0; overflow: auto; padding: 12px 14px 28px; }
+    .page-hd { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px; margin-bottom: 10px; }
+    .page-hd h1 { margin: 0 0 4px; font-size: 16px; }
+    .page-hd p { margin: 0; color: var(--sub); font-size: 12px; line-height: 1.6; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 4px; margin-bottom: 10px; }
+    .filters { display: flex; flex-wrap: nowrap; gap: 8px 12px; align-items: flex-end; padding: 12px; overflow-x: auto; }
+    .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--sub); flex-shrink: 0; }
+    .filters input, .filters select { height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; width: 160px; }
+    .filters .range { display: flex; align-items: center; gap: 4px; }
+    .filters .range input { width: 132px; }
+    .filters-more { display: none; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; padding: 0 12px 12px; }
+    .filters-more.show { display: flex; }
+    .filters-more label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--sub); }
+    .filters-more input { height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; width: 160px; }
+    .filters-more .range { display: flex; align-items: center; gap: 4px; }
+    .filters-more .range input { width: 132px; }
+    .btn.is-open { border-color: #1890ff; color: #1890ff; background: #e6f7ff; }
+    .btn { height: 28px; padding: 0 10px; border: 1px solid #d9d9d9; border-radius: 2px; background: #fff; cursor: pointer; }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #fafafa; }
+    tr.task { cursor: pointer; }
+    tr.task:hover td { background: #e6f7ff; }
+    tr.detail td { background: #fafafa; }
+    .stack { display: block; line-height: 1.55; }
+    .stack + .stack { margin-top: 2px; }
+    .mini { width: 100%; }
+    .mini th, .mini td { background: #fff; }
+    .empty { text-align: center; color: var(--sub); padding: 28px; }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <div class="logo">船务</div>
+    <div class="nav-tab">自动配舱日志</div>
+  </header>
+  <div class="body-wrap">
+    <nav class="sidebar" id="shipReviewSidebar"></nav>
+    <main class="main">
+      <div class="page-hd">
+        <h1>义乌智能仓 · 自动配舱日志</h1>
+        <p>一次点执行记一条。只记这次选中的已放舱未装柜柜子和结果，人工补货不进。单柜改配仍看提单管理的操作日志。</p>
+      </div>
+      <section class="panel">
+        <div class="filters">
+          <label>提单号<input id="fBl" placeholder="提单号" /></label>
+          <label>渠道<input id="fCh" placeholder="渠道" /></label>
+          <button type="button" class="btn" id="btnMore">更多筛选 ▾</button>
+          <button type="button" class="btn primary" id="btnQuery">查询</button>
+          <button type="button" class="btn" id="btnReset">重置</button>
+        </div>
+        <div class="filters-more" id="moreFilters">
+          <label>柜型<input id="fType" placeholder="柜型" /></label>
+          <label>操作人<input id="fWho" placeholder="操作人" /></label>
+          <label>时间<span class="range"><input id="fFrom" type="date" /><span>~</span><input id="fTo" type="date" /></span></label>
+        </div>
+      </section>
+      <section class="panel">
+        <table>
+          <thead>
+            <tr><th>时间</th><th>操作人</th><th>提单号</th><th>渠道</th><th>柜型</th><th>柜数</th><th>结果</th></tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+  <script src="ship-review-nav.js?v=log1"></script>
+  <script>
+    var KEY = "yiwu-stow-task-log-v1";
+    var SEED = [
+      {
+        id: "seed-1",
+        at: "2026-10-31 16:20",
+        who: "黄少飞",
+        lines: [
+          { bl: "COSU260831001", ch: "美森正班", type: "40HQ", cbm: "66.4", box: 980, ton: "18.2", result: "待配 · 未满" },
+          { bl: "COSU260831002", ch: "美森正班", type: "40HQ", cbm: "70.0", box: 1040, ton: "19.1", result: "终配" }
+        ]
+      },
+      {
+        id: "seed-2",
+        at: "2026-10-30 11:05",
+        who: "黄少飞",
+        lines: [
+          { bl: "MAEU260901016", ch: "T16", type: "40GP", cbm: "58.2", box: 860, ton: "16.4", result: "待配 · 未满" },
+          { bl: "OOLU260901020", ch: "T20", type: "45HQ", cbm: "74.6", box: 990, ton: "21.4", result: "待配 · 重量待审" }
+        ]
+      }
+    ];
+    var openId = "";
+    function loadLogs() {
+      var extra = [];
+      try { extra = JSON.parse(localStorage.getItem(KEY) || "[]") || []; } catch (e) {}
+      return extra.concat(SEED);
+    }
+    function dayOf(at) { return (at || "").slice(0, 10); }
+    function summary(lines) {
+      var map = {};
+      lines.forEach(function (r) { map[r.result] = (map[r.result] || 0) + 1; });
+      return Object.keys(map).map(function (k) { return k + " " + map[k]; }).join(" · ");
+    }
+    function stack(lines, key) {
+      return lines.map(function (r) {
+        return '<span class="stack">' + (r[key] || "—") + "</span>";
+      }).join("");
+    }
+    function visible() {
+      var bl = (document.getElementById("fBl").value || "").trim().toUpperCase();
+      var ch = (document.getElementById("fCh").value || "").trim();
+      var type = (document.getElementById("fType").value || "").trim().toUpperCase();
+      var who = (document.getElementById("fWho").value || "").trim();
+      var from = document.getElementById("fFrom").value;
+      var to = document.getElementById("fTo").value;
+      return loadLogs().filter(function (t) {
+        if (who && (t.who || "").indexOf(who) < 0) return false;
+        var day = dayOf(t.at);
+        if (from && day < from) return false;
+        if (to && day > to) return false;
+        if (bl && !t.lines.some(function (r) { return (r.bl || "").toUpperCase().indexOf(bl) >= 0; })) return false;
+        if (ch && !t.lines.some(function (r) { return (r.ch || "").indexOf(ch) >= 0; })) return false;
+        if (type && !t.lines.some(function (r) { return (r.type || "").toUpperCase().indexOf(type) >= 0; })) return false;
+        return true;
+      });
+    }
+    function render() {
+      var rows = visible();
+      if (!rows.length) {
+        document.getElementById("logBody").innerHTML = '<tr><td class="empty" colspan="7">没有任务日志</td></tr>';
+        return;
+      }
+      var html = "";
+      rows.forEach(function (t) {
+        html += '<tr class="task" data-id="' + t.id + '"><td>' + t.at + "</td><td>" + t.who + "</td><td>" + stack(t.lines, "bl") + "</td><td>" + stack(t.lines, "ch") + "</td><td>" + stack(t.lines, "type") + "</td><td>" + t.lines.length + "</td><td>" + summary(t.lines) + "</td></tr>";
+        if (openId === t.id) {
+          html += '<tr class="detail"><td colspan="7"><table class="mini"><thead><tr><th>提单号</th><th>渠道</th><th>柜型</th><th>方数</th><th>箱数</th><th>重量(吨)</th><th>结果</th></tr></thead><tbody>';
+          t.lines.forEach(function (r) {
+            html += "<tr><td>" + r.bl + "</td><td>" + r.ch + "</td><td>" + r.type + "</td><td>" + r.cbm + "</td><td>" + r.box + "</td><td>" + r.ton + "</td><td>" + r.result + "</td></tr>";
+          });
+          html += "</tbody></table></td></tr>";
+        }
+      });
+      document.getElementById("logBody").innerHTML = html;
+    }
+    document.getElementById("logBody").addEventListener("click", function (e) {
+      var tr = e.target.closest("tr.task");
+      if (!tr) return;
+      var id = tr.getAttribute("data-id");
+      openId = openId === id ? "" : id;
+      render();
+    });
+    document.getElementById("btnMore").onclick = function () {
+      var el = document.getElementById("moreFilters");
+      var open = el.classList.toggle("show");
+      this.classList.toggle("is-open", open);
+      this.textContent = open ? "收起筛选 ▴" : "更多筛选 ▾";
+    };
+    document.getElementById("btnQuery").onclick = render;
+    document.getElementById("btnReset").onclick = function () {
+      document.getElementById("fBl").value = "";
+      document.getElementById("fCh").value = "";
+      document.getElementById("fType").value = "";
+      document.getElementById("fWho").value = "";
+      document.getElementById("fFrom").value = "";
+      document.getElementById("fTo").value = "";
+      openId = "";
+      render();
+    };
+    ["fBl", "fCh", "fType", "fWho", "fFrom", "fTo"].forEach(function (id) {
+      document.getElementById(id).addEventListener("keydown", function (e) {
+        if (e.key === "Enter") render();
+      });
+    });
+    renderShipReviewNav("stow-log");
+    render();
+  </script>
+</body>
+</html>
