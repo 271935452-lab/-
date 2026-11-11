@@ -286,13 +286,15 @@
                 <div></div>
                 <div><label>重量自动通过（吨）≤</label><input id="wPass" type="number" step="0.1" value="19.5" /></div>
                 <div><label>重量禁止超过（吨）</label><input id="wBan" type="number" step="0.1" value="25.9" /></div>
-                <div class="full"><p class="note">只看整柜合计，不看单票重。19.5～25.9 吨出方案并推待办；大于禁止吨不落成。</p></div>
+                <div class="full"><p class="note">只看整柜合计，不看单票重。超过「自动通过」且未过「禁止」→ 出方案+待办，打「<strong>超重</strong>」；大于禁止吨 → 不落成，打「<strong>超超重</strong>」。</p></div>
               </div>
             </section>
 
-            <section class="rule-sec" id="sec-sku" data-title="地址 SKU · 尾端" data-desc="中间列下拉选服务商简称；不选=一级，选了=1+2 算整类">
+            <section class="rule-sec" id="sec-sku" data-title="地址 SKU · 尾端" data-desc="中间列下拉选服务商简称；不选=一级，选了=1+2 算整类；三档判定可配">
               <div class="form-grid" style="margin-bottom:10px">
-                <div><label>超过多少个仍出方案</label><input id="skuLimit" type="number" min="1" value="15" /></div>
+                <div><label>SKU 达标阈值</label><input id="skuOkMax" type="number" min="1" value="15" /></div>
+                <div><label>SKU 超杂柜阈值</label><input id="skuMixMax" type="number" min="1" value="20" /></div>
+                <div class="full"><p class="note" style="margin:0">判定（仍出方案，按档打标）：<strong>SKU &lt; 达标阈值</strong> → SKU达标（不打标）；<strong>达标阈值 ≤ SKU ≤ 超杂柜阈值</strong> → SKU未达标；<strong>SKU &gt; 超杂柜阈值</strong> → SKU超杂柜。默认 15 / 20。</p></div>
               </div>
               <table class="cfg">
                 <thead><tr><th style="width:150px">尾端</th><th>服务商简称</th><th style="width:160px">怎么数</th><th style="width:72px"></th></tr></thead>
@@ -321,7 +323,7 @@
                 <span class="tag">强制 · 不可关</span>
                 <span><strong>渠道硬隔离</strong>：不同渠道不混一柜（始终最高，不参与下面排序）</span>
               </div>
-              <p class="note" style="margin:0 0 8px">下列目标可上移/下移调整执行顺序。勾选「强制」后：不满足则按「超限怎么处理」拦/转人工；未勾选仅为软排序目标。</p>
+              <p class="note" style="margin:0 0 8px">下列目标可上移/下移（渠道隔离之下）。默认序：①合并报关同柜·调拨同序 → ②反倾销集中 → ③服装货合计小于上限 → ④少地址SKU装满 → ⑤限时达集中 → ⑥单仓整柜。勾「强制」：自动配不满足则按超限处理；<strong>所有规则不拦人工调整</strong>，人工保存后按实际打标。</p>
               <div class="prio-list" id="prioList" aria-label="可调优先级"></div>
               <div class="form-grid">
                 <div class="full"><label>限时达识别词（销售产品名称包含即命中）</label><input id="rushWords" value="限时达" /></div>
@@ -329,7 +331,7 @@
             </section>
 
             <section class="rule-sec" id="sec-handle" data-title="超限怎么处理" data-desc="业务标记颜色 · 待办处理 · 只打标 / 转人工（含分柜/调拨）">
-              <p class="note" style="margin-bottom:8px">同一行配齐：条件 → 处理 → 待办处理人 → 业务标记颜色。转人工才进待办。含<strong>合并报关分柜</strong>（同组跨多舱）、<strong>反倾销分柜</strong>、<strong>调拨柜</strong>。</p>
+              <p class="note" style="margin-bottom:8px">同一行配齐：条件 → 处理 → 待办处理人 → 业务标记颜色。转人工才进待办。含<strong>SKU未达标 / SKU超杂柜</strong>、<strong>合并单多舱</strong>、<strong>反倾销分柜</strong>、<strong>调拨柜</strong>（调拨未跟合并报关同柜时提醒）。SKU达标不打标。</p>
               <table class="cfg" id="handleTable">
                 <thead>
                   <tr>
@@ -479,29 +481,31 @@
     // 演示：对接 ESS 服务商主数据时，取启用服务商的「简称」
     var PROVIDER_OPTS = ["FedEx", "UPS", "DHL", "USPS", "Amazon", "OnTrac", "LaserShip", "Spee-Dee"];
     var MARK_DEFS = [
-      { k: "sku", name: "地址 SKU 超阈值", color: "#531dab", owner: "配舱同事" },
+      { k: "skuFail", name: "SKU未达标", color: "#d46b08", owner: "配舱同事" },
+      { k: "skuMix", name: "SKU超杂柜", color: "#531dab", owner: "配舱同事" },
       { k: "short", name: "未满", color: "#d46b08", owner: "配舱同事" },
       { k: "cap", name: "方数或箱数超限", color: "#cf1322", owner: "配舱同事" },
-      { k: "wReview", name: "重量在自动通过和禁止之间", color: "#ad6800", owner: "黄少飞" },
-      { k: "wBan", name: "重量超过禁止重量", color: "#a8071a", owner: "配舱同事" },
+      { k: "wReview", name: "超重", color: "#ad6800", owner: "黄少飞" },
+      { k: "wBan", name: "超超重", color: "#a8071a", owner: "配舱同事" },
       { k: "cloth", name: "服装超方", color: "#f5222d", owner: "配舱同事" },
       { k: "merge", name: "合并报关整组未齐", color: "#0958d9", owner: "配舱同事" },
-      { k: "mergeSplit", name: "合并报关分柜", color: "#1d39c4", owner: "配舱同事" },
+      { k: "mergeSplit", name: "合并单多舱", color: "#1d39c4", owner: "配舱同事" },
       { k: "antiSplit", name: "反倾销分柜", color: "#c41d7f", owner: "配舱同事" },
       { k: "transfer", name: "调拨柜", color: "#08979c", owner: "配舱同事" }
     ];
     var DEFAULT_HANDLE = {
-      sku: "mark", short: "mark", cap: "mark", wReview: "human", wBan: "human", cloth: "human",
+      skuFail: "mark", skuMix: "mark", short: "mark", cap: "mark", wReview: "human", wBan: "human", cloth: "human",
       merge: "human", mergeSplit: "mark", antiSplit: "mark", transfer: "mark"
     };
     var DEFAULT_OWNERS = {
-      sku: "配舱同事", short: "配舱同事", cap: "配舱同事", wReview: "黄少飞", wBan: "配舱同事", cloth: "配舱同事",
+      skuFail: "配舱同事", skuMix: "配舱同事", short: "配舱同事", cap: "配舱同事", wReview: "黄少飞", wBan: "配舱同事", cloth: "配舱同事",
       merge: "配舱同事", mergeSplit: "配舱同事", antiSplit: "配舱同事", transfer: "配舱同事"
     };
-    /** 可调优先级（不含渠道硬隔离）；force=强制开关 */
+    /** 可调优先级（不含渠道硬隔离）；force=强制开关。①合并报关同柜与调拨跟合并同序 */
     var DEFAULT_PRIO = [
-      { id: "mergeSame", name: "合并报关同柜", force: true },
+      { id: "mergeSame", name: "合并报关同柜 · 调拨跟合并报关同柜", force: true },
       { id: "antiDump", name: "反倾销集中", force: false },
+      { id: "clothCap", name: "服装货合计小于上限（默认40方）", force: false },
       { id: "lessSku", name: "少地址 SKU 装满", force: false },
       { id: "rush", name: "限时达集中", force: false },
       { id: "singleWh", name: "单仓整柜", force: false }
@@ -690,7 +694,9 @@
         boxLimit: +$("boxLimit").value || 1100,
         wPass: +$("wPass").value || 19.5,
         wBan: +$("wBan").value || 25.9,
-        skuLimit: +$("skuLimit").value || 15,
+        skuOkMax: +$("skuOkMax").value || 15,
+        skuMixMax: +$("skuMixMax").value || 20,
+        skuLimit: +$("skuOkMax").value || 15,
         skuRules: skuRules.map(function (r) {
           var pros = (r.providers || []).filter(Boolean);
           return {
@@ -872,7 +878,7 @@
         return (i + 1) + "." + p.name + (p.force ? "(强制)" : "");
       }).join("→");
       return currentWh + "（" + en + "） · 柜型 " + (on || "无") +
-        " · SKU>" + $("skuLimit").value +
+        " · SKU<" + $("skuOkMax").value + "达标 / ≤" + $("skuMixMax").value + "未达标 / >" + $("skuMixMax").value + "超杂柜" +
         " · 尾端 " + (tails || "—") +
         " · 重量 " + $("wPass").value + "/" + $("wBan").value +
         " · 服装 " + $("clothCap").value +
@@ -891,7 +897,11 @@
     }
     function collect() {
       syncSku();
-      if (!(Number($("skuLimit").value) >= 1)) return { error: "地址 SKU 超过个数至少为 1" };
+      var okMax = Number($("skuOkMax").value);
+      var mixMax = Number($("skuMixMax").value);
+      if (!(okMax >= 1)) return { error: "SKU 达标阈值至少为 1" };
+      if (!(mixMax >= 1)) return { error: "SKU 超杂柜阈值至少为 1" };
+      if (!(mixMax >= okMax)) return { error: "SKU 超杂柜阈值须 ≥ 达标阈值" };
       if (!skuRules.length) return { error: "地址 SKU 至少留一条尾端" };
       var onTypes = TYPES.filter(typeOn);
       if (!onTypes.length) return { error: "至少启用一个柜型" };
@@ -903,7 +913,9 @@
         boxLimit: +$("boxLimit").value || 1100,
         wPass: +$("wPass").value || 19.5,
         wBan: +$("wBan").value || 25.9,
-        skuLimit: +$("skuLimit").value || 15,
+        skuOkMax: okMax,
+        skuMixMax: mixMax,
+        skuLimit: okMax,
         skuRules: skuRules.map(function (r) {
           var pros = (r.providers || []).filter(Boolean);
           return {
@@ -944,9 +956,12 @@
         o.antiSplit = o.antiSplit || r.ownerBan;
         o.transfer = o.transfer || r.ownerBan;
         o.cap = o.cap || r.ownerBan;
-        o.sku = o.sku || r.ownerBan;
+        o.skuFail = o.skuFail || o.sku || r.ownerBan;
+        o.skuMix = o.skuMix || o.sku || r.ownerBan;
         o.short = o.short || r.ownerBan;
       }
+      if (o.sku && !o.skuFail) o.skuFail = o.sku;
+      if (o.sku && !o.skuMix) o.skuMix = o.sku;
       return o;
     }
     function apply(r) {
@@ -960,7 +975,10 @@
       else if (r.capBox != null) $("boxLimit").value = r.capBox;
       if (r.wPass != null) $("wPass").value = r.wPass;
       if (r.wBan != null) $("wBan").value = r.wBan;
-      if (r.skuLimit != null) $("skuLimit").value = r.skuLimit;
+      if (r.skuOkMax != null) $("skuOkMax").value = r.skuOkMax;
+      else if (r.skuLimit != null) $("skuOkMax").value = r.skuLimit;
+      if (r.skuMixMax != null) $("skuMixMax").value = r.skuMixMax;
+      else $("skuMixMax").value = 20;
       if (r.skuRules && r.skuRules.length) {
         skuRules = r.skuRules.map(function (x) {
           var pros = (x.providers || []).slice();
@@ -983,7 +1001,14 @@
       fillAuditor(r.auditor);
       if (r.effectiveFrom) $("effectiveFrom").value = r.effectiveFrom;
       else if ($("effectiveFrom")) $("effectiveFrom").value = "";
-      renderHandleTable(r.handle || DEFAULT_HANDLE, ownersFromLegacy(r), r.markColor);
+      var handle = Object.assign({}, DEFAULT_HANDLE, r.handle || {});
+      if (handle.sku && !handle.skuFail) handle.skuFail = handle.sku;
+      if (handle.sku && !handle.skuMix) handle.skuMix = handle.sku;
+      delete handle.sku;
+      var colors = Object.assign({}, r.markColor || {});
+      if (colors.sku && !colors.skuFail) colors.skuFail = colors.sku;
+      if (colors.sku && !colors.skuMix) colors.skuMix = colors.sku;
+      renderHandleTable(handle, ownersFromLegacy(r), colors);
       renderSku();
     }
     function defaults() {
@@ -992,7 +1017,7 @@
         enabled: true,
         typesOn: { "40HQ": true, "40GP": true, "45HQ": true, "20GP": false },
         cubes: { "40HQ": 70, "40GP": 60, "45HQ": 80, "20GP": null },
-        boxLimit: 1100, wPass: 19.5, wBan: 25.9, skuLimit: 15,
+        boxLimit: 1100, wPass: 19.5, wBan: 25.9, skuOkMax: 15, skuMixMax: 20, skuLimit: 15,
         skuRules: DEFAULT_SKU.map(function (r) {
           return { name: r.name, how: r.how, providers: (r.providers || []).slice(), countMode: (r.providers || []).length ? "class12" : "level1" };
         }),

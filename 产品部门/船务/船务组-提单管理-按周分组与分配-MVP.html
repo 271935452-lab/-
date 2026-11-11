@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>提单管理 · 按周分组与分配（MVP）</title>
-  <link rel="stylesheet" href="../../二期/ess-prototype-prd.css" />
   <link rel="stylesheet" href="ship-review-common.css" />
   <style>
     :root {
@@ -561,6 +560,33 @@
     }
     .modal.wide { width: min(760px, 96vw); }
     .modal.gx-wide { width: min(980px, 96vw); }
+    .modal.combo-wide { width: min(1100px, 98vw); max-height: 92vh; }
+    .combo-filter {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+      gap: 8px 12px; align-items: end; margin-bottom: 10px;
+    }
+    .combo-filter label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
+    .combo-filter input, .combo-filter select {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font-size: 12px;
+    }
+    .combo-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; align-items: center; }
+    .combo-tbl-wrap { border: 1px solid #f0f0f0; max-height: 48vh; overflow: auto; }
+    .combo-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .combo-tbl th, .combo-tbl td {
+      border-bottom: 1px solid #f0f0f0; padding: 7px 8px; text-align: left; white-space: nowrap; vertical-align: middle;
+    }
+    .combo-tbl th { background: #fafafa; color: #8c8c8c; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+    .combo-tbl tr.pre-row { background: #fafafa; font-weight: 600; cursor: pointer; }
+    .combo-tbl tr.pre-row:hover, .combo-tbl tr.wb-row:hover { background: #e6f7ff; }
+    .combo-tbl tr.wb-row td:nth-child(2) { padding-left: 28px; }
+    .combo-tbl .tw { color: #1890ff; cursor: pointer; user-select: none; display: inline-block; width: 14px; }
+    .combo-tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .combo-sum { font-size: 12px; color: var(--sub); margin-right: auto; }
+    .cell-combo .combo-link {
+      color: #1890ff; cursor: pointer; border: none; background: none; padding: 0; font: inherit; text-align: left;
+    }
+    .cell-combo .combo-link:hover { text-decoration: underline; }
+    .cell-combo .combo-empty { color: #1890ff; cursor: pointer; }
     .gx-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
     .gx-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
     .gx-tbl th, .gx-tbl td { border: 1px solid #f0f0f0; padding: 6px 8px; text-align: left; white-space: nowrap; }
@@ -954,8 +980,8 @@
     <b>提单管理</b> — 在<strong>本页原列表</strong>增加装柜计划字段（橙底表头），不另开第二页。
     仓库共用同一数据 → <a href="装柜计划-仓库视图-MVP.html">装柜计划 · 仓库视图</a> /
     <a href="../../APP/装柜扫描-件数核对-MVP.html">PDA</a>。
-    说明：<a href="义乌智能仓-方案/仓位拆分-提单管理-PRD-交互稿.html">本页 PRD</a>（橙圈）·
     装柜/卸柜费在仓库录入并同步提单预估（追加/覆盖）。
+    工具条可开「本页 PRD / V1 PRD」。
     <a href="船务组-订舱仓位装柜-评审导航.html">评审导航</a>
   </div>
   <div class="app">
@@ -1102,7 +1128,7 @@
           <button type="button" class="tool-btn" id="btnBlEdit">提单修改</button>
           <button type="button" class="tool-btn" data-live="批量提单修改">批量提单修改</button>
           <button type="button" class="tool-btn" id="btnAssign">提单分配</button>
-          <button type="button" class="tool-btn" id="btnGxBatch" title="对应现网腾信组货数据 · 旁支，不进主干验收">组货数据 · 批量创号分配 <span class="badge-branch">旁支</span></button>
+          <button type="button" class="tool-btn primary" id="btnComboStow" title="勾选提单后，从预配舱树勾选整舱或单票写入组合配舱">组合配舱</button>
           <button type="button" class="tool-btn" id="btnOpLog">操作日志</button>
           <button type="button" class="tool-btn" id="btnBindImp">绑定进口商</button>
           <button type="button" class="tool-btn" id="btnMiscFee" title="登记费用并上传水单">费用登记 ·水单</button>
@@ -1500,7 +1526,7 @@
       </div>
       <div class="modal-bd">
         <div class="alert">
-          按<strong>柜</strong>退运（勾选行=柜）。<strong>仅「待分配」</strong>提单可操作；已分配（待装柜及之后）不可退运。确认后提单状态改为<strong>已作废</strong>，不打业务标记。退运费/亏舱费选填，有则写入<strong>提单预估</strong>。
+          按<strong>柜</strong>退运（勾选行=柜）。<strong>装柜前</strong>可退（未装完）；<strong>装柜完成后</strong>改走换柜换船。确认后提单状态改为<strong>已作废</strong>，不打业务标记。退运费/亏舱费选填，有则写入<strong>提单预估</strong>。
         </div>
         <div class="form-grid">
           <div class="form-item full">
@@ -2518,12 +2544,74 @@
     </div>
   </div>
 
+  <div class="mask" id="comboMask" aria-hidden="true">
+    <div class="modal combo-wide" role="dialog" aria-labelledby="comboTitle">
+      <div class="modal-hd">
+        <h3 id="comboTitle">组合配舱 · 选择预配舱</h3>
+        <button type="button" class="tool-btn outline" id="comboClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert info" id="comboHint">勾选整舱或舱内单票后确认：写入「组合配舱」列（号 + 方数），并同时生成终配舱（配舱状态=配中、写出终配舱号）。交互对齐待配仓树表。</div>
+        <div class="combo-filter">
+          <div>
+            <label>仓库归属</label>
+            <select id="comboWh">
+              <option value="">全部</option>
+              <option>泉州分公司</option>
+              <option>厦门分公司</option>
+              <option>青岛分公司</option>
+            </select>
+          </div>
+          <div>
+            <label>预配舱单号</label>
+            <input id="comboPreNo" placeholder="预配舱单号" autocomplete="off" />
+          </div>
+          <div>
+            <label>运单号</label>
+            <input id="comboWb" placeholder="运单号 / 客户单号" autocomplete="off" />
+          </div>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="tool-btn primary" id="comboQuery">查询</button>
+            <button type="button" class="tool-btn outline" id="comboReset">重置</button>
+          </div>
+        </div>
+        <div class="combo-tools">
+          <button type="button" class="tool-btn outline" id="comboExpand">全部展开</button>
+          <button type="button" class="tool-btn outline" id="comboCollapse">全部关闭</button>
+          <button type="button" class="tool-btn outline" id="comboSelClear">取消勾选</button>
+          <span class="combo-sum" id="comboPickSum">已选 0 舱 / 0 票</span>
+        </div>
+        <div class="combo-tbl-wrap">
+          <table class="combo-tbl">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="comboChkAll" title="全选当前可见舱" /></th>
+                <th>序号</th>
+                <th>预配舱单号</th>
+                <th>运单号</th>
+                <th class="num">总件数</th>
+                <th class="num">可配件数</th>
+                <th>库区类型</th>
+                <th class="num">未出货重量</th>
+                <th class="num">未出货方数</th>
+                <th class="num">总出货重量</th>
+                <th class="num">总出货材积重</th>
+              </tr>
+            </thead>
+            <tbody id="comboBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <span class="combo-sum" id="comboFootSum">共 0 个预配舱</span>
+        <button type="button" class="tool-btn outline" id="comboCancel">关闭</button>
+        <button type="button" class="tool-btn primary" id="comboConfirm">确认组合配舱</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
-  <div class="ess-prd-source" hidden aria-hidden="true" data-prd-href="义乌智能仓-方案/仓位拆分-提单管理-PRD-交互稿.html">
-    <span class="ess-prd-chip">PRD · 提单管理 · 仓位拆分</span>
-  </div>
-  <script src="../../二期/ess-prototype-prd.js?v=aidock1"></script>
   <script>
     (function () {
       var ROWS = [
@@ -4039,13 +4127,14 @@
           var PC_LABEL = { pre: "待配", wait: "配中", final: "终配" };
           var PC_CLASS = { pre: "st-pre", wait: "st-wait", final: "st-final" };
           var pc = r.pc || "pre";
-          /* 列表内多行呈现需组合配舱号+方数（对齐线下 Excel，不弹明细） */
+          /* 列表内多行呈现需组合配舱号+方数；点列打开组合配舱弹窗 */
           var lines = Array.isArray(r.comboLines) ? r.comboLines : (r.comboCabin ? [r.comboCabin] : []);
           var comboHtml = lines.length
-            ? ('<div class="combo-multi">' + lines.map(function (s) {
-                return String(s).replace(/</g, "&lt;");
-              }).join("\n") + "</div>")
-            : "—";
+            ? ('<button type="button" class="combo-link combo-multi" data-combo-open="' + r.id + '" title="改组合配舱">' +
+                lines.map(function (s) {
+                  return String(s).replace(/</g, "&lt;");
+                }).join("\n") + "</button>")
+            : ('<button type="button" class="combo-empty" data-combo-open="' + r.id + '" title="选择预配舱">选择预配舱</button>');
           var finalHtml = r.finalCabin ? dash(r.finalCabin) : "—";
           return '<tr class="data-row' + sel + itCls + rsCls + amdCls + loadCls + warnBorder + '" data-id="' + r.id + '">' +
             '<td><input type="checkbox" class="row-ck"' + ck + ' /></td>' +
@@ -4750,22 +4839,22 @@
           (transit ? " · 中转港已记" : ""));
       };
 
-      /* —— 退运（按柜）· 仅待分配 · 退运费选填 → 提单预估；状态→已作废，不打业务标记 —— */
+      /* —— 退运（按柜）· 装柜前（未装完）· 装完走换柜换船 · 退运费选填 → 提单预估 —— */
       function canReturnShip(r) {
-        return r && r.st === "待分配" && !isVoidBl(r);
+        return r && !isVoidBl(r) && loadStatus(r) !== "装完";
       }
       function openReturnShip() {
         var rows = checkedRows();
         if (!rows.length) { toast("请先勾选要退运的柜子"); return; }
         var ok = rows.filter(canReturnShip);
         var voided = rows.filter(isVoidBl);
-        var notPending = rows.filter(function (r) { return !isVoidBl(r) && r.st !== "待分配"; });
+        var loaded = rows.filter(function (r) { return !isVoidBl(r) && loadStatus(r) === "装完"; });
         if (!ok.length) {
-          toast(notPending.length ? "退运仅适用于「待分配」提单" : "勾选柜子均已作废");
+          toast(loaded.length ? "装柜完成后请走换柜换船，不可退运" : "勾选柜子均已作废");
           return;
         }
         if (voided.length) toast("已跳过已作废 ×" + voided.length);
-        if (notPending.length) toast("已跳过非待分配 ×" + notPending.length);
+        if (loaded.length) toast("已跳过已装完 ×" + loaded.length + "（请走换柜换船）");
         document.getElementById("rsTargets").value = ok.map(function (r) {
           return (r.bl || "—") + " / " + (r.cntr || "—");
         }).join("；");
@@ -4788,7 +4877,7 @@
       });
       document.getElementById("rsConfirm").onclick = function () {
         var rows = checkedRows().filter(canReturnShip);
-        if (!rows.length) { toast("退运仅适用于「待分配」提单"); return; }
+        if (!rows.length) { toast("装柜完成后请走换柜换船，不可退运"); return; }
         var reason = (document.getElementById("rsReason").value || "").trim();
         var amtRaw = (document.getElementById("rsFeeAmt").value || "").trim();
         var amt = amtRaw === "" ? null : parseFloat(amtRaw, 10);
@@ -6241,7 +6330,6 @@
         render();
         return created;
       }
-      document.getElementById("btnGxBatch").onclick = openGx;
       document.getElementById("gxClose").onclick = closeGx;
       document.getElementById("gxCancel").onclick = closeGx;
       document.getElementById("gxMask").addEventListener("click", function (e) {
@@ -6920,6 +7008,271 @@
         copyBcText("已复制播报表（可粘贴到 Excel / 企微）");
       };
 
+      /* —— 组合配舱：待配仓同款树表，选整舱或单票写入勾选提单 —— */
+      var COMBO_PRE = [
+        {
+          id: "p1", preNo: "ZPC1105001", wh: "泉州分公司", zone: "正班卡派", open: true,
+          tickets: [
+            { id: "t11", wb: "ICBU00001215403", pcs: 32, alloc: 32, wt: 179.16, cbm: 1.245, shipWt: 165.2, shipDim: 188.1 },
+            { id: "t12", wb: "ICBU00001218772", pcs: 50, alloc: 50, wt: 208.34, cbm: 2.110, shipWt: 198.0, shipDim: 218.8 },
+            { id: "t13", wb: "ICBU00001218801", pcs: 108, alloc: 100, wt: 252.08, cbm: 3.420, shipWt: 240.5, shipDim: 264.6 }
+          ]
+        },
+        {
+          id: "p2", preNo: "ZPC1105002", wh: "泉州分公司", zone: "正班私卡", open: false,
+          tickets: [
+            { id: "t21", wb: "ICBU00001219002", pcs: 121, alloc: 121, wt: 88.20, cbm: 5.998, shipWt: 84.1, shipDim: 92.6 },
+            { id: "t22", wb: "ICBU00001219018", pcs: 64, alloc: 64, wt: 91.40, cbm: 4.220, shipWt: 88.0, shipDim: 96.0 }
+          ]
+        },
+        {
+          id: "p3", preNo: "ZPC1105010", wh: "厦门分公司", zone: "中天优运FBA", open: false,
+          tickets: [
+            { id: "t31", wb: "ICBU00001220110", pcs: 140, alloc: 140, wt: 155.20, cbm: 6.880, shipWt: 150.0, shipDim: 163.0 },
+            { id: "t32", wb: "ICBU00001220128", pcs: 28, alloc: 28, wt: 49.60, cbm: 1.920, shipWt: 47.2, shipDim: 52.1 },
+            { id: "t33", wb: "ICBU00001220144", pcs: 77, alloc: 70, wt: 102.10, cbm: 3.150, shipWt: 98.4, shipDim: 107.2 }
+          ]
+        },
+        {
+          id: "p4", preNo: "ZPC1105020", wh: "青岛分公司", zone: "青岛T25", open: false,
+          tickets: [
+            { id: "t41", wb: "ICBU00001221001", pcs: 160, alloc: 160, wt: 201.40, cbm: 8.420, shipWt: 196.0, shipDim: 211.5 },
+            { id: "t42", wb: "ICBU00001221016", pcs: 41, alloc: 41, wt: 58.90, cbm: 2.330, shipWt: 56.1, shipDim: 61.8 }
+          ]
+        }
+      ];
+      var comboSelPre = {};
+      var comboSelWb = {};
+      var comboTargetIds = null;
+
+      function comboVisible() {
+        var wh = (document.getElementById("comboWh").value || "").trim();
+        var pre = (document.getElementById("comboPreNo").value || "").trim().toLowerCase();
+        var wb = (document.getElementById("comboWb").value || "").trim().toLowerCase();
+        return COMBO_PRE.map(function (g) {
+          if (wh && g.wh !== wh) return null;
+          if (pre && String(g.preNo).toLowerCase().indexOf(pre) < 0) return null;
+          var tickets = g.tickets;
+          if (wb) {
+            tickets = g.tickets.filter(function (t) {
+              return String(t.wb).toLowerCase().indexOf(wb) >= 0;
+            });
+            if (!tickets.length) return null;
+          }
+          return { g: g, tickets: tickets };
+        }).filter(Boolean);
+      }
+
+      function comboAgg(tickets) {
+        var pcs = 0, alloc = 0, wt = 0, cbm = 0, shipWt = 0, shipDim = 0;
+        tickets.forEach(function (t) {
+          pcs += t.pcs; alloc += t.alloc; wt += t.wt; cbm += t.cbm; shipWt += t.shipWt; shipDim += t.shipDim;
+        });
+        return { pcs: pcs, alloc: alloc, wt: wt, cbm: cbm, shipWt: shipWt, shipDim: shipDim };
+      }
+
+      function comboN(v, d) {
+        return (Math.round(v * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d);
+      }
+
+      function refreshComboPickSum() {
+        var preN = Object.keys(comboSelPre).filter(function (k) { return comboSelPre[k]; }).length;
+        var wbN = Object.keys(comboSelWb).filter(function (k) { return comboSelWb[k]; }).length;
+        /* 整舱勾选时票数按舱内可见票计，避免重复 */
+        var vis = comboVisible();
+        var ticketCnt = 0;
+        vis.forEach(function (item) {
+          if (comboSelPre[item.g.id]) ticketCnt += item.tickets.length;
+          else item.tickets.forEach(function (t) { if (comboSelWb[t.id]) ticketCnt += 1; });
+        });
+        document.getElementById("comboPickSum").textContent = "已选 " + preN + " 舱 / " + ticketCnt + " 票";
+        document.getElementById("comboFootSum").textContent = "共 " + vis.length + " 个预配舱 · 勾选提单将写入「号 + 方数」";
+        void wbN;
+      }
+
+      function renderComboBody() {
+        var vis = comboVisible();
+        var html = "";
+        var sn = 0;
+        vis.forEach(function (item) {
+          sn += 1;
+          var g = item.g;
+          var tickets = item.tickets;
+          var a = comboAgg(tickets);
+          var open = !!g.open;
+          var preCk = comboSelPre[g.id] ? " checked" : "";
+          html += '<tr class="pre-row" data-pre="' + g.id + '">' +
+            '<td><input type="checkbox" class="combo-pre-ck" data-pre="' + g.id + '"' + preCk + " /></td>" +
+            "<td>" + sn + "</td>" +
+            '<td><span class="tw" data-toggle="' + g.id + '">' + (open ? "▼" : "▶") + "</span> " +
+            g.preNo + " <span style='color:#8c8c8c;font-weight:400'>(" + tickets.length + ")</span></td>" +
+            "<td></td>" +
+            '<td class="num">' + a.pcs + "</td>" +
+            '<td class="num">' + a.alloc + "</td>" +
+            "<td>" + g.zone + " · " + g.wh + "</td>" +
+            '<td class="num">' + comboN(a.wt, 2) + "</td>" +
+            '<td class="num">' + comboN(a.cbm, 3) + "</td>" +
+            '<td class="num">' + comboN(a.shipWt, 2) + "</td>" +
+            '<td class="num">' + comboN(a.shipDim, 1) + "</td>" +
+            "</tr>";
+          if (open) {
+            tickets.forEach(function (t) {
+              var wbCk = comboSelPre[g.id] || comboSelWb[t.id] ? " checked" : "";
+              var dis = comboSelPre[g.id] ? " disabled" : "";
+              html += '<tr class="wb-row" data-pre="' + g.id + '" data-wb="' + t.id + '">' +
+                '<td><input type="checkbox" class="combo-wb-ck" data-pre="' + g.id + '" data-wb="' + t.id + '"' + wbCk + dis + " /></td>" +
+                "<td></td><td></td>" +
+                "<td>" + t.wb + "</td>" +
+                '<td class="num">' + t.pcs + "</td>" +
+                '<td class="num">' + t.alloc + "</td>" +
+                "<td></td>" +
+                '<td class="num">' + comboN(t.wt, 2) + "</td>" +
+                '<td class="num">' + comboN(t.cbm, 3) + "</td>" +
+                '<td class="num">' + comboN(t.shipWt, 2) + "</td>" +
+                '<td class="num">' + comboN(t.shipDim, 1) + "</td>" +
+                "</tr>";
+            });
+          }
+        });
+        if (!html) html = '<tr><td colspan="11" style="text-align:center;color:#8c8c8c;padding:24px">无匹配预配舱</td></tr>';
+        document.getElementById("comboBody").innerHTML = html;
+        refreshComboPickSum();
+      }
+
+      function openComboMask(forceIds) {
+        var rows = forceIds && forceIds.length
+          ? ROWS.filter(function (r) { return forceIds.indexOf(r.id) >= 0; })
+          : checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        comboTargetIds = rows.map(function (r) { return r.id; });
+        comboSelPre = {};
+        comboSelWb = {};
+        document.getElementById("comboHint").innerHTML =
+          "将写入 <b>" + rows.length + "</b> 票提单的「组合配舱」列。可勾选<strong>整舱</strong>或展开后勾<strong>单票</strong>；确认后按「预配舱号 + 方数」多行展示。";
+        document.getElementById("comboMask").classList.add("open");
+        document.getElementById("comboMask").setAttribute("aria-hidden", "false");
+        renderComboBody();
+      }
+
+      function closeComboMask() {
+        document.getElementById("comboMask").classList.remove("open");
+        document.getElementById("comboMask").setAttribute("aria-hidden", "true");
+        comboTargetIds = null;
+      }
+
+      function collectComboLines() {
+        var lines = [];
+        var vis = comboVisible();
+        vis.forEach(function (item) {
+          var g = item.g;
+          var tickets = item.tickets;
+          if (comboSelPre[g.id]) {
+            var a = comboAgg(tickets);
+            lines.push(g.preNo + " " + comboN(a.cbm, 6));
+            return;
+          }
+          var picked = tickets.filter(function (t) { return comboSelWb[t.id]; });
+          if (!picked.length) return;
+          var b = comboAgg(picked);
+          lines.push(g.preNo + " " + comboN(b.cbm, 6) + (picked.length < tickets.length ? "（部分" + picked.length + "票）" : ""));
+        });
+        return lines;
+      }
+
+      document.getElementById("btnComboStow").addEventListener("click", function () {
+        openComboMask(null);
+      });
+      document.getElementById("comboClose").onclick = closeComboMask;
+      document.getElementById("comboCancel").onclick = closeComboMask;
+      document.getElementById("comboQuery").onclick = function () { renderComboBody(); };
+      document.getElementById("comboReset").onclick = function () {
+        document.getElementById("comboWh").value = "";
+        document.getElementById("comboPreNo").value = "";
+        document.getElementById("comboWb").value = "";
+        renderComboBody();
+      };
+      document.getElementById("comboExpand").onclick = function () {
+        COMBO_PRE.forEach(function (g) { g.open = true; });
+        renderComboBody();
+      };
+      document.getElementById("comboCollapse").onclick = function () {
+        COMBO_PRE.forEach(function (g) { g.open = false; });
+        renderComboBody();
+      };
+      document.getElementById("comboSelClear").onclick = function () {
+        comboSelPre = {};
+        comboSelWb = {};
+        renderComboBody();
+      };
+      document.getElementById("comboChkAll").onclick = function () {
+        var on = this.checked;
+        comboVisible().forEach(function (item) {
+          comboSelPre[item.g.id] = on;
+          item.tickets.forEach(function (t) {
+            if (on) delete comboSelWb[t.id];
+          });
+        });
+        renderComboBody();
+      };
+      document.getElementById("comboBody").addEventListener("click", function (e) {
+        var tw = e.target.closest("[data-toggle]");
+        if (tw) {
+          var gid = tw.getAttribute("data-toggle");
+          COMBO_PRE.forEach(function (g) { if (g.id === gid) g.open = !g.open; });
+          renderComboBody();
+          return;
+        }
+        var preCk = e.target.closest(".combo-pre-ck");
+        if (preCk) {
+          var pid = preCk.getAttribute("data-pre");
+          comboSelPre[pid] = preCk.checked;
+          if (preCk.checked) {
+            COMBO_PRE.forEach(function (g) {
+              if (g.id === pid) g.tickets.forEach(function (t) { delete comboSelWb[t.id]; });
+            });
+          }
+          renderComboBody();
+          return;
+        }
+        var wbCk = e.target.closest(".combo-wb-ck");
+        if (wbCk && !wbCk.disabled) {
+          comboSelWb[wbCk.getAttribute("data-wb")] = wbCk.checked;
+          refreshComboPickSum();
+        }
+      });
+      document.getElementById("comboConfirm").onclick = function () {
+        var lines = collectComboLines();
+        if (!lines.length) { toast("请勾选预配舱或单票"); return; }
+        var ids = comboTargetIds || [];
+        if (!ids.length) { toast("未指定提单"); return; }
+        var n = 0;
+        ROWS.forEach(function (r) {
+          if (ids.indexOf(r.id) < 0) return;
+          r.comboLines = lines.slice();
+          r.comboCabin = lines[0];
+          /* 确认组合配舱 → 同时生成终配舱在「配中」（已终配不打回） */
+          if (r.pc !== "final") {
+            r.pc = "wait";
+            if (!r.finalCabin) {
+              r.finalCabin = "260801-组合终-" + r.id;
+            }
+          }
+          n += 1;
+        });
+        closeComboMask();
+        render();
+        toast("已组合配舱 " + n + " 票 · 同步生成终配舱（配中）· " + lines.length + " 个预配舱段");
+      };
+      document.getElementById("tbody").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-combo-open]");
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var id = Number(btn.getAttribute("data-combo-open"));
+        selected[id] = true;
+        openComboMask([id]);
+      });
+
       ROWS.forEach(applyRowWeek);
       (function bootBlQuery() {
         try {
@@ -6933,12 +7286,12 @@
       })();
       render();
       var gxHash = (location.hash || "").replace(/^#/, "");
-      if (gxHash === "gxMask" || gxHash === "btnGxBatch") openGx();
+      if (gxHash === "comboMask" || gxHash === "btnComboStow") openComboMask(null);
     })();
   </script>
   <script src="ship-review-nav.js"></script>
   <script>renderShipReviewNav("bl-mgmt");</script>
-  <script src="ship-stow-prd-doc-bar.js" data-page="5"></script>
+  <script src="ship-stow-prd-doc-bar.js" data-page="5" data-v1-prd="船务组-提单管理-按周分组与分配-MVP-PRD.html"></script>
   <script src="ship-stow-review-bridge.js" data-page="5"></script>
 </body>
 </html>

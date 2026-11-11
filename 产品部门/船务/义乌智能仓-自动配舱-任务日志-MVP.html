@@ -73,11 +73,12 @@
     <main class="main">
       <div class="page-hd">
         <h1>义乌智能仓 · 自动配舱日志</h1>
-        <p>一次点执行记一条。只记这次选中的已放舱未装柜柜子和结果，人工补货不进。单柜改配仍看提单管理的操作日志。</p>
+        <p>一次点执行记一条。只记这次选中的已放舱未装柜柜子和结果（含<strong>生成的终配舱号</strong>），人工补货不进。单柜改配 / 待办确认 / 柜子对调看终配舱「操作日志」。</p>
       </div>
       <section class="panel">
         <div class="filters">
           <label>提单号<input id="fBl" placeholder="提单号" /></label>
+          <label>终配舱号<input id="fFinal" placeholder="终配舱号" /></label>
           <label>渠道<input id="fCh" placeholder="渠道" /></label>
           <button type="button" class="btn" id="btnMore">更多筛选 ▾</button>
           <button type="button" class="btn primary" id="btnQuery">查询</button>
@@ -92,7 +93,7 @@
       <section class="panel">
         <table>
           <thead>
-            <tr><th>时间</th><th>操作人</th><th>提单号</th><th>渠道</th><th>柜型</th><th>柜数</th><th>结果</th></tr>
+            <tr><th>时间</th><th>操作人</th><th>提单号</th><th>终配舱号</th><th>渠道</th><th>柜型</th><th>柜数</th><th>结果</th></tr>
           </thead>
           <tbody id="logBody"></tbody>
         </table>
@@ -108,8 +109,8 @@
         at: "2026-10-31 16:20",
         who: "黄少飞",
         lines: [
-          { bl: "COSU260831001", ch: "美森正班", type: "40HQ", cbm: "66.4", box: 980, ton: "18.2", result: "待配 · 未满" },
-          { bl: "COSU260831002", ch: "美森正班", type: "40HQ", cbm: "70.0", box: 1040, ton: "19.1", result: "终配" }
+          { bl: "COSU260831001", finalNo: "260831-美森正班-1", ch: "美森正班", type: "40HQ", cbm: "66.4", box: 980, ton: "18.2", result: "待配 · 未满" },
+          { bl: "COSU260831002", finalNo: "260831-美森正班-2", ch: "美森正班", type: "40HQ", cbm: "70.0", box: 1040, ton: "19.1", result: "终配" }
         ]
       },
       {
@@ -117,8 +118,8 @@
         at: "2026-10-30 11:05",
         who: "黄少飞",
         lines: [
-          { bl: "MAEU260901016", ch: "T16", type: "40GP", cbm: "58.2", box: 860, ton: "16.4", result: "待配 · 未满" },
-          { bl: "OOLU260901020", ch: "T20", type: "45HQ", cbm: "74.6", box: 990, ton: "21.4", result: "待配 · 重量待审" }
+          { bl: "MAEU260901016", finalNo: "260901-T16-1", ch: "T16", type: "40GP", cbm: "58.2", box: 860, ton: "16.4", result: "待配 · 未满" },
+          { bl: "OOLU260901020", finalNo: "260901-T20-1", ch: "T20", type: "45HQ", cbm: "74.6", box: 990, ton: "21.4", result: "待配 · 超重" }
         ]
       }
     ];
@@ -141,6 +142,7 @@
     }
     function visible() {
       var bl = (document.getElementById("fBl").value || "").trim().toUpperCase();
+      var fin = (document.getElementById("fFinal").value || "").trim().toUpperCase();
       var ch = (document.getElementById("fCh").value || "").trim();
       var type = (document.getElementById("fType").value || "").trim().toUpperCase();
       var who = (document.getElementById("fWho").value || "").trim();
@@ -152,6 +154,7 @@
         if (from && day < from) return false;
         if (to && day > to) return false;
         if (bl && !t.lines.some(function (r) { return (r.bl || "").toUpperCase().indexOf(bl) >= 0; })) return false;
+        if (fin && !t.lines.some(function (r) { return (r.finalNo || "").toUpperCase().indexOf(fin) >= 0; })) return false;
         if (ch && !t.lines.some(function (r) { return (r.ch || "").indexOf(ch) >= 0; })) return false;
         if (type && !t.lines.some(function (r) { return (r.type || "").toUpperCase().indexOf(type) >= 0; })) return false;
         return true;
@@ -160,16 +163,16 @@
     function render() {
       var rows = visible();
       if (!rows.length) {
-        document.getElementById("logBody").innerHTML = '<tr><td class="empty" colspan="7">没有任务日志</td></tr>';
+        document.getElementById("logBody").innerHTML = '<tr><td class="empty" colspan="8">没有任务日志</td></tr>';
         return;
       }
       var html = "";
       rows.forEach(function (t) {
-        html += '<tr class="task" data-id="' + t.id + '"><td>' + t.at + "</td><td>" + t.who + "</td><td>" + stack(t.lines, "bl") + "</td><td>" + stack(t.lines, "ch") + "</td><td>" + stack(t.lines, "type") + "</td><td>" + t.lines.length + "</td><td>" + summary(t.lines) + "</td></tr>";
+        html += '<tr class="task" data-id="' + t.id + '"><td>' + t.at + "</td><td>" + t.who + "</td><td>" + stack(t.lines, "bl") + "</td><td>" + stack(t.lines, "finalNo") + "</td><td>" + stack(t.lines, "ch") + "</td><td>" + stack(t.lines, "type") + "</td><td>" + t.lines.length + "</td><td>" + summary(t.lines) + "</td></tr>";
         if (openId === t.id) {
-          html += '<tr class="detail"><td colspan="7"><table class="mini"><thead><tr><th>提单号</th><th>渠道</th><th>柜型</th><th>方数</th><th>箱数</th><th>重量(吨)</th><th>结果</th></tr></thead><tbody>';
+          html += '<tr class="detail"><td colspan="8"><table class="mini"><thead><tr><th>提单号</th><th>终配舱号</th><th>渠道</th><th>柜型</th><th>方数</th><th>箱数</th><th>重量(吨)</th><th>结果</th></tr></thead><tbody>';
           t.lines.forEach(function (r) {
-            html += "<tr><td>" + r.bl + "</td><td>" + r.ch + "</td><td>" + r.type + "</td><td>" + r.cbm + "</td><td>" + r.box + "</td><td>" + r.ton + "</td><td>" + r.result + "</td></tr>";
+            html += "<tr><td>" + r.bl + "</td><td>" + (r.finalNo || "—") + "</td><td>" + r.ch + "</td><td>" + r.type + "</td><td>" + r.cbm + "</td><td>" + r.box + "</td><td>" + r.ton + "</td><td>" + r.result + "</td></tr>";
           });
           html += "</tbody></table></td></tr>";
         }
@@ -192,6 +195,7 @@
     document.getElementById("btnQuery").onclick = render;
     document.getElementById("btnReset").onclick = function () {
       document.getElementById("fBl").value = "";
+      document.getElementById("fFinal").value = "";
       document.getElementById("fCh").value = "";
       document.getElementById("fType").value = "";
       document.getElementById("fWho").value = "";
@@ -200,7 +204,7 @@
       openId = "";
       render();
     };
-    ["fBl", "fCh", "fType", "fWho", "fFrom", "fTo"].forEach(function (id) {
+    ["fBl", "fFinal", "fCh", "fType", "fWho", "fFrom", "fTo"].forEach(function (id) {
       document.getElementById(id).addEventListener("keydown", function (e) {
         if (e.key === "Enter") render();
       });

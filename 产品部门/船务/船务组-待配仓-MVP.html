@@ -385,7 +385,7 @@
     <div class="modal wide auto" role="dialog" aria-labelledby="autoTitle">
       <div class="modal-hd" id="autoTitle">自动配舱 · 选渠道与柜型数量</div>
       <div class="modal-bd">
-        <p class="auto-tip" id="autoTip">选渠道（可多选），并为各柜型填写数量（&gt;0 才参与）。候选货按<strong>所在仓</strong>（含调拨转入，≠收货仓）。系统按数量对匹配的已放舱、未装柜柜子出方案；人工补货在终配舱，不进这次。不必再勾选单柜。</p>
+        <p class="auto-tip" id="autoTip">选渠道（可多选），并为各柜型填写数量（&gt;0 才参与）。系统按数量对匹配的<strong>已放舱、未装柜</strong>柜子出方案；<strong>无提单号也可先执行配舱</strong>（预览里标「无号」），不必等补号。人工补货在终配舱。不必再勾选单柜。</p>
         <div class="auto-filters" id="autoFilters">
           <div class="auto-pick">
             <div class="pick-hd">渠道 <span class="muted">可多选</span>
@@ -1024,17 +1024,24 @@
         { id: "s5", bl: "EGLV260902088", ch: "中美", type: "40HQ", cap: 70, si: "2026-11-05 18:00", released: true, loadSt: "未装", state: "未装柜" },
         { id: "s6", bl: "COSU260828009", ch: "美森正班", type: "40HQ", cap: 70, si: "2026-10-30 18:00", released: true, loadSt: "未装", state: "未装柜" },
         { id: "s7", bl: "COSU260903001", ch: "美森加班", type: "40HQ", cap: 70, si: "", released: true, loadSt: "未装", state: "未装柜" },
-        { id: "s8", bl: "", ch: "美森加班", type: "40GP", cap: 60, si: "2026-11-06 18:00", released: false, loadSt: "未装", state: "未放舱" },
-        { id: "s9", bl: "MATS9565074000", ch: "中美", type: "40HQ", cap: 70, si: "2026-11-01 12:00", released: true, loadSt: "已装", state: "已装柜" }
+        /* 已放舱但尚未补提单号：允许先自动配舱 */
+        { id: "s8", bl: "", ch: "美森加班", type: "40GP", cap: 60, si: "2026-11-06 18:00", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s8b", bl: "", ch: "美森正班", type: "40HQ", cap: 70, si: "2026-11-02 20:00", released: true, loadSt: "未装", state: "未装柜" },
+        { id: "s9", bl: "MATS9565074000", ch: "中美", type: "40HQ", cap: 70, si: "2026-11-01 12:00", released: true, loadSt: "已装", state: "已装柜" },
+        { id: "s10", bl: "", ch: "T16", type: "40GP", cap: 60, si: "2026-11-07 12:00", released: false, loadSt: "未装", state: "未放舱" }
       ];
       var planOf = {
-        s1: { cbm: "66.4", box: 980, ton: "18.2", result: "待配 · 未满" },
-        s2: { cbm: "70.0", box: 1040, ton: "19.1", result: "终配" },
-        s3: { cbm: "58.2", box: 860, ton: "16.4", result: "待配 · 未满" },
-        s4: { cbm: "74.6", box: 990, ton: "21.4", result: "待配 · 重量待审" },
-        s5: { cbm: "69.2", box: 1088, ton: "18.6", result: "待配 · 地址SKU超限" }
+        s1: { cbm: "66.4", box: 980, ton: "18.2", result: "待配 · 未满", finalNo: "260831-美森正班-1" },
+        s2: { cbm: "70.0", box: 1040, ton: "19.1", result: "终配", finalNo: "260831-美森正班-2" },
+        s3: { cbm: "58.2", box: 860, ton: "16.4", result: "待配 · 未满", finalNo: "260901-T16-1" },
+        s4: { cbm: "74.6", box: 990, ton: "21.4", result: "待配 · 超重", finalNo: "260901-T20-1" },
+        s5: { cbm: "69.2", box: 1088, ton: "18.6", result: "待配 · 地址SKU超限", finalNo: "260902-中美-1" },
+        s8: { cbm: "52.0", box: 720, ton: "14.1", result: "待配 · 无提单号先配", finalNo: "260906-美森加班-无号1" },
+        s8b: { cbm: "61.8", box: 900, ton: "17.0", result: "待配 · 无提单号先配", finalNo: "260902-美森正班-无号1" }
       };
+      /** 已放舱且未装即可进匹配；不要求必须有提单号 */
       function listed(s) { return s.released && s.loadSt !== "已装"; }
+      function hasBl(s) { return !!(s.bl && String(s.bl).trim()); }
       function slotOn(s) { return listed(s) && s.state !== "已生成方案"; }
       function uniq(arr) {
         var out = [];
@@ -1122,14 +1129,20 @@
         var want = tq.reduce(function (n, x) { return n + x.qty; }, 0);
         var all = filtered();
         var run = runnableSlots();
+        var noBl = run.filter(function (s) { return !hasBl(s); }).length;
         var tip = "";
         if (!chs.length || !tq.length) tip = "请至少选 1 个渠道，并为柜型填写数量（>0）";
         else if (!run.length) tip = "已选 " + chs.length + " 渠道 · " + typeQtyLabel(tq) + "（计划 " + want + " 柜）· 可执行 0 条";
         else tip = "已选 " + chs.length + " 渠道 · " + typeQtyLabel(tq) + " · 将执行 " + run.length + " / " + want + " 柜" +
+          (noBl ? "（其中 " + noBl + " 柜无提单号，可先配）" : "") +
           (all.length > run.length ? "（另有 " + (all.length - run.length) + " 条不可执行）" : "") +
           (run.length < want ? "（库存不足，按可匹配柜执行）" : "");
         document.getElementById("autoCount").textContent = tip;
         document.getElementById("autoRun").disabled = !run.length;
+      }
+      function blCell(s) {
+        if (hasBl(s)) return s.bl;
+        return '<span style="color:#d46b08">无号 · 可先配</span>';
       }
       function renderSlots() {
         var chs = checkedValues("autoChChecks");
@@ -1142,12 +1155,14 @@
           syncAutoCount();
           return;
         }
-        hd.textContent = "匹配柜子预览 · " + rows.length + " 条（按柜型数量截取，只读）";
+        var noBlN = rows.filter(function (s) { return !hasBl(s); }).length;
+        hd.textContent = "匹配柜子预览 · " + rows.length + " 条（按柜型数量截取，只读）" +
+          (noBlN ? " · 含 " + noBlN + " 条无提单号，可先执行" : "");
         var html = '<table class="auto-table"><thead><tr><th>提单号</th><th>渠道</th><th>柜型</th><th>方数上限</th><th>截单时间</th><th>状态</th></tr></thead><tbody>';
         if (!rows.length) html += '<tr><td colspan="6">没有符合渠道×柜型数量的已放舱未装柜柜子</td></tr>';
         rows.forEach(function (s) {
           var off = !slotOn(s);
-          html += '<tr class="' + (off ? "off" : "") + '"><td>' + (s.bl || "—") + "</td><td>" + s.ch + "</td><td>" + s.type + "</td><td>" + s.cap + "</td><td>" + (s.si || "未填") + "</td><td>" + s.state + "</td></tr>";
+          html += '<tr class="' + (off ? "off" : "") + '"><td>' + blCell(s) + "</td><td>" + s.ch + "</td><td>" + s.type + "</td><td>" + s.cap + "</td><td>" + (s.si || "未填") + "</td><td>" + s.state + "</td></tr>";
         });
         document.getElementById("autoBody").innerHTML = html + "</tbody></table>";
         syncAutoCount();
@@ -1157,7 +1172,9 @@
         document.getElementById("autoCancel").textContent = "取消";
         document.getElementById("autoFilters").style.display = "";
         document.getElementById("autoPreviewHd").style.display = "";
-        document.getElementById("autoTip").textContent = "选渠道（可多选），并为各柜型填写数量（>0 才参与）。系统按数量对匹配的已放舱、未装柜柜子出方案；人工补货在终配舱，不进这次。不必再勾选单柜。";
+        document.getElementById("autoTip").innerHTML =
+          "选渠道（可多选），并为各柜型填写数量（&gt;0 才参与）。匹配<strong>已放舱、未装柜</strong>柜子出方案；" +
+          "<strong>无提单号不拦截</strong>，预览标「无号 · 可先配」，可先执行配舱，补号后回写即可。不必再勾选单柜。";
         var pool = slots.filter(listed);
         fillChecks("autoChChecks", uniq(pool.map(function (s) { return s.ch; })));
         fillTypeQty(uniq(pool.map(function (s) { return s.type; })));
@@ -1180,21 +1197,30 @@
         if (!rows.length) { toast("先选渠道并填写柜型数量"); return; }
         var chs = checkedValues("autoChChecks");
         var tq = typeQtyList();
+        var noBlN = rows.filter(function (s) { return !hasBl(s); }).length;
         appendTaskLog(rows, tq);
         document.getElementById("autoFilters").style.display = "none";
         document.getElementById("autoPreviewHd").style.display = "none";
-        document.getElementById("autoTip").innerHTML = "已按渠道「" + chs.join("、") + "」× 柜型数量「" + typeQtyLabel(tq) + "」对 " + rows.length + " 条执行。方案按渠道切开，终配舱的人工补货队列未动。 <a href=\"义乌智能仓-自动配舱-任务日志-MVP.html\">查看任务日志</a>";
-        var html = '<table class="auto-table"><thead><tr><th>提单号</th><th>渠道</th><th>柜型</th><th>方数</th><th>箱数</th><th>重量(吨)</th><th>结果</th></tr></thead><tbody>';
-        rows.forEach(function (s) {
-          var p = planOf[s.id] || { cbm: "—", box: "—", ton: "—", result: "待配" };
+        document.getElementById("autoTip").innerHTML =
+          "已按渠道「" + chs.join("、") + "」× 柜型数量「" + typeQtyLabel(tq) + "」对 " + rows.length + " 条执行" +
+          (noBlN ? "（含 " + noBlN + " 条无提单号，已先配）" : "") +
+          "。方案按渠道切开，终配舱的人工补货队列未动。 <a href=\"义乌智能仓-自动配舱-任务日志-MVP.html\">查看任务日志</a>";
+        var html = '<table class="auto-table"><thead><tr><th>提单号</th><th>渠道</th><th>柜型</th><th>终配舱号</th><th>方数</th><th>箱数</th><th>重量(吨)</th><th>结果</th></tr></thead><tbody>';
+        rows.forEach(function (s, i) {
+          var p = planOf[s.id] || { cbm: "—", box: "—", ton: "—", result: hasBl(s) ? "待配" : "待配 · 无提单号先配" };
+          if (!p.finalNo) {
+            var d0 = new Date();
+            function zp(n) { return n < 10 ? "0" + n : "" + n; }
+            p.finalNo = "26" + zp(d0.getMonth() + 1) + zp(d0.getDate()) + "-" + (s.ch || "混装") + "-" + (i + 1);
+          }
           s.state = "已生成方案";
-          html += "<tr><td>" + (s.bl || "—") + "</td><td>" + s.ch + "</td><td>" + s.type + "</td><td>" + p.cbm + "</td><td>" + p.box + "</td><td>" + p.ton + "</td><td>" + p.result + "</td></tr>";
+          html += "<tr><td>" + blCell(s) + "</td><td>" + s.ch + "</td><td>" + s.type + "</td><td>" + p.finalNo + "</td><td>" + p.cbm + "</td><td>" + p.box + "</td><td>" + p.ton + "</td><td>" + p.result + "</td></tr>";
         });
         document.getElementById("autoBody").innerHTML = html + "</tbody></table>";
         document.getElementById("autoRun").style.display = "none";
         document.getElementById("autoCount").textContent = "";
         document.getElementById("autoCancel").textContent = "关闭";
-        toast("已生成 " + rows.length + " 条配舱方案");
+        toast("已生成 " + rows.length + " 条配舱方案" + (noBlN ? "（含无号 " + noBlN + "）" : ""));
       };
       function taskWho() {
         try {
@@ -1216,9 +1242,16 @@
           at: taskNow(),
           who: taskWho(),
           typeQty: typeQtyLabel(tq || []),
-          lines: rows.map(function (s) {
+          lines: rows.map(function (s, i) {
             var p = planOf[s.id] || { cbm: "—", box: "—", ton: "—", result: "待配" };
-            return { bl: s.bl || "—", ch: s.ch, type: s.type, cbm: p.cbm, box: p.box, ton: p.ton, result: p.result };
+            var finalNo = p.finalNo;
+            if (!finalNo) {
+              var d1 = new Date();
+              function zp2(n) { return n < 10 ? "0" + n : "" + n; }
+              finalNo = "26" + zp2(d1.getMonth() + 1) + zp2(d1.getDate()) + "-" + (s.ch || "混装") + "-" + (i + 1);
+            }
+            p.finalNo = finalNo;
+            return { bl: s.bl || "—", ch: s.ch, type: s.type, finalNo: finalNo, cbm: p.cbm, box: p.box, ton: p.ton, result: p.result };
           })
         });
         localStorage.setItem("yiwu-stow-task-log-v1", JSON.stringify(logs.slice(0, 50)));

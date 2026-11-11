@@ -57,6 +57,7 @@
     .btn { height: 28px; padding: 0 10px; border: 1px solid #d9d9d9; border-radius: 2px; background: #fff; cursor: pointer; font-size: 12px; text-decoration: none; color: var(--text); display: inline-flex; align-items: center; }
     .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
     .btn.wh { background: #fff7e6; border-color: #ffd591; color: #ad4e00; font-weight: 600; }
+    .btn.row-save { height: 24px; padding: 0 8px; white-space: nowrap; }
     .hint { font-size: 11px; color: var(--sub); margin-left: auto; }
     .table-wrap { flex: 1; overflow: auto; background: var(--card); }
     table { border-collapse: collapse; font-size: 12px; min-width: 3400px; }
@@ -163,6 +164,7 @@
                 <th class="wh-col" id="thWhArr">具体到柜时间</th>
                 <th class="wh-col" id="thWhLeave">实际离场时间</th>
                 <th class="wh-col" id="thWhUnloadNote">卸货备注</th>
+                <th class="wh-col" id="thWhRowSave" style="width:72px">操作</th>
                 <th class="ro-col">配舱状态</th>
               </tr>
             </thead>
@@ -198,7 +200,7 @@
       </div>
       <div class="dlg-bd">
         <p style="margin:0 0 10px;font-size:12px;color:#595959;line-height:1.55">
-          检测到勾选行的<strong>装柜费</strong>或<strong>卸柜费</strong>相对上次同步预估有变化。请确认写入「提单预估」的方式：
+          检测到待保存行的<strong>操作装车费 / 操作卸车费</strong>相对上次同步预估有变化。请确认写入「提单预估」的方式（CNY，2 位小数；已转应付不可操作，请联系财务）：
         </p>
         <ul style="margin:0 0 12px;padding-left:1.2em;font-size:12px;line-height:1.6;color:#595959">
           <li><strong>追加</strong>：预估新增一笔，保留原金额。</li>
@@ -341,8 +343,9 @@
           "<td class=\"cell-wh\"><input value=\"" + (r.arr || "") + "\" placeholder=\"2026-08-02 11:40\" data-f=\"arr\" /></td>" +
           "<td class=\"cell-wh\"><input value=\"" + (r.leave || "") + "\" placeholder=\"2026-08-02 16:20\" data-f=\"leave\" /></td>" +
           "<td class=\"cell-wh\"><input value=\"" + (r.unload || "") + "\" data-f=\"unload\" /></td>" +
+          "<td class=\"cell-wh\"><button type=\"button\" class=\"btn wh row-save\" data-row-save=\"" + r.id + "\">保存</button></td>" +
           "<td class=\"cell-ro\"><span class=\"st-pc " + pc[1] + "\">" + pc[0] + "</span></td></tr>";
-      }).join("") || '<tr><td colspan="28" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+      }).join("") || '<tr><td colspan="29" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
 
       tb.querySelectorAll("tr[data-id]").forEach(function (tr) {
         var id = +tr.getAttribute("data-id");
@@ -356,6 +359,13 @@
             else delete selected[id];
             tr.classList.toggle("selected", ck.checked);
             updateSelHint();
+          });
+        }
+        var saveBtn = tr.querySelector("[data-row-save]");
+        if (saveBtn) {
+          saveBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            requestSave([id]);
           });
         }
         tr.addEventListener("click", function (e) {
@@ -377,9 +387,9 @@
       render();
     });
 
-    var pendingFeeMode = null;
-    function feeChangedRows() {
-      return selectedIds().map(function (id) {
+    var pendingSaveIds = null;
+    function feeChangedRows(ids) {
+      return (ids || []).map(function (id) {
         return ROWS.find(function (x) { return x.id === id; });
       }).filter(function (r) {
         if (!r) return false;
@@ -406,12 +416,14 @@
       document.getElementById("feeSyncMask").setAttribute("aria-hidden", "false");
     }
     function closeFeeSync() {
+      pendingSaveIds = null;
       document.getElementById("feeSyncMask").classList.remove("open");
       document.getElementById("feeSyncMask").setAttribute("aria-hidden", "true");
     }
     function commitSave(feeMode) {
-      var ids = selectedIds();
-      var feeRows = feeChangedRows();
+      var ids = pendingSaveIds || [];
+      if (!ids.length) { toast("没有待保存的行"); return; }
+      var feeRows = feeChangedRows(ids);
       ids.forEach(function (id) {
         var r = ROWS.find(function (x) { return x.id === id; });
         if (!r) return;
@@ -423,17 +435,22 @@
         feeMsg = " · 装柜/卸柜费已" + (feeMode === "append" ? "追加" : "覆盖") + "同步提单预估 ×" + feeRows.length;
       }
       toast("已保存 " + ids.length + " 行现场字段（团队/人员已回写，提单管理可见）" + feeMsg);
-      closeFeeSync();
+      document.getElementById("feeSyncMask").classList.remove("open");
+      document.getElementById("feeSyncMask").setAttribute("aria-hidden", "true");
+      pendingSaveIds = null;
     }
-    document.getElementById("btnSave").addEventListener("click", function () {
-      var n = selectedIds().length;
-      if (!n) { toast("请先勾选要保存的行"); return; }
-      var feeRows = feeChangedRows();
+    function requestSave(ids) {
+      if (!ids || !ids.length) { toast("请先勾选要保存的行"); return; }
+      pendingSaveIds = ids.slice();
+      var feeRows = feeChangedRows(ids);
       if (feeRows.length) {
         openFeeSync(feeRows);
         return;
       }
       commitSave(null);
+    }
+    document.getElementById("btnSave").addEventListener("click", function () {
+      requestSave(selectedIds());
     });
     document.getElementById("feeSyncAppend").addEventListener("click", function () { commitSave("append"); });
     document.getElementById("feeSyncOverwrite").addEventListener("click", function () { commitSave("overwrite"); });
@@ -491,7 +508,23 @@
       var tC = a.cntr, tB = a.bl, tP = a.plate, tV = a.voy;
       a.cntr = b.cntr; a.bl = b.bl; a.plate = b.plate; a.voy = b.voy;
       b.cntr = tC; b.bl = tB; b.plate = tP; b.voy = tV;
-      toast("已对调 " + a.finalCabin + " ↔ " + b.finalCabin + "（柜/提单）");
+      try {
+        var key = "yiwu-final-stow-op-log-v1";
+        var logs = JSON.parse(localStorage.getItem(key) || "[]") || [];
+        var d = new Date();
+        function p(n) { return n < 10 ? "0" + n : "" + n; }
+        var at = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+        logs.unshift({
+          id: "SW" + Date.now(),
+          at: at,
+          who: "仓库-监装",
+          type: "柜子对调",
+          finalNo: (a.finalCabin || "—") + " ↔ " + (b.finalCabin || "—"),
+          content: "仓库视图两柜对调：配舱号不变，对调柜号/提单 " + (a.cntr || "") + " ↔ " + (b.cntr || "") + "；提单 " + (a.bl || "") + " ↔ " + (b.bl || "")
+        });
+        localStorage.setItem(key, JSON.stringify(logs.slice(0, 80)));
+      } catch (e) {}
+      toast("已对调 " + a.finalCabin + " ↔ " + b.finalCabin + "（柜/提单）· 已写入终配舱操作日志");
       closeSwap();
       render();
     });

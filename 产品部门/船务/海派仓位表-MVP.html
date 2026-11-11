@@ -218,7 +218,6 @@
         </div>
 
         <div class="toolbar">
-          <button type="button" class="btn primary" id="btnNewCabin">新增仓位</button>
           <button type="button" class="btn primary" id="btnBatchCreate" title="勾选仓位可带入船期/港口；未勾选则进空白批量创建">批量创建提单</button>
           <button type="button" class="btn" id="btnEdit" disabled>编辑仓位</button>
           <button type="button" class="btn primary" id="btnRelease" disabled>放舱出号</button>
@@ -270,11 +269,11 @@
   <div class="sheet-mask" id="regSheetMask" aria-hidden="true">
     <div class="sheet" role="dialog" aria-labelledby="regSheetTitle">
       <div class="sheet-hd">
-        <span id="regSheetTitle">新增订舱登记</span>
+        <span id="regSheetTitle">编辑仓位</span>
         <button type="button" class="btn" id="btnRegClose">关闭</button>
       </div>
       <div class="sheet-bd">
-        <p class="muted" style="margin:0 0 12px;font-size:12px;line-height:1.6;">无提单号阶段在本页登记；<strong>渠道、销售产品</strong>均取销售产品主数据同源字典且必填。保存后为「未放舱」。放舱出号补录提单号后生成「待分配」提单（本页不跳转）。已生成提单后不可再编辑仓位。</p>
+        <p class="muted" style="margin:0 0 12px;font-size:12px;line-height:1.6;">本页<strong>沿用之前的批量登记仓位</strong>；编辑未出号仓位时<strong>渠道、销售产品</strong>均取销售产品主数据同源字典且必填。放舱出号补录提单号后生成「待分配」提单（本页不跳转）。已生成提单后不可再编辑仓位。</p>
         <div class="sec-title">船期 / 港口</div>
         <div class="form-grid">
           <div><label>订舱代理<span class="req">*</span></label><input id="regAgent" placeholder="如 宁波外运 / 腾信订" /></div>
@@ -283,7 +282,7 @@
           <div><label>中文船名</label><input id="regShipCn" placeholder="CLX / COSCO" /></div>
           <div><label>柜型<span class="req">*</span></label><select id="regBox"><option>40HQ</option><option>45HQ</option><option>20GP</option></select></div>
           <div><label>渠道<span class="req">*</span><span class="muted" style="font-weight:400"> · 销售产品主数据</span></label>
-            <select id="regChannel" title="与销售产品同源 · 创建仓位/创建提单必填">
+            <select id="regChannel" title="与销售产品同源 · 编辑仓位/创建提单必填">
               <option value="">请选择渠道</option>
               <option>美森正班</option>
               <option>美森加班</option>
@@ -295,7 +294,7 @@
             </select>
           </div>
           <div><label>销售产品<span class="req">*</span><span class="muted" style="font-weight:400"> · 同源必填</span></label>
-            <select id="regSalesProd" title="与渠道同源（销售产品主数据）· 创建仓位/创建提单必填">
+            <select id="regSalesProd" title="与渠道同源（销售产品主数据）· 编辑仓位/创建提单必填">
               <option value="">请选择销售产品</option>
               <option>美森正班</option>
               <option>美森加班</option>
@@ -425,11 +424,8 @@
       { id: 4, week: 32, released: true, bl: "MATS6104484000", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", channel: "T20", salesProd: "T20", cabin: "260801-朱涛整柜", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "16513", free: "", planLoad: "2026-08-11", reqArrive: "", loadSt: "未装", broker: "", note: "改盐田提", synced: true, cutoff: false, markColor: "" }
     ];
 
-    var state = { st: "all", week: "all", sel: new Set(), regMode: "add", regEditId: null, pickColor: "" };
+    var state = { st: "all", week: "all", sel: new Set(), regEditId: null, pickColor: "" };
 
-    function nextId() {
-      return ROWS.reduce(function (m, r) { return Math.max(m, r.id); }, 0) + 1;
-    }
     function escHtml(s) {
       return String(s == null ? "" : s)
         .replace(/&/g, "&amp;")
@@ -438,49 +434,38 @@
         .replace(/"/g, "&quot;");
     }
 
-    function openRegSheet(mode) {
-      state.regMode = mode;
-      state.regEditId = null;
-      document.getElementById("regSheetTitle").textContent = mode === "edit" ? "编辑仓位" : "新增订舱登记";
-      var fields = ["regAgent", "regVoyage", "regPort", "regShipCn", "regCabin", "regImp", "regNote", "regBroker"];
-      fields.forEach(function (id) { document.getElementById(id).value = ""; });
-      document.getElementById("regBox").value = "40HQ";
-      document.getElementById("regChannel").value = "";
-      document.getElementById("regSalesProd").value = "";
-      document.getElementById("regSi").value = "";
-      document.getElementById("regCy").value = "";
-      document.getElementById("regEtd").value = "";
-      document.getElementById("regPlanLoad").value = "";
-      document.getElementById("regReqArrive").value = "";
-
-      if (mode === "edit") {
-        var row = selectedRows()[0];
-        if (!row) { toast("请先勾选一条"); return; }
-        state.regEditId = row.id;
-        document.getElementById("regAgent").value = row.agent || "";
-        document.getElementById("regVoyage").value = row.voyage || "";
-        document.getElementById("regPort").value = row.port || "";
-        document.getElementById("regShipCn").value = row.shipCn || "";
-        document.getElementById("regBox").value = row.box || "40HQ";
-        document.getElementById("regChannel").value = row.channel || "";
-        document.getElementById("regSalesProd").value = row.salesProd || "";
-        document.getElementById("regCabin").value = row.cabin || "";
-        document.getElementById("regImp").value = row.imp || "";
-        document.getElementById("regNote").value = row.note || "";
-        document.getElementById("regBroker").value = row.broker || "";
-        document.getElementById("regEtd").value = row.etd || "";
-        document.getElementById("regPlanLoad").value = row.planLoad || "";
-        if (row.reqArrive && String(row.reqArrive).indexOf("-") === 4) {
-          document.getElementById("regReqArrive").value = String(row.reqArrive).replace(" ", "T").slice(0, 16);
-        } else {
-          document.getElementById("regReqArrive").value = "";
-        }
-        if (row.si && row.si.indexOf("-") === 4) {
-          document.getElementById("regSi").value = String(row.si).replace(" ", "T").slice(0, 16);
-        }
-        if (row.cy && row.cy.indexOf("-") === 4) {
-          document.getElementById("regCy").value = String(row.cy).replace(" ", "T").slice(0, 16);
-        }
+    function openRegSheet() {
+      var row = selectedRows()[0];
+      if (!row) { toast("请先勾选一条"); return; }
+      state.regEditId = row.id;
+      document.getElementById("regSheetTitle").textContent = "编辑仓位";
+      document.getElementById("regAgent").value = row.agent || "";
+      document.getElementById("regVoyage").value = row.voyage || "";
+      document.getElementById("regPort").value = row.port || "";
+      document.getElementById("regShipCn").value = row.shipCn || "";
+      document.getElementById("regBox").value = row.box || "40HQ";
+      document.getElementById("regChannel").value = row.channel || "";
+      document.getElementById("regSalesProd").value = row.salesProd || "";
+      document.getElementById("regCabin").value = row.cabin || "";
+      document.getElementById("regImp").value = row.imp || "";
+      document.getElementById("regNote").value = row.note || "";
+      document.getElementById("regBroker").value = row.broker || "";
+      document.getElementById("regEtd").value = row.etd || "";
+      document.getElementById("regPlanLoad").value = row.planLoad || "";
+      if (row.reqArrive && String(row.reqArrive).indexOf("-") === 4) {
+        document.getElementById("regReqArrive").value = String(row.reqArrive).replace(" ", "T").slice(0, 16);
+      } else {
+        document.getElementById("regReqArrive").value = "";
+      }
+      if (row.si && row.si.indexOf("-") === 4) {
+        document.getElementById("regSi").value = String(row.si).replace(" ", "T").slice(0, 16);
+      } else {
+        document.getElementById("regSi").value = "";
+      }
+      if (row.cy && row.cy.indexOf("-") === 4) {
+        document.getElementById("regCy").value = String(row.cy).replace(" ", "T").slice(0, 16);
+      } else {
+        document.getElementById("regCy").value = "";
       }
 
       document.getElementById("regSheetMask").classList.add("open");
@@ -525,32 +510,16 @@
         cy: document.getElementById("regCy").value ? document.getElementById("regCy").value.replace("T", " ") : ""
       };
 
-      if (state.regMode === "edit" && state.regEditId) {
-        var row = ROWS.find(function (r) { return r.id === state.regEditId; });
-        if (row) {
-          if (hasGeneratedBl(row)) {
-            toast("已生成提单，请在提单管理页面编辑");
-            return;
-          }
-          Object.assign(row, payload);
-          syncRowWeek(row);
-        }
-        toast("已保存编辑");
-      } else {
-        var id = nextId();
-        var neu = {
-          id: id, week: "", weekKey: "", released: false, bl: "", synced: false, cutoff: false, markColor: "",
-          fee: "", free: "", planLoad: payload.planLoad, reqArrive: payload.reqArrive, loadSt: "未装",
-          agent: payload.agent, voyage: payload.voyage, port: payload.port, shipCn: payload.shipCn,
-          box: payload.box, channel: payload.channel, salesProd: payload.salesProd, cabin: payload.cabin, imp: payload.imp, note: payload.note, broker: payload.broker,
-          etd: payload.etd, si: payload.si || "—", cy: payload.cy || ""
-        };
-        syncRowWeek(neu);
-        ROWS.push(neu);
-        state.sel.clear();
-        state.sel.add(id);
-        toast("已新增未放舱仓位");
+      if (!state.regEditId) { toast("请先勾选一条仓位再编辑"); return; }
+      var row = ROWS.find(function (r) { return r.id === state.regEditId; });
+      if (!row) { toast("仓位不存在"); return; }
+      if (hasGeneratedBl(row)) {
+        toast("已生成提单，请在提单管理页面编辑");
+        return;
       }
+      Object.assign(row, payload);
+      syncRowWeek(row);
+      toast("已保存编辑");
       closeRegSheet();
       renderWeekBar();
       renderTable();
@@ -979,7 +948,6 @@
       if (e.target === document.getElementById("rsMask")) closeReturnShip();
     });
 
-    document.getElementById("btnNewCabin").addEventListener("click", function () { openRegSheet("add"); });
     document.getElementById("btnEdit").addEventListener("click", function () {
       var one = selectedRows()[0];
       if (!one || isVoidCabin(one)) { toast("请勾选一条未作废仓位"); return; }
@@ -987,7 +955,7 @@
         toast("已生成提单，请在提单管理页面编辑");
         return;
       }
-      openRegSheet("edit");
+      openRegSheet();
     });
     document.getElementById("btnRegClose").addEventListener("click", closeRegSheet);
     document.getElementById("btnRegCancel").addEventListener("click", closeRegSheet);

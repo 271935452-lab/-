@@ -155,15 +155,24 @@
     return "义乌智能仓-方案/" + name.replace(/^.*\//, "");
   }
 
+  function v1PrdHref() {
+    if (!scriptEl) return "";
+    return (scriptEl.getAttribute("data-v1-prd") || "").trim();
+  }
+
   function mountBar() {
     if (document.getElementById("shipStowDocBar")) return;
     var bar = document.createElement("span");
     bar.className = "ship-stow-doc-toolbar";
     bar.id = "shipStowDocBar";
+    var v1 = v1PrdHref();
     bar.innerHTML =
       '<button type="button" class="btn-doc" id="shipStowBtnFeature">功能说明</button>' +
       '<button type="button" class="btn-doc" id="shipStowBtnPoints">逐点开发说明</button>' +
-      '<a class="btn-doc" id="shipStowBtnPrd" href="' + prdHref() + '" target="_blank" rel="noopener">本页 PRD</a>';
+      '<a class="btn-doc" id="shipStowBtnPrd" href="' + prdHref() + '" target="_blank" rel="noopener">本页 PRD</a>' +
+      (v1
+        ? '<a class="btn-doc" id="shipStowBtnPrdV1" href="' + v1 + '" target="_blank" rel="noopener">V1 PRD</a>'
+        : "");
 
     var mount = document.getElementById("shipStowDocMount");
     var toolbar = document.querySelector(".toolbar");
@@ -175,7 +184,7 @@
     document.getElementById("shipStowBtnPoints").addEventListener("click", openPoints);
     var prdA = document.getElementById("shipStowBtnPrd");
     if (prdA) {
-      prdA.addEventListener("click", function (e) {
+      prdA.addEventListener("click", function () {
         /* 点击时再算一次，确保进本页详情而非总览列表 */
         prdA.setAttribute("href", prdHref());
       });
