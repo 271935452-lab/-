@@ -305,7 +305,7 @@
 
         <div class="toolbar">
           <button type="button" class="tool-btn" id="btnAutoStow">自动配舱</button>
-          <a class="tool-btn outline" href="义乌智能仓-自动配舱-任务日志-MVP.html">任务日志</a>
+          <button type="button" class="tool-btn outline" id="btnPreLog" title="自动配舱每次执行一条；含生成的终配舱号">操作日志</button>
           <button type="button" class="tool-btn" id="btnQuery">查询数据</button>
           <button type="button" class="tool-btn" id="btnExpand">全部展开</button>
           <button type="button" class="tool-btn" id="btnCollapse">全部关闭</button>
@@ -380,6 +380,26 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <div class="mask" id="preLogMask">
+    <div class="modal wide" role="dialog" aria-labelledby="preLogTitle">
+      <div class="modal-hd" id="preLogTitle">操作日志 · 自动配舱任务</div>
+      <div class="modal-bd">
+        <p class="auto-tip" style="margin-top:0">一次点「自动配舱」执行记一条。只记本次选中柜子与结果（含<strong>生成的终配舱号</strong>）；人工补货不进。单柜改配 / 待办确认 / 柜子对调看<strong>终配舱</strong>操作日志。</p>
+        <div class="table-wrap" style="max-height:360px;overflow:auto">
+          <table class="grid">
+            <thead>
+              <tr><th>时间</th><th>操作人</th><th>提单号</th><th>终配舱号</th><th>渠道</th><th>柜型</th><th>柜数</th><th>结果</th></tr>
+            </thead>
+            <tbody id="preLogBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="preLogClose">关闭</button>
+      </div>
+    </div>
+  </div>
 
   <div class="mask" id="autoMask">
     <div class="modal wide auto" role="dialog" aria-labelledby="autoTitle">
@@ -1204,7 +1224,7 @@
         document.getElementById("autoTip").innerHTML =
           "已按渠道「" + chs.join("、") + "」× 柜型数量「" + typeQtyLabel(tq) + "」对 " + rows.length + " 条执行" +
           (noBlN ? "（含 " + noBlN + " 条无提单号，已先配）" : "") +
-          "。方案按渠道切开，终配舱的人工补货队列未动。 <a href=\"义乌智能仓-自动配舱-任务日志-MVP.html\">查看任务日志</a>";
+          "。方案按渠道切开，终配舱的人工补货队列未动。 <a href=\"#\" id=\"autoOpenLog\">查看操作日志</a>";
         var html = '<table class="auto-table"><thead><tr><th>提单号</th><th>渠道</th><th>柜型</th><th>终配舱号</th><th>方数</th><th>箱数</th><th>重量(吨)</th><th>结果</th></tr></thead><tbody>';
         rows.forEach(function (s, i) {
           var p = planOf[s.id] || { cbm: "—", box: "—", ton: "—", result: hasBl(s) ? "待配" : "待配 · 无提单号先配" };
@@ -1256,6 +1276,74 @@
         });
         localStorage.setItem("yiwu-stow-task-log-v1", JSON.stringify(logs.slice(0, 50)));
       }
+
+      var PRE_LOG_SEED = [
+        {
+          at: "2026-11-04 11:40", who: "黄少飞",
+          lines: [
+            { bl: "COSU260831001", finalNo: "260831-美森正班-1", ch: "美森正班", type: "40HQ", result: "待配 · 未满" },
+            { bl: "COSU260831002", finalNo: "260831-美森正班-2", ch: "美森正班", type: "40HQ", result: "终配" }
+          ]
+        },
+        {
+          at: "2026-11-03 16:05", who: "黄少飞",
+          lines: [
+            { bl: "MAEU260901016", finalNo: "260901-T16-1", ch: "T16", type: "40GP", result: "待配 · 未满" },
+            { bl: "OOLU260901020", finalNo: "260901-T20-1", ch: "T20", type: "45HQ", result: "待配 · 超重" }
+          ]
+        }
+      ];
+      function loadPreLogs() {
+        var extra = [];
+        try { extra = JSON.parse(localStorage.getItem("yiwu-stow-task-log-v1") || "[]") || []; } catch (e) {}
+        return extra.concat(PRE_LOG_SEED);
+      }
+      function openPreLog() {
+        var logs = loadPreLogs();
+        var rows = [];
+        logs.forEach(function (log) {
+          var lines = log.lines || [];
+          var byType = {};
+          lines.forEach(function (ln) {
+            var k = (ln.type || "—") + "|" + (ln.ch || "—");
+            if (!byType[k]) byType[k] = { type: ln.type || "—", ch: ln.ch || "—", n: 0, bls: [], fins: [], results: {} };
+            byType[k].n += 1;
+            if (ln.bl) byType[k].bls.push(ln.bl);
+            if (ln.finalNo) byType[k].fins.push(ln.finalNo);
+            byType[k].results[ln.result || "—"] = (byType[k].results[ln.result || "—"] || 0) + 1;
+          });
+          Object.keys(byType).forEach(function (k) {
+            var g = byType[k];
+            var res = Object.keys(g.results).map(function (r) { return r + " " + g.results[r]; }).join(" · ");
+            rows.push("<tr><td>" + (log.at || "—") + "</td><td>" + (log.who || "—") + "</td><td>" +
+              g.bls.join("<br>") + "</td><td>" + g.fins.join("<br>") + "</td><td>" + g.ch + "</td><td>" +
+              g.type + "</td><td class='num'>" + g.n + "</td><td>" + res + "</td></tr>");
+          });
+        });
+        document.getElementById("preLogBody").innerHTML = rows.length
+          ? rows.join("")
+          : "<tr><td colspan='8' style='text-align:center;color:#8c8c8c;padding:28px'>暂无自动配舱任务日志</td></tr>";
+        document.getElementById("preLogMask").className = "mask show";
+      }
+      document.getElementById("btnPreLog").onclick = openPreLog;
+      document.getElementById("preLogClose").onclick = function () {
+        document.getElementById("preLogMask").className = "mask";
+      };
+      document.getElementById("preLogMask").addEventListener("click", function (e) {
+        if (e.target === this) this.className = "mask";
+      });
+      document.getElementById("autoBody").addEventListener("click", function (e) {
+        var a = e.target.closest("#autoOpenLog");
+        if (!a) return;
+        e.preventDefault();
+        openPreLog();
+      });
+      document.getElementById("autoTip").addEventListener("click", function (e) {
+        var a = e.target.closest("#autoOpenLog");
+        if (!a) return;
+        e.preventDefault();
+        openPreLog();
+      });
     })();
   </script>
   <script>renderShipReviewNav("pre-stow");</script>

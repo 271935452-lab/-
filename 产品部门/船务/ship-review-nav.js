@@ -10,10 +10,8 @@
   var ITEMS = [
     // 操作 · 仓库相关
     { type: "link", parent: "ops", id: "wh-plan", href: "装柜计划-仓库视图-MVP.html", label: "装柜计划 · 仓库视图" },
-    { type: "link", parent: "ops", id: "wh-pda", href: "../../APP/装柜扫描-件数核对-MVP.html", label: "PDA · 装柜扫描" },
     { type: "link", parent: "ops", id: "pre-stow", href: "船务组-待配仓-MVP.html", label: "待配仓 · 组合配仓" },
     { type: "link", parent: "ops", id: "final-stow", href: "船务组-终配舱-MVP.html", label: "终配舱登记" },
-    { type: "link", parent: "ops", id: "stow-log", href: "义乌智能仓-自动配舱-任务日志-MVP.html", label: "自动配舱日志" },
 
     // 产品 · 作业原型
     { type: "link", parent: "prod", id: "cabin", href: "海派仓位表-MVP.html", label: "海派仓位表" },
@@ -36,7 +34,6 @@
     { type: "link", parent: "scheme", id: "flow", href: "义乌智能仓-方案/船务组-订舱仓位装柜-流程图.html", label: "订舱仓位装柜 · 流程图" },
     { type: "link", parent: "scheme", id: "stow-scene", href: "义乌智能仓-方案/义乌智能仓-自动配舱-场景.html", label: "自动配舱场景" },
     { type: "link", parent: "scheme", id: "stow-open", href: "义乌智能仓-方案/义乌智能仓-自动配舱-待确认.html", label: "自动配舱待确认" },
-    { type: "link", parent: "scheme", id: "stow-seal-gw", href: "义乌智能仓-方案/义乌智能仓-封门留货-关务对接确认.html", label: "封门留货 · 关务对接" },
     { type: "link", parent: "scheme", id: "swim", href: "义乌智能仓-方案/义乌智能仓-规则到海外仓-泳道图.html", label: "规则到海外仓 · 泳道图" }
   ];
 

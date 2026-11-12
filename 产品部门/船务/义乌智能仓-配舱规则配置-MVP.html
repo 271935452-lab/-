@@ -356,8 +356,8 @@
                   <ul class="note" style="margin:0;padding-left:18px;line-height:1.7">
                     <li><strong>自动不封门</strong>：自动配舱不消费本队列；接近上限可留余量，方案先落成。</li>
                     <li><strong>谁封</strong>：未满舱在终配舱「人工补货」里封门；入口文案即「未满的舱从这里封门」。</li>
-                    <li><strong>用什么</strong>：每渠道预留「单票方数档」+「单票单件档」作封门货来源。</li>
-                    <li><strong>怎么选</strong>：同渠道；<strong>封门单号越少越好</strong>（优先一票封住，再搭 1～2 件单件）。跨渠道须人工确认。</li>
+                    <li><strong>用什么</strong>：单票 <strong>2～3 方</strong> + <strong>单票单件</strong>，单独进入一个<strong>补货配舱号</strong>（不进自动主方案）。</li>
+                    <li><strong>怎么选</strong>：同渠道；封门挑货按装柜序倒序——<strong>FedEx → 无则 FBA → UPS → 自提 → 私卡 → 反倾销/服装</strong>（依次类推）。人工从补货配舱号里挑。跨渠道须人工确认。</li>
                     <li><strong>升舱</strong>：同渠道升级补封门可做，默认不告知客户。</li>
                     <li><strong>保存后</strong>：按实际重算方数/箱数/重量/服装等并打标；踩线按「超限怎么处理」走。</li>
                     <li><strong>关务</strong>：制单 / 核准 / 舱单以含封门后的终配合计为准；对接说明见 <a href="义乌智能仓-方案/义乌智能仓-封门留货-关务对接确认.html">关务对接确认</a>。</li>
@@ -365,11 +365,12 @@
                 </div>
               </div>
               <div class="form-grid">
-                <div><label>封门货 · 单票方数下限</label><input id="cubeKeepMin" type="number" step="0.1" value="2.5" /></div>
-                <div><label>封门货 · 单票方数上限</label><input id="cubeKeepMax" type="number" step="0.1" value="3.5" /></div>
+                <div><label>封门货 · 单票方数下限</label><input id="cubeKeepMin" type="number" step="0.1" value="2" /></div>
+                <div><label>封门货 · 单票方数上限</label><input id="cubeKeepMax" type="number" step="0.1" value="3" /></div>
                 <div><label>单票方数档 · 每渠道留票数</label><input id="cubeKeepN" type="number" value="10" /></div>
+                <div class="full"><label>封门挑货顺序（装柜序倒序，可改）</label><input id="sealPrefer" value="FedEx → FBA → UPS → 自提 → 私卡 → 反倾销/服装" /></div>
                 <div><label>单票单件档 · 每渠道留票数</label><input id="pieceKeepN" type="number" value="10" /></div>
-                <div class="full"><p class="note">两档均为<strong>封门货队列</strong>：用完后系统按规则自动往队列里补票；现场从终配舱按渠道取用。</p></div>
+                <div class="full"><p class="note">两档进同一<strong>补货配舱号</strong>：用完后按规则自动补票；人工补货只从该号里挑。默认先 FedEx，没有再按序往下（可改）。</p></div>
               </div>
             </section>
 
@@ -715,10 +716,11 @@
         }),
         handle: readHandle(),
         owners: readOwners(),
-        cubeKeepMin: +$("cubeKeepMin").value || 2.5,
-        cubeKeepMax: +$("cubeKeepMax").value || 3.5,
+        cubeKeepMin: +$("cubeKeepMin").value || 2,
+        cubeKeepMax: +$("cubeKeepMax").value || 3,
         cubeKeepN: +$("cubeKeepN").value || 10,
         pieceKeepN: +$("pieceKeepN").value || 10,
+        sealPrefer: ($("sealPrefer") && $("sealPrefer").value.trim()) || "FedEx → FBA → UPS → 自提 → 私卡 → 反倾销/服装",
         markColor: readMarkColors(),
         ownerReview: (readOwners().wReview) || "黄少飞",
         ownerBan: (readOwners().wBan) || "配舱同事",
@@ -934,10 +936,11 @@
         }),
         handle: readHandle(),
         owners: readOwners(),
-        cubeKeepMin: +$("cubeKeepMin").value || 2.5,
-        cubeKeepMax: +$("cubeKeepMax").value || 3.5,
+        cubeKeepMin: +$("cubeKeepMin").value || 2,
+        cubeKeepMax: +$("cubeKeepMax").value || 3,
         cubeKeepN: +$("cubeKeepN").value || 10,
         pieceKeepN: +$("pieceKeepN").value || 10,
+        sealPrefer: ($("sealPrefer") && $("sealPrefer").value.trim()) || "FedEx → FBA → UPS → 自提 → 私卡 → 反倾销/服装",
         markColor: readMarkColors(),
         ownerReview: (readOwners().wReview) || "黄少飞",
         ownerBan: (readOwners().wBan) || "配舱同事",
@@ -998,6 +1001,7 @@
       if (r.cubeKeepMax != null) $("cubeKeepMax").value = r.cubeKeepMax;
       if (r.cubeKeepN != null) $("cubeKeepN").value = r.cubeKeepN;
       if (r.pieceKeepN != null) $("pieceKeepN").value = r.pieceKeepN;
+      if ($("sealPrefer")) $("sealPrefer").value = r.sealPrefer || "FedEx → FBA → UPS → 自提 → 私卡 → 反倾销/服装";
       fillAuditor(r.auditor);
       if (r.effectiveFrom) $("effectiveFrom").value = r.effectiveFrom;
       else if ($("effectiveFrom")) $("effectiveFrom").value = "";
@@ -1025,7 +1029,7 @@
         handle: DEFAULT_HANDLE,
         owners: Object.assign({}, DEFAULT_OWNERS),
         prioRules: DEFAULT_PRIO.map(function (p) { return { id: p.id, name: p.name, force: !!p.force }; }),
-        cubeKeepMin: 2.5, cubeKeepMax: 3.5, cubeKeepN: 10, pieceKeepN: 10,
+        cubeKeepMin: 2, cubeKeepMax: 3, cubeKeepN: 10, pieceKeepN: 10, sealPrefer: "FedEx → FBA → UPS → 自提 → 私卡 → 反倾销/服装",
         rushWords: "限时达",
         auditor: "黄少飞"
       };
