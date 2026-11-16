@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9810 账单拆分 · 业务签字清单</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --card: #fff; --line: #e5e7eb; --text: #111827; --sub: #6b7280;
+      --primary: #0f766e; --accent: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 13px;
+    }
+    a { color: #2563eb; }
+    .hub-bar {
+      position: sticky; top: 0; z-index: 50; background: #0f766e; color: #fff;
+      padding: 7px 14px; font-size: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    }
+    .hub-bar a { color: #fff; text-decoration: none; }
+    .hub-bar .btn {
+      height: 26px; padding: 0 10px; border: 1px solid rgba(255,255,255,.5);
+      background: transparent; color: #fff; border-radius: 4px; cursor: pointer; font: inherit;
+    }
+    .hub-bar .btn.primary { background: #fff; color: #0f766e; font-weight: 700; border-color: #fff; }
+    .hub-bar .btn:disabled { opacity: .55; cursor: wait; }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+      background: #134e4a; color: #fff; padding: 10px 16px; border-radius: 6px;
+      font-size: 13px; font-weight: 600; z-index: 10050; opacity: 0;
+      pointer-events: none; transition: opacity .2s ease; max-width: 92vw; text-align: center;
+    }
+    .toast.show { opacity: 1; }
+    .page { max-width: 980px; margin: 0 auto; padding: 16px 14px 56px; }
+    .hero {
+      background: linear-gradient(135deg, #0f766e, #2563eb); color: #fff;
+      border-radius: 8px; padding: 16px 18px; margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 20px; }
+    .hero p { margin: 0; font-size: 12px; line-height: 1.7; opacity: .95; }
+    .meta {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .meta .box {
+      background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+    }
+    .meta .k { font-size: 11px; color: var(--sub); }
+    .meta .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .ref { font-size: 11px; color: var(--sub); margin-bottom: 12px; line-height: 1.65; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 8px; font-size: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    }
+    .card .lead { margin: 0 0 8px; font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .rule {
+      margin: 0 0 10px; padding: 8px 10px; background: #fff7ed; border: 1px solid #fdba74;
+      border-radius: 6px; font-size: 12px; color: var(--accent); line-height: 1.65;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      border: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top;
+    }
+    th { background: #f8fafc; font-weight: 700; color: #475569; }
+    .chk { width: 44px; text-align: center; }
+    .chk input { width: 16px; height: 16px; }
+    .id { font-family: Consolas, monospace; font-size: 11px; white-space: nowrap; }
+    .brief td:first-child { width: 120px; font-weight: 700; background: #f8fafc; }
+    .sign-note { margin: 8px 0 0; font-size: 12px; color: var(--sub); line-height: 1.6; }
+    .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 8px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; }
+      .page { max-width: none; padding: 0; }
+    }
+    @media (max-width: 720px) { .meta { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body data-file="INV-1021-9810-业务签字清单-V1.3.png">
+  <div class="no-print hub-bar">
+    <a href="对照说明.html"><strong>← 9810 入口</strong></a>
+    · <a href="请款单管理-PRD-交互稿.html">请款 PRD</a>
+    · <a href="9810拆分规则配置-PRD-交互稿.html">配置 PRD</a>
+    · <a href="../收款/请款单管理-指定票件整合-MVP.html">请款原型</a>
+    <button type="button" class="btn primary" id="btnCopyImg">复制图片发群</button>
+    <button type="button" class="btn" id="btnDownloadImg">下载 PNG</button>
+    <button type="button" class="btn" onclick="window.print()">打印 / 另存 PDF</button>
+    <span id="copyEnvHint" class="no-print" style="font-size:11px;opacity:.9;max-width:420px;line-height:1.4"></span>
+  </div>
+  <div class="toast no-print" id="toast" role="status"></div>
+
+  <div class="page" id="shot">
+    <section class="hero">
+      <h1>9810 账单拆分 · 业务签字清单</h1>
+      <p>财务、业务负责人勾选下列条款，作为 INV-1021-001 验收口径。</p>
+    </section>
+
+    <div class="meta">
+      <div class="box"><div class="k">编号</div><div class="v">INV-1021-SIGN-20261027</div></div>
+      <div class="box"><div class="k">需求</div><div class="v">INV-1021-001</div></div>
+      <div class="box"><div class="k">条数</div><div class="v">21 条</div></div>
+      <div class="box"><div class="k">版本</div><div class="v">V1.3</div></div>
+    </div>
+
+    <section class="card">
+      <table>
+        <thead><tr><th class="chk">确认</th><th>编号</th><th>业务口径</th></tr></thead>
+        <tbody>
+          <tr><td colspan="3" style="background:#f0fdfa;font-weight:700;font-size:12px">范围</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-01</td>
+            <td>支持导出 <strong>9810 客户账单</strong>；后台「9810 拆分规则配置」维护默认单价（通用 + 按销售产品）；报关费只配税率，金额取运单真实报关费。<strong>本期不做</strong>指定票件收款页迁入。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-02</td>
+            <td>不按报关方式 9810/0110 自动拦截，由财务选普通或 9810 导出模板。</td>
+          </tr>
+
+          <tr><td colspan="3" style="background:#f0fdfa;font-weight:700;font-size:12px">请款与圈票</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-03</td>
+            <td>新建/批量请款与现网一致，不先选普通或 9810；拆分明细在「导出请款单」且选 9810 模板时做。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-04</td>
+            <td>圈票：①按账期—过账单日且未收清（账单日按结算账期表，新建请款展示本期账单日）；②按时间—自选到货/费用创建区间且未收清。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-05</td>
+            <td>批量请款布局与现网一致，增圈票方式/选择时间；按账期时费用月份等到货/费用创建时间置灰；生成请款直接保存。</td>
+          </tr>
+
+          <tr><td colspan="3" style="background:#f0fdfa;font-weight:700;font-size:12px">导出（姚总 10/26）</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-13</td>
+            <td>入口：勾选请款单 → 导出请款单 → 选模板（现网流程）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-20</td>
+            <td>模板名含「9810」→ 进拆分页；不含 → 普通出账，不写开票税费。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-14</td>
+            <td>请款与模板不一致时提示，可继续，不硬拦。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-15</td>
+            <td>同一运单可同时挂普通与 9810 请款，圈票不互斥。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-17</td>
+            <td>先 9810 后普通：普通导出前提示已有 9810 写账，可继续；不冲销 9810；金额取运单最新账单（含税）。</td>
+          </tr>
+
+          <tr><td colspan="3" style="background:#f0fdfa;font-weight:700;font-size:12px">9810 拆分默认</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-06</td>
+            <td>默认三行：道路、港杂、报关（不可删）；不拆则单价改 0。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-07</td>
+            <td>默认税率：道路 9%，港杂/报关/代理服务费/其他 6%（可改）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-08</td>
+            <td>按方数默认单价：T25 内陆 20、其他内陆 100、港杂 40（元/方，后台可改）；报关取运单实际基数。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-09</td>
+            <td>客户有保存习惯用最新版，否则读后台并可选手选通用/分产品价；可按方数或计费重；多产品分页签；确认导出保存客户默认（固定勾选）。</td>
+          </tr>
+
+          <tr><td colspan="3" style="background:#f0fdfa;font-weight:700;font-size:12px">写回运单与开票税费</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-10</td>
+            <td>按运单写开票税费（C01）至成本、应收各一条（同额）；并记费用操作日志每运单 2 条（新增业务成本/新增应收），格式同现网。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-18</td>
+            <td>可单独勾选是否写成本、写应收（默认都勾）；都不勾仍出账、仍写运单拆分，不写 C01 与日志。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-11</td>
+            <td>再次 9810 导出：二次确认后覆盖上次拆分与 C01，不追加第二条。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-19</td>
+            <td>费用已锁定仍允许写/改开票税费（勾选回写时）；其他费用仍守锁定规则。</td>
+          </tr>
+
+          <tr><td colspan="3" style="background:#f0fdfa;font-weight:700;font-size:12px">对账单</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-12</td>
+            <td>纵向一行一费用；金额含税；单价=含税金额÷收货计费重；国际段=总运费减国内各项（≥0）。</td>
+          </tr>
+
+          <tr><td colspan="3" style="background:#f0fdfa;font-weight:700;font-size:12px">须拦或提示</td></tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-21</td>
+            <td>覆盖税费时若已核销：拦截，须先撤销核销（与锁定不同）。</td>
+          </tr>
+          <tr>
+            <td class="chk"><input type="checkbox" /></td>
+            <td class="id">INV-S-23</td>
+            <td>9810 运费已部分核销：拦截并提示撤销后再请款；未拆分且无部分核销则正常拆分。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>签字栏</h2>
+      <p class="sign-note">本人已阅读上表全部条款并同意验收口径。</p>
+      <table class="brief">
+        <tbody>
+          <tr><td>财务负责人</td><td>签字 _________________________　日期 ________</td></tr>
+          <tr><td>业务负责人</td><td>签字 _________________________　日期 ________</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="foot">INV-1021-SIGN-20261027 · V1.3 精简版 · 财务收款组</p>
+  </div>
+
+  <script>
+  (function () {
+    var shot = document.getElementById("shot");
+    var toast = document.getElementById("toast");
+    var btnCopy = document.getElementById("btnCopyImg");
+    var btnDl = document.getElementById("btnDownloadImg");
+    var envHint = document.getElementById("copyEnvHint");
+    var FILE = document.body.getAttribute("data-file") || "INV-1021-业务签字清单.png";
+    var toastTimer = null;
+    var h2cReady = null;
+
+    function showToast(msg, ms) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove("show"); }, ms || 4200);
+    }
+
+    function canCopyImageToClipboard() {
+      return !!(window.isSecureContext && navigator.clipboard && window.ClipboardItem);
+    }
+
+    if (envHint) {
+      if (location.protocol === "file:") {
+        envHint.textContent = "提示：本地文件打开时浏览器通常不让复制图片，请用「下载 PNG」或 Cursor/VS Code「Live Preview」打开本页后再复制。";
+      } else if (!canCopyImageToClipboard()) {
+        envHint.textContent = "提示：当前环境可能无法复制图片，失败时会自动下载 PNG。";
+      }
+    }
+
+    function loadHtml2Canvas() {
+      if (typeof html2canvas === "function") return Promise.resolve();
+      if (h2cReady) return h2cReady;
+      var urls = [
+        "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
+        "https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"
+      ];
+      h2cReady = new Promise(function (resolve, reject) {
+        var i = 0;
+        function tryNext() {
+          if (typeof html2canvas === "function") {
+            resolve();
+            return;
+          }
+          if (i >= urls.length) {
+            reject(new Error("截图库加载失败：请检查网络，或点「下载 PNG」"));
+            return;
+          }
+          var s = document.createElement("script");
+          s.src = urls[i++];
+          s.onload = function () {
+            if (typeof html2canvas === "function") resolve();
+            else tryNext();
+          };
+          s.onerror = tryNext;
+          document.head.appendChild(s);
+        }
+        tryNext();
+      });
+      return h2cReady;
+    }
+
+    function captureScale() {
+      var h = shot ? shot.scrollHeight : 4000;
+      if (h * 2 > 12000) return 1;
+      if (h * 1.5 > 12000) return 1;
+      return 2;
+    }
+
+    function capture() {
+      return loadHtml2Canvas().then(function () {
+        return html2canvas(shot, {
+          backgroundColor: "#f5f7fb",
+          scale: captureScale(),
+          useCORS: true,
+          logging: false,
+          scrollX: 0,
+          scrollY: -window.scrollY,
+          windowWidth: shot.scrollWidth,
+          windowHeight: shot.scrollHeight
+        });
+      }).then(function (canvas) {
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob);
+            else reject(new Error("生成图片失败，可试「下载 PNG」或缩短页面后重试"));
+          }, "image/png");
+        });
+      });
+    }
+
+    function download(blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = FILE;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function copyBlob(blob) {
+      return navigator.clipboard.write([
+        new ClipboardItem({ "image/png": Promise.resolve(blob) })
+      ]);
+    }
+
+    function setBusy(busy) {
+      btnCopy.disabled = busy;
+      btnDl.disabled = busy;
+      btnCopy.textContent = busy ? "生成中…" : "复制图片发群";
+    }
+
+    btnCopy.addEventListener("click", function () {
+      setBusy(true);
+      capture().then(function (blob) {
+        if (!canCopyImageToClipboard()) {
+          download(blob);
+          if (location.protocol === "file:") {
+            showToast("本地打开无法写入剪贴板，已下载 PNG，请从下载文件夹拖进微信群");
+          } else {
+            showToast("当前浏览器不支持复制图片，已下载 PNG");
+          }
+          return;
+        }
+        return copyBlob(blob)
+          .then(function () { showToast("已复制图片，可在微信/飞书群里 Ctrl+V 粘贴"); })
+          .catch(function (err) {
+            download(blob);
+            var msg = (err && err.name === "NotAllowedError")
+              ? "浏览器未授权剪贴板，已下载 PNG（可拖进群）"
+              : "无法写入剪贴板，已下载 PNG";
+            showToast(msg);
+          });
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "复制失败");
+      }).finally(function () { setBusy(false); });
+    });
+
+    btnDl.addEventListener("click", function () {
+      setBusy(true);
+      capture().then(function (blob) {
+        download(blob);
+        showToast("已开始下载 PNG");
+      }).catch(function (err) {
+        showToast(err && err.message ? err.message : "下载失败");
+      }).finally(function () { setBusy(false); });
+    });
+  })();
+  </script>
+</body>
+</html>

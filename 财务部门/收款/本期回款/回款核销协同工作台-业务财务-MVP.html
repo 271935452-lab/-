@@ -20,11 +20,12 @@
       <div class="logo">TX</div>
       <button class="nav" title="请款单管理" data-page="请款单管理-指定票件整合-MVP.html"><b>▤</b>请款</button>
       <button class="nav" title="收款管理" data-page="收款管理-自动核销与人工核销-MVP.html"><b>￥</b>收款</button>
-      <button class="nav" title="自动认领与核销异常" data-page="自动认领与核销-异常处理-MVP.html"><b>⚠</b>异常</button>
+      <button class="nav" title="回款处理工作台" data-page="自动认领与核销-异常处理-MVP.html"><b>⚠</b>处理</button>
       <button class="nav" title="确认场景" data-view="scenarios"><b>▦</b>场景</button>
       <button class="nav" title="回款核销流程" data-view="process"><b>◫</b>流程</button>
       <button class="nav" title="异常与打回类型" data-page="回款异常与打回类型-MVP.html"><b>☷</b>类型</button>
       <button class="nav active" title="回款核销协同工作台"><b>⌁</b>协同</button>
+      <button class="nav" title="客户端首页" data-page="客户端首页-客户账单与水单识别-MVP.html"><b>▣</b>客户</button>
     </aside>
     <section class="main">
       <header class="top"><span class="crumb">控制台</span><span class="crumb">财务 ×</span><span class="crumb active" id="crumb">回款协同 ×</span><div class="top-right"><span class="top-tag">方案原型 · 未联调</span><span>温东华(BT9999)</span><span>🔔</span><button class="help" id="helpBtn" aria-label="查看方案依据">?</button></div></header>
@@ -161,7 +162,6 @@
             <tr><td>6</td><td>金额全额一致</td><td>真实流水金额 = 本次关联账单待收合计</td><td>进入异常池</td><td><span class="tag green">已确认</span></td></tr>
             <tr><td>7</td><td>仅存在一个候选申请</td><td>结合付款时间、付款备注及上述条件查询，结果唯一</td><td>多个候选进入异常池</td><td><span class="tag orange">时间窗口待确认</span></td></tr>
             <tr><td>8</td><td>流水未被处理</td><td>该笔真实流水未认领、未核销、未标记重复</td><td>阻止重复处理</td><td><span class="tag green">已确认</span></td></tr>
-            <tr><td>9</td><td>支付渠道允许自动处理</td><td>微信无对方户名：不参与自动认领；支付宝仅在全部条件满足时参与</td><td>转人工处理</td><td><span class="tag green">已确认</span></td></tr>
           </tbody></table></div>
           <div class="split-title">二、自动核销（收款管理）</div>
           <div class="tablewrap"><table aria-label="自动核销匹配条件"><thead><tr><th>序号</th><th>必须条件</th><th>系统结果</th></tr></thead><tbody>
@@ -248,23 +248,35 @@
   if(typeof config!=='undefined'){config.business=['请款单管理 · 回款申请','从待收请款单提交预核销；未达放行门槛时，可按需另行申请放行。',true];config.process=['回款核销流程','提交预核销是必经动作；申请放行是未达门槛时的可选动作，核销完成后写入日志。',false]}
   if(typeof apps!=='undefined'){const a=apps.find(x=>x.id==='RCP-AP-0002');if(a){a.state='已核销';a.action='已核销并写入操作日志'}}
   if(typeof cashes!=='undefined'){cashes.forEach(x=>{if(x.match==='唯一候选')x.state='已核销'});if(typeof renderBusiness==='function')renderBusiness();if(typeof renderFinance==='function')renderFinance()}
-  const financeNotice=document.querySelector('#finance > .notice');if(financeNotice)financeNotice.innerHTML='<strong>本期口径：</strong>回款申请完成预核销后直接写入核销结果和操作日志；财务不再进行最终确认。付款未达放行门槛时，业务可按需另行申请放行，财务仅审批放行。';
+  const financeNotice=document.querySelector('#finance > .notice');if(financeNotice)financeNotice.innerHTML='<strong>本期口径：</strong>预核销提交后先执行自动认领和自动核销；全匹配时系统直接写入已核销。已比对待核销记录由财务在回款处理工作台人工核销并写入日志。付款未达放行门槛时，业务可按需另行申请放行，财务仅审批放行。';
   const finalBtn=document.getElementById('confirmWriteoff');if(finalBtn)finalBtn.textContent='查看核销日志';
-  const workflow=document.querySelector('.workflow');if(workflow)workflow.innerHTML=workflow.innerHTML.replaceAll('业务数据统计','请款单管理').replace('自动认领核销','自动预核销').replace('唯一全匹配才自动处理','唯一全匹配仅自动预核销').replace('账单、请款单与核销记录','预核销状态与财务待办');
+  const workflow=document.querySelector('.workflow');
+  if(workflow){
+    workflow.innerHTML=workflow.innerHTML.replaceAll('业务数据统计','请款单管理').replace('自动认领核销','自动预核销').replace('唯一全匹配才自动处理','唯一全匹配仅自动预核销').replace('账单、请款单与核销记录','预核销状态与财务待办');
+    const lastStep=workflow.querySelector('.step:last-of-type');
+    if(lastStep && !workflow.querySelector('[data-manual-writeoff-step]')){
+      const arrow=document.createElement('div'); arrow.className='arr'; arrow.textContent='›';
+      const step=document.createElement('div'); step.className='step'; step.dataset.manualWriteoffStep='1'; step.innerHTML='<i>5</i><div><b>财务手动核销</b><span>暂不开放 · 待评审</span></div>';
+      const resultNo=lastStep.querySelector('i'); if(resultNo) resultNo.textContent='6';
+      lastStep.before(step);
+      step.after(arrow);
+    }
+  }
   const process=document.getElementById('process');
   if(process)process.innerHTML=`
     <section class="card">
       <div class="panel-head" style="padding:14px 15px 0"><h2>回款申请状态流转</h2><span class="tag blue">提交预核销必经 · 申请放行可选</span></div>
       <div class="lane-flow" aria-label="回款预核销状态流转图">
-        <div class="lane-head"><span></span><span>发起与资料</span><span>自动认领</span><span>提交预核销</span><span>放行判断</span><span>放行审批</span><span>结果</span></div>
-        <div class="lane-row"><div class="lane-label">客户 / 业务 / 客服</div><div class="flow-node">选择请款单<br>上传水单</div><div class="flow-empty"></div><div class="flow-node">提交预核销<br><b>必经</b></div><div class="flow-node warn">未达门槛时<br>按需申请放行</div><div class="flow-empty"></div><div class="flow-node done end">查看放行与<br>核销日志</div></div>
-        <div class="lane-row"><div class="lane-label">系统状态</div><div class="flow-node system">待匹配真实流水</div><div class="flow-node system">自动认领成功</div><div class="flow-node system">核销并写入日志<br>回写请款单/运单</div><div class="flow-node system">勾选申请且达标<br>放行；否则未放行</div><div class="flow-node system">审批通过后<br>更新为已放行</div><div class="flow-node done end">已核销<br>操作日志可追溯</div></div>
-        <div class="lane-row"><div class="lane-label">财务</div><div class="flow-empty"></div><div class="flow-node finance">认领异常时<br>人工重新匹配</div><div class="flow-empty"></div><div class="flow-empty"></div><div class="flow-node finance">仅审批客户放行<br>不再最终核销</div><div class="flow-node finance end">查看操作日志<br>处理例外事项</div></div>
-        <div class="flow-branch" style="grid-column:2 / span 2">自动认领信息异常 → 自动认领异常 → 财务重新匹配 / 人工认领</div>
-        <div class="flow-branch" style="grid-column:4 / span 2">金额未达到门槛 → 预核销仍完成；业务有提前下单需求时，才另行申请放行 → 财务审批</div>
-        <div class="flow-branch" style="grid-column:4 / span 3">财务打回 → 待业务补资料 → 在“请款单管理 · 回款协调”补充并重新提交 → 回到自动认领</div>
+        <div class="lane-head" style="grid-template-columns:130px repeat(8,minmax(125px,1fr));min-width:1200px"><span></span><span>发起与资料</span><span>自动认领</span><span>提交预核销</span><span>核销判断</span><span>财务手动核销（暂不开放）</span><span>放行判断</span><span>放行审批</span><span>结果</span></div>
+        <div class="lane-row" style="grid-template-columns:130px repeat(8,minmax(125px,1fr));min-width:1200px"><div class="lane-label">客户 / 业务 / 客服</div><div class="flow-node">选择请款单<br>上传水单</div><div class="flow-empty"></div><div class="flow-node">提交预核销<br><b>必经</b></div><div class="flow-empty"></div><div class="flow-empty"></div><div class="flow-node warn">未达门槛时<br>按需申请放行</div><div class="flow-empty"></div><div class="flow-node done end">查看放行与<br>核销日志</div></div>
+        <div class="lane-row" style="grid-template-columns:130px repeat(8,minmax(125px,1fr));min-width:1200px"><div class="lane-label">系统状态</div><div class="flow-node system">待匹配真实流水</div><div class="flow-node system">自动认领成功</div><div class="flow-node system">生成预核销记录<br>写入操作日志</div><div class="flow-node system">全匹配则自动核销<br>否则进入已比对待核销</div><div class="flow-empty"></div><div class="flow-node system">勾选申请且达标<br>自动放行；否则待审批</div><div class="flow-node system">审批通过后<br>更新为已放行</div><div class="flow-node done end">已核销<br>操作日志可追溯</div></div>
+        <div class="lane-row" style="grid-template-columns:130px repeat(8,minmax(125px,1fr));min-width:1200px"><div class="lane-label">财务</div><div class="flow-empty"></div><div class="flow-node finance">认领异常时<br>人工重新匹配</div><div class="flow-empty"></div><div class="flow-node finance">收到已比对待核销<br>任务后查看差异</div><div class="flow-node finance">人工核销入口暂不开放<br>仅保留评审说明</div><div class="flow-empty"></div><div class="flow-node finance">仅审批客户放行<br>不代替核销</div><div class="flow-node finance end">查看操作日志<br>处理例外事项</div></div>
+        <div class="flow-branch" style="grid-column:2 / span 3">自动认领信息异常 → 自动认领异常 → 财务重新匹配 / 人工认领</div>
+        <div class="flow-branch" style="grid-column:4 / span 3">核销条件不满足 → 已比对待核销 → 人工核销入口暂不开放 → 待评审后确定处理入口</div>
+        <div class="flow-branch" style="grid-column:6 / span 3">金额未达到放行门槛 → 业务按需申请放行 → 财务审批；放行不代替人工核销</div>
+        <div class="flow-branch" style="grid-column:4 / span 5">财务打回 → 待业务补资料 → 在“请款单管理 · 回款协同”补充并重新提交 → 回到自动认领</div>
       </div>
-      <div class="process-note"><span><b>提交预核销：</b>是回款申请的必经动作，完成后直接写入“已核销”和操作日志。</span><span><b>申请放行：</b>业务勾选“是否申请放行”后才展示放行结论；勾选且达标才直接放行，未达标可提交审批。</span><span><b>财务职责：</b>仅处理异常认领、核销例外和放行审批，不再做最终核销确认。</span></div>
+      <div class="process-note"><span><b>提交预核销：</b>是回款申请的必经动作，生成预核销记录并触发自动认领、账单比对和自动核销判断。</span><span><b>财务手动核销：</b>本期原型暂不开放入口；保留状态、字段和规则说明，评审后再决定是否恢复或迁移到收款管理。</span><span><b>申请放行：</b>业务勾选“是否申请放行”后才展示放行结论；勾选且达标才直接放行，未达标可提交审批。</span><span><b>财务职责：</b>当前在回款处理工作台处理认领异常和放行审批；人工核销入口暂不开放。</span></div>
       <div class="trace" style="padding:0 15px 15px">FLOW-RCP-001 · 回款申请状态流转；BR-RCP-001～006 · 预核销、可选放行与日志规则。</div>
     </section>`;
 })();
@@ -289,17 +301,36 @@
   process.insertAdjacentHTML('beforeend', `
     <section class="card rcp-imap" id="rcpInteractionMap" aria-label="回款页面与数据交互图">
       <div class="panel-head" style="padding:14px 15px 0"><h2>回款页面与数据交互图</h2><span class="tag blue">页面动作 + 共享数据</span></div>
-      <div class="notice" style="margin:12px 15px 0"><strong>口径：</strong>请款单管理负责发起与业务补资料；凭证管理接收真实流水并完成自动认领；收款管理写入核销结果；异常工作台只处理例外和放行审批。四个页面读取同一笔回款申请、真实流水、核销记录和操作日志。</div>
+      <div class="notice" style="margin:12px 15px 0"><strong>口径：</strong>请款单管理负责发起与业务补资料；凭证管理接收真实流水并完成自动认领；收款管理写入核销结果；回款工作台只处理例外和放行审批。四个页面读取同一笔回款申请、真实流水、核销记录和操作日志。</div>
       <div class="imap-wrap"><div class="imap-grid">
-        <article class="imap-card"><h3>① 请款单管理</h3><p>发起回款申请、上传水单、确认 AI 识别、提交预核销；按需申请放行。回款协调承接业务补资料。</p><div class="imap-data"><span>回款申请</span><span>关联请款单</span><span>水单/识别结果</span><span>放行申请</span></div></article>
+        <article class="imap-card"><h3>① 请款单管理</h3><p>发起回款申请、上传水单、确认 AI 识别、提交预核销；按需申请放行。回款协同承接业务补资料。</p><div class="imap-data"><span>回款申请</span><span>关联请款单</span><span>水单/识别结果</span><span>放行申请</span></div></article>
         <article class="imap-card system"><h3>② 凭证管理</h3><p>真实银行或支付流水到达后，读取业务水单、付款账户和关联账单，进行唯一匹配与自动认领判断。</p><div class="imap-data"><span>真实流水号</span><span>到账金额/币别</span><span>付款方/账户</span><span>匹配结果</span></div></article>
         <article class="imap-card"><h3>③ 收款管理</h3><p>接收已认领的真实流水与匹配结果，写入核销记录、请款单/运单状态及操作日志；展示核销结果。</p><div class="imap-data"><span>核销记录</span><span>核销分配</span><span>核销状态</span><span>操作日志</span></div></article>
-        <article class="imap-card exception"><h3>④ 财务异常工作台</h3><p>承接多候选、金额/币别差异、资料缺失、待放行等例外；处理后同步回前三个页面。</p><div class="imap-data"><span>异常任务</span><span>处理结论</span><span>退回原因</span><span>审批结论</span></div></article>
-      </div><div class="imap-return">异常退回业务补资料：异常工作台 → 请款单管理「回款协调」补传水单/备注并重新提交 → 凭证管理重新匹配；审批放行：异常工作台更新放行结论 → 收款管理、请款单管理同步展示。</div></div>
+        <article class="imap-card exception"><h3>④ 回款工作台</h3><p>承接多候选、金额/币别差异、资料缺失、待放行等例外；处理后同步回前三个页面。</p><div class="imap-data"><span>异常任务</span><span>处理结论</span><span>退回原因</span><span>审批结论</span></div></article>
+      </div><div class="imap-return">异常退回业务补资料：回款工作台 → 请款单管理「回款协同」补传水单/备注并重新提交 → 凭证管理重新匹配；审批放行：回款工作台更新放行结论 → 收款管理、请款单管理同步展示。</div></div>
       <div class="imap-legend"><span><b>数据主线：</b>回款申请 → 真实流水匹配结果 → 核销记录/状态/日志。</span><span><b>页面主线：</b>业务发起 → 系统自动认领 → 系统核销 → 财务仅处理例外。</span><span><b>共享标识：</b>回款申请号、真实流水号、请款单号、核销记录 ID。</span></div>
-      <div class="trace" style="padding:0 15px 15px">FLOW-RCP-002 · 请款单、凭证、收款、异常工作台的数据与页面交互图。</div>
+      <div class="trace" style="padding:0 15px 15px">FLOW-RCP-002 · 请款单、凭证、收款、回款工作台的数据与页面交互图。</div>
     </section>`);
 })();
 </script>
+<!-- repay-menu-v2:start -->
+<style>
+html.repay-menu-v2 body{padding-left:52px!important}
+html.repay-menu-v2 .side,html.repay-menu-v2 .repay-unified-nav{display:none!important}
+html.repay-menu-v2 .repay-nav-host{padding-left:0!important}
+.repay-menu-v2{position:fixed;inset:0 auto 0 0;z-index:10080;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;color:#26384c}
+.repay-menu-v2 *{box-sizing:border-box}
+.repay-menu-rail{width:52px;height:100vh;background:#0d57b4;box-shadow:1px 0 5px rgba(5,41,90,.2);display:flex;flex-direction:column;align-items:stretch}
+.repay-menu-logo{height:49px;display:grid;place-items:center;border:0;border-bottom:1px solid rgba(255,255,255,.24);background:#1762bd;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+.repay-menu-root{width:100%;min-height:62px;border:0;border-bottom:1px solid rgba(255,255,255,.08);background:transparent;color:#d8e9fb;font-size:11px;line-height:1.25;cursor:pointer}
+.repay-menu-root b{display:block;font-size:17px;line-height:23px;font-weight:700}.repay-menu-root:hover,.repay-menu-root.active{background:#ff9700;color:#fff}.repay-menu-root:focus-visible,.repay-menu-pin:focus-visible,.repay-menu-item:focus-visible{outline:2px solid #ffbd58;outline-offset:-2px}
+.repay-menu-tray{position:absolute;left:52px;top:49px;width:218px;max-height:calc(100vh - 49px);overflow:auto;background:#fff;border:1px solid #d8e1eb;border-left:0;border-radius:0 0 7px 0;box-shadow:6px 8px 22px rgba(28,53,84,.18);display:none}
+.repay-menu-v2.open .repay-menu-tray{display:block}.repay-menu-head{height:42px;display:flex;align-items:center;padding:0 10px 0 14px;border-bottom:1px solid #e8eef5;color:#183a61;font-weight:800;font-size:13px}.repay-menu-pin{margin-left:auto;width:25px;height:25px;border:0;border-radius:4px;background:#f0f5fb;color:#356b9d;cursor:pointer;font-size:14px}.repay-menu-pin:hover,.repay-menu-v2.pinned .repay-menu-pin{background:#e1efff;color:#1762bd}.repay-menu-list{padding:6px 0 10px}.repay-menu-group{padding:7px 14px 4px;color:#7b8ea2;font-size:11px;font-weight:700}.repay-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;border:0;background:#fff;color:#2e4055;text-align:left;font:12px/1.35 "Microsoft YaHei","PingFang SC",Arial,sans-serif;cursor:pointer}.repay-menu-item i{width:17px;color:#1762bd;font-style:normal;text-align:center}.repay-menu-item:hover{background:#edf5ff;color:#1762bd}.repay-menu-item.active{background:#e6f2ff;color:#0f5eb6;font-weight:800;border-right:3px solid #1762bd}.repay-menu-sep{height:1px;background:#edf1f6;margin:5px 0}
+@media(max-width:760px){html.repay-menu-v2 body{padding-left:44px!important}.repay-menu-rail{width:44px}.repay-menu-logo{height:44px}.repay-menu-root{min-height:57px;font-size:10px}.repay-menu-tray{left:44px;top:44px;width:min(218px,calc(100vw - 44px))}}
+</style>
+<script>
+(()=>{const current=location.pathname.split('/').pop()||'';const finance=[['▤','请款单管理','请款单管理-指定票件整合-MVP.html'],['￥','收款管理','收款管理-自动核销与人工核销-MVP.html'],['⚠','回款处理工作台','自动认领与核销-异常处理-MVP.html'],['⌁','回款协同','回款核销协同工作台-业务财务-MVP.html'],['▣','客户账单与水单','客户端首页-客户账单与水单识别-MVP.html']];const prd=[['◫','回款流程图','回款核销协同工作台-业务财务-MVP.html#process'],['▦','确认场景','回款核销协同工作台-业务财务-MVP.html#scenarios'],['☷','异常、打回与字典','回款异常与打回类型-MVP.html'],['▤','请款单交互 PRD','请款单管理-回款申请-交互PRD.html'],['⚠','回款工作台交互 PRD','财务异常工作台-回款核销-交互PRD.html'],['✓','财务签字清单','回款核销-业务签字清单.html']];const prdPages=prd.map(x=>x[2].split('#')[0]);let kind=(prdPages.includes(current)||['#process','#scenarios'].includes(location.hash))?'prd':'finance';let pinned=false;const host=document.createElement('aside');host.className='repay-menu-v2';host.setAttribute('aria-label','回款功能导航');host.innerHTML='<div class="repay-menu-rail"><button type="button" class="repay-menu-logo" title="收起菜单">TX</button><button type="button" class="repay-menu-root" data-kind="finance"><b>财</b>财务</button><button type="button" class="repay-menu-root" data-kind="prd"><b>PRD</b>需求</button></div><section class="repay-menu-tray" aria-label="二级菜单"><div class="repay-menu-head"><span></span><button type="button" class="repay-menu-pin" title="固定菜单" aria-label="固定菜单">⌁</button></div><nav class="repay-menu-list"></nav></section>';document.body.appendChild(host);const tray=host.querySelector('.repay-menu-tray'),head=host.querySelector('.repay-menu-head span'),list=host.querySelector('.repay-menu-list');function render(){const items=kind==='finance'?finance:prd;head.textContent=kind==='finance'?'财务':'PRD';list.innerHTML='<div class="repay-menu-group">'+(kind==='finance'?'回款功能':'流程与交付件')+'</div>'+items.map(x=>'<button type="button" class="repay-menu-item '+(x[2].split('#')[0]===current?'active':'')+'" data-href="'+x[2]+'"><i>'+x[0]+'</i><span>'+x[1]+'</span></button>').join('');host.querySelectorAll('.repay-menu-root').forEach(b=>b.classList.toggle('active',b.dataset.kind===kind));}function open(next,pin){kind=next||kind;if(pin!==undefined)pinned=pin;host.classList.add('open');host.classList.toggle('pinned',pinned);host.querySelector('.repay-menu-pin').textContent=pinned?'×':'⌁';host.querySelector('.repay-menu-pin').title=pinned?'收起菜单':'固定菜单';render()}function close(){if(pinned)return;host.classList.remove('open')}host.querySelectorAll('.repay-menu-root').forEach(b=>{b.addEventListener('mouseenter',()=>open(b.dataset.kind,false));b.addEventListener('focus',()=>open(b.dataset.kind,false));b.addEventListener('click',()=>{if(kind===b.dataset.kind&&pinned){pinned=false;host.classList.remove('pinned');close()}else open(b.dataset.kind,true)})});host.addEventListener('mouseenter',()=>open(kind,pinned));host.addEventListener('mouseleave',close);host.querySelector('.repay-menu-logo').addEventListener('click',()=>{pinned=false;host.classList.remove('pinned');host.classList.remove('open')});host.querySelector('.repay-menu-pin').addEventListener('click',()=>{pinned=!pinned;open(kind,pinned)});list.addEventListener('click',e=>{const btn=e.target.closest('[data-href]');if(btn)location.href=btn.dataset.href});render();document.documentElement.classList.add('repay-menu-v2');})();
+</script>
+<!-- repay-menu-v2:end -->
 </body>
 </html>

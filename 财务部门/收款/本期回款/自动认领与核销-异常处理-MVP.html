@@ -54,7 +54,7 @@ const data=[['EXC-***018','自动认领','多候选','BNK-***018','RCP-AP-0008',
   function preSummaryRow(r, index) {
     const reason = r.gap === '0.00' ? '已达放行门槛，差额 0.00' : '实收不足，差额 ' + r.currency + ' ' + r.gap;
     const suggestion = r.writeoffDone ? '系统已写入核销日志' : '放行已通过，等待人工确认核销';
-    return '<tr class="pre-summary-row" data-pre-summary="' + index + '"><td>' + (normalRows.length + index + 1) + '</td><td>' + r.id + '</td><td>' + (r.writeoffDone ? '核销' : '已比对待核销') + '</td><td>' + (r.writeoffDone ? '自动核销完成' : '核销条件未满足') + '</td><td>' + r.flow + '</td><td>' + r.app + '</td><td>' + r.customer + '</td><td>' + r.payer + '</td><td>' + r.currency + '</td><td>' + r.received + '</td><td>' + r.bill + '</td><td>' + r.relation + '</td><td>' + reason + '</td><td>' + suggestion + '</td><td>' + r.state + '</td><td>' + r.handler + '</td><td>' + r.at + '</td></tr>';
+    return '<tr class="pre-summary-row" data-pre-summary="' + index + '" data-writeoff="' + (r.writeoffDone ? '1' : '0') + '"><td>' + (normalRows.length + index + 1) + '</td><td>' + r.id + '</td><td>' + (r.writeoffDone ? '核销' : '已比对待核销') + '</td><td>' + (r.writeoffDone ? '自动核销完成' : '核销条件未满足') + '</td><td>' + r.flow + '</td><td>' + r.app + '</td><td>' + r.customer + '</td><td>' + r.payer + '</td><td>' + r.currency + '</td><td>' + r.received + '</td><td>' + r.bill + '</td><td>' + r.relation + '</td><td>' + reason + '</td><td>' + suggestion + '</td><td>' + r.state + '</td><td>' + r.handler + '</td><td>' + r.at + '</td></tr>';
   }
   function renderNormalTab(name) {
     preMode = false; selected = -1;
@@ -139,7 +139,8 @@ const data=[['EXC-***018','自动认领','多候选','BNK-***018','RCP-AP-0008',
     ['▦','场景','回款核销协同工作台-业务财务-MVP.html#scenarios'],
     ['◫','流程','回款核销协同工作台-业务财务-MVP.html#process'],
     ['☷','类型','回款异常与打回类型-MVP.html'],
-    ['⌁','协同','回款核销协同工作台-业务财务-MVP.html']
+    ['⌁','协同','回款核销协同工作台-业务财务-MVP.html'],
+    ['▣','客户','客户端首页-客户账单与水单识别-MVP.html']
   ];
   side.innerHTML = '<div class="brand">TX</div>' + items.map(item => '<button class="nav' + (item[1] === '异常' ? ' active' : '') + '" data-go="' + item[2] + '" title="' + item[1] + '"><b>' + item[0] + '</b>' + item[1] + '</button>').join('');
   side.style.overflowY = 'auto';
@@ -165,6 +166,7 @@ const data=[['EXC-***018','自动认领','多候选','BNK-***018','RCP-AP-0008',
   ];
   window.__operationLogs = operationLogs;
   const mask = document.getElementById('mask');
+  mask.addEventListener('click', event => { if (event.target.closest('#close,#cancel')) mask.classList.remove('claim-drawer', 'writeoff-drawer'); }, true);
   const title = document.getElementById('mtitle');
   const body = document.getElementById('mbody');
   const confirm = document.getElementById('confirm');
@@ -232,11 +234,135 @@ const data=[['EXC-***018','自动认领','多候选','BNK-***018','RCP-AP-0008',
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-top:10px;line-height:2.05"><div><span style="display:inline-block;width:84px;color:#77879a">凭证金额</span><b style="font-size:17px;color:#cf4b20">' + currency + ' ' + amount + '</b></div><div><span style="display:inline-block;width:84px;color:#77879a">到账时间</span>2026-11-10 09:18:26</div><div><span style="display:inline-block;width:84px;color:#77879a">付款户名</span>' + payer + '</div><div><span style="display:inline-block;width:84px;color:#77879a">付款账号</span>6222 **** **** 9286</div><div><span style="display:inline-block;width:84px;color:#77879a">付款银行</span>示例银行 · 深圳分行</div><div><span style="display:inline-block;width:84px;color:#77879a">收款户名</span>腾信物流</div><div><span style="display:inline-block;width:84px;color:#77879a">收款账号</span>6217 **** **** 0188</div><div><span style="display:inline-block;width:84px;color:#77879a">收款银行</span>中国银行 · 深圳分行</div><div><span style="display:inline-block;width:84px;color:#77879a">交易摘要</span>客户回款 / 运费</div><div><span style="display:inline-block;width:84px;color:#77879a">真实流水号</span>' + flow + '</div></div></div>';
     openAction('真实流水', voucher, '关闭', () => ({ close:true }));
   }
-  function actionAssign(item) { openAction('指派处理人', selectedInfo(item) + '<p style="margin:12px 0 0">处理人 <select id="actionAssignee" style="height:30px;border:1px solid #ccd5df"><option>财务收款</option><option>财务主管</option><option>业务员</option></select></p>', '确认指派', () => { const name=document.getElementById('actionAssignee').value; if(item.mode==='pre') item.record.handler=name; else item.record[14]=name; refresh(item); notify('已指派给' + name + '。'); }); }
+  function actionAssign(item) { openAction('指派处理人', selectedInfo(item) + '<p style="margin:12px 0 0">处理人 <select id="actionAssignee" style="height:30px;border:1px solid #ccd5df"><option value="赵岚">赵岚（员工管理·收入管理）</option><option value="李航">李航（员工管理·收入管理）</option><option value="陈洁">陈洁（员工管理·收入管理）</option></select></p><p style="font-size:12px;color:#667085">候选人来源：员工管理；仅展示部门为“收入管理”的在职同事。</p>', '确认指派', () => { const name=document.getElementById('actionAssignee').value; if(item.mode==='pre') item.record.handler=name; else item.record[14]=name; refresh(item); notify('已指派给' + name + '。'); }); }
   function actionRetry(item) { openAction('重新匹配', selectedInfo(item) + '<p style="margin:12px 0 0">匹配范围 <select id="retryScope" style="height:30px;border:1px solid #ccd5df"><option>按付款方、金额和币种重新匹配</option><option>仅重新匹配真实流水</option></select></p>', '开始匹配', () => { if(item.mode==='pre') item.record.state='重新匹配中'; else item.record[13]='重新匹配中'; refresh(item); notify('已进入重新匹配队列。'); }); }
   function actionReturn(item) { openAction('退回业务补资料', selectedInfo(item) + '<p style="margin:12px 0 0">退回原因 <select id="actionReturnReason" style="width:100%;height:32px;border:1px solid #ccd5df;margin-top:5px"><option value="">请选择退回原因</option><option>水单文件缺失或不清晰</option><option>付款主体或付款账户无法确认</option><option>付款金额与关联账单不一致</option><option>关联运单或请款单不完整</option><option>疑似重复水单或重复回款申请</option><option>其他资料不完整</option></select></p>', '确认退回', () => { const reason=document.getElementById('actionReturnReason').value; if(!reason) return { keep:true, message:'请选择退回原因。' }; if(item.mode==='pre') item.record.state='待业务补资料'; else { item.record[13]='待业务补资料'; item.record[14]='业务员'; } addLog(item,'退回业务补资料','已退回业务处理',reason); refresh(item); notify('已退回业务补资料。'); }); }
-  function actionClaim(item) { openAction('人工确认认领', selectedInfo(item) + '<p style="margin:12px 0 0;color:#8b5a09">确认后，该真实流水将认领至当前客户和回款申请。</p>', '确认认领', () => { if(item.mode==='pre') item.record.state='已人工认领 / 已核销'; else item.record[13]='已人工确认认领 / 待核销'; addLog(item,'人工确认认领','已认领至当前客户与回款申请','财务核对水单与真实流水一致'); refresh(item); notify('已人工确认认领。'); }); }
-  function actionFinal(item) { if(item.mode==='pre'&&item.record.writeoffDone){ notify('该记录已核销；请在操作日志查看系统处理记录。'); return; } const titleText='人工确认核销'; const tip=item.mode==='pre'?'当前记录放行状态为“'+item.record.releaseStatus+'”；放行与核销分别判断，确认核销后才回写关联请款单及运单。':'确认后将回写关联请款单及运单的核销状态。'; openAction(titleText, selectedInfo(item) + '<p style="margin:12px 0 0;color:#8b5a09">'+tip+'</p>', titleText, () => { if(item.mode==='pre'){ item.record.writeoffDone=true; item.record.state='已核销'; item.record.handler='财务收款'; } else item.record[13]='已核销'; addLog(item,'人工确认核销','已回写关联请款单及运单','财务确认；放行状态不变'); refresh(item); notify('已确认核销并回写关联状态。'); }); }
+  function actionClaim(item) {
+    if (item.mode === 'pre') { notify('已比对记录请使用人工确认核销。'); return; }
+    const r = item.record;
+    const digits = value => String(value || '').replace(/\D/g, '');
+    const defaultPayerAccount = r[3].includes('018') ? '6222 1000 0000 0188' : r[3].includes('021') ? '6222 1000 0000 0216' : r[3].includes('024') ? '6222 1000 0000 0249' : '';
+    const saved = r.__manualClaim || { customer:r[5], payer:r[6], payerAccount:defaultPayerAccount, paidAt:'2026-11-06 09:58', payeeAccount:'6214 8888 0000 2186', amount:r[8], currency:r[7] };
+    const fieldStyle = 'width:100%;height:31px;border:1px solid #ccd5df;border-radius:3px;padding:0 8px';
+    const requiresFlowChoice = r[2] === '多候选' || r[2] === '付款方缺失';
+    const flowChoice = requiresFlowChoice ? '<label style="grid-column:span 2">真实流水 <select id="claimFlow" style="' + fieldStyle + '"><option value="">请选择该水单对应的真实流水</option><option value="BNK-20261106018">BNK-20261106018 · CNY 12,800.00 · 2026-11-06 09:58</option><option value="BNK-20261106028">BNK-20261106028 · CNY 12,800.00 · 2026-11-06 10:16</option></select><span style="display:block;margin-top:4px;color:#8b5a09;font-size:11px">该水单存在多个候选或未匹配流水，需先选择唯一真实流水。</span></label>' : '<div style="grid-column:span 2;color:#537493;font-size:11px">当前水单已唯一匹配真实流水 '+r[3]+'；无需再次选择。</div>';
+    const form = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">'
+      + '<label>客户<input id="claimCustomer" list="claimCustomerOptions" value="' + saved.customer + '" style="' + fieldStyle + '"><datalist id="claimCustomerOptions"><option value="客户 A"><option value="客户 B"><option value="客户 C"></datalist></label>'
+      + '<label>付款主体<input id="claimPayer" value="' + saved.payer + '" style="' + fieldStyle + '"></label>'
+      + '<label>付款账号<input id="claimPayerAccount" value="' + saved.payerAccount + '" style="' + fieldStyle + '"></label>'
+      + '<label>付款时间<input id="claimPaidAt" value="' + saved.paidAt + '" style="' + fieldStyle + '"></label>'
+      + '<label>收款账号<input id="claimPayeeAccount" value="' + saved.payeeAccount + '" style="' + fieldStyle + '"></label>'
+      + '<label>真实到账金额<input id="claimAmount" value="' + saved.amount + '" style="' + fieldStyle + '"></label>'
+      + '<label>币别<select id="claimCurrency" style="' + fieldStyle + '"><option' + (saved.currency==='CNY'?' selected':'') + '>CNY</option><option' + (saved.currency==='USD'?' selected':'') + '>USD</option></select></label>'
+      + flowChoice
+      + '</div>';
+    const drawerStyle = document.getElementById('claimDrawerStyle') || document.head.appendChild(Object.assign(document.createElement('style'), { id:'claimDrawerStyle', textContent:'.claim-drawer{justify-content:flex-end}.claim-drawer .modal{width:min(560px,96vw);max-width:96vw;height:100vh;max-height:none;border-radius:0;display:flex;flex-direction:column}.claim-drawer .mb{flex:1;max-height:none}.claim-drawer .foot{margin-top:auto}.claim-drawer .info{grid-template-columns:1fr 1fr}' }));
+    mask.classList.add('claim-drawer');
+    openAction('认领信息', selectedInfo(item) + form, '保存并重新匹配', () => {
+      const selectedFlow = requiresFlowChoice ? document.getElementById('claimFlow').value : r[3];
+      const adjusted = { customer:document.getElementById('claimCustomer').value.trim(), payer:document.getElementById('claimPayer').value.trim(), payerAccount:document.getElementById('claimPayerAccount').value.trim(), paidAt:document.getElementById('claimPaidAt').value.trim(), payeeAccount:document.getElementById('claimPayeeAccount').value.trim(), amount:document.getElementById('claimAmount').value.trim(), currency:document.getElementById('claimCurrency').value, flow:selectedFlow };
+      if (!adjusted.customer || !adjusted.payer || !adjusted.payerAccount || !adjusted.paidAt || !adjusted.payeeAccount || !adjusted.amount) return { keep:true, message:'请补全认领匹配条件。' };
+      if (!selectedFlow) return { keep:true, message:'请为当前水单选择唯一的真实流水。' };
+      mask.classList.remove('claim-drawer');
+      r.__manualClaim = adjusted;
+      r[5] = adjusted.customer;
+      r[3] = selectedFlow;
+      const amount = Number(adjusted.amount.replace(/,/g, ''));
+      const bill = Number(String(r[9]).replace(/[^0-9.-]/g, ''));
+      const autoClaimPassed = !!adjusted.customer && digits(adjusted.payerAccount).length >= 8 && digits(adjusted.payeeAccount).endsWith('2186');
+      const autoWriteoffPassed = autoClaimPassed && Number.isFinite(amount) && amount >= bill && adjusted.currency === r[7];
+      const reason = '财务调整：客户、付款主体、付款/收款账号、付款时间、金额、币别；保存人工确认值，不覆盖原始流水。';
+      if (autoWriteoffPassed) {
+        r[1] = '核销'; r[2] = '自动认领与核销完成'; r[13] = '已核销'; r[14] = '系统';
+        addLog(item, '人工调整条件后自动认领/核销', '自动认领、自动核销均满足，已写入核销结果', reason);
+        refresh(item); notify('已重新匹配：自动认领与自动核销条件均满足，已核销。'); return;
+      }
+      if (autoClaimPassed) {
+        r[1] = '已比对待核销'; r[2] = '核销条件未满足'; r[13] = '已比对待核销'; r[14] = '财务收款';
+        addLog(item, '人工调整条件后重新匹配', '自动认领已满足，自动核销条件未满足，转已比对待核销', reason);
+        refresh(item); notify('已重新匹配：自动认领成功，待核销条件仍未满足。'); return;
+      }
+      r[1] = '自动认领'; r[2] = '认领条件未满足'; r[13] = '待处理'; r[14] = '财务收款';
+      addLog(item, '人工调整条件后重新匹配', '自动认领条件仍未满足，保留待处理', reason);
+      refresh(item); notify('已重新匹配：自动认领条件仍未满足。');
+    });
+  }
+  function actionFinal(item) {
+    if (item.mode === 'pre' && item.record.writeoffDone) { notify('该记录已核销；请在操作日志查看系统处理记录。'); return; }
+    const record = item.mode === 'pre' ? item.record : item.record;
+    const currency = item.mode === 'pre' ? record.currency : record[7];
+    const billAmount = Number(String(item.mode === 'pre' ? record.bill : record[9]).replace(/[^0-9.-]/g, '')) || 0;
+    const relation = item.mode === 'pre' ? record.relation : record[10];
+    const appNo = item.mode === 'pre' ? record.app : record[4];
+    const defaultFlow = item.mode === 'pre' ? record.flow : record[3];
+    const relationParts = String(relation || '').replace(/\*/g, '').split(' / ');
+    const flowCandidates = [
+      { id:String(defaultFlow || 'BNK-20261106018').replace(/\*/g, ''), payer:'示例付款主体 A', amount:billAmount || 12800, currency, paidAt:'2026-11-10 09:58' },
+      { id:'BNK-20261110028', payer:'示例付款主体 A', amount:Math.max(200, Math.min(billAmount || 12800, 8000)), currency, paidAt:'2026-11-10 10:16' },
+      { id:'BNK-20261110036', payer:'示例付款主体 A', amount:Math.max(200, billAmount || 12800), currency, paidAt:'2026-11-10 10:43' }
+    ];
+    const firstDue = Math.round((billAmount || 12800) * 0.8 * 100) / 100;
+    const feeItems = [
+      { id:'fee-1', bill:appNo || 'QK20261108012', waybill:relationParts[0] || 'TX261008001', fee:'运费', due:firstDue, currency },
+      { id:'fee-2', bill:appNo || 'QK20261108012', waybill:relationParts[0] || 'TX261008001', fee:'报关费', due:Math.round(((billAmount || 12800) - firstDue) * 100) / 100, currency }
+    ];
+    const feeParentKey = 'waybill-fees';
+    const feeTableRows = '<tr class="fee-parent" data-fee-parent="' + feeParentKey + '"><td><button type="button" class="fee-expand" aria-expanded="false" title="展开费用项">›</button></td><td>' + feeItems[0].bill + '</td><td>' + feeItems[0].waybill + '</td><td>共 ' + feeItems.length + ' 个费用项</td><td>' + feeItems.reduce((sum, f) => sum + f.due, 0).toFixed(2) + '</td><td>—</td><td>' + currency + '</td></tr>'
+      + feeItems.map(f => '<tr class="fee-child" data-fee-child="' + feeParentKey + '" style="display:none"><td><input class="fee-pick" data-fee="' + f.id + '" type="checkbox" disabled></td><td>' + f.bill + '</td><td>' + f.waybill + '</td><td style="padding-left:24px">└ ' + f.fee + '</td><td>' + f.due.toFixed(2) + '</td><td><input class="fee-amount" data-fee="' + f.id + '" data-due="' + f.due + '" type="number" min="0" step="0.01" disabled style="width:112px;height:29px;border:1px solid #ccd5df;padding:0 6px"></td><td>' + f.currency + '</td></tr>').join('');
+    const drawerStyle = document.getElementById('writeoffDrawerStyle') || document.head.appendChild(Object.assign(document.createElement('style'), { id:'writeoffDrawerStyle', textContent:'.writeoff-drawer{justify-content:flex-end}.writeoff-drawer .modal{width:min(760px,96vw);max-width:96vw;height:100vh;max-height:none;border-radius:0;display:flex;flex-direction:column}.writeoff-drawer .mb{flex:1;max-height:none}.writeoff-drawer .foot{margin-top:auto}.writeoff-drawer table{width:100%;border-collapse:collapse;margin-top:8px}.writeoff-drawer th,.writeoff-drawer td{padding:7px;border:1px solid #d9e2ec;text-align:left}.writeoff-drawer th{background:#f4f7fa;color:#52667a}.writeoff-drawer .flow-choice{cursor:pointer}.writeoff-drawer .flow-choice.selected td{background:#e6f4ff}.writeoff-drawer .alloc-summary{margin-top:10px;padding:9px 10px;background:#f6f8fa;color:#44576a;display:flex;gap:20px}' }));
+    const html = selectedInfo(item)
+      + '<div style="display:flex;gap:8px;margin-top:14px"><input id="writeoffFlowSearch" placeholder="输入真实流水号或付款主体" style="height:31px;flex:1;border:1px solid #ccd5df;padding:0 8px"><button type="button" class="btn gray" id="writeoffFlowQuery">查询流水</button></div>'
+      + '<div style="margin-top:10px;color:#366ca8">选择真实流水</div><table><thead><tr><th></th><th>真实流水号</th><th>付款主体</th><th>到账金额</th><th>币别</th><th>付款时间</th></tr></thead><tbody id="writeoffFlowRows"></tbody></table>'
+      + '<div id="feeSectionTitle" style="margin-top:14px;color:#8b97a4">请款单 / 运单 / 费用项（请先选择真实流水）</div><table><thead><tr><th>选择</th><th>请款单</th><th>运单号</th><th>费用项</th><th>待核销金额</th><th>本次核销金额</th><th>币别</th></tr></thead><tbody>'
+      + feeTableRows
+      + '</tbody></table><div class="alloc-summary"><span>已选真实流水：<b id="writeoffSelectedFlow">未选择</b></span><span>流水可分配：<b id="writeoffAvailable">—</b></span><span>本次分配：<b id="writeoffAllocated">0.00</b></span><span>剩余：<b id="writeoffRemaining">—</b></span></div>';
+    let selectedFlow = null;
+    const renderCandidates = () => {
+      const term = document.getElementById('writeoffFlowSearch').value.trim().toLowerCase();
+      const visible = flowCandidates.filter(f => !term || (f.id + f.payer).toLowerCase().includes(term));
+      document.getElementById('writeoffFlowRows').innerHTML = visible.length ? visible.map(f => '<tr class="flow-choice' + (selectedFlow && selectedFlow.id === f.id ? ' selected' : '') + '" data-flow="' + f.id + '"><td><input type="radio" name="writeoffFlow" ' + (selectedFlow && selectedFlow.id === f.id ? 'checked' : '') + '></td><td>' + f.id + '</td><td>' + f.payer + '</td><td>' + f.amount.toFixed(2) + '</td><td>' + f.currency + '</td><td>' + f.paidAt + '</td></tr>').join('') : '<tr><td colspan="6" style="text-align:center;color:#8b97a4">未查询到可选真实流水</td></tr>';
+    };
+    const refreshAllocation = () => {
+      const total = [...document.querySelectorAll('.fee-pick:checked')].reduce((sum, box) => sum + (Number(document.querySelector('.fee-amount[data-fee="' + box.dataset.fee + '"]').value) || 0), 0);
+      document.getElementById('writeoffAllocated').textContent = total.toFixed(2);
+      document.getElementById('writeoffSelectedFlow').textContent = selectedFlow ? selectedFlow.id : '未选择';
+      document.getElementById('writeoffAvailable').textContent = selectedFlow ? selectedFlow.amount.toFixed(2) + ' ' + selectedFlow.currency : '—';
+      document.getElementById('writeoffRemaining').textContent = selectedFlow ? (selectedFlow.amount - total).toFixed(2) + ' ' + selectedFlow.currency : '—';
+    };
+    const syncFeeSelection = () => {
+      const enabled = Boolean(selectedFlow);
+      document.getElementById('feeSectionTitle').textContent = enabled ? '请款单 / 运单 / 费用项（勾选费用项并填写本次核销金额）' : '请款单 / 运单 / 费用项（请先选择真实流水）';
+      document.getElementById('feeSectionTitle').style.color = enabled ? '#366ca8' : '#8b97a4';
+      document.querySelectorAll('.fee-pick').forEach(box => { box.disabled = !enabled; if (!enabled) { box.checked = false; const input = document.querySelector('.fee-amount[data-fee="' + box.dataset.fee + '"]'); input.value = ''; input.disabled = true; } });
+    };
+    mask.classList.add('writeoff-drawer');
+    openAction('人工确认核销', html, '保存核销分配', () => {
+      if (!selectedFlow) return { keep:true, message:'请先选择真实流水。' };
+      const picked = [...document.querySelectorAll('.fee-pick:checked')].map(box => {
+        const input = document.querySelector('.fee-amount[data-fee="' + box.dataset.fee + '"]');
+        return { id:box.dataset.fee, amount:Number(input.value), due:Number(input.dataset.due) };
+      });
+      if (!picked.length || picked.some(x => !Number.isFinite(x.amount) || x.amount <= 0 || x.amount > x.due)) return { keep:true, message:'请选择费用项，并填写不超过待核销金额的分配金额。' };
+      const allocated = picked.reduce((sum, x) => sum + x.amount, 0);
+      if (selectedFlow.currency !== currency) return { keep:true, message:'真实流水币别与待核销费用币别不一致。' };
+      if (allocated > selectedFlow.amount) return { keep:true, message:'本次分配金额不能超过真实流水可分配金额。' };
+      const fullyWritten = allocated >= billAmount;
+      if (item.mode === 'pre') { record.writeoffDone = fullyWritten; record.state = fullyWritten ? '已核销' : '部分核销'; record.handler = '财务收款'; }
+      else { record[1] = '核销'; record[2] = fullyWritten ? '费用项全部核销' : '费用项部分核销'; record[13] = fullyWritten ? '已核销' : '部分核销'; record[14] = '财务收款'; }
+      const residual = selectedFlow.amount - allocated;
+      addLog(item, '人工确认核销', fullyWritten ? '费用项全部核销，已回写请款单/运单' : '费用项部分核销，账单保留待回款金额', '真实流水 ' + selectedFlow.id + '；费用项 ' + picked.map(x => x.id + ':' + x.amount.toFixed(2)).join('、') + (residual > 0 ? '；剩余 ' + residual.toFixed(2) + ' 进入客户余额' : ''));
+      mask.classList.remove('writeoff-drawer'); refresh(item); notify(fullyWritten ? '已按费用项完成核销分配。' : '已保存部分核销分配，剩余费用继续待核销。');
+    });
+    renderCandidates();
+    document.getElementById('writeoffFlowQuery').onclick = renderCandidates;
+    document.getElementById('writeoffFlowSearch').oninput = renderCandidates;
+    document.getElementById('writeoffFlowRows').onclick = event => { const row = event.target.closest('[data-flow]'); if (!row) return; selectedFlow = flowCandidates.find(f => f.id === row.dataset.flow); renderCandidates(); syncFeeSelection(); refreshAllocation(); };
+    document.querySelectorAll('.fee-expand').forEach(button => button.onclick = () => { const parent = button.closest('[data-fee-parent]'); const key = parent.dataset.feeParent; const expanded = button.getAttribute('aria-expanded') === 'true'; document.querySelectorAll('[data-fee-child="' + key + '"]').forEach(row => row.style.display = expanded ? 'none' : 'table-row'); button.setAttribute('aria-expanded', String(!expanded)); button.textContent = expanded ? '›' : '⌄'; button.title = expanded ? '展开费用项' : '收起费用项'; });
+    document.querySelectorAll('.fee-pick').forEach(box => box.onchange = () => { const input = document.querySelector('.fee-amount[data-fee="' + box.dataset.fee + '"]'); input.disabled = !box.checked; if (box.checked && !input.value) input.value = input.dataset.due; refreshAllocation(); });
+    document.querySelectorAll('.fee-amount').forEach(input => input.oninput = refreshAllocation);
+    syncFeeSelection();
+    refreshAllocation();
+  }
   function actionDuplicate(item) { openAction('退回业务确认重复', selectedInfo(item) + '<p style="margin:12px 0 0">退回原因 <select id="duplicateReason" style="height:30px;border:1px solid #ccd5df"><option>疑似与已有回款申请重复</option><option>疑似与真实流水重复</option></select></p><p style="color:#8b5a09">退回后不再占用财务待办，业务员可撤销本次申请或补充资料后重新提交。</p>', '确认退回', () => { const reason=document.getElementById('duplicateReason').value; if(item.mode==='pre') item.record.state='待业务补资料'; else { item.record[13]='待业务补资料'; item.record[14]='业务员'; } addLog(item,'退回业务确认重复','已退回业务处理',reason); refresh(item); notify('已退回业务补资料，等待业务员确认。'); }); }
   function queryRows() { const terms=[...document.querySelectorAll('.filters input')].map(x=>x.value.trim().toLowerCase()).filter(Boolean); let count=0; document.querySelectorAll('#rows tr').forEach(row=>{const hit=!terms.length||terms.every(t=>row.textContent.toLowerCase().includes(t));row.style.display=hit?'':'none';if(hit)count++;});const pager=document.querySelector('.pager b');if(pager)pager.textContent='共 ' + count + ' 条';notify('已查询到 ' + count + ' 条记录。'); }
   function exportRows() { const rows=[...document.querySelectorAll('#rows tr')].filter(r=>r.style.display!=='none'); if(!rows.length){notify('没有可导出的记录。');return;} const header=[...document.querySelectorAll('thead th')].map(x=>x.textContent.trim()); const lines=[header,...rows.map(r=>[...r.children].map(c=>c.textContent.trim()))].map(r=>r.map(v=>'"'+v.replaceAll('"','""')+'"').join(',')).join('\n'); const link=document.createElement('a');link.href=URL.createObjectURL(new Blob(['\ufeff'+lines],{type:'text/csv;charset=utf-8'}));link.download='回款核销处理记录.csv';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),0);notify('已导出当前查询结果。'); }
@@ -287,7 +413,7 @@ const data=[['EXC-***018','自动认领','多候选','BNK-***018','RCP-AP-0008',
     });
   });
 })();
-</script><script src="回款原型-PRD序号说明.js?v=20261112-13" data-page="exception"></script><script>
+</script><script src="回款原型-PRD序号说明.js?v=20261113-19" data-page="exception"></script><script>
 /* “全部”页签中的汇总行需在对应状态页签内处理，避免被误当作原始异常行。 */
 document.addEventListener('click', function(e) {
   if (!e.target.closest('#rows .pre-summary-row')) return;
@@ -363,7 +489,7 @@ document.addEventListener('click', function(e) {
     }
     table.querySelectorAll('#rows tr').forEach(row => {
       if (row.querySelector('[data-release-cell]')) return;
-      const id = row.children[1]?.textContent.trim();
+      const id = row.dataset.internalId || row.children[1]?.textContent.trim();
       const td = document.createElement('td'); td.dataset.releaseCell = '1';
       const state = releaseStates[id] || release[id] || '未申请放行';
       td.innerHTML = '<span class="tag ' + (state === '已放行' ? 'blue' : state === '待放行审批' ? 'warn' : '') + '">' + state + '</span>';
@@ -386,7 +512,7 @@ document.addEventListener('click', function(e) {
     if (!reason) { alert('请填写审批说明。'); return; }
     const decision = document.getElementById('releaseDecision')?.value;
     const row = approvalRow;
-    const id = row.children[1]?.textContent.trim();
+    const id = row.dataset.internalId || row.children[1]?.textContent.trim();
     const stateCell = row.querySelector('[data-release-cell]');
     const cells = row.children;
     if (decision === 'approved') {
@@ -483,4 +609,434 @@ document.addEventListener('click', function(e) {
     if (preRow) selectPreRow(preRow);
   });
 })();
-</script></body></html>
+</script><script>
+/* 异常列表补充真实流水关键字段：仅展示，不允许在本页直接修改。 */
+(() => {
+  const streamDetails = {
+    'BNK-018': { payerAccount:'6222 1000 0000 0188', paidAt:'2026-11-06 09:58', payeeAccount:'6214 8888 0000 2186' },
+    'BNK-021': { payerAccount:'6222 1000 0000 0216', paidAt:'2026-11-06 10:12', payeeAccount:'6214 8888 0000 2186' },
+    'WXP-006': { payerAccount:'未提供', paidAt:'2026-11-06 10:56', payeeAccount:'6214 8888 0000 2186' },
+    'BNK-024': { payerAccount:'6222 1000 0000 0249', paidAt:'2026-11-06 11:21', payeeAccount:'6214 8888 0000 2186' },
+    'BNK-001': { payerAccount:'6222 1000 0000 0018', paidAt:'2026-11-10 09:20', payeeAccount:'6214 8888 0000 2186' },
+    'ALP-012': { payerAccount:'6222 1000 0000 0126', paidAt:'2026-11-10 09:34', payeeAccount:'6214 8888 0000 2186' },
+    'BNK-031': { payerAccount:'6222 1000 0000 0315', paidAt:'2026-11-10 09:58', payeeAccount:'6214 8888 0000 2186' }
+  };
+  const normalize = root => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) node.nodeValue = node.nodeValue.replace(/\*+/g, '');
+  };
+  const infoFor = row => streamDetails[(row.children[4]?.textContent || '').replace(/\*/g, '').trim()] || { payerAccount:'—', paidAt:'—', payeeAccount:'—' };
+  const addColumns = () => {
+    const table = document.querySelector('.gridwrap table');
+    if (!table) return;
+    const header = [...table.querySelectorAll('thead th')].find(th => th.childNodes[0]?.nodeValue?.trim() === '付款主体');
+    if (header && !header.parentElement.querySelector('[data-stream-field="payer-account"]')) {
+      const columns = ['付款账号','付款时间','收款账号'].map((label, index) => {
+        const th = document.createElement('th');
+        th.dataset.streamField = ['payer-account','paid-at','payee-account'][index];
+        th.innerHTML = label + '<div class="cf"></div>';
+        return th;
+      });
+      header.after(...columns);
+    }
+    table.querySelectorAll('#rows tr').forEach(row => {
+      if (row.querySelector('[data-stream-extra]')) return;
+      const payer = row.children[7];
+      if (!payer) return;
+      const info = infoFor(row);
+      const extraCells = ['payerAccount','paidAt','payeeAccount'].map(key => {
+        const td = document.createElement('td');
+        td.dataset.streamExtra = key;
+        td.textContent = info[key];
+        return td;
+      });
+      payer.after(...extraCells);
+    });
+    table.querySelectorAll('tfoot td[colspan="13"]').forEach(td => td.colSpan = 16);
+    normalize(table);
+  };
+  const renderCompare = row => {
+    const info = infoFor(row);
+    const cells = row.children;
+    const payer = cells[7]?.textContent || '—';
+    const currency = cells[11]?.textContent || '—';
+    const received = cells[12]?.textContent || '—';
+    const bill = cells[13]?.textContent || '—';
+    document.getElementById('compare').innerHTML = '<tr><td>付款主体</td><td>' + payer + '</td><td>' + payer + '</td><td><span class="tag blue">一致</span></td></tr>' +
+      '<tr><td>付款账号</td><td>' + info.payerAccount + '</td><td>' + info.payerAccount + '</td><td><span class="tag blue">已回显</span></td></tr>' +
+      '<tr><td>付款时间</td><td>' + info.paidAt + '</td><td>' + info.paidAt + '</td><td><span class="tag blue">已回显</span></td></tr>' +
+      '<tr><td>收款账号</td><td>' + info.payeeAccount + '</td><td>' + info.payeeAccount + '</td><td><span class="tag blue">已回显</span></td></tr>' +
+      '<tr><td>金额 / 币种</td><td>' + received + ' / ' + currency + '</td><td>' + bill + ' / ' + currency + '</td><td><span class="tag">待核对</span></td></tr>';
+  };
+  addColumns();
+  const rows = document.getElementById('rows');
+  new MutationObserver(addColumns).observe(rows, { childList:true });
+  document.addEventListener('click', event => {
+    const row = event.target.closest('#rows tr');
+    if (!row) return;
+    setTimeout(() => { addColumns(); renderCompare(row); }, 0);
+  });
+})();
+</script><script>
+/* 已确认：异常列表一行一张水单；回款申请单仅作关联与汇总。 */
+(() => {
+  const slipsByApplication = {
+    'RCP-AP-0008':'SLIP-0008-01', 'RCP-AP-0003':'SLIP-0003-02', 'RCP-AP-0011':'SLIP-0011-01',
+    'RCP-AP-0002':'SLIP-0002-01', 'RCP-AP-0009':'SLIP-0009-02', 'RCP-AP-0013':'SLIP-0013-01', '—':'SLIP-0006-01'
+  };
+  const table = document.querySelector('.page > .gridwrap table');
+  const getAppCell = row => [...row.children].find(cell => cell.textContent.trim().startsWith('RCP-AP-') || cell.textContent.trim() === '—');
+  function ensureSlipDimension() {
+    const header = table?.querySelector('thead tr'); if (!header) return;
+    const appHead = [...header.children].find(cell => cell.childNodes[0]?.nodeValue?.trim() === '回款申请');
+    if (appHead && !header.querySelector('[data-slip-head]')) { const th=document.createElement('th'); th.dataset.slipHead='1'; th.innerHTML='水单编号<div class="cf"></div>'; appHead.insertAdjacentElement('afterend',th); }
+    const customerHead = [...header.children].find(cell => ['客户','申请客户'].includes(cell.childNodes[0]?.nodeValue?.trim()));
+    if (customerHead && customerHead.childNodes[0]) customerHead.childNodes[0].nodeValue = '申请客户';
+    table.querySelectorAll('#rows tr').forEach(row => {
+      if (row.querySelector('[data-slip-cell]')) return;
+      const appCell = getAppCell(row); if (!appCell) return;
+      const app = appCell.textContent.trim(); const td=document.createElement('td'); td.dataset.slipCell='1'; td.innerHTML='<b>'+ (slipsByApplication[app] || 'SLIP-待关联') +'</b>'; appCell.insertAdjacentElement('afterend',td);
+    });
+    const heads=[...header.children].map(cell => cell.childNodes[0]?.nodeValue?.trim());
+    const customerIndex=heads.indexOf('申请客户');
+    if(customerIndex>=0)table.querySelectorAll('#rows tr').forEach(row=>{const cell=row.children[customerIndex];if(cell&&cell.textContent.trim()==='待认领')cell.textContent='客户 A';});
+  }
+  const notice=document.querySelector('.notice');
+  if(notice) notice.innerHTML='<b>处理维度：</b>异常列表一行对应一张水单；回款申请单仅用于归集该申请下的多张水单、关联账单和处理进度。原始水单、真实流水、认领结果和核销记录均不覆盖。';
+  ensureSlipDimension();
+  new MutationObserver(ensureSlipDimension).observe(document.getElementById('rows'),{childList:true});
+  document.addEventListener('click',event=>{const row=event.target.closest('#rows tr');if(!row)return;setTimeout(()=>{ensureSlipDimension();const slip=row.querySelector('[data-slip-cell]')?.textContent.trim();const title=document.getElementById('detail');if(slip&&title&&!title.textContent.includes('水单编号'))title.insertAdjacentHTML('beforeend','　<span style="font-size:11px;color:#537493">水单编号：'+slip+'；一张水单对应一笔真实流水</span>');},0);});
+})();
+</script><script>
+/* 申请客户来自水单发起时的回款申请；认领客户仅表示真实流水最终归属。 */
+(() => {
+  const table=document.querySelector('.page > .gridwrap table');
+  const valueOf=(row,label)=>{const heads=[...table.querySelectorAll('thead th')];const index=heads.findIndex(th=>th.childNodes[0]?.nodeValue?.trim()===label);return index>=0?row.children[index]?.textContent.trim()||'—':'—';};
+  document.addEventListener('click',event=>{const row=event.target.closest('#rows tr');if(!row)return;setTimeout(()=>{const applicationCustomer=valueOf(row,'申请客户');const stage=valueOf(row,'异常阶段');const recognized=stage==='自动认领'?'待认领':applicationCustomer;const compare=document.getElementById('compare');if(compare&&!compare.textContent.includes('申请客户'))compare.insertAdjacentHTML('afterbegin','<tr><td>申请客户</td><td>'+applicationCustomer+'</td><td>—</td><td><span class="tag blue">水单发起时带入</span></td></tr><tr><td>认领客户</td><td>—</td><td>'+recognized+'</td><td><span class="tag '+(recognized==='待认领'?'':'blue')+'">'+(recognized==='待认领'?'待认领':'已认领')+'</span></td></tr>');const title=document.getElementById('detail');if(title&&!title.textContent.includes('申请客户：'))title.insertAdjacentHTML('beforeend','　<span style="font-size:11px;color:#537493">申请客户：'+applicationCustomer+'；认领客户：'+recognized+'</span>');},1);});
+})();
+</script><script>
+/* 撤销放行：仅已放行且未实际核销的记录可操作；撤销后重新锁定并允许业务重新申请。 */
+(() => {
+  const toolbar = document.querySelector('.toolbar');
+  if (!toolbar || document.getElementById('btnRevokeRelease')) return;
+  const button = document.createElement('button');
+  button.type = 'button'; button.id = 'btnRevokeRelease'; button.className = 'btn red';
+  button.textContent = '↩ 撤销放行'; button.disabled = true;
+  const approve = toolbar.querySelector('#btnApproveRelease');
+  if (approve) toolbar.insertBefore(button, approve); else toolbar.appendChild(button);
+  const selectedRow = () => document.querySelector('#rows tr.selected') || document.querySelector('#rows .row-pick:checked')?.closest('tr');
+  const eligible = row => {
+    const release = row?.querySelector('[data-release-cell]')?.textContent.trim();
+    if (release !== '已放行') return false;
+    if (row.dataset.writeoff === '1') return false;
+    const stage = row.children[2]?.textContent.trim() || '';
+    const status = row.children[15]?.textContent.trim() || row.children[14]?.textContent.trim() || '';
+    return !stage.includes('核销') || (!status.includes('已核销') && !status.includes('核销完成'));
+  };
+  const refresh = () => {
+    const row = selectedRow();
+    button.disabled = !row || !eligible(row);
+    button.title = button.disabled ? '请选择一条已放行且未实际核销的记录' : '撤销放行并重新锁定客户下单';
+  };
+  button.addEventListener('click', () => {
+    const row = selectedRow();
+    if (!row || !eligible(row)) { alert('仅“已放行且未实际核销”的记录可撤销放行。'); return; }
+    const id = row.dataset.internalId || row.children[1]?.textContent.trim() || '—';
+    const customer = row.children[6]?.textContent.trim() || '—';
+    document.getElementById('mtitle').innerHTML = '撤销放行 <button class="close" id="close">×</button>';
+    document.getElementById('mbody').innerHTML = '<div class="info"><div><label>异常编号</label>' + id + '</div><div><label>客户</label>' + customer + '</div><div><label>当前放行状态</label>已放行</div><div><label>实际核销状态</label>未完成</div></div><p style="margin-top:12px;color:#8b5a09">撤销后客户下单限制将重新锁定，业务可在回款协同重新发起放行。</p><p>取消原因 <textarea id="revokeReleaseReason" style="width:100%;height:80px;border:1px solid #ccd5df;margin-top:5px" placeholder="请填写撤销放行原因（必填）"></textarea></p>';
+    const confirm = document.getElementById('confirm');
+    confirm.textContent = '确认撤销放行'; confirm.dataset.revokeRelease = '1';
+    confirm.dataset.revokeRowId = id;
+    document.getElementById('mask').classList.add('show');
+  });
+  document.getElementById('confirm').addEventListener('click', () => {
+    const confirm = document.getElementById('confirm');
+    if (confirm.dataset.revokeRelease !== '1') return;
+    const reason = document.getElementById('revokeReleaseReason')?.value.trim();
+    if (!reason) { alert('请填写撤销放行原因。'); return; }
+    const row = selectedRow();
+    const id = confirm.dataset.revokeRowId || row?.dataset.internalId || row?.children[1]?.textContent.trim();
+    const cell = row?.querySelector('[data-release-cell]');
+    if (cell) cell.innerHTML = '<span class="tag">已撤销放行</span>';
+    if (id) (window.__releaseStatuses || (window.__releaseStatuses = {}))[id] = '已撤销放行';
+    if (row) row.dataset.releasedRevoked = '1';
+    window.__operationLogs?.unshift({ key:id, at:'2026-11-13 10:30', user:'财务收款', action:'撤销放行', result:'已撤销放行；客户下单重新锁定', reason });
+    alert('已撤销放行，客户下单限制已重新锁定；业务可重新发起放行。');
+    delete confirm.dataset.revokeRelease; delete confirm.dataset.revokeRowId;
+    confirm.textContent = '确认处理'; document.getElementById('mask').classList.remove('show'); refresh();
+  });
+  document.addEventListener('click', () => setTimeout(refresh, 0));
+  document.addEventListener('change', () => setTimeout(refresh, 0));
+  new MutationObserver(refresh).observe(document.getElementById('rows'), { childList:true, subtree:true });
+  refresh();
+})();
+</script><script>
+/* 统一异常阶段展示：自动核销不是独立异常阶段，按最新口径归入已比对待核销或待业务补资料。 */
+(() => {
+  const normalize = () => {
+    document.querySelectorAll('#rows tr').forEach(row => {
+      const id = row.dataset.internalId || row.children[1]?.textContent.trim();
+      const stage = row.children[2];
+      if (!stage) return;
+      let next = '';
+      if (id === 'EXC-***024') next = '已比对待核销';
+      if (id === 'EXC-***021') next = '待业务补资料';
+      if (next && stage.textContent.trim() !== next) stage.innerHTML = '<span class="tag blue">' + next + '</span>';
+    });
+  };
+  normalize();
+  new MutationObserver(normalize).observe(document.getElementById('rows'), { childList:true, subtree:true });
+})();
+</script><script>
+/* 重新匹配：不弹窗、不选范围，直接按全量匹配条件执行。 */
+(() => {
+  const tip = message => {
+    let el = document.getElementById('rematchTip');
+    if (!el) { el = document.createElement('div'); el.id = 'rematchTip'; el.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:20;background:#eaf6ff;border:1px solid #9dc8ed;color:#1762bd;border-radius:4px;padding:8px 12px;box-shadow:0 2px 8px #173a6330'; document.body.appendChild(el); }
+    el.textContent = message; clearTimeout(el.__timer); el.__timer = setTimeout(() => el.remove(), 2200);
+  };
+  document.addEventListener('click', event => {
+    const button = event.target.closest('#retry');
+    if (!button) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    const row = document.querySelector('#rows tr.selected') || document.querySelector('#rows .row-pick:checked')?.closest('tr');
+    if (!row) { tip('请先选择一条异常记录'); return; }
+    if (button.disabled) return;
+    const headers = [...document.querySelectorAll('#rows')].length ? [...document.querySelector('#rows').closest('table').querySelectorAll('thead th')] : [];
+    const statusIndex = headers.findIndex(th => th.childNodes[0]?.nodeValue?.trim() === '处理状态');
+    const statusCell = statusIndex >= 0 ? row.children[statusIndex] : null;
+    button.disabled = true; button.dataset.rematching = '1';
+    if (statusCell) statusCell.textContent = '重新匹配中';
+    tip('已按全量匹配条件发起重新匹配');
+    setTimeout(() => {
+      if (statusCell) statusCell.textContent = '待处理';
+      button.disabled = false; delete button.dataset.rematching;
+      tip('重新匹配完成，请查看最新异常阶段');
+    }, 900);
+  }, true);
+})();
+</script><script>
+/* 页面命名与人工核销入口：本页是回款处理工作台，当前版本保留本页人工核销交互。 */
+(() => {
+  document.title = '回款处理工作台｜回款核销｜MVP';
+  const syncRepaymentIds = () => {
+    document.querySelectorAll('#rows tr[data-i]').forEach(row => {
+      const record = data[Number(row.dataset.i)];
+      if (!record) return;
+      if (row.dataset.internalId !== record[0]) row.dataset.internalId = record[0];
+      const cell = row.children[1];
+      const visible = record[4] || record[0];
+      if (cell && cell.textContent.trim() !== visible) cell.textContent = visible;
+    });
+    const pre = window.__prewriteAction;
+    if (pre) document.querySelectorAll('#rows tr[data-pre-i]').forEach(row => {
+      const record = pre.rows[Number(row.dataset.preI)];
+      if (!record) return;
+      if (row.dataset.internalId !== record.id) row.dataset.internalId = record.id;
+      const cell = row.children[1];
+      if (cell && cell.textContent.trim() !== record.app) cell.textContent = record.app;
+    });
+    const detail = document.getElementById('detail');
+    const selected = document.querySelector('#rows tr.selected');
+    const index = selected?.dataset.i;
+    const record = index !== undefined ? data[Number(index)] : null;
+    if (detail && record && detail.innerHTML.includes(record[0])) detail.innerHTML = detail.innerHTML.replaceAll(record[0], record[4] || record[0]);
+    if (record) document.querySelectorAll('.info').forEach(info => { if (info.innerHTML.includes(record[0])) info.innerHTML = info.innerHTML.replaceAll(record[0], record[4] || record[0]); });
+  };
+  const refresh = () => {
+    syncRepaymentIds();
+    const activeTop = [...document.querySelectorAll('.top .tab')].find(tab => tab.classList.contains('active'));
+    if (activeTop && activeTop.textContent.trim() !== '回款处理工作台　×') activeTop.textContent = '回款处理工作台　×';
+    const workNav = [...document.querySelectorAll('.side .nav')].find(nav => nav.textContent.includes('异常'));
+    if (workNav) { workNav.innerHTML = '<b>⚠</b>处理'; workNav.title = '回款处理工作台'; }
+    document.querySelectorAll('.filters label').forEach(label => {
+      if (label.textContent.trim() === '异常编号 / 回款申请') label.textContent = '回款编号 / 回款申请';
+      if (label.textContent.trim() === '异常创建时间') label.textContent = '创建时间';
+      if (label.textContent.trim() === '异常阶段') label.textContent = '处理阶段';
+    });
+    document.querySelectorAll('.filters input').forEach(input => {
+      if (input.placeholder.includes('异常编号')) input.placeholder = '请输入回款编号或申请编号';
+    });
+    const table = document.querySelector('.page > .gridwrap table');
+    if (table) {
+      const heads = [...table.querySelectorAll('thead th')];
+      const appIndex = heads.findIndex(th => th.childNodes[0]?.nodeValue?.trim() === '回款申请');
+      if (appIndex >= 0) {
+        heads[appIndex].style.display = 'none';
+        table.querySelectorAll('tbody tr, tfoot tr').forEach(row => { if (row.children[appIndex]) row.children[appIndex].style.display = 'none'; });
+      }
+    }
+    table?.querySelectorAll('thead th').forEach(th => {
+      const first = th.childNodes[0];
+      if (!first || first.nodeType !== 3) return;
+      if (first.nodeValue.trim() === '异常编号') first.nodeValue = '回款编号';
+      if (first.nodeValue.trim() === '异常阶段') first.nodeValue = '处理阶段';
+    });
+    document.querySelectorAll('#manualWrite,#openWrite').forEach(button => { if (button.textContent.trim() !== '✓ 人工确认核销') button.textContent = '✓ 人工确认核销'; });
+    document.querySelectorAll('#manualWrite,#openWrite').forEach(button => { if (button.style.display !== 'none') button.style.display = 'none'; button.setAttribute('aria-hidden', 'true'); });
+    const notice = document.querySelector('.notice');
+    if (notice && notice.textContent.includes('此页只处理自动认领')) {
+      notice.innerHTML = '<b>工作台定位：</b>本页统一展示回款处理状态；自动认领、资料补充和放行审批在本页处理，人工核销入口暂不开放，相关规则待评审后再启用。已核销记录仅供查询。';
+    }
+    const detail = document.getElementById('detail');
+    if (detail && detail.innerHTML.includes('异常编号')) detail.innerHTML = detail.innerHTML.replaceAll('异常编号', '回款编号');
+    document.querySelectorAll('.info label').forEach(label => { if (label.textContent.trim() === '异常编号') label.textContent = '回款编号'; });
+  };
+  refresh();
+  new MutationObserver(refresh).observe(document.body, { childList:true, subtree:true });
+})();
+</script><script>
+/* 最新确认：处理阶段与处理状态合并；放行列表仍逐张水单展示，但审批按回款申请单汇总执行。 */
+(() => {
+  const mainTable = document.querySelector('#rows')?.closest('table');
+  const source = window.data || (typeof data !== 'undefined' ? data : []);
+  const preRows = window.__prewriteAction?.rows || [];
+
+  function applicationOf(row) {
+    if (row?.dataset?.i !== undefined) return source[Number(row.dataset.i)]?.[4] || '';
+    if (row?.dataset?.preI !== undefined) return preRows[Number(row.dataset.preI)]?.app || '';
+    return '';
+  }
+  function customerOf(row) {
+    if (row?.dataset?.i !== undefined) return source[Number(row.dataset.i)]?.[5] || '—';
+    if (row?.dataset?.preI !== undefined) return preRows[Number(row.dataset.preI)]?.customer || '—';
+    return '—';
+  }
+  function paymentOf(row) {
+    if (row?.dataset?.i !== undefined) return Number(String(source[Number(row.dataset.i)]?.[8] || '0').replace(/[^0-9.-]/g, '')) || 0;
+    if (row?.dataset?.preI !== undefined) return Number(String(preRows[Number(row.dataset.preI)]?.received || '0').replace(/[^0-9.-]/g, '')) || 0;
+    return 0;
+  }
+  function billOf(row) {
+    if (row?.dataset?.i !== undefined) return Number(String(source[Number(row.dataset.i)]?.[9] || '0').replace(/[^0-9.-]/g, '')) || 0;
+    if (row?.dataset?.preI !== undefined) return Number(String(preRows[Number(row.dataset.preI)]?.bill || '0').replace(/[^0-9.-]/g, '')) || 0;
+    return 0;
+  }
+  function processingState(row) {
+    const oldStage = row?.children?.[2]?.textContent.trim() || '';
+    const oldStatus = row?.children?.[15]?.textContent.trim() || row?.children?.[14]?.textContent.trim() || '';
+    if (oldStatus === '重新匹配中') return oldStatus;
+    if (oldStatus.includes('待业务补资料') || oldStage.includes('待业务补资料')) return '待业务补资料';
+    if (oldStatus.includes('已核销') || oldStage.includes('已核销')) return '已核销';
+    if (oldStage.includes('已比对待核销') || oldStage.includes('自动核销') || oldStatus.includes('已比对待核销')) return '已比对待核销';
+    return '自动认领异常';
+  }
+  function syncMergedStatus() {
+    const filter = document.querySelectorAll('.filters .f');
+    filter.forEach(host => {
+      const label = host.querySelector('label');
+      if (label?.textContent.trim() === '处理阶段') host.remove();
+      if (label?.textContent.trim() === '处理状态') {
+        const select = host.querySelector('select');
+        if (select && !select.dataset.mergedStatus) {
+          select.dataset.mergedStatus = '1';
+          select.innerHTML = '<option>全部</option><option>自动认领异常</option><option>已比对待核销</option><option>待业务补资料</option><option>已核销</option><option>重新匹配中</option>';
+        }
+      }
+    });
+    if (!mainTable) return;
+    const heads = [...mainTable.querySelectorAll('thead th')];
+    const stageHead = heads.find(th => th.childNodes[0]?.nodeValue?.trim() === '处理阶段' || th.childNodes[0]?.nodeValue?.trim() === '异常阶段');
+    if (stageHead) stageHead.style.display = 'none';
+    const statusHead = heads.find(th => th.childNodes[0]?.nodeValue?.trim() === '处理状态');
+    if (statusHead) statusHead.firstChild.nodeValue = '处理状态';
+    mainTable.querySelectorAll('#rows tr').forEach(row => {
+      if (row.children[2]) row.children[2].style.display = 'none';
+      const statusCell = row.children[15] || row.children[14];
+      if (statusCell) statusCell.innerHTML = '<span class="tag blue">' + processingState(row) + '</span>';
+    });
+  }
+
+  document.addEventListener('click', event => {
+    const button = event.target.closest('#btnApproveRelease');
+    if (!button) return;
+    const row = document.querySelector('#rows tr.selected') || document.querySelector('#rows .row-pick:checked')?.closest('tr');
+    const releaseCell = row?.querySelector('[data-release-cell]');
+    if (!row || releaseCell?.textContent.trim() !== '待放行审批') return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    const appId = applicationOf(row);
+    const appRows = [...document.querySelectorAll('#rows tr')].filter(item => applicationOf(item) === appId);
+    const amount = appRows.reduce((sum, item) => sum + paymentOf(item), 0);
+    const bill = appRows.reduce((sum, item) => sum + billOf(item), 0);
+    document.getElementById('mtitle').innerHTML = '审批客户放行 <button class="close" id="close">×</button>';
+    document.getElementById('mbody').innerHTML = '<div class="info"><div><label>回款申请单</label>' + appId + '</div><div><label>客户</label>' + customerOf(row) + '</div><div><label>待审批水单</label>' + appRows.length + ' 张（列表仍按水单展示）</div><div><label>水单确认金额合计</label>' + amount.toFixed(2) + '</div><div><label>关联到期未结算账单金额</label>' + bill.toFixed(2) + '</div><div><label>放行审批范围</label>本申请单下全部待放行水单</div></div><p style="margin-top:12px">放行结论 <select id="releaseDecision" style="height:30px;border:1px solid #ccd5df"><option value="approved">同意放行</option><option value="rejected">退回业务补资料</option></select></p><p>审批说明 <textarea id="releaseApprovalReason" style="width:100%;height:70px;border:1px solid #ccd5df;margin-top:5px" placeholder="请填写放行依据或退回原因"></textarea></p><p style="color:#8b5a09">审批结果作用于整张回款申请；同一申请下每张水单同步回写放行状态并记录日志。放行不改变处理状态或实际核销结果。</p>';
+    const confirm = document.getElementById('confirm');
+    confirm.textContent = '确认审批'; confirm.dataset.releaseApplicationApproval = appId;
+    document.getElementById('mask').classList.add('show');
+  }, true);
+
+  document.getElementById('confirm')?.addEventListener('click', event => {
+    const confirm = document.getElementById('confirm');
+    const appId = confirm.dataset.releaseApplicationApproval;
+    if (!appId) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    const reason = document.getElementById('releaseApprovalReason')?.value.trim();
+    if (!reason) { alert('请填写审批说明。'); return; }
+    const decision = document.getElementById('releaseDecision')?.value;
+    const appRows = [...document.querySelectorAll('#rows tr')].filter(row => applicationOf(row) === appId);
+    appRows.forEach(row => {
+      const cell = row.querySelector('[data-release-cell]');
+      if (cell) cell.innerHTML = '<span class="tag ' + (decision === 'approved' ? 'blue' : '') + '">' + (decision === 'approved' ? '已放行' : '未申请放行') + '</span>';
+      const statusCell = row.children[15] || row.children[14];
+      if (decision !== 'approved' && statusCell) statusCell.innerHTML = '<span class="tag blue">待业务补资料</span>';
+    });
+    window.__operationLogs?.unshift({ key:appId, at:'2026-11-14 10:30', user:'财务收款', action:decision === 'approved' ? '审批客户放行' : '退回业务补资料', result:decision === 'approved' ? '申请单已放行；同步回写该申请下全部水单' : '申请单已退回业务补资料；同步回写该申请下全部水单', reason });
+    delete confirm.dataset.releaseApplicationApproval;
+    document.getElementById('mask').classList.remove('show');
+    syncMergedStatus();
+    alert(decision === 'approved' ? '已按申请单完成放行审批，并同步更新该申请下全部水单。' : '已按申请单退回业务补资料，并同步更新该申请下全部水单。');
+  }, true);
+
+  syncMergedStatus();
+  new MutationObserver(syncMergedStatus).observe(document.getElementById('rows'), { childList:true });
+})();
+</script><script>
+/* 回款处理工作台：新增业务员、客服、提交人，均从回款申请及员工主数据回显。 */
+(() => {
+  const ownerByRepay = {
+    'RCP-AP-0008': { sales:'王超', cs:'林晓', submitter:'温东华' },
+    'RCP-AP-0003': { sales:'王超', cs:'林晓', submitter:'温东华' },
+    'RCP-AP-0011': { sales:'周敏', cs:'林晓', submitter:'温东华' },
+    'RCP-AP-0002': { sales:'王超', cs:'林晓', submitter:'温东华' },
+    'RCP-AP-0009': { sales:'陈晨', cs:'张敏', submitter:'温东华' },
+    'RCP-AP-0013': { sales:'周敏', cs:'林晓', submitter:'温东华' }
+  };
+  function syncOwnerColumns() {
+    const table = document.querySelector('#rows')?.closest('table');
+    if (!table) return;
+    const head = table.querySelector('thead tr');
+    if (head && !head.querySelector('[data-owner-column]')) {
+      ['业务员','客服','提交人'].forEach(label => { const th = document.createElement('th'); th.dataset.ownerColumn = '1'; th.textContent = label; head.appendChild(th); });
+    }
+    table.querySelectorAll('#rows tr').forEach(row => {
+      if (row.querySelector('[data-owner-cell]')) return;
+      const repayId = row.children[1]?.textContent.trim();
+      const owner = ownerByRepay[repayId] || { sales:'—', cs:'—', submitter:'—' };
+      [owner.sales, owner.cs, owner.submitter].forEach(value => { const td = document.createElement('td'); td.dataset.ownerCell = '1'; td.textContent = value; row.appendChild(td); });
+    });
+  }
+  syncOwnerColumns();
+  new MutationObserver(syncOwnerColumns).observe(document.getElementById('rows'), { childList:true });
+})();
+</script><!-- repay-menu-v2:start -->
+<style>
+html.repay-menu-v2 body{padding-left:52px!important}
+html.repay-menu-v2 .side,html.repay-menu-v2 .repay-unified-nav{display:none!important}
+html.repay-menu-v2 .repay-nav-host{padding-left:0!important}
+.repay-menu-v2{position:fixed;inset:0 auto 0 0;z-index:10080;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;color:#26384c}
+.repay-menu-v2 *{box-sizing:border-box}
+.repay-menu-rail{width:52px;height:100vh;background:#0d57b4;box-shadow:1px 0 5px rgba(5,41,90,.2);display:flex;flex-direction:column;align-items:stretch}
+.repay-menu-logo{height:49px;display:grid;place-items:center;border:0;border-bottom:1px solid rgba(255,255,255,.24);background:#1762bd;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+.repay-menu-root{width:100%;min-height:62px;border:0;border-bottom:1px solid rgba(255,255,255,.08);background:transparent;color:#d8e9fb;font-size:11px;line-height:1.25;cursor:pointer}
+.repay-menu-root b{display:block;font-size:17px;line-height:23px;font-weight:700}.repay-menu-root:hover,.repay-menu-root.active{background:#ff9700;color:#fff}.repay-menu-root:focus-visible,.repay-menu-pin:focus-visible,.repay-menu-item:focus-visible{outline:2px solid #ffbd58;outline-offset:-2px}
+.repay-menu-tray{position:absolute;left:52px;top:49px;width:218px;max-height:calc(100vh - 49px);overflow:auto;background:#fff;border:1px solid #d8e1eb;border-left:0;border-radius:0 0 7px 0;box-shadow:6px 8px 22px rgba(28,53,84,.18);display:none}
+.repay-menu-v2.open .repay-menu-tray{display:block}.repay-menu-head{height:42px;display:flex;align-items:center;padding:0 10px 0 14px;border-bottom:1px solid #e8eef5;color:#183a61;font-weight:800;font-size:13px}.repay-menu-pin{margin-left:auto;width:25px;height:25px;border:0;border-radius:4px;background:#f0f5fb;color:#356b9d;cursor:pointer;font-size:14px}.repay-menu-pin:hover,.repay-menu-v2.pinned .repay-menu-pin{background:#e1efff;color:#1762bd}.repay-menu-list{padding:6px 0 10px}.repay-menu-group{padding:7px 14px 4px;color:#7b8ea2;font-size:11px;font-weight:700}.repay-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;border:0;background:#fff;color:#2e4055;text-align:left;font:12px/1.35 "Microsoft YaHei","PingFang SC",Arial,sans-serif;cursor:pointer}.repay-menu-item i{width:17px;color:#1762bd;font-style:normal;text-align:center}.repay-menu-item:hover{background:#edf5ff;color:#1762bd}.repay-menu-item.active{background:#e6f2ff;color:#0f5eb6;font-weight:800;border-right:3px solid #1762bd}.repay-menu-sep{height:1px;background:#edf1f6;margin:5px 0}
+@media(max-width:760px){html.repay-menu-v2 body{padding-left:44px!important}.repay-menu-rail{width:44px}.repay-menu-logo{height:44px}.repay-menu-root{min-height:57px;font-size:10px}.repay-menu-tray{left:44px;top:44px;width:min(218px,calc(100vw - 44px))}}
+</style>
+<script>
+(()=>{const current=location.pathname.split('/').pop()||'';const finance=[['▤','请款单管理','请款单管理-指定票件整合-MVP.html'],['￥','收款管理','收款管理-自动核销与人工核销-MVP.html'],['⚠','回款处理工作台','自动认领与核销-异常处理-MVP.html'],['⌁','回款协同','回款核销协同工作台-业务财务-MVP.html'],['▣','客户账单与水单','客户端首页-客户账单与水单识别-MVP.html']];const prd=[['◫','回款流程图','回款核销协同工作台-业务财务-MVP.html#process'],['▦','确认场景','回款核销协同工作台-业务财务-MVP.html#scenarios'],['☷','异常、打回与字典','回款异常与打回类型-MVP.html'],['▤','请款单交互 PRD','请款单管理-回款申请-交互PRD.html'],['⚠','回款工作台交互 PRD','财务异常工作台-回款核销-交互PRD.html'],['✓','财务签字清单','回款核销-业务签字清单.html']];const prdPages=prd.map(x=>x[2].split('#')[0]);let kind=(prdPages.includes(current)||['#process','#scenarios'].includes(location.hash))?'prd':'finance';let pinned=false;const host=document.createElement('aside');host.className='repay-menu-v2';host.setAttribute('aria-label','回款功能导航');host.innerHTML='<div class="repay-menu-rail"><button type="button" class="repay-menu-logo" title="收起菜单">TX</button><button type="button" class="repay-menu-root" data-kind="finance"><b>财</b>财务</button><button type="button" class="repay-menu-root" data-kind="prd"><b>PRD</b>需求</button></div><section class="repay-menu-tray" aria-label="二级菜单"><div class="repay-menu-head"><span></span><button type="button" class="repay-menu-pin" title="固定菜单" aria-label="固定菜单">⌁</button></div><nav class="repay-menu-list"></nav></section>';document.body.appendChild(host);const tray=host.querySelector('.repay-menu-tray'),head=host.querySelector('.repay-menu-head span'),list=host.querySelector('.repay-menu-list');function render(){const items=kind==='finance'?finance:prd;head.textContent=kind==='finance'?'财务':'PRD';list.innerHTML='<div class="repay-menu-group">'+(kind==='finance'?'回款功能':'流程与交付件')+'</div>'+items.map(x=>'<button type="button" class="repay-menu-item '+(x[2].split('#')[0]===current?'active':'')+'" data-href="'+x[2]+'"><i>'+x[0]+'</i><span>'+x[1]+'</span></button>').join('');host.querySelectorAll('.repay-menu-root').forEach(b=>b.classList.toggle('active',b.dataset.kind===kind));}function open(next,pin){kind=next||kind;if(pin!==undefined)pinned=pin;host.classList.add('open');host.classList.toggle('pinned',pinned);host.querySelector('.repay-menu-pin').textContent=pinned?'×':'⌁';host.querySelector('.repay-menu-pin').title=pinned?'收起菜单':'固定菜单';render()}function close(){if(pinned)return;host.classList.remove('open')}host.querySelectorAll('.repay-menu-root').forEach(b=>{b.addEventListener('mouseenter',()=>open(b.dataset.kind,false));b.addEventListener('focus',()=>open(b.dataset.kind,false));b.addEventListener('click',()=>{if(kind===b.dataset.kind&&pinned){pinned=false;host.classList.remove('pinned');close()}else open(b.dataset.kind,true)})});host.addEventListener('mouseenter',()=>open(kind,pinned));host.addEventListener('mouseleave',close);host.querySelector('.repay-menu-logo').addEventListener('click',()=>{pinned=false;host.classList.remove('pinned');host.classList.remove('open')});host.querySelector('.repay-menu-pin').addEventListener('click',()=>{pinned=!pinned;open(kind,pinned)});list.addEventListener('click',e=>{const btn=e.target.closest('[data-href]');if(btn)location.href=btn.dataset.href});render();document.documentElement.classList.add('repay-menu-v2');})();
+</script>
+<!-- repay-menu-v2:end -->
+</body></html>
