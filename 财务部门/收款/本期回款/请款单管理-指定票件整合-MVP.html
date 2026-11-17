@@ -2091,13 +2091,23 @@
     item.ourAccount = document.getElementById("repayOurAccount").value;
   }
 
-  function allRepaySlipAccountsMatched() {
+  /* 自动认领只校验付款主体和客户付款账户；我方收款账户属于后续自动核销条件。 */
+  function payerSubjectMatched(item) {
+    const customerName = repayRows()[0]?.name || "";
+    return Boolean(item?.payerName && customerName && item.payerName.includes(customerName));
+  }
+
+  function allRepaySlipClaimMatched() {
     return repaySlipItems.length > 0 && repaySlipItems.every(item =>
-      accountMatched(item.payerAccount, knownPayerAccounts) && ourAccountMatched(item.ourAccount)
+      payerSubjectMatched(item) && accountMatched(item.payerAccount, knownPayerAccounts)
     );
   }
 
-  /* 付款时间是自动认领的必备条件：系统只用水单识别时间或上传时间，
+  function allRepaySlipWriteoffAccountsMatched() {
+    return repaySlipItems.length > 0 && repaySlipItems.every(item => ourAccountMatched(item.ourAccount));
+  }
+
+  /* 付款时间用于自动核销候选过滤：系统只用水单识别时间或上传时间，
      业务端不可修改；真实流水还需落在该时间后的配置窗口内。 */
   function repaySlipTimesQualified() {
     return repaySlipItems.length > 0 && repaySlipItems.every(item => Boolean(item.paidAt));
@@ -2134,7 +2144,7 @@
   }
 
   function repayIsPayable(r) {
-    return r.status === "待支付" && repayCanAccessCustomer(r);
+    return ["待支付", "部分付款"].includes(r.status) && repayCanAccessCustomer(r);
   }
 
   function repaySelectedBillsInvalid() {
@@ -2226,9 +2236,9 @@
     renderRepayRelatedBills(rows);
     if (repayOpenMode === "bill" && repaySelectedBillsInvalid().length) {
       summary.className = "hint bad";
-      summary.textContent = "已选请款单中存在非“待支付”账单，或不属于当前登录人的客户权限范围，不能发起回款申请。";
+      summary.textContent = "已选请款单中存在非“待支付/部分付款”账单，或不属于当前登录人的客户权限范围，不能发起回款申请。";
       judge.className = "hint bad";
-      judge.textContent = "请移除无权限或部分付款/已结清请款单后再提交。";
+      judge.textContent = "请移除无权限、已结清或非待处理请款单后再提交。";
       return;
     }
     if (rows.length && !repaySameCustomer(rows)) {
@@ -2273,9 +2283,11 @@
     const editExceeded = repaySlipItems.length > 1 ? repaySlipEditExceeded() : (amountDelta != null && repayAmountEditLimit != null && amountDelta > repayAmountEditLimit);
     judge.className = "hint " + (editExceeded ? "bad" : (enough ? "ok" : "warn"));
     const paymentTimesQualified = repaySlipTimesQualified();
+    const claimMatchedCount = repaySlipItems.filter(item => payerSubjectMatched(item) && accountMatched(item.payerAccount, knownPayerAccounts)).length;
+    const writeoffAccountMatchedCount = repaySlipItems.filter(item => ourAccountMatched(item.ourAccount)).length;
     const accountText = repaySlipItems.length > 1
-      ? `已识别账户水单 ${repaySlipItems.filter(item => accountMatched(item.payerAccount, knownPayerAccounts) && ourAccountMatched(item.ourAccount)).length}/${repaySlipItems.length} 张；仅全部水单账户均识别时，才可自动核销。`
-      : "付款账户和我方收款账户均匹配时，才可自动核销。";
+      ? `自动认领：付款主体和付款账户已匹配 ${claimMatchedCount}/${repaySlipItems.length} 张；自动核销：我方收款账户已匹配 ${writeoffAccountMatchedCount}/${repaySlipItems.length} 张。`
+      : "自动认领校验付款主体和付款账户；自动核销另校验我方收款账户、付款时间、金额和账单。";
     const channelText = channel === "wechat"
       ? "微信缺少对方户名，不参与自动认领；提交后由财务人工处理。"
       : accountText;
@@ -2290,8 +2302,8 @@
     judge.style.display = applyRelease ? "" : "none";
     if (!applyRelease) return;
     const paymentTimeText = paymentTimesQualified
-      ? "付款时间已纳入自动认领：每张水单仅匹配付款时间后 48 小时内的真实流水。"
-      : "存在未确认的系统付款时间，不能自动认领或自动核销；请替换水单重新识别。";
+      ? "付款时间用于自动核销候选过滤：每张水单仅比对付款时间后 48 小时内的真实流水。"
+      : "存在未确认的系统付款时间，不能自动核销；请替换水单重新识别。";
     judge.innerHTML = `<b>预核销放行判断：</b>水单确认金额 ${money(amount)} / 到期未结算账单 ${money(total)} = ${total > 0 ? (amount / total * 100).toFixed(2) : '0.00'}%；配置比例 ${repayReleaseRate}%<br>${resultText}${editText}<br><span style="font-size:11px;color:#595959">${channelText}<br>${paymentTimeText}</span><br><span style="display:inline-flex;gap:6px;margin-top:7px"><button type="button" class="btn" data-repay-scenario="enough">达到放行条件</button><button type="button" class="btn" data-repay-scenario="short">未达到放行条件</button></span>`;
   }
 
@@ -2322,12 +2334,27 @@
     /* 确认金额和识别金额均在水单列表逐行维护，弹窗下方不再重复展示。 */
   }
 
+  function repayDuplicateSlipIndexes() {
+    const grouped = new Map();
+    repaySlipItems.forEach((item, index) => {
+      const amount = Number(item.originalAmount);
+      const paidAt = String(item.paidAt || "").trim();
+      if (!Number.isFinite(amount) || !paidAt) return;
+      const key = `${amount.toFixed(2)}|${paidAt}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(index);
+    });
+    return new Set([...grouped.values()].filter(indexes => indexes.length > 1).flat());
+  }
+
   function renderRepaySlipList() {
     const host = document.getElementById("repaySlipList");
     if (!host) return;
     if (!repaySlipItems.length) { host.innerHTML = ""; return; }
     const allChecked = repaySlipItems.length > 0 && repaySlipItems.every(item => item.checked);
-    host.innerHTML = '<table style="width:100%;border-collapse:collapse;border:1px solid #d9e2ec;font-size:12px"><thead><tr style="background:#f7f9fb"><th style="padding:5px 7px;text-align:left"><input id="repaySlipCheckAll" type="checkbox" ' + (allChecked ? 'checked' : '') + ' title="全选水单"> 全选</th><th style="padding:5px 7px;text-align:left">水单</th><th style="padding:5px 7px;text-align:left">识别金额</th><th style="padding:5px 7px;text-align:left">确认金额</th><th style="padding:5px 7px;text-align:left">付款时间 / 来源</th><th style="padding:5px 7px;text-align:left">账户核对</th><th style="padding:5px 7px;text-align:left">操作</th></tr></thead><tbody>' + repaySlipItems.map((item, index) => { const payerMatched = accountMatched(item.payerAccount, knownPayerAccounts); const ourMatched = ourAccountMatched(item.ourAccount); return '<tr style="' + (index === repayActiveSlip ? 'background:#f0f8ff' : '') + '"><td style="padding:6px 7px"><input data-slip-selected="' + index + '" type="checkbox" ' + (item.checked ? 'checked' : '') + ' aria-label="选择第' + (index + 1) + '张水单"></td><td style="padding:6px 7px">第' + (index + 1) + '张　' + item.name + '</td><td style="padding:6px 7px">' + money(item.originalAmount) + '</td><td style="padding:4px 7px"><input data-slip-amount="' + index + '" type="number" min="0" step="0.01" value="' + Number(item.amount || 0).toFixed(2) + '" style="width:112px"></td><td style="padding:6px 7px"><span>' + (item.paidAt ? item.paidAt.replace("T", " ") : "—") + '</span><span style="display:block;margin-top:2px;color:#8c8c8c">' + item.timeSource + '（系统只读）</span></td><td style="padding:4px 7px;min-width:235px"><div>付款：<input data-slip-payer="' + index + '" value="' + (item.payerAccount || '') + '" placeholder="非必填，可手输" style="width:135px"> ' + (payerMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>') + '</div><div style="margin-top:4px">收款：<input data-slip-our="' + index + '" value="' + (item.ourAccount || '') + '" placeholder="非必填，可手输" style="width:135px"> ' + (ourMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>') + '</div></td><td style="padding:4px 7px"><button type="button" class="btn link" data-slip-active="' + index + '">查看识别结果</button><button type="button" class="btn link" data-slip-remove="' + index + '" style="margin-left:6px;color:#d4380d">移除</button></td></tr>'; }).join('') + '</tbody></table><div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center"><button type="button" class="btn link" id="btnAddMoreSlip">＋ 继续添加水单</button><b>已勾选 ' + repaySlipItems.filter(item => item.checked).length + '/' + repaySlipItems.length + ' 张，水单合计：' + money(syncRepaySlipTotal()) + '</b></div>';
+    const duplicateIndexes = repayDuplicateSlipIndexes();
+    const duplicateTip = duplicateIndexes.size ? '<div style="margin-top:6px;color:#d46b08;font-size:12px">提示：发现 ' + duplicateIndexes.size + ' 张水单的识别金额和付款时间相同，疑似重复；仅提示，不影响提交，请核对。</div>' : '';
+    host.innerHTML = '<table style="width:100%;border-collapse:collapse;border:1px solid #d9e2ec;font-size:12px"><thead><tr style="background:#f7f9fb"><th style="padding:5px 7px;text-align:left"><input id="repaySlipCheckAll" type="checkbox" ' + (allChecked ? 'checked' : '') + ' title="全选水单"> 全选</th><th style="padding:5px 7px;text-align:left">水单</th><th style="padding:5px 7px;text-align:left">识别金额</th><th style="padding:5px 7px;text-align:left">确认金额</th><th style="padding:5px 7px;text-align:left">付款时间 / 来源</th><th style="padding:5px 7px;text-align:left">账户核对</th><th style="padding:5px 7px;text-align:left">操作</th></tr></thead><tbody>' + repaySlipItems.map((item, index) => { const payerMatched = accountMatched(item.payerAccount, knownPayerAccounts); const ourMatched = ourAccountMatched(item.ourAccount); const duplicateTag = duplicateIndexes.has(index) ? '<span class="tag warn" style="margin-left:4px">疑似重复</span>' : ''; return '<tr style="' + (index === repayActiveSlip ? 'background:#f0f8ff' : '') + '"><td style="padding:6px 7px"><input data-slip-selected="' + index + '" type="checkbox" ' + (item.checked ? 'checked' : '') + ' aria-label="选择第' + (index + 1) + '张水单"></td><td style="padding:6px 7px">第' + (index + 1) + '张　' + item.name + '</td><td style="padding:6px 7px">' + money(item.originalAmount) + '</td><td style="padding:4px 7px"><input data-slip-amount="' + index + '" type="number" min="0" step="0.01" value="' + Number(item.amount || 0).toFixed(2) + '" style="width:112px"></td><td style="padding:6px 7px"><span>' + (item.paidAt ? item.paidAt.replace("T", " ") : "—") + '</span>' + duplicateTag + '<span style="display:block;margin-top:2px;color:#8c8c8c">' + item.timeSource + '（系统只读）</span></td><td style="padding:4px 7px;min-width:235px"><div>付款：<input data-slip-payer="' + index + '" value="' + (item.payerAccount || '') + '" placeholder="非必填，可手输" style="width:135px"> ' + (payerMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>') + '</div><div style="margin-top:4px">收款：<input data-slip-our="' + index + '" value="' + (item.ourAccount || '') + '" placeholder="非必填，可手输" style="width:135px"> ' + (ourMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>') + '</div></td><td style="padding:4px 7px"><button type="button" class="btn link" data-slip-active="' + index + '">查看识别结果</button><button type="button" class="btn link" data-slip-remove="' + index + '" style="margin-left:6px;color:#d4380d">移除</button></td></tr>'; }).join('') + '</tbody></table><div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center"><button type="button" class="btn link" id="btnAddMoreSlip">＋ 继续添加水单</button><b>已勾选 ' + repaySlipItems.filter(item => item.checked).length + '/' + repaySlipItems.length + ' 张，水单合计：' + money(syncRepaySlipTotal()) + '</b></div>' + duplicateTip;
   }
 
   function activateRepaySlip(index) {
@@ -2351,15 +2378,15 @@
     const relationTotal = repayRelation(repayRows()).total;
     const fileList = [...files];
     if (!fileList.length) return;
-    if (fileList.length > 5 || repaySlipItems.length + fileList.length > 5) {
-      toast("单次回款申请最多上传 5 张水单，请减少后再上传。");
+    if (fileList.length > 10 || repaySlipItems.length + fileList.length > 10) {
+      toast("单次回款申请最多上传 10 张水单，请减少后再上传。");
       return;
     }
     const existingTotal = repaySlipItems.reduce((sum, item) => sum + item.amount, 0);
     const baseAmount = fileList.length ? Math.max(0, relationTotal - existingTotal) / fileList.length : 0;
     fileList.forEach((file, index) => {
       const amount = Math.max(0, baseAmount || 0);
-      repaySlipItems.push({ name:file.name || ('水单' + (repaySlipItems.length + index + 1)), amount, originalAmount:amount, paidAt:currentRepayTime(), timeSource:'水单上传时间', payerAccount:'6222 **** **** 9286', ourAccount:'6217 **** **** 0188', checked:false });
+      repaySlipItems.push({ name:file.name || ('水单' + (repaySlipItems.length + index + 1)), amount, originalAmount:amount, paidAt:currentRepayTime(), timeSource:'水单上传时间', payerName:(repayRows()[0]?.name || '当前客户') + '付款主体', payerAccount:'6222 **** **** 9286', ourAccount:'6217 **** **** 0188', checked:false });
     });
     repayActiveSlip = Math.max(0, repaySlipItems.length - fileList.length);
     renderRepaySlipList();
@@ -2504,6 +2531,7 @@
   document.getElementById("repaySlipList").addEventListener("change", e => {
     const all = e.target.closest("#repaySlipCheckAll");
     const selected = e.target.closest("[data-slip-selected]");
+    const amount = e.target.closest("[data-slip-amount]");
     const payer = e.target.closest("[data-slip-payer]");
     const ours = e.target.closest("[data-slip-our]");
     if (all) repaySlipItems.forEach(item => { item.checked = all.checked; });
@@ -2511,7 +2539,7 @@
       const item = repaySlipItems[Number(selected.dataset.slipSelected)];
       if (item) item.checked = selected.checked;
     }
-    if (payer || ours || all || selected) {
+    if (payer || ours || all || selected || amount) {
       syncActiveSlipAccountFields();
       renderRepaySlipList();
       refreshRepayJudgement();
@@ -2571,14 +2599,16 @@
       return;
     }
     const applyRelease = document.getElementById("repayApplyRelease").checked;
-    const released = applyRelease && amount >= total * repayReleaseRate / 100 && total > 0;
     syncActiveSlipAccountFields();
-    const accountsMatched = allRepaySlipAccountsMatched();
+    const released = applyRelease && amount >= total * repayReleaseRate / 100 && total > 0;
+    const autoClaim = allRepaySlipClaimMatched();
+    const writeoffAccountsMatched = allRepaySlipWriteoffAccountsMatched();
     const paymentTimesQualified = repaySlipTimesQualified();
-    const autoWriteoff = accountsMatched && paymentTimesQualified && rows.length > 0 && amount >= total;
+    const autoWriteoff = autoClaim && writeoffAccountsMatched && paymentTimesQualified && rows.length > 0 && Math.abs(amount - total) < 0.005;
     const releasePending = applyRelease && !released;
-    rows.forEach(r => { r.prewriteoff = true; r.prewriteoffRelease = released; r.status = released ? "已核销 / 已放行" : (releasePending ? "已比对待核销 / 待放行审批" : (autoWriteoff ? "已核销 / 未放行" : "已比对待核销")); });
-    recordRepayLog(rows, releasePending ? "提交预核销并申请放行" : "提交预核销", released ? "已核销并放行" : (releasePending ? "已提交预核销，已创建财务待放行任务" : (autoWriteoff ? "已核销，客户未放行" : "已提交预核销，等待匹配或财务处理")));
+    const processState = autoWriteoff ? "已核销" : (autoClaim ? "已比对待核销" : "自动认领异常");
+    rows.forEach(r => { r.prewriteoff = true; r.prewriteoffRelease = released; r.status = processState + " / " + (released ? "已放行" : (releasePending ? "待放行审批" : "未申请放行")); });
+    recordRepayLog(rows, releasePending ? "提交预核销并申请放行" : "提交预核销", released ? (autoWriteoff ? "已核销并放行" : "已放行，待继续核销") : (releasePending ? "已提交预核销，已创建财务待放行任务" : (autoWriteoff ? "已核销，客户未放行" : (autoClaim ? "已比对待核销，等待财务人工核销" : "自动认领异常，等待财务处理"))));
     repaySubmitted = true;
     renderBills();
     refreshRepayJudgement();
@@ -2586,7 +2616,7 @@
       closeMask("repayPrewriteoffMask");
       toast("预核销已提交：未达到放行条件，已创建财务待放行任务。");
     } else if (!autoWriteoff) {
-      toast("预核销已提交：未满足自动核销条件，已进入已比对待核销或自动认领异常处理。");
+      toast(autoClaim ? "预核销已提交：金额、币种、账户或付款时间未满足自动核销条件，已进入已比对待核销。" : "预核销已提交：付款主体或付款账户未匹配，已进入自动认领异常。");
     } else if (released) {
       closeMask("repayPrewriteoffMask");
       toast("预核销已提交：已按本次申请放行客户下单，并写入核销日志。");
@@ -2821,16 +2851,16 @@
   const billView = document.getElementById('viewBill');
   const coord = document.createElement('section');
   coord.id = 'viewRepayCoord'; coord.className = 'panel'; coord.style.display = 'none';
-  coord.innerHTML = '<div style="padding:14px 16px;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;gap:12px"><h3 style="margin:0;font-size:16px">回款协同</h3><span style="color:#8c8c8c;font-size:12px">我的回款申请与待办补资料</span><button type="button" class="btn" id="btnCoordBack" style="margin-left:auto">返回请款单</button></div><div class="toolbar"><button type="button" class="btn primary" data-coord-tab="all">申请明细</button><button type="button" class="btn" data-coord-tab="todo">待补资料 <span class="tag warn">1</span></button><button type="button" class="btn" data-coord-tab="release">待放行</button><button type="button" class="btn" data-coord-tab="confirm">已核销</button></div><div class="table-wrap"><table><thead><tr><th>申请编号</th><th>客户</th><th>关联请款单 / 运单</th><th>付款金额</th><th>当前状态</th><th>财务反馈</th><th>更新时间</th><th>操作</th></tr></thead><tbody id="coordRows"></tbody></table></div><div id="coordDetail" style="margin:14px 16px;border:1px solid #e8e8e8;border-radius:4px;padding:14px;color:#595959">请选择一条回款申请查看明细或待办。</div>';
+  coord.innerHTML = '<div style="padding:14px 16px;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;gap:12px"><h3 style="margin:0;font-size:16px">回款协同</h3><span style="color:#8c8c8c;font-size:12px">我的回款申请与已驳回记录</span><button type="button" class="btn" id="btnCoordBack" style="margin-left:auto">返回请款单</button></div><div class="toolbar"><button type="button" class="btn primary" data-coord-tab="all">申请明细</button><button type="button" class="btn" data-coord-tab="rejected">已驳回 <span class="tag warn">1</span></button><button type="button" class="btn" data-coord-tab="release">待放行</button><button type="button" class="btn" data-coord-tab="confirm">已核销</button></div><div class="table-wrap"><table><thead><tr><th>申请编号</th><th>客户</th><th>关联请款单 / 运单</th><th>付款金额</th><th>当前状态</th><th>财务反馈</th><th>更新时间</th><th>操作</th></tr></thead><tbody id="coordRows"></tbody></table></div><div id="coordDetail" style="margin:14px 16px;border:1px solid #e8e8e8;border-radius:4px;padding:14px;color:#595959">请选择一条回款申请查看明细或待办。</div>';
   billView.after(coord);
   const apps = [
     {id:'RCP-AP-0002',customer:'海拓',relation:'QK20261018012 / TX261008001',amount:'CNY 12,860.40',state:'已核销 / 已放行',feedback:'流水、账户、金额与账单全匹配，系统已自动核销',time:'2026-11-10 09:25',type:'confirm'},
     {id:'RCP-AP-0009',customer:'远航',relation:'QK20261016005 / TX261010002',amount:'CNY 8,000.00',state:'待放行',feedback:'实收与待收差额 CNY -2,000.00，等待财务审批放行',time:'2026-11-10 09:40',type:'release'},
-    {id:'RCP-AP-0011',customer:'联洲',relation:'QK20261015008 / TX261012003',amount:'CNY 20,000.00',state:'待补资料',feedback:'付款金额与关联账单不一致',time:'2026-11-10 10:18',type:'todo',reason:'付款金额与关联账单不一致'}
+    {id:'RCP-AP-0011',customer:'联洲',relation:'QK20261015008 / TX261012003',amount:'CNY 20,000.00',state:'已驳回',feedback:'付款金额与关联账单不一致',time:'2026-11-10 10:18',type:'rejected',reason:'付款金额与关联账单不一致'}
   ];
   let activeTab = 'all';
-  function renderCoord(){const list=apps.filter(x=>activeTab==='all'||x.type===activeTab);document.getElementById('coordRows').innerHTML=list.length?list.map(x=>'<tr><td><b>'+x.id+'</b></td><td>'+x.customer+'</td><td>'+x.relation+'</td><td>'+x.amount+'</td><td><span class="tag '+(x.type==='todo'?'warn':'blue')+'">'+x.state+'</span></td><td>'+x.feedback+'</td><td>'+x.time+'</td><td><button type="button" class="link" data-coord-id="'+x.id+'">'+(x.type==='todo'?'补充资料':'查看详情')+'</button></td></tr>').join(''):'<tr><td colspan="8" style="text-align:center;color:#8c8c8c">暂无记录</td></tr>';}
-  function detail(id){const x=apps.find(a=>a.id===id);if(!x)return;const todo=x.type==='todo';document.getElementById('coordDetail').innerHTML='<div style="font-weight:700;margin-bottom:8px">'+x.id+' · '+x.state+'</div><div class="grid2"><div>关联单据：'+x.relation+'</div><div>付款金额：'+x.amount+'</div><div>财务反馈：'+x.feedback+'</div><div>退回原因：'+(x.reason||'—')+'</div></div>'+(todo?'<div style="margin-top:12px"><label>补传水单 <input type="file" id="coordSlip" accept=".jpg,.jpeg,.png,.pdf"></label><label style="margin-left:18px">付款备注 <input id="coordRemark" placeholder="补充付款说明"></label><button type="button" class="btn primary" id="btnCoordResubmit" style="margin-left:12px">重新提交</button></div>':'<div style="margin-top:12px;color:#8c8c8c">该申请当前无需业务操作，可等待财务处理结果。</div>');}
+  function renderCoord(){const list=apps.filter(x=>activeTab==='all'||x.type===activeTab);document.getElementById('coordRows').innerHTML=list.length?list.map(x=>'<tr><td><b>'+x.id+'</b></td><td>'+x.customer+'</td><td>'+x.relation+'</td><td>'+x.amount+'</td><td><span class="tag '+(x.type==='rejected'?'warn':'blue')+'">'+x.state+'</span></td><td>'+x.feedback+'</td><td>'+x.time+'</td><td><button type="button" class="link" data-coord-id="'+x.id+'">'+(x.type==='rejected'?'查看驳回原因':'查看详情')+'</button></td></tr>').join(''):'<tr><td colspan="8" style="text-align:center;color:#8c8c8c">暂无记录</td></tr>';}
+  function detail(id){const x=apps.find(a=>a.id===id);if(!x)return;const rejected=x.type==='rejected';document.getElementById('coordDetail').innerHTML='<div style="font-weight:700;margin-bottom:8px">'+x.id+' · '+x.state+'</div><div class="grid2"><div>关联单据：'+x.relation+'</div><div>付款金额：'+x.amount+'</div><div>财务反馈：'+x.feedback+'</div><div>驳回原因：'+(x.reason||'—')+'</div></div>'+(rejected?'<div style="margin-top:12px;color:#8c8c8c">本次申请已驳回，仅可查看原水单、驳回原因和日志；如需再次处理，请重新发起回款申请。</div>':'<div style="margin-top:12px;color:#8c8c8c">该申请当前无需业务操作，可等待财务处理结果。</div>');}
   document.getElementById('btnRepayCoord').addEventListener('click',()=>{billView.style.display='none';coord.style.display='block';renderCoord();});
   document.getElementById('btnCoordBack').addEventListener('click',()=>{coord.style.display='none';billView.style.display='block';});
   coord.addEventListener('click',e=>{const tab=e.target.closest('[data-coord-tab]');if(tab){activeTab=tab.dataset.coordTab;coord.querySelectorAll('[data-coord-tab]').forEach(b=>b.classList.toggle('primary',b===tab));renderCoord();return;}const item=e.target.closest('[data-coord-id]');if(item){detail(item.dataset.coordId);return;}if(e.target.id==='btnCoordResubmit'){const x=apps.find(a=>a.id==='RCP-AP-0011');if(!document.getElementById('coordSlip').files.length||!document.getElementById('coordRemark').value.trim()){toast('请补传水单并填写付款备注');return;}x.state='待财务复核';x.feedback='业务已补充资料，等待财务复核';x.type='confirm';x.time='刚刚';detail(x.id);renderCoord();toast('补充资料已重新提交');}});
@@ -2844,13 +2874,13 @@
   document.head.appendChild(style);
   const mask = document.createElement('div');
   mask.id = 'repayCoordDrawerMask'; mask.className = 'repay-coord-mask';
-  mask.innerHTML = '<aside class="repay-coord-drawer" role="dialog" aria-modal="true" aria-labelledby="repayCoordDrawerTitle"><div class="drawer-head"><div><h3 id="repayCoordDrawerTitle" style="margin:0;font-size:16px">回款协同</h3><span style="font-size:12px;color:#8c8c8c">申请单用于汇总；一张水单一条处理记录</span></div><button type="button" class="close-drawer" id="btnCloseRepayCoord" aria-label="关闭">×</button></div><div class="drawer-body"><div class="drawer-tabs"><button type="button" class="btn primary" data-drawer-tab="all">申请明细</button><button type="button" class="btn" data-drawer-tab="todo">待补资料 <span class="tag warn">2</span></button><button type="button" class="btn" data-drawer-tab="release">待放行</button><button type="button" class="btn" data-drawer-tab="writtenoff">已核销</button></div><div class="drawer-filters"><div class="drawer-filter"><label>客户</label><input id="drawerCoordCustomer" placeholder="客户简称模糊搜索"></div><div class="drawer-filter"><label>运单号</label><input id="drawerCoordWaybill" placeholder="请输入运单号"></div><div class="drawer-filter"><label>申请时间</label><div style="display:flex;gap:5px;align-items:center"><input id="drawerCoordStartDate" type="date" aria-label="申请开始日期"><span>至</span><input id="drawerCoordEndDate" type="date" aria-label="申请结束日期"></div></div></div><div class="table-wrap"><table><thead><tr><th>申请编号</th><th>客户</th><th>关联请款单</th><th>水单处理进度</th><th>付款金额</th><th>当前状态</th><th>退回来源</th><th>财务反馈</th><th>更新时间</th><th>操作</th></tr></thead><tbody id="drawerCoordRows"></tbody></table></div><div class="coord-detail" id="drawerCoordDetail">请选择一条回款申请查看水单明细或待办。</div></div></aside>';
+  mask.innerHTML = '<aside class="repay-coord-drawer" role="dialog" aria-modal="true" aria-labelledby="repayCoordDrawerTitle"><div class="drawer-head"><div><h3 id="repayCoordDrawerTitle" style="margin:0;font-size:16px">回款协同</h3><span style="font-size:12px;color:#8c8c8c">申请单用于汇总；一张水单一条处理记录</span></div><button type="button" class="close-drawer" id="btnCloseRepayCoord" aria-label="关闭">×</button></div><div class="drawer-body"><div class="drawer-tabs"><button type="button" class="btn primary" data-drawer-tab="all">申请明细</button><button type="button" class="btn" data-drawer-tab="rejected">已驳回 <span class="tag warn">2</span></button><button type="button" class="btn" data-drawer-tab="release">待放行</button><button type="button" class="btn" data-drawer-tab="writtenoff">已核销</button></div><div class="drawer-filters"><div class="drawer-filter"><label>客户</label><input id="drawerCoordCustomer" placeholder="客户简称模糊搜索"></div><div class="drawer-filter"><label>运单号</label><input id="drawerCoordWaybill" placeholder="请输入运单号"></div><div class="drawer-filter"><label>申请时间</label><div style="display:flex;gap:5px;align-items:center"><input id="drawerCoordStartDate" type="date" aria-label="申请开始日期"><span>至</span><input id="drawerCoordEndDate" type="date" aria-label="申请结束日期"></div></div></div><div class="table-wrap"><table><thead><tr><th>申请编号</th><th>客户</th><th>关联请款单</th><th>水单处理进度</th><th>付款金额</th><th>当前状态</th><th>驳回来源</th><th>财务反馈</th><th>更新时间</th><th>操作</th></tr></thead><tbody id="drawerCoordRows"></tbody></table></div><div class="coord-detail" id="drawerCoordDetail">请选择一条回款申请查看水单明细或待办。</div></div></aside>';
   document.body.appendChild(mask);
   const apps = [
     {id:'RCP-AP-0002',customer:'海拓',waybills:['TX261008001','TX261010002'],relation:'QK20261018012',amount:'CNY 12,860.40',state:'已完成',feedback:'水单已写入核销日志，客户已放行',time:'2026-11-10 09:25',type:'writtenoff',slips:[{id:'SLIP-0002-01',amount:'CNY 12,860.40',state:'已核销 / 已放行',flow:'BNK-***001'}]},
     {id:'RCP-AP-0009',customer:'远航',waybills:['TX261015001'],relation:'QK20261016005',amount:'CNY 8,000.00',state:'处理中',feedback:'其中一张水单待放行审批，未自动写实际核销',time:'2026-11-10 09:40',type:'release',slips:[{id:'SLIP-0009-01',amount:'CNY 5,000.00',state:'已核销 / 未放行',flow:'BNK-***012'},{id:'SLIP-0009-02',amount:'CNY 3,000.00',state:'已比对待核销 / 待放行审批',flow:'ALP-***012'}]},
-    {id:'RCP-AP-0011',customer:'联洲',waybills:['TX261018003'],relation:'QK20261015008',amount:'CNY 20,000.00',state:'待补资料',source:'认领异常',feedback:'水单付款金额与关联账单不一致',time:'2026-11-10 10:18',type:'todo',reason:'水单付款金额与关联账单不一致',slips:[{id:'SLIP-0011-01',amount:'CNY 20,000.00',state:'待业务补资料',flow:'BNK-***021'}]},
-    {id:'RCP-AP-0013',customer:'迅达',waybills:['TX261022004'],relation:'QK20261012003',amount:'CNY 9,800.00',state:'待补资料',source:'放行审批',feedback:'确认金额低于自动放行比例，请补充水单或修正确认金额',time:'2026-11-13 14:20',type:'todo',reason:'放行审批退回补资料',slips:[{id:'SLIP-0013-01',amount:'CNY 9,800.00',state:'待业务补资料',flow:'ALI-***013'}]}
+    {id:'RCP-AP-0011',customer:'联洲',waybills:['TX261018003'],relation:'QK20261015008',amount:'CNY 20,000.00',state:'已驳回',source:'认领异常',feedback:'水单付款金额与关联账单不一致',time:'2026-11-10 10:18',type:'rejected',reason:'水单付款金额与关联账单不一致',slips:[{id:'SLIP-0011-01',amount:'CNY 20,000.00',state:'已驳回',flow:'BNK-***021'}]},
+    {id:'RCP-AP-0013',customer:'迅达',waybills:['TX261022004'],relation:'QK20261012003',amount:'CNY 9,800.00',state:'已驳回',source:'放行审批',feedback:'确认金额低于自动放行比例，已驳回本次申请',time:'2026-11-13 14:20',type:'rejected',reason:'放行审批驳回',slips:[{id:'SLIP-0013-01',amount:'CNY 9,800.00',state:'已驳回',flow:'ALI-***013'}]}
   ];
   let active = 'all';
   function render() {
@@ -2859,14 +2889,14 @@
     const startDate = document.getElementById('drawerCoordStartDate')?.value || '';
     const endDate = document.getElementById('drawerCoordEndDate')?.value || '';
     const list = apps.filter(x => (active === 'all' || x.type === active) && (!customer || x.customer.toLowerCase().includes(customer)) && (!waybill || (x.waybills || []).some(wb => wb.toLowerCase().includes(waybill))) && (!startDate || x.time.slice(0,10) >= startDate) && (!endDate || x.time.slice(0,10) <= endDate));
-    document.getElementById('drawerCoordRows').innerHTML = list.length ? list.map(x => {const done=x.slips.filter(s=>s.state.includes('已核销')).length;return '<tr><td><b>'+x.id+'</b></td><td>'+x.customer+'</td><td>'+x.relation+'</td><td>'+done+'/'+x.slips.length+' 张已核销</td><td>'+x.amount+'</td><td><span class="tag '+(x.type==='todo'?'warn':'blue')+'">'+x.state+'</span></td><td>'+ (x.source || '—') +'</td><td>'+x.feedback+'</td><td>'+x.time+'</td><td><button type="button" class="link" data-drawer-id="'+x.id+'">'+(x.type==='todo'?'补充资料并重新提交':'查看详情')+'</button></td></tr>'}).join('') : '<tr><td colspan="10" style="text-align:center;color:#8c8c8c">暂无记录</td></tr>';
+    document.getElementById('drawerCoordRows').innerHTML = list.length ? list.map(x => {const done=x.slips.filter(s=>s.state.includes('已核销')).length;return '<tr><td><b>'+x.id+'</b></td><td>'+x.customer+'</td><td>'+x.relation+'</td><td>'+done+'/'+x.slips.length+' 张已核销</td><td>'+x.amount+'</td><td><span class="tag '+(x.type==='rejected'?'warn':'blue')+'">'+x.state+'</span></td><td>'+ (x.source || '—') +'</td><td>'+x.feedback+'</td><td>'+x.time+'</td><td><button type="button" class="link" data-drawer-id="'+x.id+'">'+(x.type==='rejected'?'查看驳回原因':'查看详情')+'</button></td></tr>'}).join('') : '<tr><td colspan="10" style="text-align:center;color:#8c8c8c">暂无记录</td></tr>';
   }
   function detail(id) {
     const x = apps.find(a => a.id === id); if (!x) return;
-    const todo = x.type === 'todo';
+    const rejected = x.type === 'rejected';
     const slipRows=x.slips.map(s=>'<tr><td>'+s.id+'</td><td>'+s.amount+'</td><td>'+s.amount+'</td><td>'+s.flow+'</td><td><span class="tag '+(s.state.includes('待')?'warn':'blue')+'">'+s.state+'</span></td></tr>').join('');
     const numericAmount = String(x.amount || '').replace(/[^0-9.-]/g, '');
-    document.getElementById('drawerCoordDetail').innerHTML = '<div style="font-weight:700;margin-bottom:8px">'+x.id+' · '+x.state+'</div><div class="coord-grid"><div>关联请款单：'+x.relation+'</div><div>申请水单合计：'+x.amount+'</div><div>退回来源：'+(x.source||'—')+'</div><div>财务反馈：'+x.feedback+'</div><div>退回原因：'+(x.reason||'—')+'</div><div>重新提交后：重新识别（换水单）或复用识别结果（不换水单），然后全量执行认领、比对、放行和核销判断</div></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>水单编号</th><th>识别金额</th><th>确认金额</th><th>真实流水</th><th>水单处理状态</th></tr></thead><tbody>'+slipRows+'</tbody></table></div>' + (todo ? '<div style="margin-top:12px;padding:12px;border:1px solid #d9e2ec;border-radius:4px;background:#fafcff"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"><label>水单文件（可选替换）<input type="file" id="drawerCoordSlip" accept=".jpg,.jpeg,.png,.pdf" style="display:block;margin-top:4px"></label><label>付款备注<input id="drawerCoordRemark" placeholder="补充付款说明" style="display:block;margin-top:4px;width:100%"></label><label>识别金额（只读）<input id="drawerCoordRecognizedAmount" value="'+numericAmount+'" readonly style="display:block;margin-top:4px;width:100%;background:#f5f5f5"></label><label>确认金额（可调整）<input id="drawerCoordConfirmAmount" value="'+numericAmount+'" style="display:block;margin-top:4px;width:100%"></label><label>付款时间（系统只读）<span id="drawerCoordPaidAt" style="display:block;margin-top:4px;width:100%;padding:6px 8px;border:1px solid #d9e2ec;background:#f5f5f5;box-sizing:border-box">2026-11-13 15:39（原水单识别）</span></label><label>付款账户<input id="drawerCoordPayer" value="6222 **** **** 9286" style="display:block;margin-top:4px;width:100%"></label><label>我方收款账户<input id="drawerCoordPayee" value="6217 **** **** 0188" style="display:block;margin-top:4px;width:100%"></label></div><div style="margin-top:8px;color:#8c8c8c;font-size:12px">不替换水单时沿用原识别结果；替换文件后重新识别。付款时间不可修改，识别错误请替换水单。确认金额仅可在财务配置的上下调整幅度内修改。</div><button type="button" class="btn primary" id="btnDrawerResubmit" style="margin-top:10px">重新提交并重新匹配</button></div>' : '<div style="margin-top:12px;color:#8c8c8c">申请单仅汇总水单处理进度；可在上表查看每张水单的处理状态和真实流水。</div>');
+    document.getElementById('drawerCoordDetail').innerHTML = '<div style="font-weight:700;margin-bottom:8px">'+x.id+' · '+x.state+'</div><div class="coord-grid"><div>关联请款单：'+x.relation+'</div><div>申请水单合计：'+x.amount+'</div><div>驳回来源：'+(x.source||'—')+'</div><div>财务反馈：'+x.feedback+'</div><div>驳回原因：'+(x.reason||'—')+'</div></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>水单编号</th><th>识别金额</th><th>确认金额</th><th>真实流水</th><th>水单处理状态</th></tr></thead><tbody>'+slipRows+'</tbody></table></div>' + (rejected ? '<div style="margin-top:12px;color:#8c8c8c">本次申请已驳回，仅可查看原水单、驳回原因和日志；如需再次处理，请重新发起回款申请。</div>' : '<div style="margin-top:12px;color:#8c8c8c">申请单仅汇总水单处理进度；可在上表查看每张水单的处理状态和真实流水。</div>');
     document.getElementById('drawerCoordDetail').dataset.appId = id;
   }
   function openDrawer() { active = 'all'; document.getElementById('drawerCoordDetail').textContent = '请选择一条回款申请查看水单明细或待办。'; delete document.getElementById('drawerCoordDetail').dataset.appId; mask.classList.add('show'); render(); }
@@ -2886,10 +2916,10 @@
   const states = {
     'RCP-AP-0002': { prewriteoff:'已核销', release:'已放行' },
     'RCP-AP-0009': { prewriteoff:'已比对待核销', release:'待放行审批' },
-    'RCP-AP-0011': { prewriteoff:'待业务补资料', release:'未申请放行' },
-    'RCP-AP-0013': { prewriteoff:'待业务补资料', release:'未申请放行' }
+    'RCP-AP-0011': { prewriteoff:'已驳回', release:'未申请放行' },
+    'RCP-AP-0013': { prewriteoff:'已驳回', release:'未申请放行' }
   };
-  function tag(value) { return '<span class="tag ' + (value.includes('待') ? 'warn' : 'blue') + '">' + value + '</span>'; }
+  function tag(value) { return '<span class="tag ' + ((value.includes('待') || value.includes('驳回')) ? 'warn' : 'blue') + '">' + value + '</span>'; }
   function refresh() {
     const table = drawer.querySelector('#drawerCoordRows')?.closest('table');
     if (!table) return;
@@ -2950,6 +2980,7 @@ html.repay-menu-v2 .repay-nav-host{padding-left:0!important}
 <script>
 (()=>{const current=location.pathname.split('/').pop()||'';const finance=[['▤','请款单管理','请款单管理-指定票件整合-MVP.html'],['￥','收款管理','收款管理-自动核销与人工核销-MVP.html'],['⚠','回款处理工作台','自动认领与核销-异常处理-MVP.html'],['⌁','回款协同','回款核销协同工作台-业务财务-MVP.html'],['▣','客户账单与水单','客户端首页-客户账单与水单识别-MVP.html']];const prd=[['◫','回款流程图','回款核销协同工作台-业务财务-MVP.html#process'],['▦','确认场景','回款核销协同工作台-业务财务-MVP.html#scenarios'],['☷','异常、打回与字典','回款异常与打回类型-MVP.html'],['▤','请款单交互 PRD','请款单管理-回款申请-交互PRD.html'],['⚠','回款工作台交互 PRD','财务异常工作台-回款核销-交互PRD.html'],['✓','财务签字清单','回款核销-业务签字清单.html']];const prdPages=prd.map(x=>x[2].split('#')[0]);let kind=(prdPages.includes(current)||['#process','#scenarios'].includes(location.hash))?'prd':'finance';let pinned=false;const host=document.createElement('aside');host.className='repay-menu-v2';host.setAttribute('aria-label','回款功能导航');host.innerHTML='<div class="repay-menu-rail"><button type="button" class="repay-menu-logo" title="收起菜单">TX</button><button type="button" class="repay-menu-root" data-kind="finance"><b>财</b>财务</button><button type="button" class="repay-menu-root" data-kind="prd"><b>PRD</b>需求</button></div><section class="repay-menu-tray" aria-label="二级菜单"><div class="repay-menu-head"><span></span><button type="button" class="repay-menu-pin" title="固定菜单" aria-label="固定菜单">⌁</button></div><nav class="repay-menu-list"></nav></section>';document.body.appendChild(host);const tray=host.querySelector('.repay-menu-tray'),head=host.querySelector('.repay-menu-head span'),list=host.querySelector('.repay-menu-list');function render(){const items=kind==='finance'?finance:prd;head.textContent=kind==='finance'?'财务':'PRD';list.innerHTML='<div class="repay-menu-group">'+(kind==='finance'?'回款功能':'流程与交付件')+'</div>'+items.map(x=>'<button type="button" class="repay-menu-item '+(x[2].split('#')[0]===current?'active':'')+'" data-href="'+x[2]+'"><i>'+x[0]+'</i><span>'+x[1]+'</span></button>').join('');host.querySelectorAll('.repay-menu-root').forEach(b=>b.classList.toggle('active',b.dataset.kind===kind));}function open(next,pin){kind=next||kind;if(pin!==undefined)pinned=pin;host.classList.add('open');host.classList.toggle('pinned',pinned);host.querySelector('.repay-menu-pin').textContent=pinned?'×':'⌁';host.querySelector('.repay-menu-pin').title=pinned?'收起菜单':'固定菜单';render()}function close(){if(pinned)return;host.classList.remove('open')}host.querySelectorAll('.repay-menu-root').forEach(b=>{b.addEventListener('mouseenter',()=>open(b.dataset.kind,false));b.addEventListener('focus',()=>open(b.dataset.kind,false));b.addEventListener('click',()=>{if(kind===b.dataset.kind&&pinned){pinned=false;host.classList.remove('pinned');close()}else open(b.dataset.kind,true)})});host.addEventListener('mouseenter',()=>open(kind,pinned));host.addEventListener('mouseleave',close);host.querySelector('.repay-menu-logo').addEventListener('click',()=>{pinned=false;host.classList.remove('pinned');host.classList.remove('open')});host.querySelector('.repay-menu-pin').addEventListener('click',()=>{pinned=!pinned;open(kind,pinned)});list.addEventListener('click',e=>{const btn=e.target.closest('[data-href]');if(btn)location.href=btn.dataset.href});render();document.documentElement.classList.add('repay-menu-v2');})();
 </script>
+<script src="回款更新记录菜单.js"></script>
 <!-- repay-menu-v2:end -->
 </body>
 </html>

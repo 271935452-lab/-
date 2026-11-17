@@ -9,7 +9,7 @@
   </style>
 </head>
 <body>
-  <nav class="nav" aria-label="附录导航"><div class="top"><b>回款核销｜规则与状态附录</b><a href="回款核销-业务签字清单.html">财务签字清单</a><a href="请款单管理-指定票件整合-MVP.html">请款原型</a><a href="自动认领与核销-异常处理-MVP.html">回款工作台</a><button type="button" id="copyAppendix" style="margin-left:auto;border:1px solid #1762bd;border-radius:4px;background:#1762bd;color:#fff;padding:5px 10px;cursor:pointer;font:inherit">复制图片</button></div></nav>
+  <nav class="nav" aria-label="附录导航"><div class="top"><b>回款核销｜规则与状态附录</b><a href="回款核销-业务签字清单.html">财务签字清单</a><a href="请款单管理-指定票件整合-MVP.html">请款原型</a><a href="自动认领与核销-异常处理-MVP.html">回款工作台</a><button type="button" id="downloadAppendix" style="margin-left:auto;border:1px solid #1762bd;border-radius:4px;background:#fff;color:#1762bd;padding:5px 10px;cursor:pointer;font:inherit">下载导出</button><button type="button" id="copyAppendix" style="border:1px solid #1762bd;border-radius:4px;background:#1762bd;color:#fff;padding:5px 10px;cursor:pointer;font:inherit">复制图片</button></div></nav>
   <main class="page">
     <header class="hero"><h1>回款核销 · 认领、核销、异常与状态附录</h1><p>供财务、产品、研发和测试查阅；财务需要签字确认的决策项以《财务签字清单》为准。</p><div class="meta"><span class="chip">版本：V1.0</span><span class="chip">依据：2026-11-14 已确认规则</span><span class="chip">对象：回款申请、水单、真实流水、请款单、费用项、放行申请</span></div></header>
 
@@ -62,26 +62,48 @@
   <script>
     (() => {
       const button = document.getElementById('copyAppendix');
+      const downloadButton = document.getElementById('downloadAppendix');
       const toast = document.getElementById('copyToast');
       let timer;
       const show = text => { toast.textContent = text; toast.style.display = 'block'; clearTimeout(timer); timer = setTimeout(() => { toast.style.display = 'none'; }, 3200); };
       const save = blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '回款核销-规则与状态附录.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1200); };
+      downloadButton.addEventListener('click', () => {
+        const source = '<!doctype html>\n' + document.documentElement.outerHTML;
+        const url = URL.createObjectURL(new Blob([source], { type: 'text/html;charset=utf-8' }));
+        const a = document.createElement('a'); a.href = url; a.download = '回款核销-规则与状态附录.html'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1200);
+        show('已下载完整 HTML 附录，可离线打开或转发。');
+      });
       async function toPng() {
-        const target = document.querySelector('.page');
-        const width = Math.ceil(target.scrollWidth);
-        const height = Math.ceil(target.scrollHeight);
-        const styles = [...document.querySelectorAll('style')].map(style => style.textContent).join('\n');
-        const clone = target.cloneNode(true);
-        clone.style.cssText += ';width:' + width + 'px!important;height:auto!important;overflow:visible!important;margin:0!important;padding:18px 20px 40px!important;background:#f4f7fa!important';
-        const source = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>' + styles + '</style>' + clone.outerHTML + '</div></foreignObject></svg>';
-        const svgUrl = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
-        try {
-          const image = new Image();
-          await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = svgUrl; });
-          const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
-          const context = canvas.getContext('2d'); context.fillStyle = '#f4f7fa'; context.fillRect(0, 0, width, height); context.drawImage(image, 0, 0);
-          return await new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('图片生成失败')), 'image/png'));
-        } finally { URL.revokeObjectURL(svgUrl); }
+        /* 本地 file:// 环境不能稳定将 foreignObject 绘制到 Canvas，改为直接绘制附录文本。 */
+        const text = document.querySelector('.page').innerText.replace(/\t/g, '　');
+        const width = 1280, pad = 52, contentWidth = width - pad * 2, lineHeight = 30;
+        const draft = document.createElement('canvas').getContext('2d');
+        draft.font = '16px "Microsoft YaHei", Arial';
+        const lines = [];
+        const wrap = value => {
+          let line = '';
+          for (const char of value) {
+            if (draft.measureText(line + char).width > contentWidth && line) { lines.push(line); line = char; }
+            else line += char;
+          }
+          if (line) lines.push(line);
+        };
+        text.split(/\n+/).map(x => x.trim()).filter(Boolean).forEach(row => {
+          if (/^(回款核销|[1-5]\. |自动认领规则|自动核销与人工核销边界|放行与核销关系|异常类型与处理去向|状态、字典与配置来源)/.test(row)) { lines.push({ heading: row }); }
+          else wrap(row);
+          lines.push('');
+        });
+        const height = Math.max(900, pad * 2 + lines.reduce((sum, item) => sum + (typeof item === 'object' ? 42 : lineHeight), 0));
+        const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d'); ctx.fillStyle = '#f4f7fa'; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#123d72'; ctx.fillRect(0, 0, width, 74); ctx.fillStyle = '#fff'; ctx.font = '700 25px "Microsoft YaHei", Arial'; ctx.fillText('回款核销｜规则与状态附录', pad, 47);
+        let y = 108;
+        lines.forEach(item => {
+          if (typeof item === 'object') { ctx.fillStyle = '#eaf3ff'; ctx.fillRect(pad - 10, y - 25, contentWidth + 20, 38); ctx.fillStyle = '#173d68'; ctx.font = '700 19px "Microsoft YaHei", Arial'; ctx.fillText(item.heading, pad, y); y += 42; return; }
+          ctx.fillStyle = '#26384c'; ctx.font = '16px "Microsoft YaHei", Arial'; ctx.fillText(item, pad, y); y += lineHeight;
+        });
+        return await new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('图片生成失败')), 'image/png'));
       }
       button.addEventListener('click', async () => {
         button.disabled = true; button.textContent = '生成图片中…';
