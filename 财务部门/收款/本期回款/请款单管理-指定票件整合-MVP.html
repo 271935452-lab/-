@@ -810,10 +810,9 @@
         <div class="form-row" id="repayWaybillSearchRow" style="display:none"><label>运单号 <span class="req">*</span></label><input id="repayWaybillSearch" placeholder="输入运单号带出客户和待回款请款单" /></div>
       </div>
       <div class="hint warn" id="repayBillSummary"></div>
-      <div class="form-row" style="margin:0 0 12px"><label>付款备注</label><input id="repayPaymentRemark" maxlength="200" placeholder="请输入付款说明，最多 200 个字符" /></div>
       <section id="repayRelatedBills" style="margin:-2px 0 12px;border:1px solid var(--line);border-radius:4px;overflow:hidden">
         <div style="padding:7px 10px;background:#fafafa;border-bottom:1px solid var(--line);font-weight:600">关联请款单</div>
-        <div class="table-wrap" style="max-height:150px"><table style="min-width:620px"><thead><tr><th>请款单号</th><th>待回款金额</th><th>币种</th><th>回款状态</th></tr></thead><tbody id="repayRelatedBillRows"></tbody></table></div>
+        <div class="table-wrap" style="max-height:150px"><table style="min-width:500px"><thead><tr><th>请款单号</th><th>待回款金额</th><th>币种</th></tr></thead><tbody id="repayRelatedBillRows"></tbody></table></div>
       </section>
       <div class="form-grid" style="margin-bottom:12px">
         <div class="form-row" style="grid-column:span 4"><label>水单文件 <span class="req">*</span></label><input id="repaySlip" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" /><div id="repaySlipList" style="margin-top:8px;width:100%"></div></div>
@@ -2189,19 +2188,15 @@
     const tbody = document.getElementById("repayRelatedBillRows");
     if (!tbody) return;
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty">暂无可关联请款单</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" class="empty">暂无可关联请款单</td></tr>';
       return;
     }
     const relation = repayRelation(rows);
     tbody.innerHTML = relation.rows.map(r => {
-      const status = r.prewriteoff
-        ? (r.prewriteoffRelease ? '<span class="tag ok">已预核销 / 已放行</span>' : '<span class="tag warn">已预核销 / 待手工放行</span>')
-        : `<span class="tag gray">${r.status || "待支付"}</span>`;
       return `<tr>
         <td><b>${r.no}</b></td>
         <td>${money(r.unpaid)}</td>
         <td>CNY</td>
-        <td>${status}</td>
       </tr>`;
     }).join("");
   }
@@ -2256,11 +2251,12 @@
       return;
     }
     const total = relation.total;
-    const billNos = relation.rows.map(r => r.no).join("、");
+    const billCount = relation.rows.length;
     const name = rows[0].name;
     summary.className = "hint warn";
     const relationTitle = repayOpenMode === "bill" ? "本次关联请款单" : (repayOpenMode === "customer" ? "客户待回款请款单" : "运单关联请款单");
-    summary.innerHTML = `<b>${relationTitle}：</b>${billNos}<br>客户：${name}　结算金额：<b>${money(total)}</b>　币种：CNY${relation.removed ? `　<span style="color:#d46b08">已去重 ${relation.removed} 张完全相同账单</span>` : ""}`;
+    /* 多张请款单不在提示区横向拼接单号；提示区仅展示汇总，逐张明细统一在下方表格查看。 */
+    summary.innerHTML = `<b>${relationTitle}：</b>共 <b>${billCount}</b> 张<br>客户：${name}　待回款金额合计：<b>${money(total)}</b>　币种：CNY　<span style="color:#595959">请款单明细见下方列表</span>${relation.removed ? `　<span style="color:#d46b08">已去重 ${relation.removed} 张完全相同账单</span>` : ""}`;
     if (resetAmount) amountInput.value = total.toFixed(2);
     refreshRepayJudgement();
   }
@@ -2354,7 +2350,33 @@
     const allChecked = repaySlipItems.length > 0 && repaySlipItems.every(item => item.checked);
     const duplicateIndexes = repayDuplicateSlipIndexes();
     const duplicateTip = duplicateIndexes.size ? '<div style="margin-top:6px;color:#d46b08;font-size:12px">提示：发现 ' + duplicateIndexes.size + ' 张水单的识别金额和付款时间相同，疑似重复；仅提示，不影响提交，请核对。</div>' : '';
-    host.innerHTML = '<table style="width:100%;border-collapse:collapse;border:1px solid #d9e2ec;font-size:12px"><thead><tr style="background:#f7f9fb"><th style="padding:5px 7px;text-align:left"><input id="repaySlipCheckAll" type="checkbox" ' + (allChecked ? 'checked' : '') + ' title="全选水单"> 全选</th><th style="padding:5px 7px;text-align:left">水单</th><th style="padding:5px 7px;text-align:left">识别金额</th><th style="padding:5px 7px;text-align:left">确认金额</th><th style="padding:5px 7px;text-align:left">付款时间 / 来源</th><th style="padding:5px 7px;text-align:left">账户核对</th><th style="padding:5px 7px;text-align:left">操作</th></tr></thead><tbody>' + repaySlipItems.map((item, index) => { const payerMatched = accountMatched(item.payerAccount, knownPayerAccounts); const ourMatched = ourAccountMatched(item.ourAccount); const duplicateTag = duplicateIndexes.has(index) ? '<span class="tag warn" style="margin-left:4px">疑似重复</span>' : ''; return '<tr style="' + (index === repayActiveSlip ? 'background:#f0f8ff' : '') + '"><td style="padding:6px 7px"><input data-slip-selected="' + index + '" type="checkbox" ' + (item.checked ? 'checked' : '') + ' aria-label="选择第' + (index + 1) + '张水单"></td><td style="padding:6px 7px">第' + (index + 1) + '张　' + item.name + '</td><td style="padding:6px 7px">' + money(item.originalAmount) + '</td><td style="padding:4px 7px"><input data-slip-amount="' + index + '" type="number" min="0" step="0.01" value="' + Number(item.amount || 0).toFixed(2) + '" style="width:112px"></td><td style="padding:6px 7px"><span>' + (item.paidAt ? item.paidAt.replace("T", " ") : "—") + '</span>' + duplicateTag + '<span style="display:block;margin-top:2px;color:#8c8c8c">' + item.timeSource + '（系统只读）</span></td><td style="padding:4px 7px;min-width:235px"><div>付款：<input data-slip-payer="' + index + '" value="' + (item.payerAccount || '') + '" placeholder="非必填，可手输" style="width:135px"> ' + (payerMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>') + '</div><div style="margin-top:4px">收款：<input data-slip-our="' + index + '" value="' + (item.ourAccount || '') + '" placeholder="非必填，可手输" style="width:135px"> ' + (ourMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>') + '</div></td><td style="padding:4px 7px"><button type="button" class="btn link" data-slip-active="' + index + '">查看识别结果</button><button type="button" class="btn link" data-slip-remove="' + index + '" style="margin-left:6px;color:#d4380d">移除</button></td></tr>'; }).join('') + '</tbody></table><div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center"><button type="button" class="btn link" id="btnAddMoreSlip">＋ 继续添加水单</button><b>已勾选 ' + repaySlipItems.filter(item => item.checked).length + '/' + repaySlipItems.length + ' 张，水单合计：' + money(syncRepaySlipTotal()) + '</b></div>' + duplicateTip;
+    host.innerHTML = '<table style="width:100%;border-collapse:collapse;border:1px solid #d9e2ec;font-size:12px"><thead><tr style="background:#f7f9fb"><th style="padding:5px 7px;text-align:left"><input id="repaySlipCheckAll" type="checkbox" ' + (allChecked ? 'checked' : '') + ' title="全选水单"> 全选</th><th style="padding:5px 7px;text-align:left">水单</th><th style="padding:5px 7px;text-align:left">识别金额</th><th style="padding:5px 7px;text-align:left">确认金额</th><th style="padding:5px 7px;text-align:left">付款时间 / 来源</th><th style="padding:5px 7px;text-align:left">账户核对</th><th style="padding:5px 7px;text-align:left">操作</th></tr></thead><tbody>' + repaySlipItems.map((item, index) => { const payerMatched = accountMatched(item.payerAccount, knownPayerAccounts); const ourMatched = ourAccountMatched(item.ourAccount); const duplicateTag = duplicateIndexes.has(index) ? '<span class="tag warn" style="margin-left:4px">疑似重复</span>' : ''; return '<tr style="' + (index === repayActiveSlip ? 'background:#f0f8ff' : '') + '"><td style="padding:6px 7px"><input data-slip-selected="' + index + '" type="checkbox" ' + (item.checked ? 'checked' : '') + ' aria-label="选择第' + (index + 1) + '张水单"></td><td style="padding:6px 7px">第' + (index + 1) + '张　' + item.name + '</td><td style="padding:6px 7px">' + money(item.originalAmount) + '</td><td style="padding:4px 7px"><input data-slip-amount="' + index + '" type="number" min="0" step="0.01" value="' + Number(item.amount || 0).toFixed(2) + '" style="width:112px"></td><td style="padding:6px 7px"><span>' + (item.paidAt ? item.paidAt.replace("T", " ") : "—") + '</span>' + duplicateTag + '<span style="display:block;margin-top:2px;color:#8c8c8c">' + item.timeSource + '（系统只读）</span></td><td style="padding:4px 7px;min-width:235px"><div>付款：<input data-slip-payer="' + index + '" value="' + (item.payerAccount || '') + '" placeholder="非必填，可手输" ' + (payerMatched ? 'disabled title="账户已识别，不能编辑"' : '') + ' style="width:135px"> ' + (payerMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>') + '</div><div style="margin-top:4px">收款：<input data-slip-our="' + index + '" value="' + (item.ourAccount || '') + '" placeholder="非必填，可手输" ' + (ourMatched ? 'disabled title="账户已识别，不能编辑"' : '') + ' style="width:135px"> ' + (ourMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>') + '</div></td><td style="padding:4px 7px"><button type="button" class="btn link" data-slip-active="' + index + '">查看识别结果</button><button type="button" class="btn link" data-slip-remove="' + index + '" style="margin-left:6px;color:#d4380d">移除</button></td></tr>'; }).join('') + '</tbody></table><div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center"><button type="button" class="btn link" id="btnAddMoreSlip">＋ 继续添加水单</button><b>已勾选 ' + repaySlipItems.filter(item => item.checked).length + '/' + repaySlipItems.length + ' 张，水单合计：' + money(syncRepaySlipTotal()) + '</b></div>' + duplicateTip;
+  }
+
+  /* 水单是本次付款的最小业务单位：备注随水单逐条录入、保存和回显。 */
+  function renderRepaySlipList() {
+    const host = document.getElementById("repaySlipList");
+    if (!host) return;
+    if (!repaySlipItems.length) { host.innerHTML = ""; return; }
+    const allChecked = repaySlipItems.every(item => item.checked);
+    const duplicateIndexes = repayDuplicateSlipIndexes();
+    const rows = repaySlipItems.map((item, index) => {
+      const payerMatched = accountMatched(item.payerAccount, knownPayerAccounts);
+      const ourMatched = ourAccountMatched(item.ourAccount);
+      const duplicateTag = duplicateIndexes.has(index) ? '<span class="tag warn" style="margin-left:4px">疑似重复</span>' : '';
+      return `<tr style="${index === repayActiveSlip ? 'background:#f0f8ff' : ''}">
+        <td style="padding:6px 7px"><input data-slip-selected="${index}" type="checkbox" ${item.checked ? 'checked' : ''} aria-label="选择第${index + 1}张水单"></td>
+        <td style="padding:6px 7px">第${index + 1}张　${item.name}</td>
+        <td style="padding:6px 7px">${money(item.originalAmount)}</td>
+        <td style="padding:4px 7px"><input data-slip-amount="${index}" type="number" min="0" step="0.01" value="${Number(item.amount || 0).toFixed(2)}" style="width:112px"></td>
+        <td style="padding:6px 7px"><span>${item.paidAt ? item.paidAt.replace('T', ' ') : '—'}</span>${duplicateTag}<span style="display:block;margin-top:2px;color:#8c8c8c">${item.timeSource}（系统只读）</span></td>
+        <td style="padding:4px 7px"><input data-slip-remark="${index}" value="${item.paymentRemark || ''}" maxlength="200" placeholder="付款说明，最多 200 字" style="width:150px" aria-label="第${index + 1}张水单付款备注"></td>
+        <td style="padding:4px 7px;min-width:235px"><div>付款：<input data-slip-payer="${index}" value="${item.payerAccount || ''}" placeholder="非必填，可手输" ${payerMatched ? 'disabled title="账户已识别，不能编辑"' : ''} style="width:135px"> ${payerMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>'}</div><div style="margin-top:4px">收款：<input data-slip-our="${index}" value="${item.ourAccount || ''}" placeholder="非必填，可手输" ${ourMatched ? 'disabled title="账户已识别，不能编辑"' : ''} style="width:135px"> ${ourMatched ? '<span class="tag ok">已识别</span>' : '<span class="tag warn">未识别</span>'}</div></td>
+        <td style="padding:4px 7px;white-space:nowrap"><button type="button" class="btn link" data-slip-active="${index}">查看识别结果</button><button type="button" class="btn link" data-slip-remove="${index}" style="margin-left:6px;color:#d4380d">移除</button></td>
+      </tr>`;
+    }).join('');
+    const duplicateTip = duplicateIndexes.size ? `<div style="margin-top:6px;color:#d46b08;font-size:12px">提示：发现 ${duplicateIndexes.size} 张水单的识别金额和付款时间相同，疑似重复；仅提示，不影响提交，请核对。</div>` : '';
+    host.innerHTML = `<table style="width:100%;border-collapse:collapse;border:1px solid #d9e2ec;font-size:12px"><thead><tr style="background:#f7f9fb"><th style="padding:5px 7px;text-align:left"><input id="repaySlipCheckAll" type="checkbox" ${allChecked ? 'checked' : ''} title="全选水单"> 全选</th><th style="padding:5px 7px;text-align:left">水单</th><th style="padding:5px 7px;text-align:left">识别金额</th><th style="padding:5px 7px;text-align:left">确认金额</th><th style="padding:5px 7px;text-align:left">付款时间 / 来源</th><th style="padding:5px 7px;text-align:left">付款备注</th><th style="padding:5px 7px;text-align:left">账户核对</th><th style="padding:5px 7px;text-align:left">操作</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center"><button type="button" class="btn link" id="btnAddMoreSlip">＋ 继续添加水单</button><b>已勾选 ${repaySlipItems.filter(item => item.checked).length}/${repaySlipItems.length} 张，水单合计：${money(syncRepaySlipTotal())}</b></div>${duplicateTip}`;
   }
 
   function activateRepaySlip(index) {
@@ -2386,7 +2408,7 @@
     const baseAmount = fileList.length ? Math.max(0, relationTotal - existingTotal) / fileList.length : 0;
     fileList.forEach((file, index) => {
       const amount = Math.max(0, baseAmount || 0);
-      repaySlipItems.push({ name:file.name || ('水单' + (repaySlipItems.length + index + 1)), amount, originalAmount:amount, paidAt:currentRepayTime(), timeSource:'水单上传时间', payerName:(repayRows()[0]?.name || '当前客户') + '付款主体', payerAccount:'6222 **** **** 9286', ourAccount:'6217 **** **** 0188', checked:false });
+      repaySlipItems.push({ name:file.name || ('水单' + (repaySlipItems.length + index + 1)), amount, originalAmount:amount, paidAt:currentRepayTime(), timeSource:'水单上传时间', payerName:(repayRows()[0]?.name || '当前客户') + '付款主体', payerAccount:'6222 **** **** 9286', ourAccount:'6217 **** **** 0188', paymentRemark:'', checked:false });
     });
     repayActiveSlip = Math.max(0, repaySlipItems.length - fileList.length);
     renderRepaySlipList();
@@ -2397,10 +2419,10 @@
     const paymentAt = document.getElementById("repayAt").value;
     const source = document.getElementById("repayAtSource").textContent.replace("来源：", "");
     const loggedAt = currentRepayTime().replace("T", " ");
-    const slips = repaySlipItems.map((item, index) => ({ id:index + 1, name:item.name, amount:item.amount, paymentAt:item.paidAt, timeSource:item.timeSource, payerAccount:item.payerAccount, ourAccount:item.ourAccount, checked:item.checked }));
+    const slips = repaySlipItems.map((item, index) => ({ id:index + 1, name:item.name, amount:item.amount, paymentAt:item.paidAt, timeSource:item.timeSource, paymentRemark:item.paymentRemark || '', payerAccount:item.payerAccount, ourAccount:item.ourAccount, checked:item.checked }));
     rows.forEach(r => {
       r.repayLogs = r.repayLogs || [];
-      r.repayLogs.push({ action, result, paymentAt, source, slips, paymentRemark:document.getElementById("repayPaymentRemark").value.trim(), totalAmount:Number(document.getElementById("repayAmount").value) || 0, loggedAt, operator: "业务员 / 系统" });
+      r.repayLogs.push({ action, result, paymentAt, source, slips, totalAmount:Number(document.getElementById("repayAmount").value) || 0, loggedAt, operator: "业务员 / 系统" });
     });
   }
 
@@ -2460,7 +2482,6 @@
     renderRepaySlipList();
     syncActiveSlipMoneyFields();
     document.getElementById("repayApplyRelease").checked = false;
-    document.getElementById("repayPaymentRemark").value = "";
     document.getElementById("repayAccount").value = "";
     document.getElementById("repayOurAccount").value = "";
     document.getElementById("repayCustomer").value = "";
@@ -2502,6 +2523,7 @@
   });
   document.getElementById("repaySlipList").addEventListener("input", e => {
     const amount = e.target.closest("[data-slip-amount]");
+    const remark = e.target.closest("[data-slip-remark]");
     const payer = e.target.closest("[data-slip-payer]");
     const ours = e.target.closest("[data-slip-our]");
     if (amount) {
@@ -2512,6 +2534,10 @@
       if (Number(amount.dataset.slipAmount) === repayActiveSlip) syncActiveSlipMoneyFields();
       if (Number(amount.dataset.slipAmount) === repayActiveSlip) syncRepayAiResult(true, item.paidAt);
       refreshRepayJudgement();
+    }
+    if (remark) {
+      const item = repaySlipItems[Number(remark.dataset.slipRemark)];
+      if (item) item.paymentRemark = remark.value;
     }
     if (payer) {
       const item = repaySlipItems[Number(payer.dataset.slipPayer)];
@@ -2961,7 +2987,7 @@
     });
   })();
 </script>
-<script src="回款原型-PRD序号说明.js?v=20261113-14" data-page="bill"></script>
+<script src="回款原型-PRD序号说明.js?v=20261118-02" data-page="bill"></script>
 <!-- repay-menu-v2:start -->
 <style>
 html.repay-menu-v2 body{padding-left:52px!important}

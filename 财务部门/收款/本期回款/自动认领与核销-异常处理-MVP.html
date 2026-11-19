@@ -155,5 +155,67 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')modal.classList.remo
 document.getElementById('modalText').addEventListener('click',e=>{if(e.target.dataset.submit!=='reject')return;const reason=document.getElementById('rejectReason');const note=document.getElementById('rejectNote');if(!reason||!reason.value){e.stopImmediatePropagation();alert('请选择驳回原因');return}if(reason.value==='其他资料不完整'&&(!note||!note.value.trim())){e.stopImmediatePropagation();alert('请选择“其他资料不完整”时，请填写补充说明')}} ,true);
 /* 与请款单管理一致的二级导航：悬浮展开，图钉固定。 */
 (()=>{const nav=document.getElementById('frameNav'),list=document.getElementById('frameNavList'),head=nav.querySelector('.frame-tray-head span'),pin=document.getElementById('pinNav');const current=location.pathname.split('/').pop()||'';const menus={finance:[['▤','请款单管理','请款单管理-指定票件整合-MVP.html'],['⚠','回款处理工作台','自动认领与核销-异常处理-MVP.html'],['▣','客户账单与水单','客户端首页-客户账单与水单识别-MVP.html']],prd:[['◫','回款流程图','回款核销协同工作台-业务财务-MVP.html#process'],['▦','确认场景','回款核销协同工作台-业务财务-MVP.html#scenarios'],['☷','异常、打回与字典','回款异常与打回类型-MVP.html'],['▤','请款单交互 PRD','请款单管理-回款申请-交互PRD.html'],['⚠','回款工作台交互 PRD','财务异常工作台-回款核销-交互PRD.html'],['✓','财务签字清单','回款核销-业务签字清单.html'],['↻','本次更新记录','回款核销-本次更新记录.html']]};let kind='finance',pinned=false;function render(){head.textContent=kind==='finance'?'财务':'PRD';list.innerHTML='<div class="frame-menu-group">'+(kind==='finance'?'回款功能':'流程与交付件')+'</div>'+menus[kind].map(item=>'<button type="button" class="frame-menu-item '+(item[2].split('#')[0]===current?'active':'')+'" data-href="'+item[2]+'"><i>'+item[0]+'</i><span>'+item[1]+'</span></button>').join('');nav.querySelectorAll('.frame-root').forEach(btn=>btn.classList.toggle('active',btn.dataset.navKind===kind))}function open(next,keep){kind=next||kind;if(keep!==undefined)pinned=keep;nav.classList.add('open');nav.classList.toggle('pinned',pinned);pin.textContent=pinned?'×':'⌁';render()}function close(){if(!pinned)nav.classList.remove('open')}nav.querySelectorAll('.frame-root').forEach(btn=>{btn.addEventListener('mouseenter',()=>open(btn.dataset.navKind,false));btn.addEventListener('focus',()=>open(btn.dataset.navKind,false));btn.addEventListener('click',()=>open(btn.dataset.navKind,true))});nav.addEventListener('mouseenter',()=>open(kind,pinned));nav.addEventListener('mouseleave',close);pin.addEventListener('click',()=>open(kind,!pinned));nav.querySelector('.frame-logo').addEventListener('click',()=>{pinned=false;nav.classList.remove('pinned','open')});list.addEventListener('click',e=>{const button=e.target.closest('[data-href]');if(button)location.href=button.dataset.href});render()})();
+/*
+ * 交互恢复兜底：历史迭代为同一按钮叠加了多层监听，部分监听在捕获阶段
+ * 截断了业务动作。以下仅替换工具栏按钮节点，保留页面、数据和 PRD 编号，
+ * 使按钮本体只走业务弹窗；橙色序号才打开 PRD 说明。
+ */
+(()=>{
+  const toolbar=document.querySelector('.toolbar');
+  if(!toolbar) return;
+  const pointByAction={'查看水单与真实流水':2,'重新匹配':3,'指派处理人':4,'驳回':5,'人工确认认领':6,'审批客户放行':7,'撤销放行':8,'导出':9};
+  function runAction(action){
+    const r=record();
+    if(!r&&action!=='导出'){
+      showModal('请选择记录','<p>请先在列表中选择一条水单记录。</p>');
+      return;
+    }
+    if(action==='重新匹配'){
+      if(r.state==='自动认领异常'){
+        r.state='已比对待核销';
+        r.type='核销条件未满足';
+        r.reason='重新匹配成功，等待财务审核匹配';
+        r.suggestion='请在财务审核/收款管理阶段匹配流水与金额';
+      }else{
+        r.reason='已执行全量重新匹配';
+        r.suggestion='请查看最新认领与核销校验结果';
+      }
+      document.querySelector('.notice').textContent='已对 '+r.id+' 执行全量重新匹配，并追加操作日志。';
+      draw();
+      return;
+    }
+    if(action==='导出'&&!r){
+      showModal('导出','<p>将按当前筛选条件及当前财务数据权限导出，不修改任何回款状态。</p>'+actionButtons('创建导出任务','export'));
+      return;
+    }
+    showAction(action);
+  }
+  toolbar.querySelectorAll('[data-action]').forEach(oldButton=>{
+    const action=oldButton.dataset.action;
+    const button=oldButton.cloneNode(true);
+    button.querySelectorAll('.pin').forEach(pin=>pin.remove());
+    oldButton.replaceWith(button);
+    button.addEventListener('click',event=>{
+      if(event.target.closest('.pin')) return;
+      event.preventDefault();
+      runAction(action);
+    });
+    const pointIndex=pointByAction[action];
+    if(pointIndex===undefined) return;
+    const pin=document.createElement('button');
+    pin.type='button';
+    pin.className='pin';
+    pin.textContent=String(pointIndex+1);
+    pin.title='查看 PRD 说明';
+    pin.style.cssText='position:absolute;right:-8px;top:-8px;z-index:2';
+    button.style.position='relative';
+    pin.addEventListener('click',event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      open((pointIndex+1)+'. '+points[pointIndex][0],points[pointIndex][1]);
+    });
+    button.appendChild(pin);
+  });
+})();
 </script>
 </body></html>
