@@ -5,20 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>客户管理 · 中信保 / 合同 / 账期 · MVP</title>
   <style>
-    :root{--blue:#1890ff;--blue2:#40a9ff;--nav:#001529;--bg:#f0f2f5;--line:#e8e8e8;--text:#262626;--sub:#8c8c8c;--red:#ff4d4f;--green:#52c41a;--orange:#fa8c16;--new:#cf1322;--chg:#d46b08}
+    :root{--blue:#1890ff;--blue2:#40a9ff;--nav:#001529;--bg:#f0f2f5;--line:#e8e8e8;--text:#262626;--sub:#8c8c8c;--red:#ff4d4f;--green:#52c41a;--orange:#fa8c16;--new:#cf1322;--chg:#d46b08;--purple:#722ed1}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:12px/1.45 "Microsoft YaHei","PingFang SC",Arial,sans-serif}
     button,input,select,textarea{font:inherit} button{cursor:pointer}
     .topbar{height:40px;background:#001529;color:#fff;display:flex;align-items:center;padding:0 12px;gap:4px;overflow:auto}
     .topbar .tab{padding:6px 12px;border-radius:2px 2px 0 0;white-space:nowrap;opacity:.85}
     .topbar .tab.on{background:#fff;color:#1890ff;opacity:1;font-weight:600}
+    .topbar .tab-btn{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
     .page{padding:10px 12px 40px;max-width:1680px;margin:0 auto}
     .banner{background:#e6f7ff;border:1px solid #91d5ff;border-radius:4px;padding:8px 10px;margin-bottom:8px;color:#0050b3}
     .banner b{color:#003a8c}.legend{float:right;font-size:11px;color:#595959}
-    .mk{display:inline-block;font-size:10px;line-height:14px;padding:0 4px;border-radius:2px;margin-left:3px;vertical-align:1px;font-weight:700}
-    .mk-new{background:#fff1f0;color:var(--new);border:1px solid #ffa39e}
-    .mk-chg{background:#fff7e6;color:var(--chg);border:1px solid #ffd591}
+    .req-no{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:50%;margin-left:4px;vertical-align:1px;background:#f0f5ff;color:#2f54eb;border:1px solid #adc6ff;font-size:10px;font-weight:700;user-select:none;cursor:pointer}
     .card{background:#fff;border:1px solid var(--line);border-radius:2px;margin-bottom:8px}
     .filters{padding:10px 10px 4px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 10px}
+    .query-actions{padding:4px 10px 8px;display:flex;gap:6px}
+    .area-title{padding:9px 10px 0;font-size:13px;font-weight:700;color:#262626;display:flex;align-items:center;gap:4px}.area-actions{margin-left:auto;display:flex;gap:6px;font-weight:400}
+    .filter-extra{display:none}.filters.show-more .filter-extra{display:block}
     .f label{display:block;color:#595959;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .f input,.f select{width:100%;height:28px;border:1px solid #d9d9d9;border-radius:2px;padding:0 6px}
     .f-actions{display:flex;align-items:flex-end;gap:6px;justify-content:flex-end}
@@ -27,17 +29,20 @@
     .btn.danger{background:#fff1f0;border-color:#ffa39e;color:var(--red)}
     .btn.ghost{background:#e6f7ff;border-color:#91d5ff;color:#096dd9}
     .btn:disabled{opacity:.5;cursor:not-allowed}
+    .future-action{display:none!important}
     .toolbar{padding:8px 10px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px}
     .toolbar .btn{height:26px;padding:0 8px;font-size:12px}
     .status-tabs{padding:0 10px;border-bottom:1px solid var(--line);display:flex;gap:18px}
     .status-tabs button{border:0;background:transparent;padding:10px 0;color:#595959;border-bottom:2px solid transparent}
     .status-tabs button.on{color:var(--blue);border-color:var(--blue);font-weight:600}
+    .status-tabs button.low-visibility,.status-tabs button.low-visibility .muted{color:#f5f5f5!important}
     .table-wrap{overflow:auto;max-height:520px}
-    table{border-collapse:collapse;width:100%;min-width:2200px}
+    table{border-collapse:collapse;width:100%;min-width:6800px}
     th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;white-space:nowrap;vertical-align:middle}
     th{background:#fafafa;color:#595959;font-weight:600;position:sticky;top:0;z-index:1}
-    th.hl-new,td.hl-new{background:#fff2f0}
-    th.hl-chg,td.hl-chg{background:#fffbe6}
+    th.new-col{background:#fff1f0;color:#cf1322}
+    .col-filter th{top:32px;background:#f5f7fa;padding:4px 6px}.col-filter input{width:100%;height:20px;border:1px solid #bfcbd9;padding:0 4px;font-size:11px}.col-filter .filter-mark{color:#315d91;font-size:10px;margin-left:3px}
+    .new-filter label{color:#cf1322;font-weight:700}.new-action{background:#fff1f0!important;border-color:#ffa39e!important;color:#cf1322!important}
     .link{color:var(--blue);background:none;border:0;padding:0}
     .tag{display:inline-block;padding:0 6px;border-radius:2px;font-size:11px;line-height:18px;border:1px solid transparent}
     .t-g{background:#f6ffed;color:#389e0d;border-color:#b7eb8f}
@@ -46,23 +51,36 @@
     .t-b{background:#e6f7ff;color:#096dd9;border-color:#91d5ff}
     .t-p{background:#f9f0ff;color:#722ed1;border-color:#d3adf7}
     .t-gray{background:#f5f5f5;color:#595959;border-color:#d9d9d9}
+    .t-y{background:#fffbe6;color:#ad6800;border-color:#ffe58f}
+    .t-w{background:#fff1f0;color:#cf1322;border-color:#ffa39e}
     .muted{color:var(--sub)}
     .foot-note{font-size:11px;color:#8c8c8c;margin-top:6px}
     .mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:30;overflow:auto}
     .mask.show{display:flex}
-    .modal{background:#fff;width:920px;max-width:100%;border-radius:4px;box-shadow:0 8px 28px rgba(0,0,0,.2)}
-    .modal.wide{width:1080px}
+    .modal{background:#fff;width:1080px;max-width:100%;border-radius:4px;box-shadow:0 8px 28px rgba(0,0,0,.2)}
+    .modal.wide{width:1480px}
     .modal-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600}
     .modal-h .x{margin-left:auto;border:0;background:transparent;font-size:20px;color:#8c8c8c}
-    .modal-b{padding:14px 16px;max-height:70vh;overflow:auto}
-    .modal-f{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
-    .sec{font-weight:700;margin:14px 0 8px;padding-left:8px;border-left:3px solid var(--blue)}
+    .modal-b{padding:14px 26px 18px;max-height:74vh;overflow:auto}
+    .modal-f{padding:10px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;background:#f7f9fc}
+    .prd-overlay{position:fixed;inset:0;z-index:2;display:flex;align-items:flex-start;justify-content:center;padding:72px 16px 32px;background:rgba(0,0,0,.18);overflow:auto}
+    .prd-modal{background:#fff;width:1180px;max-width:100%;border-radius:4px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
+    .sec{font-weight:700;margin:18px 0 10px;padding-left:8px;border-left:3px solid var(--blue);color:#096dd9}
     .sec:first-child{margin-top:0}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-    .fi label{display:block;margin-bottom:3px;color:#595959}
+    .fi label{display:block;margin-bottom:4px;color:#595959}
     .fi input,.fi select,.fi textarea{width:100%;border:1px solid #d9d9d9;border-radius:2px;padding:6px 8px}
-    .fi textarea{min-height:64px;resize:vertical}
+    .fi textarea{min-height:58px;resize:vertical}
+    .form-note{margin:-3px 0 12px 11px;color:#8c8c8c;font-size:11px}
+    .form-note b{color:#cf1322;font-weight:400}
+    .new-section{border:1px solid #ffccc7;background:#fffafa;border-radius:3px;padding:0 12px 14px;margin-top:16px}
+    .new-section .sec{margin-top:13px;color:#cf1322;border-color:#cf1322}
+    .conditional.hidden{display:none}
+    .swim-wrap{overflow:auto;padding-bottom:4px}.swim-chart{min-width:1360px;display:grid;grid-template-columns:160px repeat(5,1fr);gap:0;border:1px solid var(--line)}
+    .swim-chart>div{min-height:86px;padding:10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.swim-chart>div:nth-child(6n){border-right:0}.swim-chart>div:nth-last-child(-n+6){border-bottom:0}
+    .swim-phase{background:#fafafa;color:#595959;font-weight:700;text-align:center;min-height:38px!important}.swim-lane{background:#f5f5f5;font-weight:700;color:#262626;display:flex;align-items:center}.swim-lane small{display:block;font-weight:400;color:#8c8c8c;margin-top:3px}
+    .swim-node{border-radius:3px;padding:7px 8px;line-height:1.55}.swim-node.ok{background:#f6ffed;border:1px solid #b7eb8f}.swim-node.wait{background:#fffbe6;border:1px dashed #ffe58f}.swim-node b{display:block;font-weight:700}.swim-node span{font-size:11px;color:#595959}.swim-empty{background:#fff}.swim-note{margin:10px 0 0;color:#595959}.swim-note .tag{margin-right:5px}
     .req::after{content:" *";color:var(--red)}
     .hint{font-size:11px;color:#8c8c8c;margin-top:2px}
     .upload{border:1px dashed #91d5ff;background:#f0f9ff;padding:16px;text-align:center;border-radius:4px;color:#096dd9}
@@ -74,6 +92,9 @@
     .rules{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
     .rules .item{background:#fafafa;border:1px solid var(--line);border-radius:4px;padding:10px}
     .rules .item h4{margin:0 0 6px;font-size:13px}
+    .notice{border:1px solid #ffd591;background:#fff7e6;border-radius:4px;padding:9px 10px;margin-bottom:10px;line-height:1.65}
+    .steps{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px}.step{background:#f5f5f5;border:1px solid #d9d9d9;border-radius:12px;padding:2px 8px;color:#595959}.step.on{background:#e6f7ff;border-color:#91d5ff;color:#096dd9;font-weight:700}
+    .result-ok{color:#389e0d;font-weight:700}.result-no{color:#cf1322;font-weight:700}.result-wait{color:#d46b08;font-weight:700}
     @media(max-width:1100px){.filters{grid-template-columns:repeat(3,1fr)}.grid2,.grid3,.rules{grid-template-columns:1fr}}
   </style>
 </head>
@@ -82,37 +103,57 @@
 
   <div class="topbar" aria-label="系统页签">
     <span class="tab">控制台</span><span class="tab">运单管理</span><span class="tab">整柜下单</span><span class="tab">整柜清单管理</span>
-    <span class="tab">轨迹</span><span class="tab">数据导出</span><span class="tab on">客户管理</span>
+    <span class="tab">轨迹</span><span class="tab">数据导出</span><span class="tab on">客户管理</span><button class="tab tab-btn" type="button" onclick="openSwimlane()">中信保对接泳道图</button>
     <span style="margin-left:auto;opacity:.7">IT(BT0022) · 原型演示</span>
   </div>
 
   <div class="page">
     <div class="banner">
-      <span class="legend"><span class="mk mk-new">新</span> 新增字段/能力　<span class="mk mk-chg">改</span> 改动字段/规则　·　规则说明见页底「说明」</span>
-      <b>客户管理</b>　现网布局还原；中信保 / 合同 / 账期等增量能力见下列表与按钮（规则细则不写在功能区）。
+      
+      <b>客户管理 · 中信保一期</b>　保存客户资料后自动核验投保资格；买方代码申请、批量刷新资格及申报模板分别独立处理。中信保 API/保单口径未确认前，不执行真实外部申报。
     </div>
 
     <section class="card">
       <div class="filters" id="filters">
-        <div class="f"><label>客户名称</label><input placeholder="支持模糊" /></div>
+        <div class="f"><label>客户名称 <span class="req-no" data-prd-key="query" aria-label="查看查询条件 PRD">1</span></label><input placeholder="支持模糊" /></div>
         <div class="f"><label>客户等级</label><select><option>全部</option><option>直客</option><option>同行</option></select></div>
         <div class="f"><label>客户类型</label><select><option>全部</option></select></div>
-        <div class="f"><label>结算周期 <span class="mk mk-chg">改</span></label><select><option>全部</option><option>现结</option><option>周结</option><option>半月结</option><option>月结</option></select></div>
-        <div class="f"><label>账期节点</label><select><option>全部</option><option>签入</option><option>开船</option><option>到港</option><option>签收</option><option>到货</option></select></div>
+        <div class="f"><label>企业类型</label><select><option>全部</option><option>有限责任公司</option><option>个人</option></select></div>
+        <div class="f"><label>客户来源</label><select><option>全部</option></select></div>
+        <div class="f"><label>启用状态</label><select><option>全部</option><option>启用</option><option>禁用</option></select></div>
+        <div class="f"><label>客户电话</label><input placeholder="请输入客户电话" /></div>
+        <div class="f"><label>客户邮箱</label><input placeholder="请输入客户邮箱" /></div>
+        <div class="f"><label>客户地址</label><input placeholder="请输入客户地址" /></div>
+        <div class="f"><label>合同账期</label><select><option>全部</option><option>现结</option><option>月结</option></select></div>
+        <div class="f"><label>最新客服员</label><select><option>全部</option></select></div>
+        <div class="f"><label>所属客服员</label><select><option>全部</option></select></div>
+        <div class="f"><label>所属财务</label><select><option>全部</option></select></div>
         <div class="f"><label>所属业务员</label><select><option>全部</option></select></div>
+        <div class="f"><label>业务归属</label><select><option>全部</option></select></div>
+        <div class="f"><label>合同开始时间</label><input type="date" /></div>
+        <div class="f"><label>合同结束时间</label><input type="date" /></div>
+        <div class="f"><label>法人名称</label><input placeholder="请输入法人名称" /></div>
+        <div class="f"><label>法人身份证号</label><input placeholder="请输入法人身份证号" /></div>
+        <div class="f"><label>开户名</label><input placeholder="请输入开户名" /></div>
+        <div class="f"><label>开户行</label><input placeholder="请输入开户行" /></div>
+        <div class="f"><label>银行账户</label><input placeholder="请输入银行账户" /></div>
+        <div class="f"><label>标记等级</label><select><option>全部</option></select></div>
         <div class="f"><label>开户状态</label><select><option>全部</option><option>已开户</option><option>未开户</option></select></div>
-        <div class="f"><label>合同状态 <span class="mk mk-chg">改</span></label><select><option>全部</option><option>已签订</option><option>未签订</option><option>即将到期</option><option>已到期</option></select></div>
-        <div class="f"><label>是否购买中信保 <span class="mk mk-new">新</span></label><select><option>全部</option><option>是</option><option>否</option></select></div>
-        <div class="f"><label>需购标记 <span class="mk mk-new">新</span></label><select><option>全部</option><option>是</option><option>否</option></select></div>
-        <div class="f"><label>中信保代码 <span class="mk mk-new">新</span></label><input placeholder="精准/模糊" /></div>
-        <div class="f"><label>中信保推送状态 <span class="mk mk-new">新</span></label><select><option>全部</option><option>成功</option><option>失败</option><option>未推送</option></select></div>
-        <div class="f"><label>信用代码 <span class="mk mk-new">新</span></label><input placeholder="统一社会信用代码" /></div>
-        <div class="f"><label>账期申请状态 <span class="mk mk-new">新</span></label><select><option>全部</option><option>可申请</option><option>审核中</option><option>观察期</option><option>已通过</option><option>已驳回</option><option>未申请</option></select></div>
-        <div class="f"><label>被关联客户 <span class="mk mk-new">新</span></label><input placeholder="反查：谁关联了该客户" /></div>
-        <div class="f-actions"><button class="btn" onclick="notify('已展开更多筛选（演示）')">更多筛选</button><button class="btn" onclick="notify('筛选已重置')">重置</button></div>
+        <div class="f new-filter"><label>签订我方抬头</label><select><option>全部</option><option>腾信物流（深圳）有限公司</option><option>腾信物流（香港）有限公司</option></select></div>
+        <div class="f new-filter"><label>投保资格</label><select><option>全部</option><option>符合条件</option><option>不符合条件</option><option>待补资料</option></select></div>
+        <div class="f new-filter"><label>买方代码状态</label><select><option>全部</option><option>已绑定</option><option>待申请</option><option>申请中</option><option>待确认</option><option>申请失败</option></select></div>
+        <div class="f new-filter"><label>中信保买方代码</label><input placeholder="UOC / 买方代码" /></div>
+        <div class="f new-filter"><label>统一社会信用代码</label><input placeholder="国内企业必填" /></div>
+        <div class="f new-filter"><label>天眼查注册地址</label><input placeholder="支持实时维护" /></div>
+        <div class="f new-filter"><label>投保月份</label><input type="month" aria-label="投保月份" /></div>
+        <div class="f"><label>合同状态</label><select><option>全部</option><option>已签订</option><option>未签订</option><option>即将到期</option><option>已到期</option></select></div>
+        <div class="f"><label>账期申请状态</label><select><option>全部</option><option>可申请</option><option>审核中</option><option>观察期</option><option>已通过</option><option>已驳回</option><option>未申请</option></select></div>
+        <div class="f"><label>被关联客户</label><input placeholder="反查：谁关联了该客户" /></div>
       </div>
+      <div class="query-actions"><button class="btn" id="moreFilterBtn" onclick="toggleMoreFilters()">更多筛选</button><button class="btn" onclick="notify('筛选已重置')">数据重置</button></div>
 
       <div class="toolbar">
+        <span class="req-no" data-prd-key="actions" aria-label="查看功能 PRD">2</span>
         <button class="btn primary" onclick="notify('已查询')">查询数据</button>
         <button class="btn primary" onclick="openAdd()">+ 新增数据</button>
         <button class="btn" onclick="openEdit()">编辑数据</button>
@@ -120,211 +161,197 @@
         <button class="btn">启用数据</button>
         <button class="btn danger">禁用数据</button>
         <button class="btn" onclick="openOpenAccount()">开通账户</button>
-        <button class="btn ghost" onclick="openAudit()">营业执照审核 / 开户审核 <span class="mk mk-chg">改</span></button>
-        <button class="btn ghost" onclick="openImport()">批量导入信用/欠款/中信保 <span class="mk mk-new">新</span></button>
-        <button class="btn ghost" onclick="openSinosure()">中信保推送 <span class="mk mk-new">新</span></button>
-        <button class="btn ghost" onclick="openRiskIns()">风险保险（国外逐条/国内模板） <span class="mk mk-new">新</span></button>
-        <button class="btn ghost" onclick="openContract()">合同 · 我方抬头 / 到期提醒 <span class="mk mk-chg">改</span></button>
-        <a class="btn ghost" href="直客抬头关联风险-MVP.html" style="display:inline-flex;align-items:center;text-decoration:none;height:26px;line-height:26px">直客抬头关联风险 <span class="mk mk-new">新</span></a>
-        <button class="btn ghost" onclick="openTerms()">账期维度设置 <span class="mk mk-chg">改</span></button>
-        <button class="btn ghost" onclick="openTermsApply()">账期申请 <span class="mk mk-new">新</span></button>
+        <button class="btn ghost" onclick="openAudit()">营业执照审核 / 开户审核</button>
+        <button class="btn ghost new-action" onclick="openBuyerCode()">买方代码申请 / 维护</button><span class="req-no" data-prd-key="buyerTemplate" aria-label="查看买方代码模板字段 PRD">5</span>
+        <button class="btn ghost new-action" onclick="openLimitManage()">限额申请 / 查询</button><span class="req-no" data-prd-key="limit" aria-label="查看限额申请 PRD">6</span>
+        <button class="btn ghost new-action" onclick="openDeclarationCandidates()">生成申报候选 / 模板</button><span class="req-no" data-prd-key="declarationTemplate" aria-label="查看申报模板字段 PRD">7</span>
+        <button class="btn ghost new-action" onclick="openLossAndRecovery()">报损 / 追讨</button><span class="req-no" data-prd-key="lossRecovery" aria-label="查看报损和追讨 PRD">8</span>
+        <button class="btn ghost future-action" onclick="openContract()">合同 · 我方抬头 / 到期提醒</button>
+        <a class="btn ghost future-action" href="直客抬头关联风险-MVP.html" style="display:inline-flex;align-items:center;text-decoration:none;height:26px;line-height:26px">直客抬头关联风险</a>
+        <button class="btn ghost new-action" onclick="openTerms()">合同账期配置</button>
+        <button class="btn ghost" onclick="openTermsApply()">账期申请</button>
         <button class="btn">批量修改账期</button>
         <button class="btn">批量修改业务员</button>
         <button class="btn">风险标记</button>
         <button class="btn danger">删除客户</button>
-        <button class="btn">导出</button>
+        <button class="btn" onclick="openReceivableDetailExport()">导出</button>
       </div>
 
-      <div class="status-tabs">
-        <button class="on">全部 <span class="muted">128</span></button>
-        <button>启用</button>
-        <button>禁用</button>
-        <button>未签合同 <span class="mk mk-new">新</span> <span class="muted">12</span></button>
-        <button>待购中信保 <span class="mk mk-new">新</span> <span class="muted">5</span></button>
-        <button>合同即将到期 <span class="mk mk-new">新</span> <span class="muted">3</span></button>
-        <button>账期申请中 <span class="mk mk-new">新</span> <span class="muted">2</span></button>
+      <div class="status-tabs" data-tab-group="business-queue">
+        <button class="on"><span class="req-no" data-prd-key="tabs" aria-label="查看业务待办页签 PRD">4</span> 全部 <span class="muted">128</span></button>
+        <button>未签合同 <span class="muted">12</span></button>
+        <button>待申请买方代码 <span class="muted">5</span></button>
+        <button>已申请代码 <span class="muted">2</span></button>
+        <button onclick="openBuyerCode('confirmation')">待确认代码 <span class="muted" id="pendingBuyerCodeCount">1</span></button>
+        <button><span class="req-no" data-prd-key="pendingInsuranceData" aria-label="查看未满足投保条件 PRD">11</span> 未满足投保条件 <span class="muted">7</span></button>
+        <button>合同即将到期 <span class="muted">3</span></button>
+        <button class="low-visibility">账期申请中 <span class="muted">2</span></button>
       </div>
 
       <div class="table-wrap">
         <table aria-label="客户列表">
           <thead>
             <tr>
-              <th><input type="checkbox" checked /></th>
+              <th><input type="checkbox" checked /> <span class="req-no" data-prd-key="list" aria-label="查看列表 PRD">3</span></th>
               <th>序号</th>
               <th>客户代码</th>
-              <th>申请代码 <span class="mk mk-new">新</span></th>
               <th>客户简称</th>
               <th>客户全称</th>
-              <th class="hl-chg">关联客户 <span class="mk mk-chg">改</span></th>
-              <th class="hl-new">被关联客户 <span class="mk mk-new">新</span></th>
+              <th class="new-col">企业类型</th>
+              <th class="new-col">天眼查注册地址</th>
+              <th>关联客户</th>
+              <th>被关联客户</th>
               <th>客户等级</th>
               <th>启用状态</th>
-              <th class="hl-chg">合同签订 <span class="mk mk-chg">改</span></th>
-              <th class="hl-new">我方抬头 <span class="mk mk-new">新</span></th>
-              <th class="hl-chg">合同到期 <span class="mk mk-chg">改</span></th>
-              <th class="hl-chg">账期维度 <span class="mk mk-chg">改</span></th>
-              <th class="hl-new">账期申请 <span class="mk mk-new">新</span></th>
-              <th class="hl-new">信用代码 <span class="mk mk-new">新</span></th>
-              <th class="hl-new">上月欠款 <span class="mk mk-new">新</span></th>
-              <th class="hl-new">跨月明细 <span class="mk mk-new">新</span></th>
-              <th class="hl-new">是否购买中信保 <span class="mk mk-new">新</span></th>
-              <th class="hl-new">需购标记 <span class="mk mk-new">新</span></th>
-              <th class="hl-new">中信保代码 <span class="mk mk-new">新</span></th>
-              <th class="hl-new">中信保推送 <span class="mk mk-new">新</span></th>
+              <th>合同签订</th>
+              <th class="new-col">我方抬头</th>
+              <th>合同到期</th>
+              <th class="new-col">合同账期</th>
+              <th class="new-col">账期天数</th>
+              <th>账期申请</th>
+              <th class="new-col">统一社会信用代码</th>
+              <th class="new-col">上月欠款</th>
+              <th class="new-col">跨月明细</th>
+              <th class="new-col">投保资格</th>
+              <th class="new-col">不符合/待补原因</th>
+              <th class="new-col">中信保买方代码</th>
+              <th class="new-col">代码状态</th>
+              <th class="new-col">投保限额</th>
+              <th class="new-col">投保月份</th>
               <th>所属业务员</th>
-              <th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td><input type="checkbox" checked /></td><td>1</td>
               <td><button class="link" onclick="openDetail()">TX00558</button></td>
-              <td class="hl-new">APP-202609-001</td>
               <td>腾信示例A</td><td>深圳市某某贸易有限公司</td>
-              <td class="hl-chg"><button class="link" onclick="openRelate('TX00558')">TX00612</button></td>
-              <td class="hl-new"><button class="link" onclick="openRelate('TX00558')">TX00612、TX00701</button> <span class="muted">反查</span></td>
+              <td><span class="tag t-b">企业</span></td><td>深圳市南山区示例路 18 号</td>
+              <td><button class="link" onclick="openRelate('TX00558')">TX00612</button></td>
+              <td><button class="link" onclick="openRelate('TX00558')">TX00612、TX00701</button> <span class="muted">反查</span></td>
               <td><span class="tag t-b">直客</span></td>
               <td><span class="tag t-g">启用</span></td>
-              <td class="hl-chg"><span class="tag t-g">已签订</span></td>
-              <td class="hl-new">腾信物流（深圳）有限公司</td>
-              <td class="hl-chg">2026-12-31 <span class="tag t-o">30天内</span></td>
-              <td class="hl-chg">开船 / 柜批次</td>
-              <td class="hl-new"><button class="link" onclick="openTermsApply('TX00558','old')">可申请 · 直批/审批</button></td>
-              <td class="hl-new">91440300MA5XXXXX1A</td>
-              <td class="hl-new">CNY 28,600.00</td>
-              <td class="hl-new"><button class="link" onclick="notify('跨月明细：8月尾款+9月新账（演示）')">查看</button></td>
-              <td class="hl-new"><span class="tag t-g">是</span></td>
-              <td class="hl-new"><span class="tag t-o">是</span></td>
-              <td class="hl-new">SCB-882201</td>
-              <td class="hl-new"><span class="tag t-g">成功</span></td>
+              <td><span class="tag t-g">已签订</span></td>
+              <td>腾信物流（深圳）有限公司</td>
+              <td>2026-12-31 <span class="tag t-o">30天内</span></td><td>月结</td>
+              <td>60</td>
+              <td><button class="link" onclick="openTermsApply('TX00558','old')">可申请 · 直批/审批</button></td>
+              <td>91440300MA5XXXXX1A</td>
+              <td>CNY 28,600.00</td>
+              <td><button class="link" onclick="openCrossMonth('TX00558')">查看</button></td>
+              <td><span class="tag t-g">符合条件</span></td>
+              <td>—</td>
+              <td>CHN000581157</td>
+              <td><span class="tag t-g">已绑定</span></td>
+              <td><span class="tag t-g">CNY 50,000.00</span><br><button class="link" onclick="openLimitApplication('TX00558')">可用 CNY 38,000.00 · 申请 / 追加</button></td>
+              <td>2026-09</td>
               <td>戚流兵</td>
-              <td><button class="link" onclick="openSinosure()">推送</button> · <button class="link" onclick="openContract()">合同</button></td>
             </tr>
             <tr>
               <td><input type="checkbox" /></td><td>2</td>
               <td><button class="link" onclick="openDetail()">TX00612</button></td>
-              <td class="hl-new">APP-202609-018</td>
               <td>示例直客B</td><td>东莞某某供应链有限公司</td>
-              <td class="hl-chg"><button class="link" onclick="openRelate('TX00612')">TX00558</button></td>
-              <td class="hl-new"><button class="link" onclick="openRelate('TX00612')">TX00558</button></td>
+              <td><span class="tag t-b">企业</span></td><td>广东省东莞市示例大道 8 号</td>
+              <td><button class="link" onclick="openRelate('TX00612')">TX00558</button></td>
+              <td><button class="link" onclick="openRelate('TX00612')">TX00558</button></td>
               <td><span class="tag t-b">直客</span></td>
               <td><span class="tag t-g">启用</span></td>
-              <td class="hl-chg"><span class="tag t-g">已签订</span></td>
-              <td class="hl-new">腾信物流（深圳）有限公司</td>
-              <td class="hl-chg">2027-03-01</td>
-              <td class="hl-chg">到港 / 柜批次</td>
-              <td class="hl-new"><span class="tag t-o">部门已批·待财务</span> <button class="link" onclick="openTermsApply('TX00612','old')">审批</button></td>
-              <td class="hl-new">91441900MA5YYYYY2B</td>
-              <td class="hl-new">CNY 0.00</td>
-              <td class="hl-new">—</td>
-              <td class="hl-new"><span class="tag t-gray">否</span></td>
-              <td class="hl-new"><span class="tag t-gray">否</span></td>
-              <td class="hl-new"></td>
-              <td class="hl-new"><span class="tag t-gray">未推送</span></td>
+              <td><span class="tag t-g">已签订</span></td>
+              <td>腾信物流（深圳）有限公司</td>
+              <td>2027-03-01</td><td>月结</td>
+              <td>30</td>
+              <td><span class="tag t-o">部门已批·待财务</span> <button class="link" onclick="openTermsApply('TX00612','old')">审批</button></td>
+              <td>91441900MA5YYYYY2B</td>
+              <td>CNY 0.00</td>
+              <td>—</td>
+              <td><span class="tag t-g">符合条件</span></td>
+              <td>暂无上月欠款</td>
+              <td id="tx00612BuyerCode">CHN000598233</td>
+              <td id="tx00612BuyerStatus"><button class="link" onclick="openBuyerCode('confirmation')"><span class="tag t-o">待确认</span></button></td>
+              <td id="tx00612LimitAction"><button class="link" onclick="openBuyerCode('confirmation')"><span class="tag t-gray">先确认代码</span></button></td>
+              <td>—</td>
               <td>王丽</td>
-              <td><button class="link" onclick="openEdit()">编辑</button></td>
             </tr>
             <tr>
               <td><input type="checkbox" /></td><td>3</td>
               <td><button class="link" onclick="openDetail()">TX00701</button></td>
-              <td class="hl-new">APP-202609-042</td>
               <td>同行示例C</td><td>广州某某货运代理</td>
-              <td class="hl-chg"></td>
-              <td class="hl-new"><button class="link" onclick="openRelate('TX00701')">TX00558</button> <span class="muted">反查</span></td>
+              <td><span class="tag t-b">企业</span></td><td>广东省广州市示例区 99 号</td>
+              <td></td>
+              <td><button class="link" onclick="openRelate('TX00701')">TX00558</button> <span class="muted">反查</span></td>
               <td><span class="tag t-p">同行</span></td>
               <td><span class="tag t-g">启用</span></td>
-              <td class="hl-chg"><span class="tag t-r">未签订</span></td>
-              <td class="hl-new"></td>
-              <td class="hl-chg">—</td>
-              <td class="hl-chg">签收</td>
-              <td class="hl-new"><span class="tag t-gray">未申请</span> <button class="link" onclick="openTermsApply('TX00701','old')">发起</button></td>
-              <td class="hl-new">91440101MA5ZZZZZ3C</td>
-              <td class="hl-new">CNY 12,400.00</td>
-              <td class="hl-new"><button class="link" onclick="notify('跨月明细演示')">查看</button></td>
-              <td class="hl-new"><span class="tag t-gray">否</span></td>
-              <td class="hl-new"><span class="tag t-gray">否</span></td>
-              <td class="hl-new"></td>
-              <td class="hl-new"><span class="tag t-gray">未推送</span></td>
+              <td><span class="tag t-r">未签订</span></td>
+              <td></td>
+              <td>—</td><td>月结</td>
+              <td>30</td>
+              <td><span class="tag t-gray">未申请</span> <button class="link" onclick="openTermsApply('TX00701','old')">发起</button></td>
+              <td>91440101MA5ZZZZZ3C</td>
+              <td>CNY 12,400.00</td>
+              <td><button class="link" onclick="openCrossMonth('TX00701')">查看</button></td>
+              <td><span class="tag t-r">不符合条件</span></td>
+              <td>未签标准合同</td>
+              <td>—</td>
+              <td><span class="tag t-gray">未申请</span></td>
+              <td><span class="muted">不符合投保条件</span></td>
+              <td>—</td>
               <td>张明宇</td>
-              <td><button class="link" onclick="openContract()">补签合同</button></td>
             </tr>
             <tr>
               <td><input type="checkbox" /></td><td>4</td>
               <td><button class="link" onclick="openDetail()">TX00788</button></td>
-              <td class="hl-new">APP-202609-055</td>
               <td>海外客户D</td><td>ABC GLOBAL TRADING LLC</td>
-              <td class="hl-chg"></td>
-              <td class="hl-new"></td>
+              <td><span class="tag t-b">企业</span></td><td>123 Market St, California, US</td>
+              <td></td>
+              <td></td>
               <td><span class="tag t-b">直客·国外</span></td>
               <td><span class="tag t-g">启用</span></td>
-              <td class="hl-chg"><span class="tag t-g">已签订</span></td>
-              <td class="hl-new">腾信物流（香港）有限公司</td>
-              <td class="hl-chg">2026-10-15 <span class="tag t-r">已到期提醒</span></td>
-              <td class="hl-chg">到货</td>
-              <td class="hl-new"><span class="tag t-b">观察期</span> <button class="link" onclick="openTermsApply('TX00788','new')">查看</button></td>
-              <td class="hl-new">US-EIN-12-3456789</td>
-              <td class="hl-new">USD 4,200.00</td>
-              <td class="hl-new"><button class="link">查看</button></td>
-              <td class="hl-new"><span class="tag t-o">待购买</span></td>
-              <td class="hl-new"><span class="tag t-o">是</span></td>
-              <td class="hl-new"></td>
-              <td class="hl-new"><span class="tag t-r">失败</span></td>
+              <td><span class="tag t-g">已签订</span></td>
+              <td>腾信物流（香港）有限公司</td>
+              <td>2026-10-15 <span class="tag t-r">已到期提醒</span></td><td>月结</td>
+              <td>60</td>
+              <td><span class="tag t-b">观察期</span> <button class="link" onclick="openTermsApply('TX00788','new')">查看</button></td>
+              <td>US-EIN-12-3456789</td>
+              <td>USD 4,200.00</td>
+              <td><button class="link" onclick="openCrossMonth('TX00788')">查看</button></td>
+              <td><span class="tag t-r">不符合条件</span></td>
+              <td>合同已到期</td>
+              <td>—</td>
+              <td><span class="tag t-r">申请失败</span></td>
+              <td><span class="muted">合同已到期</span></td>
+              <td>—</td>
               <td>林晓雨</td>
-              <td><button class="link" onclick="openSinosure()">重推</button> · <button class="link" onclick="openRiskIns()">逐条投保</button></td>
             </tr>
             <tr>
               <td><input type="checkbox" /></td><td>5</td>
               <td><span class="muted">待分配</span></td>
-              <td class="hl-new">APP-202609-099</td>
               <td>新客E</td><td>（待完善）</td>
-              <td class="hl-chg"></td>
-              <td class="hl-new"></td>
+              <td><span class="tag t-y">待确认</span></td><td>—</td>
+              <td></td>
+              <td></td>
               <td><span class="tag t-gray">草稿</span></td>
               <td><span class="tag t-o">未启用</span></td>
-              <td class="hl-chg"><span class="tag t-gray">—</span></td>
-              <td class="hl-new"></td>
-              <td class="hl-chg">—</td>
-              <td class="hl-chg">—</td>
-              <td class="hl-new"><span class="tag t-gray">未开户</span></td>
-              <td class="hl-new"></td>
-              <td class="hl-new">—</td>
-              <td class="hl-new">—</td>
-              <td class="hl-new"><span class="tag t-gray">否</span></td>
-              <td class="hl-new"><span class="tag t-gray">否</span></td>
-              <td class="hl-new"></td>
-              <td class="hl-new"><span class="tag t-gray">未推送</span></td>
+              <td><span class="tag t-gray">—</span></td>
+              <td></td>
+              <td>—</td><td>现结</td>
+              <td>0</td>
+              <td><span class="tag t-gray">未开户</span></td>
+              <td></td>
+              <td>—</td>
+              <td>—</td>
+              <td><span class="tag t-r">不符合条件</span></td>
+              <td>现结客户</td>
+              <td>—</td>
+              <td><span class="tag t-gray">未申请</span></td>
+              <td><span class="muted">现结客户</span></td>
+              <td>—</td>
               <td>戚流兵</td>
-              <td><button class="link" onclick="openAdd('code')">先申请代码</button></td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
 
-    <section class="card" id="specNote">
-      <div style="padding:10px 12px;font-weight:700;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
-        说明 · 纪要对照
-        <span class="muted" style="font-weight:400;font-size:12px">六、中信保 / 合同 / 账期 · 21–23 · 账期申请（仅说明，非功能操作区）</span>
-        <button type="button" class="btn" style="margin-left:auto;height:24px" onclick="toggleSpecNote()">收起 / 展开</button>
-      </div>
-      <div class="rules" id="specNoteBody">
-        <div class="item"><h4>21. 合同与批量导入 <span class="mk mk-chg">改</span><span class="mk mk-new">新</span></h4>合同签订增加必填「我方抬头」；购买备注非必填。客户管理支持批量导入：信用代码、上月欠款、跨月明细、中信保代码。</div>
-        <div class="item"><h4>22. 开户审核 <span class="mk mk-chg">改</span></h4>开户审核须上传企查查截图作为审核材料，缺截图不可提交审核通过。</div>
-        <div class="item"><h4>23. 申请代码与风险保险 <span class="mk mk-new">新</span></h4>新增客户先申请代码再购买；一客一申请代码。国外客户风险保险逐条新增；国内客户支持模板导入。</div>
-        <div class="item"><h4>1–3. 中信保 <span class="mk mk-new">新</span></h4>字段：是否购买中信保、中信保代码、需购标记（是/否）。有欠款+有合同 → 需购标记=是 → 按接口推送生成/获取代码（成功/失败）。按月批次推送费用；杂费用原运单号-1/-2 投保。</div>
-        <div class="item"><h4>4. 合同提醒 <span class="mk mk-chg">改</span></h4>合同到期提醒业务员；识别未签合同客户（列表页签 + 催办）。</div>
-        <div class="item"><h4>5. 账期维度 <span class="mk mk-chg">改</span></h4>结算周期新增<strong>现结</strong>（<strong>仅签入现结</strong>，签入发生日 0点，无 +N；无开船/到港/签收现结）。账期节点另增开船、到港、签收、到货（用于周结/半月结/月结等）；开船/到港按柜批次。<strong>开船结唯一口径：</strong>开船日 = 轨迹 <code>A00106</code> 第一次发生时间（10/12 已确认，不得用 ETD/预计开船顶替）。截止日用语统一为「× 0点」（不再写「×前」）。</div>
-        <div class="item"><h4>单向关联反查 <span class="mk mk-new">新</span></h4>客户管理单向关联增加「被关联客户」列：本客户被哪些客户关联，便于反查关联关系；「关联客户」为正向关联对象。</div>
-        <div class="item"><h4>6. 账期申请线上化 <span class="mk mk-new">新</span><span class="mk mk-chg">改</span></h4>
-          · 取数增加 <b>毛利</b>、<b>平均计费重</b>；近 3 个月主营营业额 + 到货平均回款天数仍出系统结论。<br>
-          · <b>历史付款记录</b>：近 3 个月，法人 / 营业执照抬头与付款人相同的流水才计入。<br>
-          · <b>直批</b>：直客 + 额度 ≤ <b>2.4 万</b> + 账期 ≤ <b>15 号月结</b> → 可直接批。<br>
-          · <b>审批</b>：其他一律两级都批——① 直属部门负责人 → ② 财务。<br>
-          · 新客户 2 个月观察期；非主营最高 <b>5 号月结</b>。
-        </div>
-      </div>
-    </section>
-    <p class="foot-note">功能区为列表与操作；橙色底=改，浅红底=新。规则口径见上方「说明 · 纪要对照」。</p>
   </div>
 
   <div class="mask" id="mask" onclick="if(event.target===this)closeModal()"></div>
@@ -333,16 +360,272 @@
   <script>
     const mask=document.getElementById('mask');
     function notify(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),2600)}
-    function toggleSpecNote(){
-      const el=document.getElementById('specNoteBody');
-      if(!el)return;
-      el.style.display=el.style.display==='none'?'grid':'none';
-    }
     function closeModal(){mask.classList.remove('show');mask.innerHTML=''}
     function openModal(title,body,foot,wide){
       mask.innerHTML=`<div class="modal ${wide?'wide':''}" role="dialog"><div class="modal-h">${title}<button class="x" onclick="closeModal()">×</button></div><div class="modal-b">${body}</div><div class="modal-f">${foot||'<button class="btn" onclick="closeModal()">关闭</button>'}</div></div>`;
+      bindPointPrd();
       mask.classList.add('show');
     }
+
+    function openSwimlane(){
+      openModal('中信保一期 · 内部与外部对接泳道图',`
+        <div class="notice"><b>当前边界：</b>客户主数据、申请模板、待确认客户选择和内部草稿均在我方系统维护。中信保 API、保单规则及回写频率未确认前，黄色虚线节点只展示目标流程，不执行真实外部提交。</div>
+        <div class="swim-wrap"><div class="swim-chart" aria-label="中信保对接泳道图">
+          <div class="swim-phase"></div><div class="swim-phase">1. 客户主数据</div><div class="swim-phase">2. 买方代码申请</div><div class="swim-phase">3. 返回待确认 / 绑定</div><div class="swim-phase">4. 限额核验 / 申报候选</div><div class="swim-phase">5. 回写与后续处理</div>
+          <div class="swim-lane">业务 / 客服<br><small>客户资料与业务真实性</small></div><div><div class="swim-node ok"><b>新增 / 编辑客户</b><span>企业、合同、账期、我方抬头、买方资料</span></div></div><div class="swim-empty"></div><div><div class="swim-node ok"><b>核对并选择具体客户</b><span>确认名称、国别、信用代码/登记号匹配</span></div></div><div><div class="swim-node ok"><b>补齐业务资料</b><span>按申请、报损/追讨或申报所需资料补充</span></div></div><div><div class="swim-node ok"><b>处理待办</b><span>补资料、续签合同或处理失败原因</span></div></div>
+          <div class="swim-lane">财务<br><small>申请、申报与核对</small></div><div class="swim-empty"></div><div><div class="swim-node ok"><b>发起买方代码申请</b><span>国内批量；海外/港澳台单个申请</span></div></div><div><div class="swim-node ok"><b>审核确认绑定</b><span>确认前不允许使用 UOC 申请限额或申报</span></div></div><div><div class="swim-node ok"><b>核验限额并生成候选</b><span>上月欠款、后加费用拆分；不足时申请/追加额度</span></div></div><div><div class="swim-node ok"><b>核对回执 / 处理例外</b><span>成功、失败、部分成功及待补资料</span></div></div>
+          <div class="swim-lane">我方 CRM / 财务系统<br><small>主数据、批次、审计和模板</small></div><div><div class="swim-node ok"><b>保存客户主数据</b><span>自动计算内部投保资格和待补原因</span></div></div><div><div class="swim-node ok"><b>生成申请批次 / 模板</b><span>客户资料预填；记录导出人和批次</span></div></div><div><div class="swim-node ok"><b>接收待确认结果并匹配</b><span>保留返回原文、候选客户、确认人和确认时间</span></div></div><div><div class="swim-node ok"><b>双时间维度取数</b><span>到货时间 + 费用创建/调整时间；关联已选候选明细</span></div></div><div><div class="swim-node wait"><b>回写 UOC / 额度 / 申报结果</b><span>回写字段、频率、失败重试和撤销规则待确认</span></div></div>
+          <div class="swim-lane">中信保 EDI / 业务端<br><small>开放平台、保单与审核</small></div><div class="swim-empty"></div><div><div class="swim-node wait"><b>接收代码申请 / 查询</b><span>接口、模板或人工路径待确认</span></div></div><div><div class="swim-node wait"><b>返回 UOC / 待确认状态</b><span>返回状态编码、候选规则和确认接口待确认</span></div></div><div><div class="swim-node wait"><b>限额 / 保单规则与欠款申报</b><span>查询维度、金额和日期口径待确认</span></div></div><div><div class="swim-node wait"><b>审核 / 受理结果</b><span>成功、失败、部分成功及处理时限待确认</span></div></div>
+        </div></div>
+        <p class="swim-note"><span class="tag t-g">绿色实线</span>我方已确认或可先实现的处理动作　<span class="tag t-y">黄色虚线</span>需中信保确认，当前不执行真实外部提交。<br><span class="tag t-o">关键控制</span>“待确认”不是“已绑定”：必须由用户选择具体客户并确认成功后，UOC 才可进入限额核验和申报流程。</p>
+      `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="openBuyerCode()">进入买方代码申请</button>`,true);
+    }
+
+    // 页面上的小编号只打开对应 PRD，不触发所在功能按钮。
+    function templateFieldTable(rows){
+      return `<table class="mini"><thead><tr><th>模板字段</th><th>模板必填</th><th>我方取值来源 / 获取方式</th><th>当前口径</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table>`;
+    }
+    function fieldSourceTable(rows){
+      return `<table class="mini"><thead><tr><th>页面字段</th><th>优先取值 / 数据来源</th><th>页面处理</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table>`;
+    }
+    const buyerTemplateFields=[
+      ['序号','否','系统按导出行从 1 开始生成','仅模板行号'],
+      ['企业买方编号','否','客户主档—客户代码','建议作为我方内部买方标识'],
+      ['买方英文名称','否','客户主档—买方英文名称；缺失时业务补录','代码申请模板样例为空，本期不校验必填'],
+      ['买方英文地址','否','客户主档—买方英文地址；海外/港澳台人工维护','代码申请模板样例为空，本期不校验必填'],
+      ['买方国别代码','是（样例有值）','客户主档—国家/地区代码','按中信保模板编码，如 CHN / US；导出前必填校验'],
+      ['买方中文名称','是（样例有值）','客户主档—客户全称','国内客户优先取企业全称；导出前必填校验'],
+      ['成立日期','否','企业信息/天眼查或客户提供资料','日期格式待中信保确认'],
+      ['注册年份','否','由成立日期取年份；无日期时人工维护','不与成立日期同时强制'],
+      ['电话（建议填写）','否','客户主档—客户电话或联系人电话','模板仅标“建议填写”'],
+      ['传真','否','客户资料人工维护','无则留空'],
+      ['联系人','否','客户主档—联系人','无则留空'],
+      ['注册登记号','否','客户主档—注册登记号 / 海外税号','港澳台/海外优先；国内可与信用代码并存'],
+      ['业务员姓名/工号','否','客户主档—所属业务员/员工主数据','姓名或工号格式待中信保确认'],
+      ['买方简称','否','客户主档—客户简称','无则留空'],
+      ['买方中文地址','是（样例有值）','客户主档—详细地址','国内地址优先；导出前必填校验'],
+      ['注册地址（住所）','否','客户主档—天眼查注册地址','注册地址变更由业务维护'],
+      ['组织机构代码','否','客户主档—组织机构代码','旧证照字段；无则留空'],
+      ['统一社会信用代码','是（样例有值）','客户主档—统一社会信用代码','国内客户申请资料；导出前必填校验'],
+      ['注册区域(XX市)','是（样例有值）','由注册地址解析市级行政区；解析失败人工选择','示例为南京市、嘉兴市；导出前必填校验'],
+      ['美国州省代码','否','美国注册地址对应州省；参照模板第二页映射','仅美国买方填写']
+    ];
+    const declarationTemplateFields=[
+      ['序号','否','系统按导出行从 1 开始生成','仅模板行号'],
+      ['开证行代码','否','信用证/合同资料','非信用证支付可留空'],
+      ['开证行英文名称','否','信用证/合同资料','非信用证支付可留空'],
+      ['开证行英文地址','否','信用证/合同资料','非信用证支付可留空'],
+      ['是否存在保兑行','否','信用证/合同资料','非信用证支付可留空'],
+      ['保兑行代码','否','信用证/合同资料','非信用证支付可留空'],
+      ['保兑行英文名称','否','信用证/合同资料','非信用证支付可留空'],
+      ['保兑行英文地址','否','信用证/合同资料','非信用证支付可留空'],
+      ['中信保买方代码','是（模板红字）','客户主档—已绑定 UOC','无 UOC 不生成正式申报模板'],
+      ['合同卖方主体','否','客户合同—签订我方抬头','与保单主体映射待中信保确认'],
+      ['卖方主体角色','否','合同/保单配置人工维护','枚举待中信保确认'],
+      ['合同支付方式','是（模板红字）','合同条款/合同账期配置','示例为 OA；枚举以中信保规则为准'],
+      ['期限(天)','是（模板红字）','客户合同—账期天数','现结为 0；月结取合同实际天数'],
+      ['缴费支付方式','是（模板红字）','保单/财务支付配置','示例为 OA；枚举待中信保确认'],
+      ['责任生效日期','是（模板红字）','业务日期候选（待中信保确认）','不能擅自确定用到货、开船或发票日期'],
+      ['运输方式','否','运单—运输方式','海运/空运等枚举待确认'],
+      ['报关单号','否','报关单/业务单证','无报关业务可留空'],
+      ['发票号','是（模板红字）','申报候选生成的请款单号：上月欠款单或后加费用独立单','后加费用单号在原上月欠款单后按现网规则追加 -1、-2…；[待确认] 是否可用请款单号替代法定发票号'],
+      ['货币代码','是（模板红字）','请款单/应收明细—币种','按中信保模板编码，如 CNY / USD'],
+      ['投保金额','是（模板红字）','申报候选生成请款单—本次申报金额','上月欠款与后加费用分别按独立请款单金额取值；金额范围、税费及跨月调整待确认'],
+      ['海关商品代码','是（模板红字）','中信保申报模板—预置固定值','按当前中信保模板固定输出；不读取报关单、商品主数据或 HS Code。模板版本变更时随模板统一调整'],
+      ['业务员姓名/工号','否','客户主档—所属业务员/员工主数据','格式待中信保确认'],
+      ['发票金额','否','发票/请款单金额','与投保金额差异口径待确认'],
+      ['是否融资','否','财务融资标识','无则留空'],
+      ['买方英文名称','否','客户主档—买方英文名称','海外/港澳台优先'],
+      ['买方中文名称','否','客户主档—客户全称','国内客户优先'],
+      ['买方地址','否','客户主档—详细地址/注册地址','取值优先级待确认'],
+      ['买方国别','否','客户主档—国家/地区代码','编码标准待确认'],
+      ['合同号','否','客户合同/业务合同编号','无则留空'],
+      ['保户特别说明','否','财务人工填写','无则留空'],
+      ['保费付款人(发票抬头)','否','财务主数据/保单约定抬头','取值对象待确认'],
+      ['期望承保情况通知书出具日期','否','财务人工填写','日期格式待确认'],
+      ['企业买方编号','否','客户主档—客户代码','作为我方内部标识'],
+      ['商品名称','否','报关品名/货物品名','取值优先级待确认']
+    ];
+    const pointPrd={
+      query:{title:'1 · 查询条件',body:`
+        <div class="sec">展示规则</div><p>默认只展示第一行的客户名称、客户等级、客户类型、企业类型、客户来源和客户电话；点击“更多筛选”后再显示其余现网筛选条件及中信保筛选条件。</p>
+        <div class="sec">本期新增筛选</div><p>签订我方抬头、投保资格、买方代码状态、中信保买方代码、统一社会信用代码、天眼查注册地址和投保月份为本期新增，以红色文字展示。投保资格仅表示我方内部筛选结果，不表示中信保最终承保。</p>
+        <div class="sec">投保月份口径</div><p><strong>[假设]</strong> 当前按客户最近一次中信保申报批次所属月份筛选和展示，格式为 YYYY-MM；无申报批次时展示“—”。若业务要查询的是保单责任生效月份而不是申报批次月份，需中信保及财务确认后替换本字段来源。</p>`},
+      actions:{title:'2 · 功能',body:`
+        <div class="sec">现网功能</div><p>查询、新增、编辑、详情、启用、禁用、开户、审核、批量修改、风险标记、删除和导出等功能保留现网入口。</p>
+        <div class="sec">本期新增功能</div><p>客户新增或编辑保存后自动核验投保资格，并将未满足内部投保条件、资料缺失或外部返回待补原因归入“未满足投保条件”页签；不提供单独的人工刷新操作。买方代码申请/维护、限额申请/查询、生成申报候选/模板，以及报损/追讨均为独立入口。正式 API、保单规则和结果回写等待中信保确认。</p>`},
+      list:{title:'3 · 列表',body:`
+        <div class="sec">列表展示</div><p>列表保留现网客户字段，并新增企业类型、天眼查注册地址、签订我方抬头、合同账期、账期天数、统一社会信用代码、上月欠款、跨月明细、投保资格、不符合/待补原因、中信保买方代码、代码状态、投保限额和投保月份。买方代码申请号不在客户列表展示，如需追溯申请批次或回执，在“买方代码申请 / 维护”入口查看。新增列表字段表头使用浅红底红字。</p>
+        <div class="sec">投保限额交互</div><p>“投保限额”不是客户手工维护值。仅当客户已绑定 UOC、内部投保资格符合且合同有效时，展示额度及“申请 / 追加”入口；原型以 CNY 50,000.00（可用 CNY 38,000.00）作为明确标识的演示数据。真实金额、可用额度、有效期和额度状态必须来自中信保额度查询回写。UOC 待确认时只能先确认代码；不符合条件、合同到期或现结客户不提供申请入口。</p>
+        <div class="sec">投保月份</div><p><strong>[假设]</strong> 取最近一次中信保申报批次所属月份（YYYY-MM）；客户尚无申报批次时显示“—”。不以合同起止日期、买方代码申请月份或保单责任生效日替代，除非后续明确变更口径。</p>
+        <div class="sec">跨月明细</div><p>点击“查看”可展开该客户的跨月费用明细；页面按业务发生月、请款单号、到货时间、费用创建/调整时间及金额展示。后加费用使用“原请款单号-1”等独立明细行。正式跨月申报/更正规则仍待中信保确认。</p>`},
+      tabs:{title:'4 · 状态页签',body:`
+        <div class="sec">共通规则</div><p>页签只对当前用户可见范围内的客户主档和内部流程状态做组合筛选，不新增、修改或向中信保发送数据。下方页签仅表示业务待办维度；客户启用状态已移至顶部查询条件，可与任一页签组合筛选。</p>
+        <table class="mini"><thead><tr><th>页签</th><th>数据从哪里来</th><th>进入条件</th><th>退出条件 / 数据去向</th></tr></thead><tbody>
+          <tr><td>全部</td><td>客户主档</td><td>当前用户有数据权限的全部客户</td><td>仅清除业务待办页签筛选；保留顶部“启用状态”等查询条件，不改变客户数据</td></tr>
+          <tr><td>未签合同</td><td>客户主档的是否签订合同、合同日期</td><td>未签合同，或合同信息缺失</td><td>保存有效合同及日期后离开；结果供业务补合同</td></tr>
+          <tr><td>未满足投保条件</td><td>客户主档的资格核验结果、不符合条件或待补原因</td><td>现结、未签/合同到期、无有效我方抬头、企业类型不符合，或申请资料缺失；国内客户缺信用代码/注册地址，海外客户缺国家地区、英文名称/地址或登记号</td><td>补齐资料或满足合同/账期条件后保存，系统自动重新核验；符合时转入“待申请买方代码”或“已绑定”</td></tr>
+          <tr><td>待申请买方代码</td><td>内部资格、买方资料和 UOC 状态</td><td>内部资格符合、申请资料齐全、UOC 为空且代码状态为待申请</td><td>进入“申请中”或回写 UOC 后离开；后续由买方代码申请工作台处理</td></tr>
+          <tr><td>已申请代码</td><td>买方代码申请批次及回写状态</td><td>已生成申请批次并提交内部申请清单，UOC 仍为空且代码状态为申请中</td><td>中信保返回并回写 UOC 后转为“已绑定”；返回失败则转为“申请失败”，均离开本页签</td></tr>
+          <tr><td>待确认代码</td><td>中信保买方代码返回结果、我方客户主档匹配候选及人工选择记录</td><td>中信保返回 UOC 或候选结果，但未完成我方具体客户选择与确认绑定</td><td>用户选择一个客户并确认后写入该客户 UOC，状态转“已绑定”；取消、匹配失败或返回异常时保留待确认并记录原因</td></tr>
+          <tr><td>合同即将到期</td><td>合同结束时间</td><td>结束日期落入提醒阈值内；阈值当前待业务确认</td><td>续签并更新结束日期后离开；结果供业务催办</td></tr>
+          <tr><td>账期申请中</td><td>账期申请单的流程状态</td><td>已提交且未到终态</td><td>审批通过、驳回或撤回后离开；结果回写账期申请状态</td></tr>
+        </tbody></table>
+        <p class="hint"><strong>启用状态：</strong>已从下方页签移至顶部查询条件，可选“全部 / 启用 / 禁用”，与任一业务待办页签组合筛选。中信保 API/保单规则尚未确认前，以上页签不会触发真实接口调用或外部提交。</p>`},
+      eligibility:{title:'中信保投保资格',body:`
+        <div class="sec">业务口径</div><p>企业、非现结、已签标准合同且签约我方抬头为有效主体的客户，满足<strong>内部投保资格筛选</strong>。该结果只用于筛选待办和生成申报候选，不等同中信保最终承保。</p>
+        <div class="sec">自动核验</div><p>客户新增或编辑保存后，系统自动按企业类型、合同账期、合同签订状态和签订我方抬头重新计算资格及待补原因；条件不符合、资料缺失或外部返回待补时进入“未满足投保条件”页签，不提供单独的人工刷新入口。最终承保结论以中信保保单和规则为准。</p>`},
+      customerData:{title:'9 · 新增 / 编辑 · 中信保投保资料',body:`
+        <div class="sec">字段来源与用途</div><p>企业类型、统一社会信用代码、注册资金、天眼查注册地址、签订我方抬头、合同账期、账期天数及中信保买方资料均维护在客户资料中。其中企业类型、合同账期、合同和我方抬头用于资格筛选；国内/海外买方资料用于买方代码申请和模板取数。注册资金本期仅作为客户基础资料维护，不参与投保资格核验或中信保模板取值。</p>
+        <div class="sec">保存规则</div><p><strong>[已确认]</strong> 本分区全部本期新增字段均为非必填：客户新增或编辑保存时，任一字段为空都不得拦截保存。后续进入买方代码申请、限额、报损/追讨或申报时，再按对应中信保页面、接口或模板的必填规则提示补齐；客户资料页不提前强制校验。</p>
+        <div class="sec">关联关系反查</div><p>“关联客户”表示本客户正向关联的对象；“被关联客户”用于反查哪些客户关联了本客户。两者均从客户关联关系中读取，避免只维护正向关联后无法追溯被关联关系。</p>`},
+      audit:{title:'22 · 开户审核',body:`
+        <div class="sec">准入规则</div><p>开户审核必须上传企查查截图；未上传时不可审核通过。审核结果与审核人、审核时间应留痕，供后续开户和客户资料核验追溯。</p>
+        <div class="sec">页面表现</div><p>审核通过后更新开户状态；驳回时保留驳回原因并提示发起人补齐资料后重新提交。</p>`},
+      buyerDomestic:{title:'3 · 国内买方代码申请',body:`
+        <div class="sec">适用范围</div><p>国内企业客户按批量模板导出申请资料。已确认字段包括企业买方编号、买方中文名称、国别代码、中文地址、注册地址、统一社会信用代码和注册区域等。</p>
+        <div class="sec">必填规则</div><p><strong>[已确认]</strong> 当前按已填模板样例校验：样例中有值的买方国别代码、买方中文名称、买方中文地址、统一社会信用代码、注册区域（XX市）为必填；样例为空的其余列均为非必填。模板版本、接口级额外校验及模板导入与中信保接口的关系仍待确认；页面当前仅生成内部申请模板，不直接调用外部申报接口。</p>`},
+      buyerTemplate:{title:'5 · 买方代码申请模板字段映射',body:`
+        <div class="notice"><b>模板依据：</b>“申请中信保代码模版”的已填样例。当前确认规则：<strong>样例中有值的列为必填；样例中为空的列均为非必填。</strong>本期导出前校验买方国别代码、买方中文名称、买方中文地址、统一社会信用代码、注册区域（XX市）；其余列允许为空。正式接口/导入校验以中信保后续书面规则为准。</div>
+        ${templateFieldTable(buyerTemplateFields)}
+        <p class="hint">本期必填判断依据为用户确认的模板样例数据，不按红字列头判断；国内/海外客户的接口级额外校验和错误反馈仍待中信保确认。</p>`},
+      buyerOverseas:{title:'4 · 港澳台 / 海外买方代码申请',body:`
+        <div class="sec">处理方式</div><p>先按国家/地区、英文名称、英文地址和注册登记号模糊查询候选买方，再由人工确认；无可用候选时再准备单个申请资料。</p>
+        <div class="sec">数据要求</div><p>海外/港澳台客户至少维护国家/地区、英文名称、英文地址、注册登记号。候选确认和代码绑定需保留操作记录，避免绑定到错误买方。</p>`},
+      limit:{title:'6 · 限额申请 / 查询',body:`
+        <div class="sec">放置与使用时机</div><p>限额不是客户基础资料，也不在客户新增/编辑中手工维护。系统在“申报候选”清单按客户、UOC、我方投保主体和保单查询额度；额度不足时，用户从该行直接发起申请或追加申请。</p>
+        <div class="sec">页面结果</div><p>接口接通后展示已批额度、可用额度、本次拟申报金额、限额有效期和核验状态。无 UOC 时先申请买方代码；仅当接口明确返回无有效额度或可用额度不足时，申报按钮不可用并显示申请/追加额度动作。原型的 CNY 50,000.00 / 可用 CNY 38,000.00 为演示数据；真实环境只能以接口回写判断额度。</p>
+        <div class="sec">P0 待确认</div><p>中信保需确认正式限额查询/申请接口是否已开通，以及查询维度、保单/我方主体选择、额度占用与释放、有效期、申请资料、审批状态、失败重试和回写规则。当前页面的额度金额、有效期和“额度充足”均为明确标注的演示数据，不代表任何真实额度结论。</p>`},
+      declaration:{title:'5 · 申报候选与后加费用',body:`
+        <div class="sec">候选生成口径</div><p>以到货时间与费用创建/调整时间双维度筛选上月欠款和后加费用；后加费用单独生成候选行，避免遗漏历史到货后的新增或调整费用。</p>
+        <div class="sec">限额前置</div><p>额度核验汇总挂在已勾选的候选明细下方。接口未接通时，系统只展示“待接口核验”，不判断是否额度不足，也不产生待办或申请入口；接口接通后，生成正式申报模板和提交申报前必须完成核验。无 UOC 时先申请买方代码；接口明确返回无有效额度或可用额度不足时，才显示申请/追加额度动作并拦截申报。</p>
+        <div class="sec">本期边界</div><p>页面先支持输出内部候选清单和模板。最终申报对象、申报金额和日期口径、跨月变更/撤销规则，待中信保确认后再接入正式申报。</p>`},
+      declarationTemplate:{title:'7 · 符合条件申报模板字段映射',body:`
+        <div class="notice"><b>模板依据：</b>“符合条件申报模版”。红字字段在模板中标识为必填；其中“海关商品代码”按中信保模板预置固定值输出，不从我方报关单或商品主数据取值。本期只能按下表形成内部候选与导出模板；涉及责任生效日期、发票号、投保金额和跨月更正的口径，不能在未获中信保确认前自动提交。</div>
+        ${templateFieldTable(declarationTemplateFields)}
+        <div class="sec">候选生成与请款单规则</div><p><strong>[已确认]</strong> 仅对用户勾选的客户生成申报候选。该客户的上月欠款明细生成一张请款单，单号沿用现网请款单编号规则；该客户在本期发生的后加费用/调整费用必须单独生成一张请款单，不与上月欠款请款单合并。</p>
+        <p><strong>[已确认]</strong> 后加费用请款单以对应上月欠款请款单号为基础追加序号，例如上月欠款请款单为 <code>ZD261112155347281799</code>，后加费用请款单为 <code>ZD261112155347281799-1</code>；同一原请款单后续再产生独立后加费用时，按现网规则顺延为 <code>-2</code>、<code>-3</code>。两张请款单均需保留原请款单关联关系和费用来源，便于追溯。</p>
+        <p class="hint">模板中的必填标识来自红字列头；“责任生效日期”“发票号”“投保金额”等我方取值规则仍为待中信保确认项。</p>`},
+      lossRecovery:{title:'8 · 报损 / 追讨',body:`
+        <div class="sec">页面范围</div><p>此处不是理赔或索赔申请。按信保通页面拆为：<strong>报损（可损通知书制作）</strong>、<strong>自行追讨</strong>和<strong>委托代理追讨（代追）</strong>。三类业务均先保存内部草稿和资料，不代表中信保已受理、赔付或已委托追讨。</p>
+        <div class="sec">已见页面资料</div><p>报损页包含有效保单/投保单号、买方代码、部门/员工、金额、信用期限、支付方式、当前风险情况告知及附件；自行追讨页包含保单、申请事项、案件编号、申请内容和附件；代追页包含委托人、债务人、委托代理协议、委托总金额、附件及债务明细。</p>
+        <div class="sec">P0 待确认</div><p>需中信保确认报损、自行追讨及委托代理追讨分别对应的 API、适用保单、申请时点、必填字段、附件、状态、撤回/修改、查询和测试环境。当前不向中信保提交任何真实申请。</p>`},
+      contract:{title:'4 · 合同提醒',body:`
+        <div class="sec">提醒规则</div><p>合同临近到期或已到期时提醒所属业务员；未签合同客户应在列表筛选/页签中可识别，并支持后续催办。</p>
+        <div class="sec">关联影响</div><p>合同签订状态和签订我方抬头是投保资格筛选依据。无有效标准合同或我方抬头无效时，不满足内部投保资格。</p>`},
+      terms:{title:'合同账期配置',body:`
+        <div class="sec">配置项</div><p>仅配置合同账期和账期天数：合同账期选择“现结”或“月结”；现结填写 0 天，月结按合同填写实际天数。</p>
+        <div class="sec">维护位置</div><p>客户新增/编辑时维护客户实际合同账期和天数；“合同账期配置”入口用于查看或调整该配置。本期不再配置开船、到港、签收、到货等起算维度。</p>`},
+      termsApply:{title:'6 · 账期申请线上化',body:`
+        <div class="sec">申请资料</div><p>账期申请取毛利、平均计费重、近 3 个月主营营业额、到货平均回款天数；付款人需匹配法人或营业执照抬头。</p>
+        <div class="sec">审批规则</div><p>直客且申请额度不高于 24,000 元、且不晚于每月 15 号的月结申请可直批；其他申请流转直属部门负责人后再由财务审批。新客户观察期为 2 个月，非主营客户最多申请至每月 5 号月结。</p>`},
+      termConfig:{title:'10 · 合同账期配置',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['合同账期 + 账期天数','账期配置字典；由财务维护','可多选组合；现结仅允许 0 天，月结按选定天数保存'],
+        ['已保存配置','合同账期配置表','打开弹窗时回显；删除仅移除该配置项'],
+        ['客户实际合同账期 / 天数','客户主档的合同资料','客户新增/编辑选择；本配置页不反向覆盖已签合同']
+      ])}<p class="hint">[已确认] 多选以“账期 + 天数”为最小单位，避免一个账期类型被保存为多个含义不明的天数。</p>`},
+      pendingInsuranceData:{title:'11 · 未满足投保条件',body:`
+        <div class="sec">进入与退出规则</div>${fieldSourceTable([
+          ['未满足投保条件客户','客户主档、合同资料、买方代码申请/限额/申报返回的不符合条件或待补原因','客户新增或编辑保存后自动计算；外部返回待补时同步写入原因，不提供手工刷新入口'],
+          ['客户基础资料缺失','企业类型、签订合同、合同开始/结束时间、有效我方抬头、合同账期及账期天数','补齐后保存客户资料，系统自动重新计算内部资格'],
+          ['国内买方资料缺失','国家/地区代码、客户中文名称、中文地址/注册地址、统一社会信用代码、注册区域','在客户资料补齐后重新进入买方代码申请模板校验'],
+          ['港澳台 / 海外买方资料缺失','国家/地区、英文名称、英文地址、注册登记号 / 商业登记号；美国还需州省代码','在客户资料补齐后重新执行买方候选查询或单个申请'],
+          ['外部业务资料缺失','中信保返回的保单、限额、报损/追讨或申报资料缺项','保留外部返回原文和待补原因；由经办人补齐对应业务资料后重新发起']
+        ])}
+        <div class="sec">页签流转</div><p>资料补齐并保存后，系统自动判断下一步：内部资格符合且 UOC 为空时转“待申请买方代码”；中信保返回 UOC 但未选定客户时转“待确认代码”；UOC 确认绑定后可进入限额核验和申报候选。客户仍不符合内部条件或外部仍返回待补时，继续留在本页签并展示最新原因。</p>
+        <p class="hint">[已确认] 本页签同时展示条件不符合与资料待补两类待办，不提供“批量核验 / 刷新资格”操作。中信保实际错误码、待补字段和重提规则以联调结果为准。</p>`},
+      buyerDomesticModal:{title:'12 · 国内买方代码申请',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['待导出客户','客户主档 + 内部投保资格 + UOC 状态','仅展示可进入国内申请清单的客户'],
+        ['客户、企业买方编号','客户主档：客户全称、客户代码','客户代码作为企业买方编号'],
+        ['国别、信用代码、注册地址','客户主档：国家/地区代码、统一社会信用代码、天眼查注册地址/详细地址','生成模板前按已确认样例规则校验'],
+        ['申请批次、导出人','系统生成批次号；当前登录用户','模板版本待中信保确认']
+      ])}`},
+      buyerOverseasModal:{title:'13 · 港澳台 / 海外买方代码申请',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['客户、国家/地区、州省代码、英文名称/地址、登记号','客户主档的海外买方资料','客户主档有值则预填；缺失由业务补录'],
+        ['买方模糊查询候选、买方代码、等级','中信保查询接口 / 业务端结果','接口未接通前仅为演示数据；不可视为真实匹配结果'],
+        ['申请清单状态','内部申请批次','当前只保存内部清单，不提交中信保']
+      ])}`},
+      buyerConfirmationModal:{title:'21 · 待确认买方代码',body:`<div class="sec">字段来源与确认规则</div>${fieldSourceTable([
+        ['申请批次、返回时间、返回状态、买方 UOC、返回名称/国别/登记号','中信保买方代码申请返回结果','返回状态为“待确认”时不自动写入任何客户主档'],
+        ['我方客户候选清单','客户主档按客户名称、国家/地区、统一社会信用代码或注册登记号匹配','仅展示当前用户有权限的匹配候选；候选不等同已确认绑定'],
+        ['确认选择、确认人、确认时间','用户在候选清单中选择一条客户后产生','必须选择且一次只能选择一条；确认前二次提示'],
+        ['客户主档 UOC、代码状态','正式确认接口成功后回写','成功转“已绑定”；失败或超时保留“待确认”，不得清除返回结果']
+      ])}<p class="hint">[待确认] 中信保实际返回状态编码、候选匹配规则、确认接口与是否支持撤销，需在联调时确认。本原型仅模拟内部确认流程。</p>`},
+      limitManageModal:{title:'14 · 限额申请 / 查询',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['客户、买方 UOC','客户主档','UOC 为空时引导先申请买方代码'],
+        ['我方投保主体 / 保单','有效保单主数据或中信保回写','未接通前显示待确认，不伪造保单'],
+        ['已批额度、可用额度、有效期、状态','中信保限额查询接口回写','接口未开通时仅显示待接口核验，不能判断额度是否充足']
+      ])}`},
+      limitApplicationModal:{title:'15 · 限额申请草稿',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['保单号、被保险人、保单类型','有效保单主数据 / 中信保保单查询结果','选定保单后自动带出；无有效保单不可进入外部提交'],
+        ['买方 UOC、国别、名称、英文名称、地址、登记号','客户主档；必要时由 UOC 查询回写','主档有值预填；接口回写字段当前不虚构'],
+        ['部门 / 员工','当前登录用户与组织架构','发起人可选择所属部门/员工'],
+        ['金额、币种、信用期限、支付方式、风险告知','申请人结合实际业务录入','外部正式必填、枚举和校验待中信保确认']
+      ])}`},
+      lossRecoveryModal:{title:'16 · 报损 / 追讨工作台',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['客户 / 买方 UOC、关联保单','客户主档、有效保单及内部草稿','有历史草稿则回显；无草稿显示暂无'],
+        ['内部状态','我方报损/追讨草稿状态','只反映内部资料整理进度'],
+        ['中信保状态','中信保接口或业务端回写','当前接口未开通，固定展示未提交/待开通']
+      ])}`},
+      lossNoticeModal:{title:'17 · 报损（可损通知书）草稿',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['有效保单号、被保险人、保单类型','有效保单主数据 / 保单查询回写','选择保单后自动带出'],
+        ['买方 UOC、国别、名称、英文名称、注册地址/注册号、电话/传真','客户主档；必要时通过 UOC 查询中信保','客户主档有值预填；接口未开通字段不伪造'],
+        ['部门 / 员工','当前登录用户与组织架构','申请人确认后保存'],
+        ['金额、币种、信用期限、支付方式、风险告知、附件','报损经办人按实际欠款/风险资料录入','不从申报候选或限额自动带入，避免混用业务口径']
+      ])}`},
+      selfRecoveryModal:{title:'18 · 自行追讨草稿',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['保单号、被保险人、申请事项','有效保单主数据；页面固定为“自行追讨申请”','保单选择后回显被保险人'],
+        ['案件编号','中信保案件回写或人工选择','未立案可为空，具体规则待中信保确认'],
+        ['申请内容、附件','经办人根据追讨背景、协议和还款方案录入/上传','仅保存内部草稿']
+      ])}`},
+      agentRecoveryModal:{title:'19 · 委托代理追讨（代追）草稿',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['委托人名称、联系人、地址、电话、邮箱、传真','我方主体主数据及当前经办人信息','主数据有值预填，缺失由经办人补录'],
+        ['债务人名称、联系人、地址、电话、邮箱、传真','客户主档 / 买方资料','选择债务人后预填，缺失由经办人补录'],
+        ['保单号、案件编号','有效保单主数据及中信保案件回写','无案件时案件编号可为空，待中信保确认'],
+        ['委托总金额、附件、债务明细','经办人依据债权资料录入/上传','债务明细应包含合同、发票、提单、应付款日及金额']
+      ])}`},
+      declarationModal:{title:'20 · 申报候选清单 / 模板',body:`<div class="sec">字段来源</div>${fieldSourceTable([
+        ['到货时间、费用创建 / 调整时间、申报月份','业务单据到货时间、费用明细创建/调整时间、用户选择的申报月份','按双时间维度生成候选'],
+        ['客户、请款单号、费用类型、本次申报金额','客户主档、请款单及费用明细','后加费用独立使用“原单号-1”等明细行；原金额和调整额保留在说明中追溯'],
+        ['买方 UOC、期限、发票号、投保金额、责任生效日期、海关商品代码','客户主档、合同账期、请款单、欠款候选及申报模板固定值','字段映射按模板生成；未确认口径不得外部提交'],
+        ['额度核验结果','中信保额度查询接口','接口未接通时仅显示待接口核验']
+      ])}`},
+      receivableDetailExport:{title:'23 · 客户管理费用明细导出',body:`
+        <div class="sec">导出页签与取数口径</div>${fieldSourceTable([
+          ['上月欠款明细','到货时间、费用创建/调整时间均落在所选上月的请款单费用明细','按上月实际发生额导出；按客户、请款单和费用明细逐行输出'],
+          ['跨月明细','到货时间早于申报月份、但费用创建/调整时间落在申报月份的费用明细','后加费用或调整费用独立输出；请款单号使用“原单号-1”等拆分号追溯'],
+          ['导出模板字段','请款单明细导出模板','当前页面先按客户代码、客户名称、请款单号、关联业务单号、到货时间、费用创建/调整时间、费用名称/类型、币种、费用金额、业务员、结算员和备注展示；与现网请款单明细导出字段需最终核对']
+        ])}
+        <div class="sec">导出规则</div><p>两个页签分别导出为两个文件，禁止把上月欠款和跨月明细混在同一个文件中。金额只保留“本次导出金额”一列；原金额、调整金额及跨月原因通过备注字段追溯。<strong>[待确认]</strong> 文件名称、精确列顺序、是否包含运单/工作单号、税率及费用科目，以现网请款单明细导出样例为准。</p>`}
+    };
+    function closePrd(){
+      const overlay=mask.querySelector('.prd-overlay');
+      if(overlay)overlay.remove();
+      // 从主页面直接打开 PRD 时没有底层业务弹窗；关闭后需同步关闭遮罩层。
+      if(!mask.querySelector('.modal')){mask.classList.remove('show');mask.innerHTML='';}
+    }
+    function openPointPrd(key){
+      const item=pointPrd[key];
+      if(!item)return;
+      closePrd();
+      // 序号既可能位于业务弹窗内，也可能位于主页面；后者需要主动显示遮罩层。
+      mask.classList.add('show');
+      mask.insertAdjacentHTML('beforeend',`<div class="prd-overlay" role="presentation" onclick="if(event.target===this)closePrd()"><div class="prd-modal" role="dialog" aria-modal="true" aria-label="${item.title}"><div class="modal-h">${item.title}<button class="x" aria-label="关闭 PRD" onclick="closePrd()">×</button></div><div class="modal-b"><div class="notice"><b>PRD 说明</b>：以下为该编号对应的字段来源、带出规则与当前边界。</div>${item.body}</div><div class="modal-f"><button class="btn primary" onclick="closePrd()">关闭 PRD，返回当前页面</button></div></div></div>`);
+    }
+    function bindPointPrd(){
+      document.querySelectorAll('.req-no[data-prd-key]').forEach((el)=>{
+        if(!el.dataset.prdKey || el.dataset.prdBound)return;
+        el.dataset.prdBound='1';
+        el.setAttribute('role','button');el.setAttribute('tabindex','0');
+        const open=(event)=>{event.preventDefault();event.stopPropagation();openPointPrd(el.dataset.prdKey)};
+        el.addEventListener('click',open);
+        el.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){open(event)}});
+      });
+    }
+    bindPointPrd();
+    document.addEventListener('keydown',(event)=>{
+      if(event.key==='Escape'&&mask.querySelector('.prd-overlay')){event.preventDefault();closePrd();}
+    });
 
     function openRelate(code){
       const map={
@@ -353,80 +636,208 @@
       const d=map[code]||map.TX00558;
       const fwd=d.forward.length?d.forward.map(([c,n])=>`<tr><td>本客户 →</td><td><button class="link">${c}</button></td><td>${n}</td><td>关联客户（正向）</td></tr>`).join(''):'<tr><td colspan="4" class="muted">无正向关联</td></tr>';
       const rev=d.reverse.length?d.reverse.map(([c,n])=>`<tr><td>← 对方关联本客户</td><td><button class="link">${c}</button></td><td>${n}</td><td>被关联客户（反查）</td></tr>`).join(''):'<tr><td colspan="4" class="muted">无被关联</td></tr>';
-      openModal(`单向关联反查 · ${code} ${d.name} <span class="mk mk-new">新</span>`,`
+      openModal(`单向关联反查 · ${code} ${d.name}`,`
         <div class="hint" style="margin-bottom:10px">单向关联仅维护「我关联谁」时，需靠「被关联客户」反查「谁关联了我」。</div>
-        <div class="sec">关联客户（正向） <span class="mk mk-chg">改</span></div>
+        <div class="sec">关联客户（正向）</div>
         <table class="mini"><thead><tr><th>方向</th><th>客户代码</th><th>简称</th><th>说明</th></tr></thead><tbody>${fwd}</tbody></table>
-        <div class="sec">被关联客户（反查） <span class="mk mk-new">新</span></div>
+        <div class="sec">被关联客户（反查）</div>
         <table class="mini"><thead><tr><th>方向</th><th>客户代码</th><th>简称</th><th>说明</th></tr></thead><tbody>${rev}</tbody></table>
       `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="notify('已打开关联维护（演示）')">维护关联</button>`);
     }
 
-    function openAdd(mode){
-      openModal('新增客户 · 先申请代码再购买 <span class="mk mk-new">新</span>',`
-        <div class="sec">① 申请代码（每客户独立） <span class="mk mk-new">新</span></div>
-        <div class="grid2">
-          <div class="fi"><label class="req">申请代码</label><input value="APP-202609-100" ${mode==='code'?'':'readonly'} /><div class="hint">新增须先申请；一客一码，后续购买/开户绑定此码</div></div>
-          <div class="fi"><label>申请状态</label><input value="已申请 · 待完善资料" readonly /></div>
-        </div>
-        <div class="sec">② 客户基础信息</div>
-        <div class="grid2">
-          <div class="fi"><label class="req">客户全称</label><input placeholder="企业全称" /></div>
-          <div class="fi"><label class="req">客户简称</label><input /></div>
-          <div class="fi"><label>客户等级</label><select><option>直客</option><option>同行</option><option>直客·国外</option></select></div>
-          <div class="fi"><label>信用代码 <span class="mk mk-new">新</span></label><input placeholder="统一社会信用代码 / 国外税号" /></div>
-        </div>
-        <div class="sec">③ 中信保 <span class="mk mk-new">新</span></div>
-        <div class="grid2">
-          <div class="fi"><label>是否购买中信保</label><select><option>否</option><option>是</option><option>待购买</option></select></div>
-          <div class="fi"><label>中信保代码</label><input placeholder="推送成功后回填" /></div>
-        </div>
-        <div class="sec">④ 合同（签订时） <span class="mk mk-chg">改</span></div>
-        <div class="grid2">
-          <div class="fi"><label class="req">我方抬头 <span class="mk mk-new">新</span></label><select><option value="">请选择</option><option>腾信物流（深圳）有限公司</option><option>腾信物流（香港）有限公司</option></select><div class="hint">合同签订必填</div></div>
-          <div class="fi"><label>购买备注 <span class="mk mk-chg">改</span></label><input placeholder="非必填" /><div class="hint">非必填</div></div>
-        </div>
-      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('已保存申请代码并进入待完善（演示）');closeModal()">保存申请代码</button>`);
+    function openCrossMonth(code){
+      const data={
+        TX00558:{name:'腾信示例A',currency:'CNY',total:'28,600.00',rows:[
+          ['2026-08','尾款','ZD2608-001','2026-08-26','2026-09-03','8,600.00','跨月结转'],
+          ['2026-09','新账','ZD2609-015','2026-09-18','2026-09-28','20,000.00','上月欠款']
+        ]},
+        TX00701:{name:'同行示例C',currency:'CNY',total:'12,400.00',rows:[
+          ['2026-08','主费用','ZD2608-063','2026-08-29','2026-09-06','8,400.00','跨月结转'],
+          ['2026-09','后加杂费','ZD2608-063-1','2026-08-29','2026-09-11','4,000.00','后加费用']
+        ]},
+        TX00788:{name:'海外客户D',currency:'USD',total:'4,200.00',rows:[
+          ['2026-08','主费用','ZD2608-101','2026-08-21','2026-09-02','3,500.00','跨月结转'],
+          ['2026-09','后加费用','ZD2608-101-1','2026-08-21','2026-09-08','700.00','后加费用']
+        ]}
+      };
+      const d=data[code];
+      const rows=d.rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${d.currency} ${r[5]}</td><td>${r[6]}</td></tr>`).join('');
+      openModal(`跨月明细 · ${code} ${d.name}`,`
+        <div class="notice"><b>展示口径：</b>按费用对应的业务发生月份拆分展示；后加费用使用“原请款单号-1”等独立明细行。当前为原型示例，正式“是否申报 / 跨月更正”规则仍待中信保确认。</div>
+        <div class="grid3"><div class="fi"><label>客户</label><input value="${code} · ${d.name}" readonly></div><div class="fi"><label>跨月欠款合计</label><input value="${d.currency} ${d.total}" readonly></div><div class="fi"><label>数据状态</label><input value="内部候选明细（演示）" readonly></div></div>
+        <div class="sec">明细列表</div>
+        <table class="mini"><thead><tr><th>业务发生月</th><th>费用类型</th><th>请款单号</th><th>到货时间</th><th>费用创建 / 调整时间</th><th>金额</th><th>说明</th></tr></thead><tbody>${rows}</tbody></table>
+      `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="openDeclarationCandidates()">查看申报候选 / 模板</button>`,true);
     }
 
-    function openEdit(){openAdd()}
+    function toggleContractDates(select){
+      if(!select)return;
+      const show=select.value==='yes';
+      ['contractStartField','contractEndField'].forEach(id=>{
+        const field=document.getElementById(id);
+        if(!field)return;
+        field.classList.toggle('hidden',!show);
+        const input=field.querySelector('input');
+        if(input)input.required=show;
+      });
+    }
+
+    function openAdd(mode){
+      const editing=mode==='edit';
+      const v=(editValue,newValue='')=>editing?` value="${editValue}"`:newValue?` value="${newValue}"`:'';
+      openModal(editing?'编辑数据':'新增数据',`
+        <div class="sec">基本信息</div>
+        <div class="grid3">
+          <div class="fi"><label class="req">客户简称</label><input${v('腾信示例A')} placeholder="请输入客户简称" /></div>
+          <div class="fi"><label class="req">客户全称</label><input${v('深圳市某某贸易有限公司')} placeholder="请输入客户全称" /></div>
+          <div class="fi"><label>客户电话</label><input${v('0755-88886666')} placeholder="请输入客户电话" /></div>
+          <div class="fi"><label>客户邮箱</label><input${v('finance@example.com')} placeholder="请输入客户邮箱" /></div>
+          <div class="fi"><label class="req">联系人</label><input${v('张三')} placeholder="请输入联系人" /></div>
+          <div class="fi"><label class="req">联系电话</label><input${v('138****8888')} placeholder="请输入联系电话" /></div>
+          <div class="fi"><label>客户地址</label><input${v('广东省 / 深圳市 / 南山区')} placeholder="请选择国家、省/州、城市" /></div>
+          <div class="fi"><label class="req">详细地址</label><textarea placeholder="请输入详细地址">${editing?'深圳市南山区示例路 18 号':''}</textarea></div>
+        </div>
+
+        <div class="sec">属性信息</div>
+        <div class="grid3">
+          <div class="fi"><label class="req">客户等级</label><select><option>直客</option><option>同行</option><option>直客·国外</option></select></div>
+          <div class="fi"><label>客户类型</label><select><option>直客</option><option>同行</option><option>海外客户</option></select></div>
+          <div class="fi"><label class="req">企业类型</label><select><option>有限责任公司</option><option>个人</option><option>其他企业</option></select></div>
+          <div class="fi"><label class="req">客户来源</label><select><option>业务开发</option><option>展会</option><option>转介绍</option></select></div>
+          <div class="fi"><label>关联客户</label><select><option>请选择关联客户</option><option>TX00612 · 示例直客B</option></select></div>
+          <div class="fi"><label class="req">合同账期</label><select><option>现结</option><option selected>月结</option></select></div>
+          <div class="fi"><label class="req">账期天数</label><input type="number" min="0" value="60" placeholder="请输入账期天数" /></div>
+          <div class="fi"><label class="req">业务员</label><select><option>YW0208 · 王若岩</option><option>请选择业务员</option></select></div>
+          <div class="fi"><label>客服员</label><select><option>YW0500 · 徐敏依</option><option>请选择客服员</option></select></div>
+          <div class="fi"><label class="req">结算员</label><select><option>YW0590 · 贾树村</option><option>请选择结算员</option></select></div>
+          <div class="fi"><label>请款单模板</label><select><option>请选择导出模板</option></select></div>
+        </div>
+
+        <div class="sec">整柜 · 岗位团队</div>
+        <div class="grid3">
+          <div class="fi"><label>客服</label><select><option>请选择客服</option></select></div>
+          <div class="fi"><label>订舱员</label><select><option>请选择订舱员</option></select></div>
+          <div class="fi"><label>报关员</label><select><option>请选择报关员</option></select></div>
+          <div class="fi"><label>海外对接</label><select><option>请选择海外对接</option></select></div>
+        </div>
+
+        <div class="sec">关键信息</div>
+        <div class="grid3">
+          <div class="fi"><label class="req">是否签订合同</label><select id="contractSigned" onchange="toggleContractDates(this)"><option value="yes">是</option><option value="no">否</option></select></div>
+          <div class="fi conditional" id="contractStartField"><label class="req">合同开始时间</label><input type="date"${v('2026-01-01')} /></div>
+          <div class="fi conditional" id="contractEndField"><label class="req">合同结束时间</label><input type="date"${v('2026-12-31')} /></div>
+          <div class="fi"><label class="req">法人姓名</label><input${v('张三')} placeholder="请输入法人姓名" /></div>
+          <div class="fi"><label>法人身份证</label><input placeholder="请输入法人身份证" /></div>
+          <div class="fi"><label>开户名</label><input${v('深圳市某某贸易有限公司')} placeholder="请输入开户名" /></div>
+          <div class="fi"><label>开户行</label><input placeholder="请输入开户行" /></div>
+          <div class="fi"><label>银行账号</label><input placeholder="请输入银行账号" /></div>
+          <div class="fi"><label>商务要求</label><input placeholder="请输入商务要求" /></div>
+          <div class="fi"><label>提货要求</label><input placeholder="请输入提货要求" /></div>
+          <div class="fi"><label>保质期</label><input${v('30')} placeholder="请输入保质期" /></div>
+        </div>
+
+        <div class="new-section">
+          <div class="sec">中信保投保资料（本期新增） <span class="req-no" data-prd-key="customerData" aria-label="查看新增字段 PRD">9</span></div>
+          <div class="form-note"><b>维护位置：</b>客户基础资料随新增/编辑一并维护；买方代码申请批次、申请回执和状态流转在“买方代码申请 / 维护”入口单独处理。</div>
+          <div class="grid3">
+            <div class="fi"><label>是否购买中信保</label><select><option>否</option><option>是</option><option>待购买</option></select></div>
+            <div class="fi"><label>统一社会信用代码</label><input${v('91440300MA5XXXXX1A')} placeholder="国内企业填写" /></div>
+            <div class="fi"><label>注册资金</label><input${v('CNY 10,000,000.00')} placeholder="请输入注册资金，如 CNY 10,000,000.00" /><div class="hint">客户基础资料人工维护；币种和单位待确认</div></div>
+            <div class="fi"><label>天眼查注册地址</label><input${v('深圳市南山区示例路 18 号')} placeholder="由业务人员维护" /></div>
+            <div class="fi"><label>签订我方抬头</label><select><option>请选择</option><option selected>腾信物流（深圳）有限公司</option><option>腾信物流（香港）有限公司</option></select><div class="hint">本页非必填；已注销主体不可选</div></div>
+            <div class="fi"><label>国家 / 地区代码</label><input${v('CHN')} placeholder="如 CHN / US" /></div>
+            <div class="fi"><label>注册登记号 / 国外税号</label><input placeholder="港澳台/海外客户维护" /></div>
+            <div class="fi"><label>买方英文名称</label><input placeholder="海外/港澳台客户维护" /></div>
+            <div class="fi"><label>买方英文地址</label><input placeholder="海外/港澳台客户维护" /></div>
+            <div class="fi"><label>中信保买方代码（UOC）</label><input${v('CHN000581157')} placeholder="申请成功后由申请入口回填" readonly /></div>
+            <div class="fi"><label>买方代码状态</label><input${v('已绑定','待申请')} readonly /><div class="hint">由买方代码申请 / 维护入口回写</div></div>
+            <div class="fi"><label>内部投保资格</label><input${v('符合条件（内部筛选）','保存后自动核验')} readonly /><div class="hint">不等同中信保最终承保</div></div>
+          </div>
+        </div>
+
+        <div class="sec">附件信息</div>
+        <div class="grid3">
+          <div class="fi"><label>营业执照</label><div class="upload">＋ 上传营业执照</div><div class="hint">支持 jpg、png，单个文件不超过 10M</div></div>
+          <div class="fi"><label>身份证正反面</label><div class="upload">＋ 上传身份证</div><div class="hint">支持 jpg、png、bmp</div></div>
+          <div class="fi"><label>签约合同 / 其他附件</label><div class="upload">＋ 上传合同或附件</div><div class="hint">支持图片、xlsx、xls、pdf</div></div>
+        </div>
+      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('客户资料已保存，已自动更新内部投保资格及待补原因（演示）');closeModal()">保存</button>`,true);
+      toggleContractDates(document.getElementById('contractSigned'));
+    }
+
+    function openEdit(){openAdd('edit')}
+    const paymentAccounts = [
+      {holder:'深圳市某某贸易有限公司', number:'6222 **** **** 9286', bank:'示例银行 · 深圳分行', status:'启用'},
+      {holder:'深圳某某供应链有限公司', number:'6217 **** **** 4512', bank:'示例银行 · 深圳分行', status:'启用'}
+    ];
     function openDetail(){
       openModal('客户详情 · TX00558',`
         <div class="grid3">
           <div class="fi"><label>客户代码</label><input value="TX00558" readonly /></div>
-          <div class="fi"><label>申请代码 <span class="mk mk-new">新</span></label><input value="APP-202609-001" readonly /></div>
+          <div class="fi"><label>买方代码申请号</label><input value="APP-202609-001" readonly /></div>
           <div class="fi"><label>客户全称</label><input value="深圳市某某贸易有限公司" readonly /></div>
-          <div class="fi"><label>我方抬头 <span class="mk mk-new">新</span></label><input value="腾信物流（深圳）有限公司" readonly /></div>
-          <div class="fi"><label>信用代码 <span class="mk mk-new">新</span></label><input value="91440300MA5XXXXX1A" readonly /></div>
-          <div class="fi"><label>上月欠款 <span class="mk mk-new">新</span></label><input value="CNY 28,600.00" readonly /></div>
-          <div class="fi"><label>是否购买中信保 <span class="mk mk-new">新</span></label><input value="是" readonly /></div>
-          <div class="fi"><label>中信保代码 <span class="mk mk-new">新</span></label><input value="SCB-882201" readonly /></div>
-          <div class="fi"><label>账期维度 <span class="mk mk-chg">改</span></label><input value="开船 · 按柜批次" readonly /></div>
-          <div class="fi"><label>账期维度 <span class="mk mk-chg">改</span></label><input value="开船 · 按柜批次" readonly /></div>
-          <div class="fi"><label>关联客户 <span class="mk mk-chg">改</span></label><input value="TX00612（正向）" readonly /></div>
-          <div class="fi"><label>被关联客户 <span class="mk mk-new">新</span></label><input value="TX00612、TX00701（反查）" readonly /></div>
+          <div class="fi"><label>签订我方抬头</label><input value="腾信物流（深圳）有限公司" readonly /></div>
+          <div class="fi"><label>统一社会信用代码</label><input value="91440300MA5XXXXX1A" readonly /></div>
+          <div class="fi"><label>注册资金</label><input value="CNY 10,000,000.00" readonly /></div>
+          <div class="fi"><label>上月欠款</label><input value="CNY 28,600.00" readonly /></div>
+          <div class="fi"><label>是否购买中信保</label><input value="是" readonly /></div>
+          <div class="fi"><label>中信保买方代码（UOC）</label><input value="CHN000581157" readonly /></div>
+          <div class="fi"><label>合同账期</label><input value="月结" readonly /></div>
+          <div class="fi"><label>账期天数</label><input value="60" readonly /></div>
+          <div class="fi"><label>企业类型</label><input value="企业" readonly /></div>
+          <div class="fi"><label>天眼查注册地址</label><input value="深圳市南山区示例路 18 号" readonly /></div>
+          <div class="fi"><label>投保资格</label><input value="符合条件（内部筛选）" readonly /></div>
+          <div class="fi"><label>关联客户</label><input value="TX00612（正向）" readonly /></div>
+          <div class="fi"><label>被关联客户</label><input value="TX00612、TX00701（反查）" readonly /></div>
         </div>
-        <div class="sec">关联关系反查 <span class="mk mk-new">新</span></div>
+        <div class="sec">关联关系反查</div>
         <table class="mini"><thead><tr><th>方向</th><th>客户代码</th><th>客户简称</th><th>说明</th></tr></thead>
           <tbody>
             <tr><td>本客户 → 关联</td><td>TX00612</td><td>示例直客B</td><td>正向单向关联</td></tr>
             <tr><td>被关联 ← 对方</td><td>TX00612</td><td>示例直客B</td><td>对方把本客户设为关联</td></tr>
             <tr><td>被关联 ← 对方</td><td>TX00701</td><td>同行示例C</td><td>对方把本客户设为关联（反查可见）</td></tr>
           </tbody></table>
-        <div class="sec">跨月明细 <span class="mk mk-new">新</span></div>
+        <div class="sec">跨月明细</div>
         <table class="mini"><thead><tr><th>月份</th><th>类型</th><th>金额</th><th>说明</th></tr></thead>
           <tbody><tr><td>2026-08</td><td>尾款</td><td>CNY 8,600</td><td>跨月结转</td></tr><tr><td>2026-09</td><td>新账</td><td>CNY 20,000</td><td>当月应收</td></tr></tbody></table>
-      `);
+        <div class="sec">付款账号</div>
+        <div class="hint">当前已维护 ${paymentAccounts.filter(x=>x.status==='启用').length} 个启用付款账号；回款自动匹配仅使用此处启用的付款户名与账号。</div>
+      `,`<button class="btn" onclick="openPaymentAccounts()">付款账号</button><button class="btn" onclick="closeModal()">关闭</button>`);
+    }
+
+    function openPaymentAccounts(){
+      const rows = paymentAccounts.length ? paymentAccounts.map((x,i)=>`<tr><td>${x.holder}</td><td>${x.number}</td><td>${x.bank}</td><td>${x.status==='启用'?'<span class="tag ok">启用</span>':'<span class="tag">停用</span>'}</td><td><button class="link" onclick="openPaymentAccountEdit(${i})">编辑</button>　<button class="link danger-text" onclick="deletePaymentAccount(${i})">删除</button></td></tr>`).join('') : '<tr><td colspan="5" class="muted">暂无付款账号</td></tr>';
+      openModal('付款账号 · 回款匹配依据',`
+        <div class="hint" style="margin-bottom:10px">银行真实流水的付款户名、付款账号与本页启用账号匹配时，才可归属到当前客户参与自动认领/预核销；未匹配记录进入财务人工处理。</div>
+        <table class="mini"><thead><tr><th>付款户名</th><th>付款账号</th><th>开户行</th><th>状态</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>
+      `,`<button class="btn" onclick="openPaymentAccountEdit()">+ 新增付款账号</button><button class="btn" onclick="closeModal()">关闭</button>`,true);
+    }
+    function openPaymentAccountEdit(index){
+      const item = index === undefined ? {holder:'',number:'',bank:'',status:'启用'} : paymentAccounts[index];
+      openModal((index === undefined ? '新增' : '编辑') + '付款账号',`
+        <div class="grid2"><div class="fi"><label class="req">付款户名</label><input id="payAccountHolder" value="${item.holder}" placeholder="与银行流水付款户名一致" /></div><div class="fi"><label class="req">付款账号</label><input id="payAccountNumber" value="${item.number}" placeholder="用于银行流水匹配" /></div><div class="fi"><label>开户行</label><input id="payAccountBank" value="${item.bank}" /></div><div class="fi"><label>状态</label><select id="payAccountStatus"><option ${item.status==='启用'?'selected':''}>启用</option><option ${item.status==='停用'?'selected':''}>停用</option></select></div></div>
+      `,`<button class="btn" onclick="openPaymentAccounts()">取消</button><button class="btn primary" onclick="savePaymentAccount(${index === undefined ? -1 : index})">保存</button>`);
+    }
+    function savePaymentAccount(index){
+      const holder=document.getElementById('payAccountHolder').value.trim(),number=document.getElementById('payAccountNumber').value.trim();
+      if(!holder||!number){notify('请填写付款户名和付款账号');return;}
+      const row={holder,number,bank:document.getElementById('payAccountBank').value.trim()||'—',status:document.getElementById('payAccountStatus').value};
+      if(index<0) paymentAccounts.push(row); else paymentAccounts[index]=row;
+      openPaymentAccounts();notify('付款账号已保存（演示）');
+    }
+    function deletePaymentAccount(index){
+      if(!window.confirm('确认删除该付款账号吗？删除后将不再参与回款自动匹配。'))return;
+      paymentAccounts.splice(index,1);openPaymentAccounts();notify('付款账号已删除（演示）');
     }
 
     function openAudit(){
-      openModal('开户 / 营业执照审核 <span class="mk mk-chg">改</span>',`
+      openModal('开户 / 营业执照审核',`
         <div class="sec">审核对象</div>
         <div class="grid2">
           <div class="fi"><label>客户</label><input value="TX00558 / 深圳市某某贸易有限公司" readonly /></div>
           <div class="fi"><label>申请代码</label><input value="APP-202609-001" readonly /></div>
         </div>
-        <div class="sec">企查查截图（必传） <span class="mk mk-new">新</span></div>
+        <div class="sec">企查查截图（必传）</div>
         <div class="upload" id="qcUpload" onclick="this.classList.add('ok');this.innerHTML='已上传：企查查截图_TX00558.png（演示）';notify('已模拟上传企查查截图')">
           点击上传企查查截图<br><span class="hint" style="color:inherit">开户审核材料；未上传不可审核通过</span>
         </div>
@@ -440,23 +851,45 @@
     function openOpenAccount(){openAudit()}
 
     function openImport(){
-      openModal('批量导入 · 信用代码 / 欠款 / 中信保 <span class="mk mk-new">新</span>',`
+      openModal('批量导入 · 信用代码 / 欠款 / 中信保',`
         <div class="sec">导入模板字段</div>
         <table class="mini"><thead><tr><th>字段</th><th>必填</th><th>说明</th><th>标记</th></tr></thead><tbody>
           <tr><td>客户代码 / 申请代码</td><td>是</td><td>匹配客户</td><td>—</td></tr>
-          <tr><td>信用代码</td><td>否</td><td>统一社会信用代码等</td><td><span class="mk mk-new">新</span></td></tr>
-          <tr><td>上月欠款</td><td>否</td><td>金额 · 币种</td><td><span class="mk mk-new">新</span></td></tr>
-          <tr><td>跨月明细</td><td>否</td><td>可多行或 JSON/明细表</td><td><span class="mk mk-new">新</span></td></tr>
-          <tr><td>中信保代码</td><td>否</td><td>已有代码可回填</td><td><span class="mk mk-new">新</span></td></tr>
-          <tr><td>是否购买中信保</td><td>否</td><td>是/否/待购买</td><td><span class="mk mk-new">新</span></td></tr>
+          <tr><td>信用代码</td><td>否</td><td>统一社会信用代码等</td><td></td></tr>
+          <tr><td>上月欠款</td><td>否</td><td>金额 · 币种</td><td></td></tr>
+          <tr><td>跨月明细</td><td>否</td><td>可多行或 JSON/明细表</td><td></td></tr>
+          <tr><td>中信保代码</td><td>否</td><td>已有代码可回填</td><td></td></tr>
+          <tr><td>是否购买中信保</td><td>否</td><td>是/否/待购买</td><td></td></tr>
         </tbody></table>
         <div class="upload" style="margin-top:12px" onclick="notify('已选择导入文件（演示）')">点击选择 Excel / CSV 模板文件</div>
         <div class="hint" style="margin-top:8px">国内客户风险保险亦可走模板导入；国外客户请用「风险保险」逐条新增。</div>
       `,`<button class="btn" onclick="notify('已下载导入模板（演示）')">下载模板</button><button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('导入校验通过 3 行（演示）');closeModal()">开始导入</button>`,true);
     }
 
+    /** 客户管理费用明细导出：上月欠款与跨月明细始终分开导出。 */
+    function openReceivableDetailExport(type){
+      const cross=type==='cross';
+      const tabs=`<div class="steps"><button class="btn ${!cross?'primary':''}" onclick="openReceivableDetailExport('lastMonth')">上月欠款明细</button><button class="btn ${cross?'primary':''}" onclick="openReceivableDetailExport('cross')">跨月明细</button></div>`;
+      const title=cross?'跨月明细导出':'上月欠款明细导出';
+      const rule=cross
+        ? '仅导出到货时间早于申报月份、但费用创建/调整时间落在申报月份的费用；后加费用以原请款单号后追加 -1、-2… 的独立请款单明细导出。'
+        : '仅导出到货时间与费用创建/调整时间均落在所选上月的欠款费用；按客户、请款单和费用明细逐行导出。';
+      const rows=cross
+        ? `<tr><td>TX00558</td><td>深圳市某某贸易有限公司</td><td>ZD261112155347281799-1</td><td>—</td><td>2026-09-18</td><td>2026-10-12</td><td>后加杂费</td><td>CNY</td><td>680.00</td><td>戚流兵</td><td>贾树村</td><td>后加费用；关联原单 ZD261112155347281799</td></tr>`
+        : `<tr><td>TX00558</td><td>深圳市某某贸易有限公司</td><td>ZD261112155347281799</td><td>—</td><td>2026-09-18</td><td>2026-09-28</td><td>主费用</td><td>CNY</td><td>11,483.40</td><td>戚流兵</td><td>贾树村</td><td>上月欠款</td></tr>`;
+      openModal(`客户管理 · ${title}`,`
+        ${tabs}
+        <div class="notice"><span class="req-no" data-prd-key="receivableDetailExport" aria-label="查看费用明细导出 PRD">23</span> <b>导出范围：</b>${rule} 导出模板参考现网“请款单明细导出”；本原型仅展示建议字段与脱敏示例数据。</div>
+        <div class="sec">导出条件</div>
+        <div class="grid3"><div class="fi"><label>目标月份</label><input value="2026-09（演示）" readonly></div><div class="fi"><label>客户范围</label><input value="当前查询结果 / 已选客户" readonly></div><div class="fi"><label>导出模板</label><input value="请款单明细导出（待与现网模板核对）" readonly></div></div>
+        <div class="sec">导出预览</div>
+        <table class="mini"><thead><tr><th>客户代码</th><th>客户名称</th><th>请款单号</th><th>关联业务单号</th><th>到货时间</th><th>费用创建/调整时间</th><th>费用名称/类型</th><th>币种</th><th>本次导出金额</th><th>业务员</th><th>结算员</th><th>备注</th></tr></thead><tbody>${rows}</tbody></table>
+        <p class="hint">[待确认] 现网请款单明细导出的精确列顺序、是否包含运单/工作单号、税率、费用科目等字段，需以导出样例最终核对；本功能不混合导出两类明细。</p>
+      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn" onclick="notify('已下载${title}模板（演示）')">下载模板</button><button class="btn primary" onclick="notify('已导出${title}（演示）');closeModal()">导出 Excel</button>`,true);
+    }
+
     function openSinosure(){
-      openModal('中信保推送 · API <span class="mk mk-new">新</span>',`
+      openModal('中信保推送 · API',`
         <div class="sec">规则</div>
         <div class="hint" style="margin-bottom:8px">满足「有欠款 + 有合同」→ 需购标记=是 → 按接口推送生成/获取代码，回写成功或失败。</div>
         <table class="mini"><thead><tr><th>客户</th><th>欠款</th><th>合同</th><th>需购标记</th><th>中信保代码</th><th>上次推送</th></tr></thead>
@@ -465,7 +898,7 @@
             <tr><td>TX00788</td><td>有</td><td>有</td><td><span class="tag t-o">是</span></td><td>—</td><td><span class="tag t-r">失败</span></td></tr>
             <tr><td>TX00612</td><td>无</td><td>有</td><td><span class="tag t-gray">—</span></td><td>—</td><td><span class="tag t-gray">未推送</span></td></tr>
           </tbody></table>
-        <div class="sec">按月批次费用投保 <span class="mk mk-new">新</span></div>
+        <div class="sec">按月批次费用投保</div>
         <div class="grid2">
           <div class="fi"><label>投保批次</label><select><option>2026-09 批次</option><option>2026-08 批次</option></select></div>
           <div class="fi"><label>杂费投保标识示例</label><input value="CUS-202609-001-1　/　CUS-202609-001-2" readonly /><div class="hint">原运单号 + -1/-2 作为新投保标识</div></div>
@@ -475,7 +908,7 @@
     }
 
     function openRiskIns(){
-      openModal('客户风险保险 <span class="mk mk-new">新</span>',`
+      openModal('客户风险保险',`
         <div class="sec">国外客户 · 逐条新增</div>
         <div class="grid2">
           <div class="fi"><label class="req">客户</label><select><option>TX00788 · ABC GLOBAL</option></select></div>
@@ -490,15 +923,15 @@
     }
 
     function openContract(){
-      openModal('合同管理 · 我方抬头 / 到期提醒 <span class="mk mk-chg">改</span>',`
+      openModal('合同管理 · 我方抬头 / 到期提醒',`
         <div class="sec">签订信息</div>
         <div class="grid2">
-          <div class="fi"><label class="req">我方抬头 <span class="mk mk-new">新</span></label><select><option>腾信物流（深圳）有限公司</option><option>腾信物流（香港）有限公司</option></select></div>
-          <div class="fi"><label>购买备注 <span class="mk mk-chg">改</span></label><input placeholder="非必填" /></div>
+          <div class="fi"><label class="req">我方抬头</label><select><option>腾信物流（深圳）有限公司</option><option>腾信物流（香港）有限公司</option></select></div>
+          <div class="fi"><label>购买备注</label><input placeholder="非必填" /></div>
           <div class="fi"><label class="req">合同开始</label><input type="date" value="2026-01-01" /></div>
           <div class="fi"><label class="req">合同结束</label><input type="date" value="2026-12-31" /></div>
         </div>
-        <div class="sec">到期提醒 / 未签识别 <span class="mk mk-chg">改</span></div>
+        <div class="sec">到期提醒 / 未签识别</div>
         <table class="mini"><thead><tr><th>客户</th><th>业务员</th><th>状态</th><th>到期日</th><th>动作</th></tr></thead>
           <tbody>
             <tr><td>TX00701</td><td>张明宇</td><td><span class="tag t-r">未签订</span></td><td>—</td><td><button class="link" onclick="notify('已提醒业务员补签（演示）')">催办</button></td></tr>
@@ -508,47 +941,53 @@
       `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('合同已保存（我方抬头必填已校验·演示）');closeModal()">保存合同</button>`,true);
     }
 
-    function openTerms(){
-      openModal('账期维度设置 <span class="mk mk-chg">改</span>',`
-        <div class="hint" style="margin-bottom:10px">结算周期新增<strong>现结</strong>：<strong>只有签入现结</strong>（签入发生日 0点，无宽限）；无开船/到港/签收现结。选现结时账期节点固定为<strong>签入</strong>。其他周期可用节点：开船、到港、签收、到货；其中<strong>开船 / 到港按柜批次</strong>。<strong>开船结</strong>开船日<strong>仅</strong>取轨迹 <code>A00106</code> 第一次发生时间（10/12 已确认）。截止日统一写「× 0点」。</div>
-          <div class="fi" style="margin-bottom:10px"><label>结算周期</label><select id="termsCycle"><option>现结</option><option>周结</option><option>半月结</option><option selected>月结 +N</option></select></div>
-        <table class="mini"><thead><tr><th>维度</th><th>计算口径</th><th>标记</th><th>示例</th></tr></thead><tbody>
-          <tr><td>签入</td><td>现结唯一可用节点；签入发生日 0点（无 +N）</td><td><span class="mk mk-new">新 · 现结</span></td><td>签入当日应结</td></tr>
-          <tr><td>开船</td><td>按柜批次起算；开船结 = 轨迹 <code>A00106</code> 第一次发生时间（唯一）；不用于现结</td><td><span class="mk mk-chg">改</span></td><td>柜 CONT-***001 开船日 + N 天</td></tr>
-          <tr><td>到港</td><td>按柜批次起算账期；不用于现结</td><td><span class="mk mk-chg">改</span></td><td>柜 CONT-***001 到港日 + N 天</td></tr>
-          <tr><td>签收</td><td>按签收时间；不用于现结</td><td><span class="mk mk-new">新</span></td><td>POD 签收日 + N 天</td></tr>
-          <tr><td>到货</td><td>按到货时间；不用于现结</td><td><span class="mk mk-new">新</span></td><td>到货日 + N 天</td></tr>
-        </tbody></table>
-        <div class="sec">当前客户试算</div>
-        <div class="grid3">
-          <div class="fi"><label>客户</label><input value="TX00558" readonly /></div>
-          <div class="fi"><label>选用维度</label><select id="termsNode"><option>签入</option><option>开船</option><option>到港</option><option>签收</option><option>到货</option></select></div>
-          <div class="fi"><label>账期天数</label><input id="termsDays" value="30" /></div>
-        </div>
-        <p class="hint" id="termsCashTip" style="display:none;margin-top:8px">当前为<strong>现结</strong>：账期节点已固定为<strong>签入</strong>，无宽限天数；不可选开船/到港/签收。</p>
-      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('账期维度已保存（演示）');closeModal()">保存</button>`);
-      syncTermsCashOnly();
-      const cycleEl=document.getElementById('termsCycle');
-      if(cycleEl) cycleEl.addEventListener('change', syncTermsCashOnly);
+    const contractTermConfigs=[{term:'现结',days:0},{term:'月结',days:30},{term:'月结',days:60}];
+    function renderContractTermList(){
+      const el=document.getElementById('contractTermList');
+      if(!el)return;
+      const rows=contractTermConfigs.length?contractTermConfigs.map((item,index)=>`<tr><td>${index+1}</td><td>${item.term}</td><td>${item.days}</td><td><button class="link danger-text" onclick="removeContractTermConfig(${index})">删除</button></td></tr>`).join(''):'<tr><td colspan="4" class="muted">暂未配置合同账期</td></tr>';
+      el.innerHTML=`<table class="mini"><thead><tr><th>序号</th><th>合同账期</th><th>账期天数</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
-
-    /** 现结 = 仅签入节点，无其他节点 */
-    function syncTermsCashOnly(){
-      const c=document.getElementById('termsCycle');
-      const n=document.getElementById('termsNode');
-      const d=document.getElementById('termsDays');
-      const tip=document.getElementById('termsCashTip');
-      const cash=c && c.value==='现结';
-      if(tip) tip.style.display=cash?'block':'none';
-      if(n){
-        if(cash) n.value='签入';
-        n.disabled=!!cash;
-        Array.from(n.options).forEach(o=>{ o.disabled=cash && o.value!=='签入'; });
-      }
-      if(d){
-        if(cash){ d.value='0'; d.disabled=true; }
-        else { if(d.value==='0') d.value='30'; d.disabled=false; }
-      }
+    function addSelectedContractTermConfigs(){
+      const selected=[...document.querySelectorAll('input[name="contractTermOption"]:checked')].map(el=>({term:el.dataset.term,days:Number(el.dataset.days)}));
+      if(!selected.length){notify('请至少选择一个“合同账期 + 账期天数”组合');return;}
+      let added=0;
+      selected.forEach(item=>{
+        if(!contractTermConfigs.some(x=>x.term===item.term&&x.days===item.days)){
+          contractTermConfigs.push(item);added++;
+        }
+      });
+      contractTermConfigs.sort((a,b)=>a.days-b.days);
+      renderContractTermList();
+      document.querySelectorAll('input[name="contractTermOption"]:checked').forEach(el=>el.checked=false);
+      notify(added?`已加入 ${added} 条合同账期配置`:'所选配置已存在，无需重复加入');
+    }
+    function removeContractTermConfig(index){
+      contractTermConfigs.splice(index,1);
+      renderContractTermList();
+    }
+    function saveContractTermConfig(){
+      if(!contractTermConfigs.length){notify('请至少保留一条合同账期配置');return;}
+      renderContractTermList();
+      notify('合同账期配置已保存（演示）');
+    }
+    function openTerms(){
+      openModal('合同账期配置',`
+        <div class="notice"><span class="req-no" data-prd-key="termConfig" aria-label="查看合同账期配置 PRD">10</span> <b>配置方式：</b>可一次多选多个“合同账期 + 账期天数”组合后加入配置。现结固定为 0 天；月结可按实际合同选择 30、60、90、120 天。每一条组合单独保存，不会出现“现结 30 天”这类无效配置。</div>
+        <div class="fi"><label class="req">合同账期 + 账期天数（可多选）</label>
+          <div class="steps" style="gap:8px;align-items:center;flex-wrap:wrap;border:1px solid #dcdfe6;border-radius:4px;padding:10px 12px;background:#fff">
+            <label><input type="checkbox" name="contractTermOption" data-term="现结" data-days="0"> 现结 · 0 天</label>
+            <label><input type="checkbox" name="contractTermOption" data-term="月结" data-days="30"> 月结 · 30 天</label>
+            <label><input type="checkbox" name="contractTermOption" data-term="月结" data-days="60"> 月结 · 60 天</label>
+            <label><input type="checkbox" name="contractTermOption" data-term="月结" data-days="90"> 月结 · 90 天</label>
+            <label><input type="checkbox" name="contractTermOption" data-term="月结" data-days="120"> 月结 · 120 天</label>
+          </div>
+          <div class="hint">可同时勾选多项；如需其他月结天数，先由业务确认后补充配置项。</div>
+        </div>
+        <div style="margin:10px 0 14px"><button class="btn" onclick="addSelectedContractTermConfigs()">加入已选配置</button></div>
+        <div class="sec">已保存配置</div><div id="contractTermList"></div>
+      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="saveContractTermConfig()">保存</button>`);
+      renderContractTermList();
     }
 
     /** 账期申请演示数据 */
@@ -632,7 +1071,7 @@
       const d = TERMS_DEMO[cust] || TERMS_DEMO.TX00558;
       const isNew = type === 'new' || d.isNew;
       if(isNew){
-        openModal(`账期申请 · ${cust} · 观察期 <span class="mk mk-new">新</span>`, `
+        openModal(`账期申请 · ${cust} · 观察期`, `
           <div class="sec">客户与观察期 · 新客户</div>
           <div class="grid3">
             <div class="fi"><label>客户</label><input value="${cust} / ${d.name}" readonly /></div>
@@ -687,7 +1126,7 @@
       const defaultCredit=pending?(d.apply?.credit||d.creditHint):d.creditHint;
       const directNow=canDirectApprove(d.level, defaultCredit, defaultTerms);
 
-      openModal(`账期申请 · ${cust} <span class="mk mk-new">新</span><span class="mk mk-chg">改</span>`, `
+      openModal(`账期申请 · ${cust}`, `
         <div style="background:#fff7e6;border:1px solid #ffd591;border-radius:4px;padding:10px;margin-bottom:12px;line-height:1.7">
           <b>审批与直批：</b>① 直属部门负责人 → ② 财务，<b>两级都要批</b>。<br>
           <b>可直批：</b>直客 + 额度 ≤ <b>CNY 24,000</b> + 账期 ≤ <b>15 号月结</b>（含 5/10/15 号）。其余走两级审批。<br>
@@ -704,7 +1143,7 @@
           <div class="fi"><label>当前状态</label><input value="${d.status}" readonly /></div>
         </div>
 
-        <div class="sec">系统取数（近 3 个月）· 含毛利 / 平均计费重 <span class="mk mk-chg">改</span></div>
+        <div class="sec">系统取数（近 3 个月）· 含毛利 / 平均计费重</div>
         <table class="mini"><thead><tr>
           <th>月份</th><th>主营营业额</th><th>毛利（毛利率）</th><th>平均计费重</th><th>到货回款天</th>
         </tr></thead><tbody>
@@ -716,7 +1155,7 @@
             <td><b>${payAvg} 天</b></td></tr>
         </tbody></table>
 
-        <div class="sec">历史付款记录 · 法人 / 执照抬头 = 付款人（近 3 个月） <span class="mk mk-new">新</span></div>
+        <div class="sec">历史付款记录 · 法人 / 执照抬头 = 付款人（近 3 个月）</div>
         <div class="hint" style="margin-bottom:6px">匹配口径：付款人与法人「${d.legal}」或营业执照抬头「${d.licenseTitle}」相同才计入。已匹配 <b>${matchPays.length}</b> 笔 · 合计 <b>CNY ${matchAmt.toLocaleString('en-US')}</b>。</div>
         <table class="mini"><thead><tr><th>付款日</th><th>付款人</th><th>金额</th><th>是否计入</th><th>说明</th></tr></thead>
           <tbody>${payRows||'<tr><td colspan="5" class="muted">近 3 个月无匹配流水</td></tr>'}</tbody></table>
@@ -771,7 +1210,7 @@
         </div>
         <div class="fi"><label>申请说明</label><textarea id="applyNote" placeholder="业务员补充说明（可选）"></textarea></div>
 
-        <div class="sec">审批路径预判 <span class="mk mk-chg">改</span></div>
+        <div class="sec">审批路径预判</div>
         <div id="routeBanner" style="border-radius:4px;padding:10px;margin-bottom:8px;border:1px solid #d9d9d9"></div>
         <table class="mini"><thead><tr><th>层级</th><th>审批人</th><th>时间</th><th>结果</th><th>说明</th></tr></thead>
           <tbody id="approvePathBody">${approveRows}</tbody></table>
@@ -861,13 +1300,197 @@
       notify(`财务已通过 ${cust||''}：两级审批完成（部门负责人 → 财务），账期生效（演示）`);
     }
 
-    document.querySelectorAll('.status-tabs button').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        document.querySelectorAll('.status-tabs button').forEach(x=>x.classList.remove('on'));
-        btn.classList.add('on');
-        notify('已切换：'+btn.textContent.trim());
+    /** 国内模板、海外申请和中信保返回后的人工确认分开处理，避免把“返回待确认”误当成已绑定。 */
+    const buyerCodeConfirmationState={confirmed:false,uoc:'CHN000598233',batch:'BUYER-202611-001',customerCode:'',customerName:''};
+    function confirmPendingBuyerCode(){
+      const chosen=document.querySelector('input[name="pendingBuyerCustomer"]:checked');
+      if(!chosen){notify('请先从客户候选列表中选择一个具体客户');return;}
+      const customerCode=chosen.dataset.code,customerName=chosen.dataset.name;
+      if(!window.confirm(`确认将中信保买方代码 ${buyerCodeConfirmationState.uoc} 绑定到 ${customerCode} · ${customerName} 吗？`))return;
+      buyerCodeConfirmationState.confirmed=true;
+      buyerCodeConfirmationState.customerCode=customerCode;
+      buyerCodeConfirmationState.customerName=customerName;
+      const codeEl=document.getElementById('tx00612BuyerCode'),statusEl=document.getElementById('tx00612BuyerStatus'),limitEl=document.getElementById('tx00612LimitAction'),countEl=document.getElementById('pendingBuyerCodeCount');
+      if(customerCode==='TX00612'&&codeEl)codeEl.textContent=buyerCodeConfirmationState.uoc;
+      if(customerCode==='TX00612'&&statusEl)statusEl.innerHTML='<span class="tag t-g">已绑定</span>';
+      if(customerCode==='TX00612'&&limitEl)limitEl.innerHTML='<button class="link" onclick="openLimitApplication(\'TX00612\')"><span class="tag t-y">待接口核验 / 申请</span></button>';
+      if(countEl)countEl.textContent='0';
+      notify(`已确认：${customerCode} 已绑定买方代码 ${buyerCodeConfirmationState.uoc}（演示，未调用中信保）`);
+      closeModal();
+    }
+    function openBuyerCode(mode){
+      const overseas=mode==='overseas';
+      const confirmation=mode==='confirmation';
+      const modeTabs=`<div class="steps"><button class="btn ${!overseas&&!confirmation?'primary':''}" onclick="openBuyerCode('domestic')">国内客户 · 批量模板</button><button class="btn ${overseas?'primary':''}" onclick="openBuyerCode('overseas')">港澳台 / 海外 · 单个申请</button><button class="btn ${confirmation?'primary':''}" onclick="openBuyerCode('confirmation')">待确认代码</button></div>`;
+      if(confirmation){
+        if(buyerCodeConfirmationState.confirmed){
+          openModal('中信保买方代码 · 待确认代码',`${modeTabs}<div class="notice"><span class="req-no" data-prd-key="buyerConfirmationModal" aria-label="查看待确认买方代码 PRD">21</span> 当前没有待确认代码。已确认的 ${buyerCodeConfirmationState.uoc} 已写入客户 ${buyerCodeConfirmationState.customerCode} · ${buyerCodeConfirmationState.customerName}，代码状态为“已绑定”（演示）。</div>`, `<button class="btn" onclick="closeModal()">关闭</button>`,true);
+          return;
+        }
+        openModal('中信保买方代码 · 待确认代码',`
+          ${modeTabs}
+          <div class="notice"><span class="req-no" data-prd-key="buyerConfirmationModal" aria-label="查看待确认买方代码 PRD">21</span> <b>中信保返回待确认：</b>返回结果尚未绑定到客户主档。请从下方我方客户候选中选择一条具体客户，再确认买方代码；未确认前，不能用于限额查询或申报。</div>
+          <div class="sec">中信保返回结果</div>
+          <table class="mini"><thead><tr><th>申请批次</th><th>返回时间</th><th>返回状态</th><th>买方代码（UOC）</th><th>返回买方名称</th><th>国别</th><th>登记号</th></tr></thead><tbody><tr><td>${buyerCodeConfirmationState.batch}</td><td>2026-11-19 10:30（演示）</td><td><span class="tag t-o">待确认</span></td><td>${buyerCodeConfirmationState.uoc}</td><td>东莞某某供应链有限公司</td><td>CHN</td><td>91441900MA5YYYYY2B</td></tr></tbody></table>
+          <div class="sec">选择要绑定的我方客户（仅可选一条）</div>
+          <table class="mini"><thead><tr><th>选择</th><th>客户代码</th><th>客户全称</th><th>国家/地区</th><th>统一社会信用代码 / 登记号</th><th>注册地址</th><th>匹配说明</th></tr></thead><tbody>
+            <tr><td><input type="radio" name="pendingBuyerCustomer" data-code="TX00612" data-name="东莞某某供应链有限公司"></td><td>TX00612</td><td>东莞某某供应链有限公司</td><td>CHN</td><td>91441900MA5YYYYY2B</td><td>广东省东莞市示例大道 8 号</td><td><span class="tag t-g">名称、国别、信用代码一致</span></td></tr>
+            <tr><td><input type="radio" name="pendingBuyerCustomer" data-code="TX00836" data-name="东莞某某供应链服务有限公司"></td><td>TX00836</td><td>东莞某某供应链服务有限公司</td><td>CHN</td><td>91441900MA5XXXXX9K</td><td>广东省东莞市示例大道 28 号</td><td><span class="tag t-y">名称相近，信用代码不一致</span></td></tr>
+          </tbody></table>
+          <p class="hint">确认后应记录申请批次、返回原文、选择客户、确认人和确认时间。正式“确认绑定”接口及撤销规则待中信保联调确认。</p>
+        `,`<button class="btn" onclick="closeModal()">暂不确认</button><button class="btn primary" onclick="confirmPendingBuyerCode()">确认买方代码</button>`,true);
+        return;
+      }
+      if(!overseas){
+        openModal('中信保买方代码申请 · 国内批量模板',`
+          ${modeTabs}
+          <div class="notice"><span class="req-no" data-prd-key="buyerDomesticModal" aria-label="查看国内买方代码申请 PRD">12</span> <b>本期模板校验：</b>按已填样例判定必填：买方国别代码、买方中文名称、买方中文地址、统一社会信用代码、注册区域（XX市）。样例为空的其余列均不校验必填。<br><b>待中信保确认：</b>正式接口/导入是否存在额外校验、模板版本及模板导入与 API 的关系。</div>
+          <div class="sec">待导出客户</div>
+          <table class="mini"><thead><tr><th>选择</th><th>客户</th><th>企业买方编号</th><th>国别</th><th>统一社会信用代码</th><th>注册地址</th><th>资料状态</th></tr></thead><tbody>
+            <tr><td><input type="checkbox" disabled></td><td>TX00612 · 东莞某某供应链有限公司</td><td>TX00612</td><td>CHN</td><td>91441900MA5YYYYY2B</td><td>广东省东莞市示例大道 8 号</td><td><button class="link" onclick="openBuyerCode('confirmation')"><span class="tag t-o">待确认代码</span></button></td></tr>
+            <tr><td><input type="checkbox"></td><td>TX00701 · 广州某某货运代理</td><td>TX00701</td><td>CHN</td><td>91440101MA5ZZZZZ3C</td><td>广东省广州市示例区 99 号</td><td><span class="tag t-r">未签合同</span></td></tr>
+          </tbody></table>
+          <div class="sec">导出规则</div><div class="grid3"><div class="fi"><label>申请批次</label><input value="BUYER-202611-001" readonly></div><div class="fi"><label>模板版本</label><input value="待中信保确认" readonly></div><div class="fi"><label>导出人</label><input value="财务专员（演示）" readonly></div></div>
+        `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="notify('已生成买方代码申请模板（演示，不含真实外部提交）');closeModal()">生成申请模板</button>`,true);
+        return;
+      }
+      openModal('中信保买方代码申请 · 港澳台 / 海外',`
+        ${modeTabs}
+        <div class="notice"><span class="req-no" data-prd-key="buyerOverseasModal" aria-label="查看海外买方代码申请 PRD">13</span> <b>处理方式：</b>先做买方模糊查询并人工确认候选买方；无可用结果时准备单个申请资料。下方为资料收集演示，未调用真实接口。</div>
+        <div class="sec">海外买方资料</div>
+        <div class="grid3"><div class="fi"><label class="req">客户</label><select><option>TX00788 · ABC GLOBAL TRADING LLC</option></select></div><div class="fi"><label class="req">国家 / 地区</label><select><option>US · 美国</option><option>HK · 中国香港</option></select></div><div class="fi"><label>州省代码</label><input value="CA" placeholder="仅美国填写"></div><div class="fi"><label class="req">英文名称</label><input value="ABC GLOBAL TRADING LLC"></div><div class="fi"><label class="req">英文地址</label><input value="123 Market St, California, US"></div><div class="fi"><label>注册登记号 / 商业登记号</label><input value="US-EIN-12-3456789"></div></div>
+        <div class="sec">买方模糊查询候选</div>
+        <table class="mini"><thead><tr><th>选择</th><th>候选买方名称</th><th>买方代码</th><th>国家/地区</th><th>地址</th><th>代码等级</th></tr></thead><tbody><tr><td><input type="radio" name="buyer"></td><td>ABC GLOBAL TRADING INC.</td><td>USC0019283</td><td>US</td><td>Los Angeles, CA</td><td>A</td></tr><tr><td><input type="radio" name="buyer"></td><td>无可用候选，按新买方申请</td><td>—</td><td>—</td><td>—</td><td>—</td></tr></tbody></table>
+      `,`<button class="btn" onclick="closeModal()">取消</button><button class="btn" onclick="notify('已保存海外买方资料（演示）')">保存资料</button><button class="btn primary" onclick="notify('已加入待中信保确认的买方代码申请清单（演示）');closeModal()">提交申请清单</button>`,true);
+    }
+
+    /** 限额需以买方代码、保单与我方投保主体为准；接口未开通前仅登记内部申请草稿。 */
+    function openLimitManage(){
+      openModal('中信保限额申请 / 查询',`
+        <div class="notice"><span class="req-no" data-prd-key="limitManageModal" aria-label="查看限额查询 PRD">14</span> <b>使用说明：</b>限额查询和申请位于买方代码与申报之间。当前仅确认开放平台目录包含限额能力，尚未取得腾信已开通接口、查询维度和额度占用规则；下方均为内部演示数据，不能代表真实额度。</div>
+        <div class="sec">额度跟踪清单（示例数据）</div>
+        <table class="mini"><thead><tr><th>客户</th><th>买方 UOC</th><th>我方投保主体 / 保单</th><th>已批额度</th><th>可用额度</th><th>有效期</th><th>状态</th><th>操作</th></tr></thead><tbody>
+          <tr><td>TX00558 · 腾信示例A</td><td>CHN000581157</td><td>SCH062793（演示）</td><td>CNY 50,000.00（演示）</td><td>CNY 38,000.00（演示）</td><td>2026-12-31（演示）</td><td><span class="tag t-g">额度充足（演示）</span></td><td><button class="link" onclick="openLimitApplication('TX00558')">申请 / 追加限额</button></td></tr>
+          <tr><td>TX00612 · 示例直客B</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="tag t-y">待申请买方代码</span></td><td><button class="link" onclick="openBuyerCode()">先申请买方代码</button></td></tr>
+        </tbody></table>
+        <div class="sec">待中信保确认</div><div class="hint">请确认限额查询/申请接口、买方 UOC + 保单 + 我方主体的查询维度、已批/可用额度口径、有效期、额度占用/释放、申请资料和状态回写规则。</div>
+      `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="openLimitApplication('TX00558')">新建限额申请</button><button class="btn" disabled>查询 / 刷新额度（待接口开通）</button>`,true);
+    }
+
+    function openLimitApplication(customer){
+      openModal('中信保限额申请 · 内部草稿',`
+        <div class="notice"><span class="req-no" data-prd-key="limitApplicationModal" aria-label="查看限额申请 PRD">15</span> <b>页面依据：</b>按信保通“出口险—限额申请”页面整理：先选有效保单/投保单号，再选限额类型并填写买方、申请额度、信用期限、支付方式及风险情况告知。<br><b>当前边界：</b>以下仅为我方资料收集草稿；尚未取得接口字段、鉴权和测试环境，不会向中信保提交。</div>
+        <div class="steps"><span class="step on">1. 选保单</span><span>→</span><span class="step on">2. 选限额类型</span><span>→</span><span class="step on">3. 填申请资料</span><span>→</span><span class="step">4. 签名 / 完成</span></div>
+        <div class="sec">1. 有效保单 / 投保单</div>
+        <div class="grid3"><div class="fi"><label class="req">有效保单号 / 投保单号</label><select><option>SCH062793 · 浙江腾信国际物流有限公司</option><option>待中信保接口回写</option></select></div><div class="fi"><label>被保险人</label><input value="浙江腾信国际物流有限公司" readonly></div><div class="fi"><label>预拟限额</label><select><option>否</option><option>是（仅数字化保单以中信保规则为准）</option></select></div></div>
+        <div class="sec">2. 限额类型</div>
+        <div class="steps"><button class="btn primary" type="button">非信用证（无担保）</button><button class="btn" type="button">非信用证（企业担保）</button><button class="btn" type="button">非信用证（备用信用证 / 银行保函）</button><button class="btn" type="button">普通信用证</button><button class="btn" type="button">保兑信用证</button><button class="btn" type="button">信用证扩展保买方风险</button></div>
+        <div class="sec">3. 买方信息</div>
+        <div class="grid3"><div class="fi"><label class="req">买方代码（UOC）</label><input value="CHN000581157" placeholder="录入后查询买方资料" /><div class="hint">信保通页面要求填写买方代码</div></div><div class="fi"><label>买方国别</label><input value="CHN" readonly></div><div class="fi"><label>买方中文名称</label><input value="${customer||'TX00558'} · 腾信示例A" readonly></div><div class="fi"><label>买方英文名称</label><input placeholder="接口 / 保单回写"></div><div class="fi"><label>注册地址</label><input placeholder="接口 / 保单回写"></div><div class="fi"><label>注册号</label><input placeholder="接口 / 保单回写"></div><div class="fi"><label>电话 / 传真</label><input placeholder="接口 / 保单回写"></div><div class="fi"><label>部门 / 员工</label><select><option>请选择申请人</option></select><div class="hint">信保通页面按部门/员工选择</div></div></div>
+        <div class="sec">4. 限额申请信息</div>
+        <div class="grid3"><div class="fi"><label class="req">金额</label><input placeholder="请输入申请额度" /></div><div class="fi"><label>币种</label><select><option>USD</option><option>CNY</option></select></div><div class="fi"><label class="req">信用期限（天）</label><input type="number" min="0" placeholder="请输入" /></div><div class="fi"><label class="req">支付方式</label><select><option>请选择</option><option>OA/DA</option><option>DP</option></select></div></div>
+        <div class="sec">5. 当前风险情况告知</div>
+        <div class="hint">请确认申请人、境外关联公司或共同被保险人是否存在以下情况：</div><div class="steps"><label><input type="checkbox"> 当前交易存在逾期</label><label><input type="checkbox"> 获知买方存在风险异动</label><label><input type="checkbox"> 与买方存在关联关系</label><label><input type="checkbox"> 不存在上述任何一种情况</label><label>是否单独承担政治风险 <input type="radio" name="politicalRisk"> 是　<input type="radio" name="politicalRisk" checked> 否</label></div>
+      `,`<button class="btn" onclick="openLimitManage()">返回</button><button class="btn primary" onclick="notify('已保存内部限额申请草稿（演示，未提交中信保）');closeModal()">保存草稿</button><button class="btn" disabled>提交中信保（待接口开通）</button>`,true);
+    }
+
+    /** 报损和追讨仅建立内部资料草稿；未确认接口前不向中信保发起真实请求。 */
+    function openLossAndRecovery(){
+      openModal('中信保报损 / 追讨',`
+        <div class="notice"><span class="req-no" data-prd-key="lossRecoveryModal" aria-label="查看报损追讨工作台 PRD">16</span> <b>功能边界：</b>本入口不做理赔或索赔申请。按信保通现网页面提供报损（可损通知书）、自行追讨及委托代理追讨（代追）的内部资料草稿。当前没有开通接口，保存不会向中信保提交。</div>
+        <div class="sec">选择业务</div>
+        <div class="steps"><button class="btn primary" onclick="openLossNotice()">报损 · 可损通知书</button><button class="btn" onclick="openSelfRecovery()">自行追讨</button><button class="btn" onclick="openAgentRecovery()">委托代理追讨（代追）</button></div>
+        <div class="sec">资料状态（示例数据）</div>
+        <table class="mini"><thead><tr><th>业务类型</th><th>客户 / 买方 UOC</th><th>关联保单</th><th>内部状态</th><th>中信保状态</th><th>操作</th></tr></thead><tbody>
+          <tr><td>报损 · 可损通知书</td><td>TX00558 / CHN000581157</td><td>待选择有效保单</td><td><span class="tag t-o">待整理资料</span></td><td><span class="tag t-gray">接口待开通</span></td><td><button class="link" onclick="openLossNotice()">填写报损资料</button></td></tr>
+          <tr><td>自行追讨</td><td>—</td><td>—</td><td><span class="tag t-gray">暂无草稿</span></td><td><span class="tag t-gray">未提交</span></td><td><button class="link" onclick="openSelfRecovery()">新建</button></td></tr>
+          <tr><td>委托代理追讨（代追）</td><td>—</td><td>—</td><td><span class="tag t-gray">暂无草稿</span></td><td><span class="tag t-gray">未提交</span></td><td><button class="link" onclick="openAgentRecovery()">新建</button></td></tr>
+        </tbody></table>
+      `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn" onclick="openLossNotice()">+ 报损</button><button class="btn" onclick="openSelfRecovery()">+ 自行追讨</button><button class="btn" onclick="openAgentRecovery()">+ 代追</button>`,true);
+    }
+
+    function openLossNotice(){
+      openModal('报损 · 可损通知书制作 · 内部草稿',`
+        <div class="notice"><span class="req-no" data-prd-key="lossNoticeModal" aria-label="查看报损资料 PRD">17</span> <b>截图参考：</b>有效保单/投保单号、买方代码、申请人、金额、信用期限、支付方式、当前风险情况告知及附件。此页只收集内部资料，不等同中信保受理报损。</div>
+        <div class="steps"><span class="step on">1. 录单</span><span>→</span><span class="step">2. 签名</span><span>→</span><span class="step">3. 完成</span></div>
+        <div class="sec">基本信息</div><div class="grid3"><div class="fi"><label class="req">有效保单号 / 投保单号</label><select><option>请选择</option><option>SCH062793 · 浙江腾信国际物流有限公司</option></select></div><div class="fi"><label>被保险人名称</label><input value="浙江腾信国际物流有限公司" readonly></div><div class="fi"><label>保单类型</label><input value="待按保单回写" readonly></div></div>
+        <div class="sec">买方信息</div><div class="grid3"><div class="fi"><label class="req">买方代码（UOC）</label><input value="CHN000581157" /><div class="hint">录入后查询买方资料</div></div><div class="fi"><label>部门 / 员工</label><select><option>请选择申请人</option></select></div><div class="fi"><label>买方国别</label><input value="CHN" readonly></div><div class="fi"><label>买方中文名称</label><input value="腾信示例A" readonly></div><div class="fi"><label>买方英文名称</label><input placeholder="接口 / 保单回写"></div><div class="fi"><label>注册地址 / 注册号</label><input placeholder="接口 / 保单回写"></div><div class="fi"><label>电话 / 传真</label><input placeholder="接口 / 保单回写"></div></div>
+        <div class="sec">报损申请信息</div><div class="grid3"><div class="fi"><label class="req">金额</label><input placeholder="请输入金额"></div><div class="fi"><label>币种</label><select><option>USD</option><option>CNY</option></select></div><div class="fi"><label class="req">信用期限（天）</label><input type="number" min="0" placeholder="请输入"></div><div class="fi"><label class="req">支付方式</label><select><option>请选择</option><option>OA/DA</option><option>DP</option></select></div></div>
+        <div class="sec">当前风险情况告知</div><div class="steps"><label><input type="checkbox"> 当前交易存在逾期</label><label><input type="checkbox"> 获知买方存在风险异动</label><label><input type="checkbox"> 与买方存在关联关系</label><label><input type="checkbox"> 不存在上述任何一种情况</label><label>是否单独承担政治风险 <input type="radio" name="lossPoliticalRisk"> 是　<input type="radio" name="lossPoliticalRisk" checked> 否</label></div><div class="sec">附件上传</div><div class="upload">＋ 上传报损资料</div>
+      `,`<button class="btn" onclick="openLossAndRecovery()">返回</button><button class="btn primary" onclick="notify('已保存报损内部草稿（演示，未提交中信保）');closeModal()">保存草稿</button><button class="btn" disabled>提交中信保（待接口开通）</button>`,true);
+    }
+
+    function openSelfRecovery(){
+      openModal('自行追讨申请 · 内部草稿',`
+        <div class="notice"><span class="req-no" data-prd-key="selfRecoveryModal" aria-label="查看自行追讨 PRD">18</span> <b>截图参考：</b>按“其他理赔业务”中的自行追讨申请整理。保存只形成内部追讨待办，不代表中信保已受理或同意自行追讨。</div>
+        <div class="grid3"><div class="fi"><label class="req">保单号</label><select><option>请选择有效保单</option><option>SCH062793-252500</option></select></div><div class="fi"><label class="req">被保险人名称</label><input value="浙江腾信国际物流有限公司" readonly></div><div class="fi"><label class="req">申请事项</label><input value="自行追讨申请" readonly></div><div class="fi"><label>案件编号</label><input placeholder="请选择案件号"></div><div class="fi"><label class="req">申请内容</label><textarea maxlength="2000" placeholder="详细说明追讨原因、背景、当前贸易双方协商进展；如有协议或还款方案，请作为附件上传"></textarea><div class="hint">最多 2000 字</div></div><div class="fi"><label>附件上传</label><div class="upload">＋ 上传协议、还款方案等资料</div></div></div>
+      `,`<button class="btn" onclick="openLossAndRecovery()">返回</button><button class="btn primary" onclick="notify('已保存自行追讨内部草稿（演示，未提交中信保）');closeModal()">保存草稿</button><button class="btn" disabled>提交中信保（待接口开通）</button>`,true);
+    }
+
+    function openAgentRecovery(){
+      openModal('委托代理追讨（代追）· 内部草稿',`
+        <div class="notice"><span class="req-no" data-prd-key="agentRecoveryModal" aria-label="查看代追资料 PRD">19</span> <b>截图参考：</b>按“委托代理协议申请录入”整理。代追需同时维护委托人、债务人、协议、债务明细和附件；委托追偿服务佣金比例及正式资料以中信保规则为准。</div>
+        <div class="sec">委托人基本信息</div><div class="grid3"><div class="fi"><label class="req">名称</label><input value="浙江腾信国际物流有限公司"></div><div class="fi"><label class="req">联系人</label><input placeholder="请输入"></div><div class="fi"><label class="req">地址</label><input placeholder="请输入"></div><div class="fi"><label class="req">电话</label><input placeholder="请输入"></div><div class="fi"><label class="req">电子邮箱</label><input placeholder="请输入"></div><div class="fi"><label>传真</label><input placeholder="请输入"></div></div>
+        <div class="sec">债务人基本信息</div><div class="grid3"><div class="fi"><label class="req">名称</label><input placeholder="请选择或录入债务人"></div><div class="fi"><label class="req">联系人</label><input placeholder="请输入"></div><div class="fi"><label class="req">地址</label><input placeholder="请输入"></div><div class="fi"><label>电话</label><input placeholder="请输入"></div><div class="fi"><label class="req">电子邮箱</label><input placeholder="请输入"></div><div class="fi"><label>传真</label><input placeholder="请输入"></div></div>
+        <div class="sec">委托代理协议与债务</div><div class="grid3"><div class="fi"><label class="req">保单号</label><select><option>请选择有效保单</option><option>SCH062793</option></select></div><div class="fi"><label>案件编号</label><input placeholder="请选择案件号"></div><div class="fi"><label class="req">委托总金额</label><input placeholder="请输入金额和币种"></div><div class="fi"><label>追偿服务佣金比例（上限）</label><input value="20.00%（截图示例）" readonly></div><div class="fi"><label>附件上传</label><div class="upload">＋ 上传委托协议及证明资料</div></div><div class="fi"><label>债务明细</label><div class="upload">＋ 上传合同号、发票号、提单号、应付款日、发票金额等债务明细</div></div></div>
+      `,`<button class="btn" onclick="openLossAndRecovery()">返回</button><button class="btn primary" onclick="notify('已保存代追内部草稿（演示，未提交中信保）');closeModal()">保存草稿</button><button class="btn" disabled>提交中信保（待接口开通）</button>`,true);
+    }
+
+    function generateDeclarationBillsAndTemplate(){
+      notify('已按所选客户生成请款单：上月欠款 ZD261112155347281799；后加费用 ZD261112155347281799-1，并生成申报模板（演示）');
+      closeModal();
+    }
+
+    /** 费用变动只形成内部申报候选，不擅自认定中信保的更正规则。 */
+    function openDeclarationCandidates(){
+      openModal('中信保申报候选清单 / 模板',`
+        <div class="notice"><span class="req-no" data-prd-key="declarationModal" aria-label="查看申报候选 PRD">20</span> <b>本期先输出候选与模板：</b>以到货时间和费用创建/调整时间双维度查找上月欠款及后加费用。仅对已勾选客户生成请款单：上月欠款沿用现网请款单号；后加费用独立生成并在原单号后追加 <code>-1</code>。实际申报金额、责任生效日期、发票号映射、跨月更正方式，均待中信保确认后才可直连申报。</div>
+        <div class="sec">筛选条件</div><div class="grid3"><div class="fi"><label>到货时间</label><input value="2026-01-01 ~ 2026-09-30" readonly></div><div class="fi"><label>费用创建 / 调整时间</label><input value="2026-10-01 ~ 2026-10-31" readonly></div><div class="fi"><label>申报月份</label><select><option>2026-10（演示）</option></select></div></div>
+        <div class="sec">候选明细</div>
+        <table class="mini"><thead><tr><th>选择</th><th>客户</th><th>生成请款单号</th><th>到货时间</th><th>费用创建/调整时间</th><th>费用类型</th><th>本次申报金额</th><th>说明</th></tr></thead><tbody>
+          <tr><td><input type="checkbox" checked></td><td>TX00558</td><td>ZD261112155347281799</td><td>2026-09-18</td><td>2026-09-28</td><td>主费用</td><td>CNY 11,483.40</td><td>上月欠款请款单；沿用现网单号（原金额 CNY 11,483.40，无调整）</td></tr>
+          <tr><td><input type="checkbox" checked></td><td>TX00558</td><td>ZD261112155347281799-1</td><td>2026-09-18</td><td>2026-10-12</td><td>后加杂费</td><td>CNY 680.00</td><td>后加费用独立请款单；原上月欠款单号后加 -1（原金额 CNY 0.00，本次调整 + CNY 680.00）</td></tr>
+          <tr><td><input type="checkbox"></td><td>TX00788</td><td>ZD261112155347662855</td><td>2026-09-25</td><td>2026-10-06</td><td>主费用</td><td>USD 4,200.00</td><td>合同到期，不进入模板（原金额 USD 4,200.00，无调整）</td></tr>
+          <tr><td colspan="8" style="padding:0 8px 10px;background:#fafafa"><div class="sec" style="margin:10px 0 6px">额度核验（关联已勾选候选明细）</div><div class="hint" style="margin-bottom:6px">按已勾选的候选明细、客户和币种汇总拟申报金额；当前展示为原型示例额度。接口返回额度不足后，才显示“申请/追加额度”。</div><table class="mini"><thead><tr><th>客户</th><th>买方 UOC</th><th>已批额度</th><th>可用额度</th><th>本次拟申报金额</th><th>限额状态</th><th>操作</th></tr></thead><tbody><tr><td>TX00558 · 腾信示例A</td><td>CHN000581157</td><td>CNY 50,000.00（演示）</td><td>CNY 38,000.00（演示）</td><td>CNY 12,163.40</td><td><span class="tag t-g">额度充足（演示）</span></td><td><button class="link" onclick="openLimitApplication('TX00558')">申请 / 追加限额</button></td></tr></tbody></table></td></tr>
+        </tbody></table>
+        <div class="sec">模板字段映射状态</div>
+        <table class="mini"><thead><tr><th>中信保模板字段</th><th>我方拟取值</th><th>当前状态</th></tr></thead><tbody><tr><td>中信保买方代码</td><td>客户档案已绑定 UOC</td><td><span class="tag t-g">可准备</span></td></tr><tr><td>期限（天）</td><td>合同账期规则匹配</td><td><span class="tag t-y">需确认最长天数/支付方式</span></td></tr><tr><td>发票号</td><td>请款单号</td><td><span class="tag t-y">待中信保确认</span></td></tr><tr><td>投保金额 / 责任生效日期</td><td>欠款候选金额 / 业务日期</td><td><span class="tag t-y">待中信保确认</span></td></tr><tr><td>海关商品代码</td><td>中信保申报模板预置固定值</td><td><span class="tag t-g">按模板固定输出</span></td></tr></tbody></table>
+      `,`<button class="btn" onclick="closeModal()">关闭</button><button class="btn primary" onclick="generateDeclarationBillsAndTemplate()">生成请款单并申报模板</button><button class="btn" disabled>提交中信保（待接口/规则确认）</button>`,true);
+    }
+
+    /* 兼容旧入口：不再展示“直接推送”语义。 */
+    function openSinosure(){openBuyerCode()}
+    function openRiskIns(){openDeclarationCandidates()}
+
+    /* 默认仅展示第一行现网常用筛选条件；其余条件由“更多筛选”展开。 */
+    function initMoreFilters(){
+      document.querySelectorAll('#filters > .f').forEach((item,index)=>{
+        if(index>=6)item.classList.add('filter-extra');
+      });
+    }
+    function toggleMoreFilters(){
+      const filters=document.getElementById('filters');
+      const expanded=filters.classList.toggle('show-more');
+      document.getElementById('moreFilterBtn').textContent=expanded?'收起筛选':'更多筛选';
+    }
+    initMoreFilters();
+
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&mask.classList.contains('show'))closeModal()});
+
+    document.querySelectorAll('.status-tabs').forEach(group=>{
+      group.querySelectorAll('button').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          group.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+          btn.classList.add('on');
+          const groupName=group.dataset.tabGroup==='customer-status'?'客户状态':'投保/合同待办';
+          notify(`已筛选${groupName}：${btn.textContent.trim()}`);
+        });
       });
     });
   </script>
 </body>
 </html>
+
+
+
+
