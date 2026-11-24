@@ -87,13 +87,17 @@
     var dlg = ensureDialog();
     document.getElementById("ffEntryPointTitle").innerHTML =
       "<span class=\"ff-entry-pin\">" + p.code + "</span>" + (p.title || "");
+    var lock = window.FF_ENTRY_GLOBAL
+      ? "<p class=\"ff-entry-sum\" style=\"margin-top:10px;padding:8px 10px;background:#f0fdfa;border-left:3px solid #0f766e\">" +
+        window.FF_ENTRY_GLOBAL + "</p>"
+      : "";
     document.getElementById("ffEntryPointBody").innerHTML =
       "<div class=\"ff-entry-kind\">全程履约 · " + (p.page || "") + "</div>" +
       "<p class=\"ff-entry-sum\">" + (p.summary || "") + "</p>" +
       labels.map(function (k, i) {
         return "<div class=\"ff-entry-detail\"><b>" + k + "</b><p>" +
           ((p.body && p.body[i]) || "—") + "</p></div>";
-      }).join("");
+      }).join("") + lock;
     if (typeof dlg.showModal === "function") {
       if (!dlg.open) dlg.showModal();
     } else {
