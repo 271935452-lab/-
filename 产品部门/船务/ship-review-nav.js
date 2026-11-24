@@ -13,7 +13,20 @@
     { type: "link", parent: "ops", id: "pre-stow", href: "船务组-待配仓-MVP.html", label: "待配仓 · 组合配仓" },
     { type: "link", parent: "ops", id: "final-stow", href: "船务组-终配舱-MVP.html", label: "终配舱登记" },
 
-    // 产品 · 作业原型
+    // 产品 · 全程履约要加字段的页面（青色 F 序号，和 v2 橙圈分开）
+    { type: "label", parent: "prod", label: "全程履约" },
+    { type: "link", parent: "prod", id: "ff-config", href: "船务v3/全程履约-TMS时效配置与监控台-MVP.html", label: "履约配置中心", hint: "规则 / 监控" },
+    { type: "link", parent: "prod", id: "ff-sign", href: "船务v3/全程履约-一期-业务签字清单.html", label: "一期签字清单", hint: "需求 1.0" },
+    { type: "link", parent: "prod", id: "ff-entry", href: "船务v3/全程履约-一线录入-评审.html", label: "一线录入对照", hint: "六页对照" },
+    { type: "link", parent: "prod", id: "ff-cabin", href: "海派仓位表-MVP.html", label: "海派仓位表", hint: "F1 F2 F3 F16" },
+    { type: "link", parent: "prod", id: "ff-bl", href: "船务组-提单管理-按周分组与分配-MVP.html", label: "提单管理", hint: "F1 F2 F3 F16" },
+    { type: "link", parent: "prod", id: "ff-wh", href: "装柜计划-仓库视图-MVP.html", label: "仓库视图", hint: "F4 F6 F7" },
+    { type: "link", parent: "prod", id: "ff-cu", href: "../../报关行对接/报关管理-列表-MVP.html", label: "报关管理", hint: "F8 实际截单" },
+    { type: "link", parent: "prod", id: "ff-ms", href: "../海外对接组/海外对接组-主单跟进-MVP.html", label: "主单跟进", hint: "F9–F13" },
+    { type: "link", parent: "prod", id: "ff-tk", href: "../海外对接组/海外对接组-卡派跟进新-MVP.html", label: "卡派跟进", hint: "F14 F15 F17" },
+
+    // 产品 · 作业原型（船务 v2 仍走这里）
+    { type: "label", parent: "prod", label: "船务 v2" },
     { type: "link", parent: "prod", id: "cabin", href: "海派仓位表-MVP.html", label: "海派仓位表" },
     { type: "link", parent: "prod", id: "bl-create", href: "船务组-提单创建批量-AI识别-MVP.html", label: "提单创建" },
     { type: "link", parent: "prod", id: "bl-mgmt", href: "船务组-提单管理-按周分组与分配-MVP.html", label: "提单管理" },
@@ -195,9 +208,14 @@
       "</div>" +
       '<nav class="ess-ship-children-bd">';
     links.forEach(function (it) {
+      if (it.type === "label") {
+        html += '<div class="ess-ship-child-label">' + it.label + "</div>";
+        return;
+      }
       var on = it.id === activeId ? " on" : "";
+      var hint = it.hint ? '<small>' + it.hint + "</small>" : "";
       html +=
-        '<a class="ess-ship-child' + on + '" href="' + fixHref(it.href) + '">' + it.label + "</a>";
+        '<a class="ess-ship-child' + on + '" href="' + fixHref(it.href) + '">' + it.label + hint + "</a>";
     });
     html += "</nav>";
     box.innerHTML = html;

@@ -43,6 +43,10 @@
     .filter-item.range .range-row input { flex: 1; min-width: 0; }
     .filter-item.range .range-row span { color: var(--sub); font-size: 12px; }
     th.col-new { background: #fff7e6; color: #ad4e00; }
+    .ff-no{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:16px;padding:0 4px;margin-left:4px;border-radius:3px;background:#0f766e;color:#fff;font-size:10px;font-weight:700;line-height:1;vertical-align:middle;}
+    .ff-legend{margin:0;padding:6px 14px;background:#f0fdfa;border-bottom:1px solid #99f6e4;color:#115e59;font-size:12px;line-height:1.55;}
+    .ff-legend b{color:#0f766e;}
+    th.ff-col{background:#ccfbf1;color:#115e59;}
     .filter-item label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 3px; }
     .filter-item input, .filter-item select { width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px; font-size: 12px; }
     .filter-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -186,6 +190,7 @@
     <div class="body-wrap">
       <nav class="sidebar" id="shipReviewSidebar"></nav>
       <main class="main">
+        <div class="ff-legend"><b>青色 F 序号</b>可点开说明，是全程履约一期录入。船务 v2 橙色圆圈仍是仓位拆分编号，两套不要混着对。</div>
         <div class="filter-panel">
           <div class="filter-grid" id="mainFilters">
             <div class="filter-item"><label>航次/船名/提单号</label><input id="qKw" placeholder="模糊搜索" autocomplete="off" /></div>
@@ -241,7 +246,10 @@
                 <th>航名航次</th>
                 <th>始终港口</th>
                 <th class="col-new">预计装柜时间</th>
-                <th class="col-new">要求到柜时间</th>
+                <th class="col-new">要求到柜时间 <span class="ff-no" title="F1 装柜日前改为必填。②应，仓库只读带出">F1</span></th>
+                <th class="ff-col">最迟还重柜 <span class="ff-no" title="F2 放舱后至开装前必填。实=飞驼还重，本页不录">F2</span></th>
+                <th class="ff-col">报关最迟放行 <span class="ff-no" title="F3 绑提单后必填。关务只读。实=海放/飞驼">F3</span></th>
+                <th class="ff-col">承诺时效(天) <span class="ff-no" title="F16 取当前柜子下销售产品承诺时效的最大值，只读">F16</span></th>
                 <th>中文船名</th>
                 <th>柜型</th>
                 <th class="col-new" id="thChannel">渠道</th>
@@ -310,7 +318,10 @@
           <div><label>截关时间</label><input id="regCy" type="datetime-local" /></div>
           <div><label>预计开船<span class="req">*</span></label><input id="regEtd" type="date" /></div>
           <div><label>预计装柜时间</label><input id="regPlanLoad" type="date" /></div>
-          <div><label>要求到柜时间</label><input id="regReqArrive" type="datetime-local" title="日期 + 时间（非必填）" /></div>
+          <div><label>要求到柜时间 <span class="ff-no" title="F1 必须早于装柜日">F1</span></label><input id="regReqArrive" type="datetime-local" title="装柜日前必填" /></div>
+          <div><label>最迟还重柜时间 <span class="ff-no" title="F2">F2</span></label><input id="regReturnDue" type="datetime-local" title="放舱后至开装前必填" /></div>
+          <div><label>报关最迟放行 <span class="ff-no" title="F3">F3</span></label><input id="regReleaseDue" type="datetime-local" title="绑提单后必填" /></div>
+          <div><label>承诺时效(天) <span class="ff-no" title="F16 取当前柜子下销售产品最大值，只读">F16</span></label><input id="regPromise" value="18" readonly title="当前柜子下销售产品承诺时效的最大值，本页不改" /></div>
           <div><label>报关行代理</label><input id="regBroker" placeholder="欣扬" /></div>
         </div>
         <div class="sec-title">备注</div>
@@ -333,8 +344,9 @@
         <p class="muted" style="margin:0 0 10px;font-size:12px;">确认后：本行「已放舱」、写入正式提单号，并<strong>自动创建提单行（待分配）</strong>。本页不跳转；请到提单管理「待分配」页签查看。提单号锁定，本页不可再编辑仓位。</p>
         <div class="form-grid">
           <div><label>正式提单号<span class="req">*</span></label><input id="relBl" placeholder="如 MATS9565074000" /></div>
-          <div><label>SO / 配仓号</label><input id="relSo" placeholder="可选" /></div>
           <div><label>截单时间<span class="req">*</span></label><input type="datetime-local" /></div>
+          <div><label>最迟还重柜 <span class="ff-no" title="F2 放舱时必填">F2</span></label><input id="relReturnDue" type="datetime-local" /></div>
+          <div><label>报关最迟放行 <span class="ff-no" title="F3 绑提单后必填">F3</span></label><input id="relReleaseDue" type="datetime-local" /></div>
           <div><label>海运费<span class="req">*</span></label><input placeholder="金额" /></div>
           <div class="full"><label>免用箱情况登记</label><textarea rows="2" placeholder="国内/国外天数"></textarea></div>
         </div>
@@ -418,10 +430,10 @@
 
   <script>
     var ROWS = [
-      { id: 1, week: 31, released: false, bl: "", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", channel: "美森正班", salesProd: "美森正班", cabin: "", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "", free: "", planLoad: "2026-08-08", reqArrive: "2026-08-08 07:00", loadSt: "未装", broker: "", note: "", cutoff: true, markColor: "orange" },
-      { id: 2, week: 31, released: false, bl: "", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", channel: "T16", salesProd: "T16", cabin: "预配-A7", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "", free: "7+10", planLoad: "2026-08-10", reqArrive: "", loadSt: "未装", broker: "欣扬", note: "改盐田提", cutoff: false, markColor: "" },
-      { id: 3, week: 32, released: true, bl: "MATS9565074000", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", channel: "中美", salesProd: "中美", cabin: "260801-混装", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "14594", free: "", planLoad: "2026-08-09", reqArrive: "2026-08-09 12:00", loadSt: "已装", broker: "", note: "", synced: true, cutoff: false, markColor: "green" },
-      { id: 4, week: 32, released: true, bl: "MATS6104484000", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", channel: "T20", salesProd: "T20", cabin: "260801-朱涛整柜", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "16513", free: "", planLoad: "2026-08-11", reqArrive: "", loadSt: "未装", broker: "", note: "改盐田提", synced: true, cutoff: false, markColor: "" }
+      { id: 1, week: 31, released: false, bl: "", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", channel: "美森正班", salesProd: "美森正班", cabin: "", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "", free: "", planLoad: "2026-08-08", reqArrive: "2026-08-07 18:00", returnDue: "", releaseDue: "", promise: 16, loadSt: "未装", broker: "", note: "", cutoff: true, markColor: "orange" },
+      { id: 2, week: 31, released: false, bl: "", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", channel: "T16", salesProd: "T16", cabin: "预配-A7", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "", free: "7+10", planLoad: "2026-08-10", reqArrive: "", returnDue: "", releaseDue: "", promise: 18, loadSt: "未装", broker: "欣扬", note: "改盐田提", cutoff: false, markColor: "" },
+      { id: 3, week: 32, released: true, bl: "MATS9565074000", agent: "宁波外运", imp: "", voyage: "LURLINE 104E", port: "NB-LB", shipCn: "CLX", box: "40HQ", channel: "中美", salesProd: "中美", cabin: "260801-混装", si: "2026-08-10 12:00", cy: "", etd: "2026-08-12", fee: "14594", free: "", planLoad: "2026-08-09", reqArrive: "2026-08-08 18:00", returnDue: "2026-08-09 20:00", releaseDue: "2026-08-09 16:00", promise: 18, loadSt: "已装", broker: "", note: "", synced: true, cutoff: false, markColor: "green" },
+      { id: 4, week: 32, released: true, bl: "MATS6104484000", agent: "上海外运", imp: "", voyage: "LURLINE 104E", port: "SH-LB", shipCn: "CLX", box: "45HQ", channel: "T20", salesProd: "T20", cabin: "260801-朱涛整柜", si: "2026-08-12 14:00", cy: "", etd: "2026-08-14", fee: "16513", free: "", planLoad: "2026-08-11", reqArrive: "", returnDue: "2026-08-11 20:00", releaseDue: "2026-08-11 16:00", promise: 20, loadSt: "未装", broker: "", note: "改盐田提", synced: true, cutoff: false, markColor: "" }
     ];
 
     var state = { st: "all", week: "all", sel: new Set(), regEditId: null, pickColor: "" };
@@ -457,6 +469,9 @@
       } else {
         document.getElementById("regReqArrive").value = "";
       }
+      document.getElementById("regReturnDue").value = row.returnDue && String(row.returnDue).indexOf("-") === 4 ? String(row.returnDue).replace(" ", "T").slice(0, 16) : "";
+      document.getElementById("regReleaseDue").value = row.releaseDue && String(row.releaseDue).indexOf("-") === 4 ? String(row.releaseDue).replace(" ", "T").slice(0, 16) : "";
+      document.getElementById("regPromise").value = row.promise || 18;
       if (row.si && row.si.indexOf("-") === 4) {
         document.getElementById("regSi").value = String(row.si).replace(" ", "T").slice(0, 16);
       } else {
@@ -489,6 +504,12 @@
         toast("请填写代理、航名航次、始终港口、预计开船、渠道、销售产品、截单时间");
         return;
       }
+      var reqRaw = document.getElementById("regReqArrive").value;
+      var planRaw = document.getElementById("regPlanLoad").value;
+      if (planRaw && reqRaw && reqRaw.slice(0, 10) >= planRaw) {
+        toast("F1 要求到柜必须早于装柜日");
+        return;
+      }
       var payload = {
         agent: agent,
         voyage: voyage,
@@ -505,6 +526,12 @@
         planLoad: document.getElementById("regPlanLoad").value || "",
         reqArrive: document.getElementById("regReqArrive").value
           ? document.getElementById("regReqArrive").value.replace("T", " ")
+          : "",
+        returnDue: document.getElementById("regReturnDue").value
+          ? document.getElementById("regReturnDue").value.replace("T", " ")
+          : "",
+        releaseDue: document.getElementById("regReleaseDue").value
+          ? document.getElementById("regReleaseDue").value.replace("T", " ")
           : "",
         si: si.replace("T", " "),
         cy: document.getElementById("regCy").value ? document.getElementById("regCy").value.replace("T", " ") : ""
@@ -677,7 +704,7 @@
           '<td><input type="checkbox" class="row-chk" data-id="' + r.id + '"' + (state.sel.has(r.id) ? " checked" : "") + (voided ? " disabled" : "") + " /></td>" +
           '<td title="手动色标"><span class="color-dot ' + colorCls + '"></span></td>' +
           "<td>" + rel + "</td><td>" + bl + "</td><td>" + r.agent + "</td><td>" + (r.imp || "—") + "</td>" +
-          "<td>" + r.voyage + "</td><td>" + r.port + "</td><td>" + (r.planLoad || "—") + "</td><td>" + (r.reqArrive || "—") + "</td><td>" + r.shipCn + "</td><td>" + r.box + "</td><td>" + (r.channel || "—") + "</td><td>" + (r.salesProd || "—") + "</td><td>" + (r.cabin || "—") + "</td>" +
+          "<td>" + r.voyage + "</td><td>" + r.port + "</td><td>" + (r.planLoad || "—") + "</td><td>" + (r.reqArrive || "—") + "</td><td>" + (r.returnDue || "—") + "</td><td>" + (r.releaseDue || "—") + "</td><td>" + (r.promise || "—") + "</td><td>" + r.shipCn + "</td><td>" + r.box + "</td><td>" + (r.channel || "—") + "</td><td>" + (r.salesProd || "—") + "</td><td>" + (r.cabin || "—") + "</td>" +
           '<td class="' + (r.cutoff ? "cut-warn" : "") + '">' + r.si + "</td><td>" + (r.cy || "—") + "</td><td>" + r.etd + "</td>" +
           "<td>" + (r.fee || "—") + "</td><td>" + (r.free || "—") + "</td><td>" + r.loadSt + "</td>" +
           "<td>" + (r.broker || "—") + "</td>" +
@@ -885,6 +912,12 @@
     });
 
     document.getElementById("btnRelease").addEventListener("click", function () {
+      var sel = selectedRows()[0];
+      var day = sel && sel.planLoad ? sel.planLoad : "";
+      var ret = sel && sel.returnDue ? String(sel.returnDue).replace(" ", "T").slice(0, 16) : (day ? day + "T20:00" : "");
+      var rel = sel && sel.releaseDue ? String(sel.releaseDue).replace(" ", "T").slice(0, 16) : (day ? day + "T16:00" : "");
+      document.getElementById("relReturnDue").value = ret;
+      document.getElementById("relReleaseDue").value = rel;
       document.getElementById("releaseMask").classList.add("open");
     });
     document.querySelectorAll("[data-close-rel]").forEach(function (el) {
@@ -899,8 +932,12 @@
         return;
       }
       if (!bl) { toast("请填写正式提单号"); return; }
+      var retDue = document.getElementById("relReturnDue").value;
+      var relDue = document.getElementById("relReleaseDue").value;
       sel.released = true;
       sel.bl = bl;
+      if (retDue) sel.returnDue = retDue.replace("T", " ");
+      if (relDue) sel.releaseDue = relDue.replace("T", " ");
       autoSyncBl(sel);
       document.getElementById("releaseMask").classList.remove("open");
       document.getElementById("relBl").value = "";
@@ -1044,5 +1081,7 @@
   </div>
   <script src="ship-stow-prd-doc-bar.js" data-page="0"></script>
   <script src="ship-stow-review-bridge.js" data-page="0"></script>
+<script src="ff-entry-review-points.js"></script>
+  <script src="ff-entry-review-bridge.js"></script>
 </body>
 </html>

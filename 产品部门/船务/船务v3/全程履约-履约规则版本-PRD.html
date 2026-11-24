@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全程履约 · 履约规则版本</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f6f7f9; color: #1f2937; font: 14px/1.65 "Microsoft YaHei", sans-serif; }
+  a { color: #2a6bbd; }
+  .wrap { width: min(1080px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 48px; }
+  .hero, .feat, .sheet, .point, .nav-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; }
+  .hero { padding: 22px 24px; }
+  .hero h1 { margin: 0 0 8px; font-size: 22px; }
+  .hero p, .muted { margin: 0 0 8px; color: #4b5563; }
+  .callout { margin: 14px 0 0; padding: 10px 12px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; color: #1f2937; }
+  .sec { margin: 22px 0 10px; font-size: 18px; }
+  .nav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .nav-card { display: block; padding: 12px 14px; text-decoration: none; color: inherit; }
+  .nav-card:hover, .point:hover { border-color: #fdba74; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; margin: 0 4px 4px 0; padding: 0 6px; border-radius: 10px; background: #ff8a00; color: #fff; font-size: 12px; font-weight: 700; }
+  .feat, .sheet, .point { padding: 14px 16px; margin: 0 0 10px; }
+  .feat h3, .sheet h3 { margin: 16px 0 6px; font-size: 16px; }
+  .sheet h3:first-child { margin-top: 0; }
+  .feat ul { margin: 8px 0 0; padding-left: 1.2em; }
+  .point { cursor: pointer; }
+  .point h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .kind { display: inline-block; margin: 8px 0 4px; font-size: 12px; color: #2a6bbd; background: #eff6ff; padding: 2px 8px; border-radius: 4px; }
+  .point .body { display: none; margin-top: 8px; }
+  .point.is-open .body { display: block; }
+  .detail { display: grid; grid-template-columns: 52px 1fr; gap: 4px 8px; margin: 4px 0; }
+  .detail b { color: #6b7280; font-weight: 600; }
+  .detail p { margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f8fafc; }
+  .formula { margin: 8px 0; padding: 8px 12px; background: #f8fafc; border-left: 3px solid #ff8a00; font-family: Consolas, "Microsoft YaHei", monospace; white-space: pre-wrap; }
+  .links { margin-top: 10px; }
+  .foot { color: #6b7280; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <h1>全程履约 · 履约规则版本</h1>
+    <p>这一页单独一份。橙色编号从 1 起，和原型本页圆圈一致。计算和取值写在文末，按本页 1、2、3 编号，不接上一份文档的号。</p>
+    <p class="links"><a href="./全程履约-TMS时效配置与监控台-MVP.html">打开原型</a> · <a href="./全程履约-TMS时效配置与监控台-MVP-PRD.html">全部页面</a></p>
+  </header>
+  <h2 class="sec">功能说明</h2>
+  <section class="feat" id="feature"></section>
+  <h2 class="sec">逐点说明</h2>
+  <p class="muted">点开一条看为啥做、页面上、系统里。序号就是原型上的橙色数字。</p>
+  <div id="points"></div>
+  <h2 class="sec">本页计算与取值</h2>
+  <section class="sheet">
+
+    <h3>1. 承诺时效</h3>
+    <p>版本不配天数，也不按销售产品分组。承诺天数用销售产品上已有的字段。列表 / 仓位表 F16 取<strong>当前柜子</strong>下所挂销售产品承诺时效的<strong>最大值</strong>，只读。生成运单履约任务时按该柜最大值抄进快照，之后改产品不影响在途票。</p>
+    <div class="formula">承诺时效(柜) = MAX(当前柜子下各销售产品.承诺时效天)
+整体时效天数 = POD回传日 − 实际截单日
+整体达标 = 整体时效天数 ≤ 承诺时效(柜)</div>
+    <h3>2. 提前小时</h3>
+    <p>每个启用节点填一个提前小时，默认 4。旁边有「推送到人」，直接搜索姓名后点选加入，可以多人。取值来自人员目录（工号 + 姓名）。版本上没有超时动作。到了下面两个时点，给每个已选的人推一条待办。</p>
+    <div class="formula">预警时刻 = 应操作时间 − 提前小时
+即将超时 = 预警时刻 ≤ 当前时间 &lt; 应操作时间  且  还没有达标的实际时间
+已超时   = 当前时间 ≥ 应操作时间  且  （实际时间为空  或  实际时间 &gt; 应操作时间）
+达标     = 实际时间 ≤ 应操作时间
+推送对象 = 「推送到人」里搜到并加入的人，可多人
+取值方式 = 搜索姓名（或工号），点选加入；点芯片 × 去掉</div>
+    <p>同一节点、同一条运单，即将超时只推一次。过了应操作时间再推已超时。实际时间补上并且小于等于应操作时间之后，这条待办关掉。应操作时间还没算出来时，不推这两张待办。</p>
+    <h3>3. 发布快照</h3>
+    <div class="formula">新建任务固化 = 版本号 + 启用节点 + 每节点提前小时 + 推送到人 + 当时的公式和时长 + 承诺时效
+在途任务继续用创建时的快照
+生效时间之后新建的运单，才用新版本</div>
+    <h3>4. 配置弹窗（序号 5–12）</h3>
+    <p>点「配置节点」打开弹窗。橙色 5–12 挂在弹窗控件上：规则版本唯一、生效时间切新票、启用唯一、勾选启用、责任/供应商只读、提前小时、推送到人、草稿与发布。</p>
+    <div class="formula">版本唯一 = 规则版本号不与已有版本重复
+启用唯一 = 本版本改为启用时，其他启用版本 → 停用
+未勾选节点 = 不写入本版本启用清单，不进达标率分母
+责任部门 / 供应商 = 只读，取标准节点当时值
+草稿 = 不参与新建任务匹配；发布 = 按生效时间固化快照</div>
+
+  </section>
+  <p class="foot">本页编号从 1 起 · <a href="./全程履约-TMS时效配置与监控台-MVP-PRD.html">返回目录</a></p>
+</div>
+
+<script src="./ff-review-points.js"></script>
+<script>
+(function () {
+  var page = "products";
+  var labels = ["为啥做", "页面上", "系统里"];
+  var feat = (window.FF_FEATURE_PAGES || []).filter(function (f) { return f.page === page; })[0];
+  var points = (window.FF_REVIEW_POINTS || []).filter(function (p) { return p.page === page; });
+  if (feat) {
+    document.getElementById("feature").innerHTML = "<h3>" + feat.title + "</h3><p class=\"muted\">" + feat.summary + "</p><ul>" +
+      (feat.bullets || []).map(function (b) { return "<li>" + b + "</li>"; }).join("") + "</ul>";
+  }
+  document.getElementById("points").innerHTML = points.map(function (p) {
+    var body = labels.map(function (k, i) {
+      return "<div class=\"detail\"><b>" + k + "</b><p>" + ((p.body && p.body[i]) || "—") + "</p></div>";
+    }).join("");
+    return "<article class=\"point\" id=\"p" + p.pin + "\"><h3><span class=\"pin\">" + p.pin + "</span>" + p.title + "</h3><span class=\"kind\">" + (p.kind || "") + "</span><p class=\"muted\">" + (p.summary || "") + "</p><div class=\"body\">" + body + "</div></article>";
+  }).join("");
+  document.getElementById("points").addEventListener("click", function (e) {
+    var card = e.target.closest(".point");
+    if (card) card.classList.toggle("is-open");
+  });
+})();
+</script>
+
+</body>
+</html>

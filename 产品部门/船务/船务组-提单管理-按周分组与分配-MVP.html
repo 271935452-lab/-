@@ -166,6 +166,17 @@
       background: #f9f0ff; color: #531dab; border: 1px solid #d3adf7;
     }
     .tool-btn .badge-new, .tool-btn .badge-chg, .tool-btn .badge-branch { margin-left: 2px; }
+    .ff-batch-row {
+      display: grid; grid-template-columns: 22px 140px minmax(0, 1fr); gap: 8px;
+      align-items: center; margin: 0 0 8px;
+    }
+    .ff-batch-row label.ff-lab { margin: 0; font-size: 12px; color: #595959; font-weight: 600; }
+    .ff-batch-row input[type="text"], .ff-batch-row input[type="datetime-local"] {
+      width: 100%; height: 28px; border: 1px solid #d9d9d9; border-radius: 2px; padding: 0 8px;
+    }
+    .ff-batch-row.is-off input[type="text"], .ff-batch-row.is-off input[type="datetime-local"] {
+      background: #f5f5f5; color: #8c8c8c;
+    }
     .status-tab .badge-new, .status-tab .badge-chg { margin-left: 4px; }
     .badge-ask {
       display: inline-block; margin-left: 2px; padding: 0 4px; height: 16px; line-height: 16px;
@@ -973,6 +984,10 @@
     .toast.show { display: block; }
     .proto-link { font-size: 12px; color: var(--sub); padding: 8px 12px 0; }
     .hidden { display: none !important; }
+    .ff-no{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:16px;padding:0 4px;margin-left:4px;border-radius:3px;background:#0f766e;color:#fff;font-size:10px;font-weight:700;line-height:1;vertical-align:middle;}
+    .ff-legend{margin:0;padding:6px 14px;background:#f0fdfa;border-bottom:1px solid #99f6e4;color:#115e59;font-size:12px;line-height:1.55;}
+    .ff-legend b{color:#0f766e;}
+    th.ff-col{background:#ccfbf1;color:#115e59;}
   </style>
 </head>
 <body>
@@ -984,6 +999,7 @@
     工具条可开「本页 PRD / V1 PRD」。
     <a href="船务组-订舱仓位装柜-评审导航.html">评审导航</a>
   </div>
+  <div class="ff-legend"><b>青色 F 序号</b>可点开说明，是全程履约一期。本页橙色圆圈仍是船务 v2 仓位拆分编号，两套对照时分开看。</div>
   <div class="app">
     <header class="top-header">
       <span class="logo" style="width:auto;padding:0 14px;background:transparent;font-weight:600;color:#fff">ESS · 船务</span>
@@ -1127,6 +1143,7 @@
           <a class="tool-btn" href="船务组-提单创建批量-AI识别-MVP.html">批量创建提单</a>
           <button type="button" class="tool-btn" id="btnBlEdit">提单修改</button>
           <button type="button" class="tool-btn" data-live="批量提单修改">批量提单修改</button>
+          <button type="button" class="tool-btn" id="btnFfFields" title="维护履约应操作时间字段，支持勾选多票批量写入">维护履约字段 <span class="badge-new">新</span></button>
           <button type="button" class="tool-btn" id="btnAssign">提单分配</button>
           <button type="button" class="tool-btn primary" id="btnComboStow" title="勾选提单后，从预配舱树勾选整舱或单票写入组合配舱">组合配舱</button>
           <button type="button" class="tool-btn" id="btnOpLog">操作日志</button>
@@ -1218,7 +1235,10 @@
                 <th class="col-plan th-seq-sort" id="thPlanSeq" title="顺序标记：改数字后点表头，按当前列表升降序">顺序 <span class="sort-mark" id="seqSortMark" aria-hidden="true">↕</span></th>
                 <th class="col-plan" id="thPlanCh">渠道</th>
                 <th class="col-plan" id="thPlanCustoms">清关行</th>
-                <th class="col-plan" id="thPlanReq">要求到柜时间</th>
+                <th class="col-plan" id="thPlanReq">要求到柜时间 <span class="ff-no" title="F1 装柜日前改为必填">F1</span></th>
+                <th class="ff-col">最迟还重柜 <span class="ff-no" title="F2 放舱后至开装前必填。实=飞驼还重">F2</span></th>
+                <th class="ff-col">报关最迟放行 <span class="ff-no" title="F3 绑提单后必填。关务只读">F3</span></th>
+                <th class="ff-col">承诺时效(天) <span class="ff-no" title="F16 取当前柜子下销售产品承诺时效的最大值，只读">F16</span></th>
                 <th class="col-plan" id="thPlanTeam">装柜团队</th>
                 <th class="col-plan" id="thPlanLabel">贴单核对</th>
                 <th class="col-plan" id="thPlanWatch">监装</th>
@@ -1557,6 +1577,64 @@
       <div class="modal-ft">
         <button type="button" class="tool-btn outline" id="rsCancel">取消</button>
         <button type="button" class="tool-btn danger" id="rsConfirm">确认退运</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 维护履约字段（支持批量） -->
+  <div class="mask" id="ffMask" aria-hidden="true">
+    <div class="modal" role="dialog" style="width:min(640px,96vw)">
+      <div class="modal-hd">
+        <h3>维护履约字段</h3>
+        <button type="button" class="tool-btn outline" id="ffClose">关闭</button>
+      </div>
+      <div class="modal-bd">
+        <div class="alert">
+          写入全程履约用到的提单应操作时间。勾选左侧「写入」的字段才会更新；支持多票批量。承诺时效(F16)=当前柜子下销售产品承诺时效的最大值，这里不改。
+        </div>
+        <div class="form-grid">
+          <div class="form-item full">
+            <label>适用提单</label>
+            <input id="ffTargets" readonly />
+          </div>
+        </div>
+        <p style="margin:10px 0 6px;font-size:12px;color:#8c8c8c">勾选要写入的字段，再填时间（格式：YYYY-MM-DD HH:mm）</p>
+        <div id="ffFieldRows">
+          <div class="ff-batch-row" data-ff="cutOff">
+            <input type="checkbox" class="ff-ck" aria-label="写入截单时间" />
+            <label class="ff-lab">应截单时间</label>
+            <input type="text" class="ff-val" placeholder="例如：2026-08-04 17:00" />
+          </div>
+          <div class="ff-batch-row" data-ff="reqArrive">
+            <input type="checkbox" class="ff-ck" aria-label="写入要求到柜" />
+            <label class="ff-lab">柜子应到仓 / 要求到柜 <span class="ff-no">F1</span></label>
+            <input type="text" class="ff-val" placeholder="例如：2026-08-05 12:00" />
+          </div>
+          <div class="ff-batch-row" data-ff="returnDue">
+            <input type="checkbox" class="ff-ck" aria-label="写入最迟还重" />
+            <label class="ff-lab">最迟还重柜时间 <span class="ff-no">F2</span></label>
+            <input type="text" class="ff-val" placeholder="例如：2026-08-05 20:00" />
+          </div>
+          <div class="ff-batch-row" data-ff="releaseDue">
+            <input type="checkbox" class="ff-ck" aria-label="写入报关最迟放行" />
+            <label class="ff-lab">报关最迟放行时间 <span class="ff-no">F3</span></label>
+            <input type="text" class="ff-val" placeholder="例如：2026-08-05 16:00" />
+          </div>
+          <div class="ff-batch-row" data-ff="etd">
+            <input type="checkbox" class="ff-ck" aria-label="写入ETD" />
+            <label class="ff-lab">ETD 预计开船</label>
+            <input type="text" class="ff-val" placeholder="例如：2026-08-06 00:00:00" />
+          </div>
+          <div class="ff-batch-row" data-ff="eta">
+            <input type="checkbox" class="ff-ck" aria-label="写入ETA" />
+            <label class="ff-lab">ETA 预计到港</label>
+            <input type="text" class="ff-val" placeholder="例如：2026-08-26 00:00:00" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button type="button" class="tool-btn outline" id="ffCancel">取消</button>
+        <button type="button" class="tool-btn primary" id="ffConfirm">保存履约字段</button>
       </div>
     </div>
   </div>
@@ -2853,6 +2931,26 @@
               r.reqArrive = "";
             }
           }
+          if (r.returnDue == null) {
+            var retDay = String(r.reqArrive || "").slice(0, 10);
+            r.returnDue = retDay.length === 10 ? retDay + " 20:00" : "";
+          }
+          if (r.releaseDue == null) {
+            var relDay = String(r.reqArrive || r.cutOff || "").slice(0, 10);
+            r.releaseDue = r.bl && relDay.length === 10 ? relDay + " 16:00" : "";
+          }
+          if (r.eta == null || r.eta === "") {
+            var etdDay = String(r.etd || "").slice(0, 10);
+            if (etdDay.length === 10) {
+              var d = new Date(etdDay.replace(/-/g, "/") + " 00:00:00");
+              if (!isNaN(d.getTime())) {
+                d.setDate(d.getDate() + 18);
+                var m = d.getMonth() + 1, day = d.getDate();
+                r.eta = d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day + " 00:00:00";
+              } else r.eta = "";
+            } else r.eta = "";
+          }
+          if (r.promiseDays == null) r.promiseDays = r.channel === "T25" ? 25 : 18;
           if (r.loadTeam == null) r.loadTeam = r.color === "装完" ? "良承拖" : "";
           if (r.labelStaff == null) r.labelStaff = r.color === "装完" ? "李庆广" : "";
           if (r.watchStaff == null) r.watchStaff = "";
@@ -4194,6 +4292,9 @@
             "<td>" + dash(r.channel) + "</td>" +
             "<td>" + dash(r.customsAssign || r.broker) + "</td>" +
             "<td>" + dash(r.reqArrive) + "</td>" +
+            "<td>" + dash(r.returnDue) + "</td>" +
+            "<td>" + dash(r.releaseDue) + "</td>" +
+            "<td>" + dash(r.promiseDays) + "</td>" +
             "<td>" + dash(r.loadTeam) + "</td>" +
             "<td>" + dash(r.labelStaff) + "</td>" +
             "<td>" + dash(r.watchStaff) + "</td>" +
@@ -4204,7 +4305,7 @@
         pg.rows.forEach(function (r) { html += rowHtml(r); });
 
         document.getElementById("tbody").innerHTML = html ||
-          '<tr><td colspan="60" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
+          '<tr><td colspan="63" style="text-align:center;color:#8c8c8c;padding:24px">无匹配数据</td></tr>';
       }
 
       document.getElementById("tbody").addEventListener("change", function (e) {
@@ -5052,6 +5153,83 @@
           }));
         } catch (e) {}
         location.href = "船务组-提单创建批量-AI识别-MVP.html?mode=edit";
+      };
+
+      /* —— 维护履约字段（支持批量） —— */
+      var FF_KEYS = [
+        { key: "cutOff", label: "应截单时间" },
+        { key: "reqArrive", label: "柜子应到仓/要求到柜" },
+        { key: "returnDue", label: "最迟还重柜时间" },
+        { key: "releaseDue", label: "报关最迟放行时间" },
+        { key: "etd", label: "ETD预计开船" },
+        { key: "eta", label: "ETA预计到港" }
+      ];
+      function ffSyncDisabled() {
+        document.querySelectorAll("#ffFieldRows .ff-batch-row").forEach(function (row) {
+          var on = row.querySelector(".ff-ck").checked;
+          row.classList.toggle("is-off", !on);
+          row.querySelector(".ff-val").disabled = !on;
+        });
+      }
+      function closeFf() {
+        document.getElementById("ffMask").classList.remove("open");
+      }
+      function openFf() {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        var names = rows.map(function (r) { return r.bl || ("#" + r.id); });
+        document.getElementById("ffTargets").value =
+          names.length <= 3 ? names.join("、") : names.slice(0, 3).join("、") + " 等 " + names.length + " 票";
+        var single = rows.length === 1 ? rows[0] : null;
+        document.querySelectorAll("#ffFieldRows .ff-batch-row").forEach(function (row) {
+          var key = row.getAttribute("data-ff");
+          var ck = row.querySelector(".ff-ck");
+          var inp = row.querySelector(".ff-val");
+          if (single) {
+            ck.checked = true;
+            inp.value = single[key] != null ? String(single[key]) : "";
+          } else {
+            ck.checked = false;
+            inp.value = "";
+          }
+        });
+        ffSyncDisabled();
+        document.getElementById("ffMask").classList.add("open");
+      }
+      document.getElementById("btnFfFields").onclick = openFf;
+      document.getElementById("ffClose").onclick = closeFf;
+      document.getElementById("ffCancel").onclick = closeFf;
+      document.getElementById("ffMask").addEventListener("click", function (e) {
+        if (e.target === this) closeFf();
+      });
+      document.getElementById("ffFieldRows").addEventListener("change", function (e) {
+        if (e.target.classList.contains("ff-ck")) ffSyncDisabled();
+      });
+      document.getElementById("ffConfirm").onclick = function () {
+        var rows = checkedRows();
+        if (!rows.length) { toast("请先勾选提单"); return; }
+        var patch = {};
+        var labels = [];
+        document.querySelectorAll("#ffFieldRows .ff-batch-row").forEach(function (row) {
+          var ck = row.querySelector(".ff-ck");
+          if (!ck.checked) return;
+          var key = row.getAttribute("data-ff");
+          var val = String(row.querySelector(".ff-val").value || "").trim();
+          patch[key] = val;
+          var meta = FF_KEYS.find(function (x) { return x.key === key; });
+          labels.push((meta ? meta.label : key) + "=" + (val || "空"));
+        });
+        var keys = Object.keys(patch);
+        if (!keys.length) { toast("请至少勾选一个要写入的字段"); return; }
+        rows.forEach(function (r) {
+          keys.forEach(function (k) { r[k] = patch[k]; });
+          if (typeof addLog === "function") {
+            addLog(r, "维护履约字段", "批量写入: " + labels.join("；"));
+          }
+        });
+        closeFf();
+        render();
+        toast("已更新履约字段 ×" + rows.length + " · " + keys.length + " 项");
       };
       document.getElementById("amdClose").onclick = closeAmd;
       document.getElementById("amdCancel").onclick = closeAmd;
@@ -7293,5 +7471,7 @@
   <script>renderShipReviewNav("bl-mgmt");</script>
   <script src="ship-stow-prd-doc-bar.js" data-page="5" data-v1-prd="船务组-提单管理-按周分组与分配-MVP-PRD.html"></script>
   <script src="ship-stow-review-bridge.js" data-page="5"></script>
+<script src="ff-entry-review-points.js"></script>
+  <script src="ff-entry-review-bridge.js"></script>
 </body>
 </html>

@@ -81,6 +81,7 @@
       font-size: 10px; font-weight: 700; border-radius: 2px;
       background: #fff7e6; color: #d46b08; border: 1px solid #ffd591;
     }
+    .ff-no{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:16px;padding:0 4px;margin-left:4px;border-radius:3px;background:#0f766e;color:#fff;font-size:10px;font-weight:700;line-height:1;vertical-align:middle;}
     .tip-bar {
       margin: 0; padding: 8px 10px; font-size: 12px; line-height: 1.55;
       background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; color: #0050b3;
@@ -650,6 +651,10 @@
               <div class="fi"><label>截关时间</label><input id="fCutOff" type="datetime-local" /></div>
               <div class="fi"><label>开港时间</label><input id="fOpenAt" type="datetime-local" /></div>
               <div class="fi"><label>装柜时间</label><input id="fLoadAt" type="datetime-local" /></div>
+              <div class="fi"><label>要求到柜时间 <span class="ff-no" title="F1 必须早于装柜日">F1</span></label><input id="fReqArrive" type="datetime-local" /></div>
+              <div class="fi"><label>最迟还重柜 <span class="ff-no" title="F2 放舱后至开装前">F2</span></label><input id="fReturnDue" type="datetime-local" /></div>
+              <div class="fi"><label>报关最迟放行 <span class="ff-no" title="F3 绑提单后">F3</span></label><input id="fReleaseDue" type="datetime-local" /></div>
+              <div class="fi"><label>承诺时效(天) <span class="ff-no" title="F16 取当前柜子下销售产品最大值，只读">F16</span></label><input id="fPromise" readonly title="当前柜子下销售产品承诺时效的最大值，本页不改" /></div>
               <div class="fi"><label>进港时间补录 <span class="badge-new">改</span></label>
                 <input id="fArriveAt" type="datetime-local" />
                 <span class="src-hint" style="display:block;margin-top:4px;color:#8c8c8c;font-size:11px">飞驼/码头/口岸能抓则回写；抓不到可手补。补录后列表未进港预警清除。不触发落箱费</span>
@@ -861,6 +866,10 @@
         { k: "etd", title: "开船时间", short: "开船时间", req: false, type: "text", ph: "如 08-12", w: 88, g: "船期" },
         { k: "cutOff", title: "截单时间", short: "截单时间", req: false, type: "text", ph: "如 08-04 17:00", w: 112, g: "船期" },
         { k: "loadAt", title: "装柜时间", short: "装柜时间", req: false, type: "text", ph: "如 08-05 09:00", w: 112, g: "船期" },
+        { k: "reqArrive", title: "要求到柜时间", short: "要求到柜 F1", req: false, type: "text", ph: "早于装柜日", w: 118, g: "船期" },
+        { k: "returnDue", title: "最迟还重柜", short: "最迟还重 F2", req: false, type: "text", ph: "如 08-05 20:00", w: 118, g: "船期" },
+        { k: "releaseDue", title: "报关最迟放行", short: "最迟放行 F3", req: false, type: "text", ph: "如 08-05 16:00", w: 118, g: "船期" },
+        { k: "promiseDays", title: "承诺时效(天)", short: "承诺时效 F16", req: false, type: "text", ph: "产品只读", w: 96, g: "船期", ro: true },
         { k: "arriveAt", title: "进港时间补录", short: "进港补录", req: false, type: "text", ph: "如 08-20 09:30", w: 112, g: "船期" },
         { k: "type", title: "柜型", short: "柜型", req: true, type: "select", options: ["", "20GP", "40GP", "40HQ", "45HQ"], w: 80, g: "柜子" },
         { k: "channel", title: "渠道", short: "渠道", req: true, type: "select", options: ["", "美森正班", "美森加班", "EXX", "T16", "T20", "中美", "T25"], w: 96, g: "柜子" },
@@ -937,7 +946,7 @@
       }
       var emptyRow = function () {
         return {
-          mode: "海运", bl: "", freight: "", freeCn: "", freeOs: "", etd: "", cutOff: "", loadAt: "", arriveAt: "", portCode: "",
+          mode: "海运", bl: "", freight: "", freeCn: "", freeOs: "", etd: "", cutOff: "", loadAt: "", reqArrive: "", returnDue: "", releaseDue: "", promiseDays: "", arriveAt: "", portCode: "",
           cntr: "", weighKg: "", type: "", channel: "", pol: "", pod: "", transit: "", carrier: "", vessel: "", voyage: "", pickupType: "",
           supplier: "", remark: "", ai: false, lock: {}, baseHit: {}
         };
@@ -1063,6 +1072,10 @@
         if (r.ai) clsName = "ai-fill";
         else if ((key === "freight" || key === "freeCn" || key === "freeOs") && r.baseHit && r.baseHit[key]) clsName = "from-base";
         var cls = clsName ? ' class="' + clsName + '"' : "";
+        if (col.ro) {
+          var pv = r.promiseDays || (r.channel === "T25" ? "25" : (r.channel ? "18" : ""));
+          return '<input type="text" data-k="' + key + '" value="' + pv + '" readonly title="销售产品只读" />';
+        }
         if (col.type === "select") {
           var html = "<select" + cls + ' data-k="' + key + '">';
           col.options.forEach(function (o) {
@@ -1078,7 +1091,7 @@
         var t = "text";
         var val = r[key] || "";
         if (key === "etd") val = mdOnly(val);
-        if (key === "cutOff" || key === "loadAt") val = mdTime(val);
+        if (key === "cutOff" || key === "loadAt" || key === "reqArrive" || key === "returnDue" || key === "releaseDue") val = mdTime(val);
         var title = (key === "freight" || key === "freeCn" || key === "freeOs") && r.baseHit && r.baseHit[key]
           ? "来自基础配置，可改"
           : "";
@@ -1212,6 +1225,11 @@
             blEl.placeholder = p ? p + "…" : "非必填，可后补";
           }
         }
+        if (k === "channel") {
+          r.promiseDays = r.channel === "T25" ? "25" : (r.channel ? "18" : "");
+          var pEl = tr.querySelector('[data-k="promiseDays"]');
+          if (pEl) pEl.value = r.promiseDays;
+        }
         if (k === "carrier" || k === "pol" || k === "pod" || k === "type") {
           if (applyBaseFee(r)) render();
         }
@@ -1314,7 +1332,8 @@
         if (!r) return;
         var v = String(raw == null ? "" : raw).replace(/\r/g, "").trim();
         if (col.k === "etd") v = mdOnly(v);
-        if (col.k === "cutOff" || col.k === "loadAt") v = mdTime(v);
+        if (col.ro) return;
+        if (col.k === "cutOff" || col.k === "loadAt" || col.k === "reqArrive" || col.k === "returnDue" || col.k === "releaseDue") v = mdTime(v);
         if (col.type === "select") v = matchOpt(col, v);
         if (col.k === "vessel") {
           var vv = parseVesselVoyage(v);
@@ -1324,6 +1343,7 @@
         }
         r[col.k] = v;
         if (col.k === "carrier") applyBlPrefix(r, "");
+        if (col.k === "channel") r.promiseDays = v === "T25" ? "25" : (v ? "18" : "");
       }
       function parseSheet(text) {
         var lines = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(function (l) {
@@ -1773,6 +1793,10 @@
         var lo = (r.loKeys || []).indexOf(key) >= 0;
         var cls = ' class="ai-fill' + (lo ? " ai-lo-in" : "") + '"';
         var dk = ' data-ai-k="' + key + '"';
+        if (col.ro) {
+          var pv = r.promiseDays || (r.channel === "T25" ? "25" : (r.channel ? "18" : ""));
+          return '<input type="text"' + cls + dk + ' value="' + pv + '" readonly title="销售产品只读" />';
+        }
         if (col.type === "select") {
           var html = "<select" + cls + dk + ">";
           col.options.forEach(function (o) {
@@ -1787,7 +1811,7 @@
         }
         var val = r[key] || "";
         if (key === "etd") val = mdOnly(val);
-        if (key === "cutOff" || key === "loadAt") val = mdTime(val);
+        if (key === "cutOff" || key === "loadAt" || key === "reqArrive" || key === "returnDue" || key === "releaseDue") val = mdTime(val);
         return '<input type="text"' + cls + dk + ' value="' +
           String(val).replace(/"/g, "&quot;") + '" placeholder="' + ph + '" />';
       }
@@ -2528,6 +2552,10 @@
         setVal("fWeighKg", p.weighKg);
         setVal("fCs", p.cs);
         setVal("fLoadAt", toLocal(p.loadAt));
+        setVal("fReqArrive", toLocal(p.reqArrive));
+        setVal("fReturnDue", toLocal(p.returnDue));
+        setVal("fReleaseDue", toLocal(p.releaseDue));
+        setVal("fPromise", p.promiseDays || (p.channel === "T25" ? "25" : "18"));
         setVal("fArriveAt", toLocal(p.arriveAt));
         setVal("fPortCode", p.portCode);
         setVal("fCutOff", toLocal(p.cutOff));
@@ -2591,7 +2619,7 @@
               vessel: "ZIM MOUNT EVEREST", voyage: "13/E", pickupType: "是", etd: "2025-07-04T22:37", eta: "2025-08-05T20:06",
               freight: "4300", freeCn: "7", freeOs: "10", seal: "A4240549942",
               weighKg: "14280.5",
-              loadAt: "2025-07-03T14:00", arriveAt: "2025-07-04T09:30", portCode: "SHA",
+              loadAt: "2025-07-03T14:00", reqArrive: "2025-07-02T18:00", returnDue: "2025-07-03T20:00", releaseDue: "2025-07-03T16:00", promiseDays: "18", arriveAt: "2025-07-04T09:30", portCode: "SHA",
               booker: "大海", st: "已清关"
             };
           }
@@ -2605,6 +2633,9 @@
           aiBtn.onclick = openAiOrExpand;
         }
         if (aiHint) aiHint.style.display = PAGE_MODE === "single" ? "" : "none";
+        document.getElementById("fChannel").addEventListener("change", function () {
+          setVal("fPromise", getVal("fChannel") === "T25" ? "25" : (getVal("fChannel") ? "18" : ""));
+        });
         document.getElementById("fCarrier").addEventListener("change", function () {
           var row = { bl: getVal("fBl"), carrier: getVal("fCarrier") };
           applyBlPrefix(row, "");
@@ -2639,6 +2670,12 @@
           if (!formFreeOk()) miss.push("国内/国外免用箱");
           if (miss.length) {
             toast(miss.join("、") + " 必填");
+            return;
+          }
+          var reqDay = getVal("fReqArrive").slice(0, 10);
+          var loadDay = getVal("fLoadAt").slice(0, 10);
+          if (reqDay && loadDay && reqDay >= loadDay) {
+            toast("要求到柜必须早于装柜日");
             return;
           }
           if (getVal("fBl")) {
@@ -2718,5 +2755,7 @@
   </script>
   <script src="ship-review-nav.js"></script>
   <script>renderShipReviewNav("bl-create");</script>
+<script src="ff-entry-review-points.js"></script>
+  <script src="ff-entry-review-bridge.js"></script>
 </body>
 </html>
